@@ -15,9 +15,14 @@ class ConnectionManager:
     def connect(self, session_id: str, player_id: str, connection: SendsJSON) -> None:
         self._connections.setdefault(session_id, {})[player_id] = connection
 
-    def disconnect(self, session_id: str, player_id: str) -> None:
-        self._connections.get(session_id, {}).pop(player_id, None)
+    def disconnect(self, session_id: str, player_id: str, connection: SendsJSON | None = None) -> None:
+        conns = self._connections.get(session_id, {})
+        if connection is None or conns.get(player_id) is connection:
+            conns.pop(player_id, None)
 
     async def broadcast(self, session_id: str, session: Session) -> None:
-        for player_id, connection in self._connections.get(session_id, {}).items():
-            await connection.send_json(build_view(session, player_id))
+        for player_id, connection in list(self._connections.get(session_id, {}).items()):
+            try:
+                await connection.send_json(build_view(session, player_id))
+            except Exception:
+                self.disconnect(session_id, player_id)
