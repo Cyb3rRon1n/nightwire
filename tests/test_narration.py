@@ -23,6 +23,15 @@ def _session_with_character() -> Session:
     return session
 
 
+def _session_with_two_characters() -> Session:
+    session = _session_with_character()
+    session.characters["someone-else"] = CharacterSheet(
+        player_id="someone-else", name="Ghost", role="netrunner", lifepath="corpo",
+        attributes={"reflexes": 20},
+    )
+    return session
+
+
 @pytest.mark.asyncio
 async def test_handle_action_appends_the_players_action_and_the_narration_to_the_log():
     session = _session_with_character()
@@ -60,8 +69,11 @@ async def test_handle_action_executes_a_tool_call_and_logs_the_result():
 @pytest.mark.asyncio
 async def test_handle_action_overrides_the_models_player_id_for_request_roll():
     # Server-authoritative: the acting player_id always wins for request_roll,
-    # regardless of what the model put in tool_args.
-    session = _session_with_character()
+    # regardless of what the model put in tool_args. p1 has reflexes 14
+    # (modifier 2); someone-else has reflexes 20 (modifier 5). If the
+    # override were ever removed, the roll would use someone-else's
+    # attribute_mod of 5 instead of the actual actor's 2.
+    session = _session_with_two_characters()
     client = _fake_client(
         "You lunge for the ledge.", tool="request_roll",
         tool_args={
@@ -72,7 +84,9 @@ async def test_handle_action_overrides_the_models_player_id_for_request_roll():
 
     await handle_action(session, client, "p1", {"text": "I leap the gap."})
 
-    assert "unknown player_id" not in "".join(session.log)
+    result_line = next(line for line in session.log if "request_roll" in line)
+    assert "'attribute_mod': 2" in result_line
+    assert "'attribute_mod': 5" not in result_line
 
 
 @pytest.mark.asyncio
