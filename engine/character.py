@@ -13,3 +13,4 @@ class CharacterSheet:
     armor: int = 0
     conditions: list[str] = field(default_factory=list)
     inventory: list[str] = field(default_factory=list)
+    portrait_path: str | None = None
