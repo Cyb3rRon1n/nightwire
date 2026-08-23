@@ -133,3 +133,29 @@ async def test_unload_calls_generate_with_keep_alive_zero_and_no_prompt():
     assert seen["model"] == "qwen3:8b"
     assert seen["keep_alive"] == 0
     assert "prompt" not in seen
+
+
+@pytest.mark.asyncio
+async def test_respond_parses_an_image_request():
+    client = NarratorClient(
+        chat_fn=_fake_chat_returning({
+            "narration": "The alley opens onto a rain-slicked plaza, neon bleeding into puddles.",
+            "tool_call": {"tool": None},
+            "image_request": {"prompt": "a rain-slicked cyberpunk plaza, neon reflections"},
+        }),
+    )
+    response = await client.respond([{"role": "user", "content": "I step into the plaza."}])
+    assert response.image_request is not None
+    assert response.image_request.prompt == "a rain-slicked cyberpunk plaza, neon reflections"
+
+
+@pytest.mark.asyncio
+async def test_respond_image_request_defaults_to_none():
+    client = NarratorClient(
+        chat_fn=_fake_chat_returning({
+            "narration": "The alley is quiet.",
+            "tool_call": {"tool": None},
+        }),
+    )
+    response = await client.respond([{"role": "user", "content": "I look around."}])
+    assert response.image_request is None

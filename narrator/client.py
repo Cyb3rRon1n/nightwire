@@ -56,9 +56,19 @@ ToolCall = Annotated[
 ]
 
 
+class ImageRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    prompt: str
+
+
 class NarratorResponse(BaseModel):
     narration: str
     tool_call: ToolCall
+    # Sibling to tool_call, not a tool_call variant: an image request has no
+    # engine-state effect to execute/log, it's a presentation decision layered
+    # on narration - conflating it into the discriminated union above would
+    # mix two different kinds of decision the schema is meant to keep apart.
+    image_request: ImageRequest | None = None
 
     # `.tool`/`.tool_args` kept as the external shape every existing caller
     # (server/narration.py, tests) already expects - `tool_args` as a plain
