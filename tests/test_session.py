@@ -26,3 +26,17 @@ def test_two_sessions_do_not_share_mutable_default_state():
     a.log.append("something happened")
     assert b.turn_order == []
     assert b.log == []
+
+
+def test_session_world_state_starts_empty():
+    session = Session(session_id="test-session")
+    assert session.location is None
+    assert session.scene_mood is None
+    assert session.active_objectives == []
+
+
+def test_two_sessions_do_not_share_mutable_objectives_list():
+    a = Session(session_id="a")
+    b = Session(session_id="b")
+    a.active_objectives.append("find the fixer")
+    assert b.active_objectives == []

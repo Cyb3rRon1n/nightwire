@@ -12,3 +12,6 @@ class Session:
     in_combat: bool = False
     pre_combat_turn_order: list[str] | None = None
     log: list[str] = field(default_factory=list)
+    location: str | None = None
+    scene_mood: str | None = None
+    active_objectives: list[str] = field(default_factory=list)

@@ -33,6 +33,9 @@ def test_save_then_load_round_trips_a_session_with_a_character(tmp_path):
     session.in_combat = True
     session.pre_combat_turn_order = ["p1"]
     session.log = ["Rook draws a pistol."]
+    session.location = "Night City - Watson district"
+    session.scene_mood = "tense"
+    session.active_objectives = ["find the fixer", "avoid corpo patrols"]
 
     store.save(session)
     loaded = store.load("test-session")
@@ -43,6 +46,9 @@ def test_save_then_load_round_trips_a_session_with_a_character(tmp_path):
     assert loaded.in_combat is True
     assert loaded.pre_combat_turn_order == ["p1"]
     assert loaded.log == ["Rook draws a pistol."]
+    assert loaded.location == "Night City - Watson district"
+    assert loaded.scene_mood == "tense"
+    assert loaded.active_objectives == ["find the fixer", "avoid corpo patrols"]
     loaded_character = loaded.characters["p1"]
     assert loaded_character.name == "Rook"
     assert loaded_character.role == "solo"

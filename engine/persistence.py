@@ -51,4 +51,7 @@ class JSONFileSessionStore:
             in_combat=data["in_combat"],
             pre_combat_turn_order=data["pre_combat_turn_order"],
             log=data["log"],
+            location=data["location"],
+            scene_mood=data["scene_mood"],
+            active_objectives=data["active_objectives"],
         )
