@@ -1,3 +1,5 @@
+import pytest
+
 from ruleset.resolution import Outcome, resolve_roll
 
 
@@ -35,3 +37,18 @@ def test_boundary_exactly_at_dc_plus_5_is_clean_success():
 
 def test_boundary_one_below_dc_plus_5_is_complication_not_clean():
     assert resolve_roll(die_result=4, attribute_mod=0, skill_mod=0, dc=0) == Outcome.COMPLICATION
+
+
+def test_boundary_exactly_at_dc_is_complication():
+    assert resolve_roll(die_result=6, attribute_mod=1, skill_mod=1, dc=8) == Outcome.COMPLICATION  # total 8 == dc
+
+
+def test_boundary_one_below_dc_is_failure():
+    assert resolve_roll(die_result=5, attribute_mod=1, skill_mod=1, dc=8) == Outcome.FAILURE  # total 7
+
+
+def test_die_result_out_of_range_raises():
+    with pytest.raises(ValueError):
+        resolve_roll(die_result=0, attribute_mod=0, skill_mod=0, dc=10)
+    with pytest.raises(ValueError):
+        resolve_roll(die_result=11, attribute_mod=0, skill_mod=0, dc=10)

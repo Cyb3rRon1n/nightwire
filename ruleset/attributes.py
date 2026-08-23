@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class Attribute(str, Enum):
+class Attribute(StrEnum):
     BODY = "body"
     REFLEXES = "reflexes"
     TECH = "tech"
