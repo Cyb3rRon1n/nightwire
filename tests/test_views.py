@@ -84,3 +84,17 @@ def test_is_your_turn_true_outside_combat():
 
     assert view["current_turn"] is None
     assert view["is_your_turn"] is True
+
+
+def test_view_includes_world_state():
+    session = Session(session_id="s1")
+    session.characters["p1"] = _character("p1", "Rook")
+    session.location = "Watson district"
+    session.scene_mood = "tense"
+    session.active_objectives = ["find the fixer"]
+
+    view = build_view(session, "p1")
+
+    assert view["location"] == "Watson district"
+    assert view["scene_mood"] == "tense"
+    assert view["active_objectives"] == ["find the fixer"]
