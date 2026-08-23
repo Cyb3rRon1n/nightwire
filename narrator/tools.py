@@ -2,7 +2,7 @@ import random
 from collections.abc import Callable
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from engine.session import Session
 from ruleset.difficulty import Difficulty
@@ -10,6 +10,8 @@ from ruleset.resolution import resolve_roll
 
 
 class RequestRoll(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     attribute_mod: int
     skill_mod: int
     difficulty: Literal["easy", "moderate", "hard", "extreme"]
@@ -17,6 +19,8 @@ class RequestRoll(BaseModel):
 
 
 class ApplyCharacterUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     player_id: str
     health_delta: int = 0
     armor_delta: int = 0
@@ -27,6 +31,8 @@ class ApplyCharacterUpdate(BaseModel):
 
 
 class UpdateWorld(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     location: str | None = None
     scene_mood: str | None = None
     add_objectives: list[str] = []
@@ -34,10 +40,14 @@ class UpdateWorld(BaseModel):
 
 
 class StartCombat(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     reason: str
 
 
 class EndCombat(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     reason: str
 
 
@@ -87,7 +97,7 @@ def _execute_update_world(session: Session, tool: UpdateWorld) -> dict:
     return {
         "location": session.location,
         "scene_mood": session.scene_mood,
-        "active_objectives": session.active_objectives,
+        "active_objectives": list(session.active_objectives),
     }
 
 

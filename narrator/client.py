@@ -1,12 +1,17 @@
 from collections.abc import Callable
+from typing import Literal
 
 import ollama
 from pydantic import BaseModel, ValidationError
 
+from narrator.tools import TOOL_REGISTRY
+
+ToolName = Literal[tuple(TOOL_REGISTRY)]
+
 
 class NarratorResponse(BaseModel):
     narration: str
-    tool: str | None = None
+    tool: ToolName | None = None
     tool_args: dict = {}
 
 

@@ -70,3 +70,15 @@ def test_respond_raises_on_malformed_model_output():
     client = NarratorClient(chat_fn=lambda **kwargs: {"message": {"content": "not json"}})
     with pytest.raises(ValueError):
         client.respond([{"role": "user", "content": "hi"}])
+
+
+def test_respond_raises_on_a_hallucinated_tool_name():
+    client = NarratorClient(
+        chat_fn=_fake_chat_returning({
+            "narration": "You lunge for the ledge.",
+            "tool": "Agility Check (DC 15) to leap across the gap",
+            "tool_args": {},
+        }),
+    )
+    with pytest.raises(ValueError):
+        client.respond([{"role": "user", "content": "I try to jump the gap."}])
