@@ -44,7 +44,7 @@ def create_app(store: JSONFileSessionStore, narrator_client: NarratorClient, ima
 
                 try:
                     if message.get("type") == "action":
-                        await handle_action(session, narrator_client, player_id, message)
+                        await handle_action(session, narrator_client, store, image_backend, player_id, message)
                     elif message.get("type") == "approve_character":
                         await handle_approve_character(session, store, narrator_client, image_backend, player_id)
                     else:
