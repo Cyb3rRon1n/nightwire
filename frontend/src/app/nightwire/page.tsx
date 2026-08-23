@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ReadyState } from "react-use-websocket";
 import { useNightwireSocket } from "@/lib/nightwire/useNightwireSocket";
+import type { StateView } from "@/lib/nightwire/protocol";
 
 const READY_STATE_LABEL: Record<ReadyState, string> = {
   [ReadyState.CONNECTING]: "Connecting…",
@@ -34,6 +35,32 @@ function formatComposerInput(mode: ComposerMode, text: string): string {
 // split open-dungeon's own page.tsx draws between user/assistant messages.
 function isOwnLine(line: string, playerId: string): boolean {
   return line.startsWith(`${playerId}: `);
+}
+
+function VitalsBand({ view, playerId }: { view: StateView; playerId: string }) {
+  const characters = Object.entries(view.characters);
+  return (
+    <div className="flex flex-col gap-1.5 border-t border-stone-800 pt-2 text-xs text-stone-400">
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        {characters.map(([id, c]) => (
+          <span key={id} className={id === playerId ? "text-stone-100" : ""}>
+            {c.name} · {c.health}/{c.max_health} HP
+            {c.armor > 0 && ` · ${c.armor} armor`}
+            {c.conditions.length > 0 && ` · ${c.conditions.join(", ")}`}
+          </span>
+        ))}
+      </div>
+      {(view.location || view.scene_mood || view.in_combat) && (
+        <div>
+          {view.location && <span>{view.location}</span>}
+          {view.location && view.scene_mood && " · "}
+          {view.scene_mood && <span>{view.scene_mood}</span>}
+          {view.in_combat && <span> · in combat{view.current_turn && ` (${view.current_turn}'s turn)`}</span>}
+        </div>
+      )}
+      {view.active_objectives.length > 0 && <div>{view.active_objectives.join(" · ")}</div>}
+    </div>
+  );
 }
 
 export default function NightwirePage() {
@@ -158,6 +185,8 @@ export default function NightwirePage() {
                   ),
                 )}
               </div>
+
+              <VitalsBand view={view} playerId={playerId} />
 
               <form onSubmit={handleSendAction} className="flex flex-col gap-2">
                 <div className="flex rounded-lg border border-stone-800 bg-stone-950 p-0.5">
