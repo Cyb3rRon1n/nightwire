@@ -1,12 +1,20 @@
+import json
+
 from fastapi.testclient import TestClient
 
 from engine.persistence import JSONFileSessionStore
+from narrator.client import NarratorClient
 from server.app import create_app
 
 
-def _client(tmp_path):
+def _unused_chat_fn(*, model, messages, format):
+    raise AssertionError("narrator should not be called by this test")
+
+
+def _client(tmp_path, narrator_client=None):
     store = JSONFileSessionStore(tmp_path)
-    return TestClient(create_app(store))
+    client = narrator_client or NarratorClient(chat_fn=_unused_chat_fn)
+    return TestClient(create_app(store, client))
 
 
 def test_join_broadcasts_a_filtered_view_back_to_the_sender(tmp_path):
@@ -115,3 +123,40 @@ def test_state_persists_across_a_reconnect(tmp_path):
         view = ws.receive_json()
 
     assert "p1" in view["characters"]
+
+
+def test_action_message_triggers_the_narrator_and_broadcasts_narration(tmp_path):
+    async def chat_fn(*, model, messages, format):
+        return {"message": {"content": json.dumps({
+            "narration": "The alley is quiet.", "tool": None, "tool_args": {},
+        })}}
+    narrator_client = NarratorClient(chat_fn=chat_fn)
+    client = _client(tmp_path, narrator_client)
+
+    with client.websocket_connect("/ws/s1/p1") as ws:
+        ws.send_json({
+            "type": "join",
+            "character": {"player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"},
+        })
+        ws.receive_json()
+
+        ws.send_json({"type": "action", "text": "I look around."})
+        view = ws.receive_json()
+
+    assert "The alley is quiet." in view["log"]
+
+
+def test_action_message_missing_text_sends_an_error(tmp_path):
+    client = _client(tmp_path)
+    with client.websocket_connect("/ws/s1/p1") as ws:
+        ws.send_json({
+            "type": "join",
+            "character": {"player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"},
+        })
+        ws.receive_json()
+
+        ws.send_json({"type": "action"})
+        error = ws.receive_json()
+
+    assert error["type"] == "error"
+    assert "text" in error["message"]
