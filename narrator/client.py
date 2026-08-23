@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Literal
 
 import ollama
@@ -20,15 +20,19 @@ class NarratorClient:
         self,
         model: str = "qwen3:8b",
         system_prompt: str = "",
-        chat_fn: Callable[..., dict] | None = None,
+        chat_fn: Callable[..., Awaitable[dict]] | None = None,
     ) -> None:
         self.model = model
         self.system_prompt = system_prompt
-        self._chat_fn = chat_fn or ollama.chat
+        self._chat_fn = chat_fn or self._default_chat
 
-    def respond(self, messages: list[dict]) -> NarratorResponse:
+    @staticmethod
+    async def _default_chat(*, model: str, messages: list[dict], format: dict) -> dict:
+        return await ollama.AsyncClient().chat(model=model, messages=messages, format=format)
+
+    async def respond(self, messages: list[dict]) -> NarratorResponse:
         full_messages = [{"role": "system", "content": self.system_prompt}] + messages
-        response = self._chat_fn(
+        response = await self._chat_fn(
             model=self.model,
             messages=full_messages,
             format=NarratorResponse.model_json_schema(),
