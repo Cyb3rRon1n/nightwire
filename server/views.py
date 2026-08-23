@@ -21,5 +21,8 @@ def build_view(session: Session, viewer_id: str) -> dict:
         "current_turn": current_turn(session),
         "is_your_turn": is_players_turn(session, viewer_id),
         "log": session.log,
+        "location": session.location,
+        "scene_mood": session.scene_mood,
+        "active_objectives": session.active_objectives,
         "characters": characters,
     }
