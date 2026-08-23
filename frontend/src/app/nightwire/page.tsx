@@ -5,6 +5,7 @@ import { ReadyState } from "react-use-websocket";
 import { useNightwireSocket } from "@/lib/nightwire/useNightwireSocket";
 import type { CharacterSheet, StateView } from "@/lib/nightwire/protocol";
 import { portraitFor } from "@/lib/nightwire/portrait";
+import { mediaUrl } from "@/lib/nightwire/media";
 import { CharacterSheetOverlay } from "./CharacterSheetOverlay";
 
 const READY_STATE_LABEL: Record<ReadyState, string> = {
@@ -39,6 +40,10 @@ function isOwnLine(line: string, playerId: string): boolean {
   return line.startsWith(`${playerId}: `);
 }
 
+// Reuses the same [tag: value] bracket convention tool results already use
+// in session.log - no new StateView field for image lines.
+const IMAGE_LINE = /^\[image: (.+)\]$/;
+
 function VitalsBand({ view, playerId }: { view: StateView; playerId: string }) {
   const characters = Object.entries(view.characters);
   return (
@@ -46,11 +51,17 @@ function VitalsBand({ view, playerId }: { view: StateView; playerId: string }) {
       <div className="flex flex-wrap gap-x-4 gap-y-1">
         {characters.map(([id, c]) => {
           const { initials, colorClass } = portraitFor(c.role, c.name);
+          const portraitPath = "portrait_path" in c ? c.portrait_path : null;
           return (
             <span key={id} className={`inline-flex items-center gap-1.5 ${id === playerId ? "text-stone-100" : ""}`}>
-              <span className={`flex size-5 items-center justify-center rounded text-[10px] font-semibold ${colorClass}`}>
-                {initials}
-              </span>
+              {portraitPath ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={mediaUrl(portraitPath)} alt="" className="size-5 rounded object-cover" />
+              ) : (
+                <span className={`flex size-5 items-center justify-center rounded text-[10px] font-semibold ${colorClass}`}>
+                  {initials}
+                </span>
+              )}
               {c.name} · {c.health}/{c.max_health} HP
               {c.armor > 0 && ` · ${c.armor} armor`}
               {c.conditions.length > 0 && ` · ${c.conditions.join(", ")}`}
@@ -82,6 +93,8 @@ export default function NightwirePage() {
   const [composerText, setComposerText] = useState("");
   const [sending, setSending] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [approvingPortrait, setApprovingPortrait] = useState(false);
+  const [portraitSkipped, setPortraitSkipped] = useState(false);
 
   const { view, error, send, readyState } = useNightwireSocket(
     connected ? sessionId : null,
@@ -92,6 +105,7 @@ export default function NightwirePage() {
   // this connection receives - the protocol has no per-request ack.
   useEffect(() => {
     setSending(false);
+    setApprovingPortrait(false);
   }, [view]);
 
   useEffect(() => {
@@ -124,6 +138,11 @@ export default function NightwirePage() {
     send({ type: "action", text: formatComposerInput(composerMode, composerText) });
     setComposerText("");
     setSending(true);
+  }
+
+  function handleApprovePortrait() {
+    send({ type: "approve_character" });
+    setApprovingPortrait(true);
   }
 
   return (
@@ -188,11 +207,44 @@ export default function NightwirePage() {
 
           {error && <p className="text-sm text-red-400">{error}</p>}
 
+          {view && "player_id" in view.characters[playerId] &&
+            !(view.characters[playerId] as CharacterSheet).portrait_path &&
+            !portraitSkipped && (
+              <div className="flex flex-col gap-2 rounded-lg border border-stone-800 p-3 text-sm">
+                <p className="text-stone-300">
+                  {name} — {role} · {lifepath}. Generate a portrait before playing?
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleApprovePortrait}
+                    disabled={approvingPortrait}
+                    className="flex-1 rounded bg-amber-200 px-3 py-2 text-sm font-medium text-stone-950 disabled:opacity-50"
+                  >
+                    {approvingPortrait ? "Generating…" : "Approve & Generate Portrait"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPortraitSkipped(true)}
+                    disabled={approvingPortrait}
+                    className="rounded bg-stone-900 px-3 py-2 text-sm text-stone-400 hover:bg-stone-800 disabled:opacity-50"
+                  >
+                    Skip for now
+                  </button>
+                </div>
+              </div>
+            )}
+
           {view && (
             <>
               <div className="flex-1 space-y-3 overflow-y-auto">
-                {view.log.map((line, i) =>
-                  isOwnLine(line, playerId) ? (
+                {view.log.map((line, i) => {
+                  const imageMatch = line.match(IMAGE_LINE);
+                  if (imageMatch) {
+                    // eslint-disable-next-line @next/next/no-img-element
+                    return <img key={i} src={mediaUrl(imageMatch[1])} alt="" className="max-w-[85%] rounded-xl" />;
+                  }
+                  return isOwnLine(line, playerId) ? (
                     <div key={i} className="ml-auto max-w-[85%]">
                       <div className="rounded-2xl rounded-br-md border border-stone-800/70 bg-stone-900/60 px-4 py-3 text-sm leading-6 text-stone-300">
                         <p className="whitespace-pre-wrap text-pretty">{line}</p>
@@ -202,8 +254,8 @@ export default function NightwirePage() {
                     <p key={i} className="whitespace-pre-wrap text-pretty font-serif text-stone-100">
                       {line}
                     </p>
-                  ),
-                )}
+                  );
+                })}
               </div>
 
               <VitalsBand view={view} playerId={playerId} />

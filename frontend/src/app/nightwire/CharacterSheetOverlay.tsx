@@ -1,4 +1,5 @@
 import { portraitFor } from "@/lib/nightwire/portrait";
+import { mediaUrl } from "@/lib/nightwire/media";
 import type { CharacterSheet } from "@/lib/nightwire/protocol";
 
 export function CharacterSheetOverlay({
@@ -20,9 +21,14 @@ export function CharacterSheetOverlay({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 border-b border-stone-800 pb-3">
-          <span className={`flex size-10 items-center justify-center rounded-lg text-sm font-semibold ${colorClass}`}>
-            {initials}
-          </span>
+          {character.portrait_path ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={mediaUrl(character.portrait_path)} alt="" className="size-10 rounded-lg object-cover" />
+          ) : (
+            <span className={`flex size-10 items-center justify-center rounded-lg text-sm font-semibold ${colorClass}`}>
+              {initials}
+            </span>
+          )}
           <div>
             <p className="font-semibold">{character.name}</p>
             <p className="text-xs text-stone-500">

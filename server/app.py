@@ -1,4 +1,5 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.staticfiles import StaticFiles
 
 from engine.persistence import JSONFileSessionStore
 from engine.session import Session
@@ -12,6 +13,10 @@ from server.portrait import handle_approve_character
 
 def create_app(store: JSONFileSessionStore, narrator_client: NarratorClient, image_backend: ImageBackend) -> FastAPI:
     app = FastAPI()
+    # Serves generated portraits/scene images (sessions/portraits/..., sessions/images/...)
+    # - store.directory always exists (JSONFileSessionStore creates it), the
+    # portrait/image subdirs are created lazily on first write.
+    app.mount("/media", StaticFiles(directory=store.directory), name="media")
     manager = ConnectionManager()
     sessions: dict[str, Session] = {}  # ponytail: single-process; needs a real store if ever multi-worker
 

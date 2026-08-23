@@ -9,6 +9,7 @@ export interface CharacterSheet {
   armor: number
   conditions: string[]
   inventory: string[]
+  portrait_path: string | null
 }
 
 export interface RedactedCharacter {
@@ -78,9 +79,14 @@ export interface EndCombatMessage {
   type: 'end_combat'
 }
 
+export interface ApproveCharacterMessage {
+  type: 'approve_character'
+}
+
 export type ClientMessage =
   | JoinMessage
   | ActionMessage
   | StartCombatMessage
   | AdvanceTurnMessage
   | EndCombatMessage
+  | ApproveCharacterMessage
