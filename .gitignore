@@ -25,3 +25,9 @@ dist/
 
 # Visual brainstorming companion mockups (superpowers:brainstorming skill)
 .superpowers/
+
+# Runtime session data (engine.persistence.JSONFileSessionStore)
+/sessions/
+
+# Local-only backup of the superseded Vite frontend scaffold (see ROADMAP.md)
+/frontend-vite-scaffold-backup/
