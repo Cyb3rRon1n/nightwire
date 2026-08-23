@@ -28,10 +28,17 @@ class FluxWorkerBackend:
         backend: str = "sdnq-hs",
         output_dir: Path | str = Path("frontend/public/generated"),
         http_fn: Callable[[dict], Awaitable[dict]] | None = None,
+        # The worker's own defaults (its "fast" mode) target 1024px, which
+        # needs ~16GB - real, live-verified OOM on an 8GB card (Phase 5 Task
+        # 7). 512px is the documented fit for 8GB. Config, not a protocol
+        # constant, per the spec's forward-compat requirement - bump this on
+        # better hardware, no code change needed elsewhere.
+        long_side: int = 512,
     ) -> None:
         self.base_url = base_url
         self.backend = backend
         self.output_dir = Path(output_dir)
+        self.long_side = long_side
         self._http_fn = http_fn or self._default_http
 
     async def _default_http(self, payload: dict) -> dict:
@@ -45,12 +52,22 @@ class FluxWorkerBackend:
         encoded = base64.b64encode(data).decode()
         return {"dataUrl": f"data:image/png;base64,{encoded}"}
 
+    def _dimensions_for(self, aspect: str) -> tuple[int, int]:
+        if aspect == "portrait":
+            return round(self.long_side * 0.75), self.long_side
+        if aspect == "landscape":
+            return self.long_side, round(self.long_side * 0.75)
+        return self.long_side, self.long_side
+
     async def _generate(self, prompt: str, aspect: str, reference_paths: list[str]) -> bytes:
         references = [self._to_data_url(p) for p in reference_paths[:_MAX_REFERENCES]]
+        width, height = self._dimensions_for(aspect)
         payload = {
             "backend": self.backend,
             "prompt": prompt,
             "aspect": aspect,
+            "width": width,
+            "height": height,
             "references": references,
         }
         result = await self._http_fn(payload)

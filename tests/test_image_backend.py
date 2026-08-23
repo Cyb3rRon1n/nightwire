@@ -28,6 +28,8 @@ async def test_generate_portrait_calls_http_fn_with_no_references(tmp_path):
     assert result == b"fake-png-bytes"
     assert seen["payload"]["prompt"] == "a lean netrunner in a rain-slicked jacket"
     assert seen["payload"]["aspect"] == "portrait"
+    assert seen["payload"]["width"] == 384
+    assert seen["payload"]["height"] == 512
     assert seen["payload"]["references"] == []
     assert seen["payload"]["backend"] == "sdnq-hs"
 
@@ -47,6 +49,8 @@ async def test_generate_scene_encodes_reference_files_as_data_urls(tmp_path):
 
     assert result == b"fake-scene-bytes"
     assert seen["payload"]["aspect"] == "square"
+    assert seen["payload"]["width"] == 512
+    assert seen["payload"]["height"] == 512
     references = seen["payload"]["references"]
     assert len(references) == 1
     expected_b64 = base64.b64encode(b"\x89PNG-ref-bytes").decode()
