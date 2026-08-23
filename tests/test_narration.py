@@ -3,17 +3,24 @@ import json
 import pytest
 
 from engine.character import CharacterSheet
+from engine.persistence import JSONFileSessionStore
 from engine.session import Session
 from narrator.client import NarratorClient
 from server.narration import handle_action
 
 
-def _fake_client(narration: str, tool: str | None = None, tool_args: dict | None = None) -> NarratorClient:
+def _fake_client(narration: str, tool: str | None = None, tool_args: dict | None = None, image_prompt: str | None = None) -> NarratorClient:
     async def chat_fn(*, model, messages, format):
         tool_call = {"tool": tool} if tool is None else {"tool": tool, "tool_args": tool_args or {}}
         payload = {"narration": narration, "tool_call": tool_call}
+        if image_prompt is not None:
+            payload["image_request"] = {"prompt": image_prompt}
         return {"message": {"content": json.dumps(payload)}}
-    return NarratorClient(chat_fn=chat_fn)
+
+    async def generate_fn(**kwargs):
+        pass
+
+    return NarratorClient(chat_fn=chat_fn, generate_fn=generate_fn)
 
 
 def _session_with_character() -> Session:
@@ -33,26 +40,40 @@ def _session_with_two_characters() -> Session:
     return session
 
 
+class _UnusedImageBackend:
+    async def generate_portrait(self, description):
+        raise AssertionError("not exercised by this test")
+
+    async def generate_scene(self, prompt, reference_paths):
+        raise AssertionError("not exercised by this test")
+
+
+async def _call(session, client, player_id, message, tmp_path, image_backend=None):
+    store = JSONFileSessionStore(tmp_path)
+    await handle_action(session, client, store, image_backend or _UnusedImageBackend(), player_id, message)
+    return store
+
+
 @pytest.mark.asyncio
-async def test_handle_action_appends_the_players_action_and_the_narration_to_the_log():
+async def test_handle_action_appends_the_players_action_and_the_narration_to_the_log(tmp_path):
     session = _session_with_character()
     client = _fake_client("The alley is quiet.")
 
-    await handle_action(session, client, "p1", {"text": "I look around."})
+    await _call(session, client, "p1", {"text": "I look around."}, tmp_path)
 
     assert session.log == ["p1: I look around.", "The alley is quiet."]
 
 
 @pytest.mark.asyncio
-async def test_handle_action_raises_on_missing_text():
+async def test_handle_action_raises_on_missing_text(tmp_path):
     session = _session_with_character()
     client = _fake_client("ok")
     with pytest.raises(ValueError, match="missing 'text'"):
-        await handle_action(session, client, "p1", {})
+        await _call(session, client, "p1", {}, tmp_path)
 
 
 @pytest.mark.asyncio
-async def test_handle_action_executes_a_tool_call_and_logs_the_result():
+async def test_handle_action_executes_a_tool_call_and_logs_the_result(tmp_path):
     session = _session_with_character()
     client = _fake_client(
         "You lunge for the ledge.", tool="request_roll",
@@ -62,13 +83,13 @@ async def test_handle_action_executes_a_tool_call_and_logs_the_result():
         },
     )
 
-    await handle_action(session, client, "p1", {"text": "I leap the gap."})
+    await _call(session, client, "p1", {"text": "I leap the gap."}, tmp_path)
 
     assert any("request_roll" in line for line in session.log)
 
 
 @pytest.mark.asyncio
-async def test_handle_action_overrides_the_models_player_id_for_request_roll():
+async def test_handle_action_overrides_the_models_player_id_for_request_roll(tmp_path):
     # Server-authoritative: the acting player_id always wins for request_roll,
     # regardless of what the model put in tool_args. p1 has reflexes 14
     # (modifier 2); someone-else has reflexes 20 (modifier 5). If the
@@ -83,7 +104,7 @@ async def test_handle_action_overrides_the_models_player_id_for_request_roll():
         },
     )
 
-    await handle_action(session, client, "p1", {"text": "I leap the gap."})
+    await _call(session, client, "p1", {"text": "I leap the gap."}, tmp_path)
 
     result_line = next(line for line in session.log if "request_roll" in line)
     assert "'attribute_mod': 2" in result_line
@@ -91,23 +112,83 @@ async def test_handle_action_overrides_the_models_player_id_for_request_roll():
 
 
 @pytest.mark.asyncio
-async def test_handle_action_logs_a_tool_error_without_raising():
+async def test_handle_action_logs_a_tool_error_without_raising(tmp_path):
     session = _session_with_character()
     client = _fake_client(
         "You reach for your gear.", tool="apply_character_update",
         tool_args={"player_id": "ghost"},
     )
 
-    await handle_action(session, client, "p1", {"text": "I check my gear."})
+    await _call(session, client, "p1", {"text": "I check my gear."}, tmp_path)
 
     assert any("tool error" in line for line in session.log)
 
 
 @pytest.mark.asyncio
-async def test_handle_action_with_no_tool_call_only_logs_narration():
+async def test_handle_action_with_no_tool_call_only_logs_narration(tmp_path):
     session = _session_with_character()
     client = _fake_client("The street is empty.")
 
-    await handle_action(session, client, "p1", {"text": "I look around."})
+    await _call(session, client, "p1", {"text": "I look around."}, tmp_path)
 
     assert session.log == ["p1: I look around.", "The street is empty."]
+
+
+@pytest.mark.asyncio
+async def test_handle_action_generates_a_scene_image_and_logs_its_path(tmp_path):
+    session = _session_with_character()
+    client = _fake_client("The alley opens onto a neon plaza.", image_prompt="a neon cyberpunk plaza")
+
+    class FakeImageBackend:
+        async def generate_portrait(self, description):
+            raise AssertionError("not exercised by this test")
+
+        async def generate_scene(self, prompt, reference_paths):
+            assert prompt == "a neon cyberpunk plaza"
+            return b"fake-scene-bytes"
+
+    store = await _call(session, client, "p1", {"text": "I step into the plaza."}, tmp_path, FakeImageBackend())
+
+    image_line = next(line for line in session.log if line.startswith("[image: "))
+    image_path = image_line.removeprefix("[image: ").removesuffix("]")
+    assert (store.directory / image_path).read_bytes() == b"fake-scene-bytes"
+
+
+@pytest.mark.asyncio
+async def test_handle_action_uses_the_actors_own_portrait_as_a_reference(tmp_path):
+    session = _session_with_character()
+    session.characters["p1"].portrait_path = "portraits/s1/p1.png"
+    (tmp_path / "portraits" / "s1").mkdir(parents=True)
+    (tmp_path / "portraits" / "s1" / "p1.png").write_bytes(b"portrait-bytes")
+    client = _fake_client("A figure steps forward.", image_prompt="a scene")
+
+    seen = {}
+
+    class FakeImageBackend:
+        async def generate_portrait(self, description):
+            raise AssertionError("not exercised by this test")
+
+        async def generate_scene(self, prompt, reference_paths):
+            seen["reference_paths"] = reference_paths
+            return b"x"
+
+    await _call(session, client, "p1", {"text": "I step forward."}, tmp_path, FakeImageBackend())
+
+    assert seen["reference_paths"] == [str(tmp_path / "portraits" / "s1" / "p1.png")]
+
+
+@pytest.mark.asyncio
+async def test_handle_action_logs_an_image_error_without_raising(tmp_path):
+    session = _session_with_character()
+    client = _fake_client("The scene shifts.", image_prompt="a scene")
+
+    class FailingImageBackend:
+        async def generate_portrait(self, description):
+            raise AssertionError("not exercised by this test")
+
+        async def generate_scene(self, prompt, reference_paths):
+            raise ValueError("worker unreachable")
+
+    await _call(session, client, "p1", {"text": "I look up."}, tmp_path, FailingImageBackend())
+
+    assert any("image error" in line for line in session.log)
