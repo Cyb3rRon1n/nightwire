@@ -98,3 +98,12 @@ def test_view_includes_world_state():
     assert view["location"] == "Watson district"
     assert view["scene_mood"] == "tense"
     assert view["active_objectives"] == ["find the fixer"]
+
+
+def test_view_has_a_state_type_discriminator():
+    session = Session(session_id="s1")
+    session.characters["p1"] = _character("p1", "Rook")
+
+    view = build_view(session, "p1")
+
+    assert view["type"] == "state"

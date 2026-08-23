@@ -16,6 +16,7 @@ def build_view(session: Session, viewer_id: str) -> dict:
             characters[player_id] = {field: full[field] for field in _REDACTED_FIELDS}
 
     return {
+        "type": "state",
         "session_id": session.session_id,
         "in_combat": session.in_combat,
         "current_turn": current_turn(session),
