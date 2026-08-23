@@ -11,8 +11,10 @@ def _build_messages(session: Session, action_text: str) -> list[dict]:
 
 async def handle_action(session: Session, narrator_client: NarratorClient, player_id: str, message: dict) -> None:
     action_text = message.get("text")
-    if not action_text:
+    if not isinstance(action_text, str) or not action_text.strip():
         raise ValueError("missing 'text' in action message")
+    if len(action_text) > 1000:
+        raise ValueError("action text too long")
 
     messages = _build_messages(session, action_text)
     response = await narrator_client.respond(messages)

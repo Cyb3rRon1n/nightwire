@@ -45,7 +45,7 @@ def create_app(store: JSONFileSessionStore, narrator_client: NarratorClient) -> 
                         await handle_action(session, narrator_client, player_id, message)
                     else:
                         handle_message(session, message)
-                except (ValueError, TypeError) as e:
+                except Exception as e:
                     await websocket.send_json({"type": "error", "message": str(e)})
                     continue
 
