@@ -1,18 +1,78 @@
 from collections.abc import Awaitable, Callable
-from typing import Literal
+from typing import Annotated, Literal, Union
 
 import ollama
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from narrator.tools import TOOL_REGISTRY
+from narrator.tools import ApplyCharacterUpdate, EndCombat, RequestRoll, StartCombat, UpdateWorld
 
-ToolName = Literal[tuple(TOOL_REGISTRY)]
+
+# Each variant pairs a Literal tag with the *real* argument model from
+# narrator/tools.py (not a loose dict) - Ollama's structured-output format
+# param is a real JSON schema it constrains generation against, so a bare
+# `tool_args: dict` gives the model nothing to be constrained by beyond the
+# tool's name. This is what actually stops a model from inventing a
+# plausible-but-wrong shape (e.g. `{"scene": ..., "enemies": [...]}` for
+# start_combat, which only ever takes `{"reason": str}`) - a richer system
+# prompt alone can reduce that, but only schema-level constraint prevents it.
+class _NoTool(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    tool: Literal[None] = None
+
+
+class _RequestRollCall(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    tool: Literal["request_roll"]
+    tool_args: RequestRoll
+
+
+class _ApplyCharacterUpdateCall(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    tool: Literal["apply_character_update"]
+    tool_args: ApplyCharacterUpdate
+
+
+class _UpdateWorldCall(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    tool: Literal["update_world"]
+    tool_args: UpdateWorld
+
+
+class _StartCombatCall(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    tool: Literal["start_combat"]
+    tool_args: StartCombat
+
+
+class _EndCombatCall(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    tool: Literal["end_combat"]
+    tool_args: EndCombat
+
+
+ToolCall = Annotated[
+    Union[_NoTool, _RequestRollCall, _ApplyCharacterUpdateCall, _UpdateWorldCall, _StartCombatCall, _EndCombatCall],
+    Field(discriminator="tool"),
+]
 
 
 class NarratorResponse(BaseModel):
     narration: str
-    tool: ToolName | None = None
-    tool_args: dict = {}
+    tool_call: ToolCall
+
+    # `.tool`/`.tool_args` kept as the external shape every existing caller
+    # (server/narration.py, tests) already expects - `tool_args` as a plain
+    # dict, same as before the discriminated union - so this fix stays
+    # scoped to *what gets validated on the way in*, not every call site.
+    @property
+    def tool(self) -> str | None:
+        return self.tool_call.tool
+
+    @property
+    def tool_args(self) -> dict:
+        if isinstance(self.tool_call, _NoTool):
+            return {}
+        return self.tool_call.tool_args.model_dump()
 
 
 class NarratorClient:

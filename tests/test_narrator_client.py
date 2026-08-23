@@ -17,7 +17,7 @@ async def test_respond_returns_narration_only_when_no_tool_call():
     client = NarratorClient(
         model="qwen3:8b",
         system_prompt="You are a cyberpunk GM.",
-        chat_fn=_fake_chat_returning({"narration": "The alley is quiet.", "tool": None, "tool_args": {}}),
+        chat_fn=_fake_chat_returning({"narration": "The alley is quiet.", "tool_call": {"tool": None}}),
     )
     response = await client.respond([{"role": "user", "content": "I look around."}])
     assert isinstance(response, NarratorResponse)
@@ -31,10 +31,12 @@ async def test_respond_returns_a_tool_call():
     client = NarratorClient(
         chat_fn=_fake_chat_returning({
             "narration": "You lunge for the ledge.",
-            "tool": "request_roll",
-            "tool_args": {
-                "player_id": "p1", "attribute": "reflexes", "skill_mod": 1,
-                "difficulty": "hard", "reason": "leap across a gap",
+            "tool_call": {
+                "tool": "request_roll",
+                "tool_args": {
+                    "player_id": "p1", "attribute": "reflexes", "skill_mod": 1,
+                    "difficulty": "hard", "reason": "leap across a gap",
+                },
             },
         }),
     )
@@ -44,13 +46,33 @@ async def test_respond_returns_a_tool_call():
 
 
 @pytest.mark.asyncio
+async def test_respond_rejects_a_tool_call_with_the_wrong_argument_shape():
+    # The real bug this fix closes: a model calling start_combat (or any
+    # tool) with a plausible-looking but wrong shape - e.g. a `scene`/
+    # `enemies` object instead of start_combat's real `{"reason": str}` -
+    # must fail validation, the same way a genuinely wrong tool_args dict
+    # already did at execute_tool() time, but now caught at parse time.
+    client = NarratorClient(
+        chat_fn=_fake_chat_returning({
+            "narration": "Combat breaks out!",
+            "tool_call": {
+                "tool": "start_combat",
+                "tool_args": {"scene": "alley", "enemies": ["ganger"]},
+            },
+        }),
+    )
+    with pytest.raises(ValueError):
+        await client.respond([{"role": "user", "content": "I draw my weapon."}])
+
+
+@pytest.mark.asyncio
 async def test_respond_passes_the_structured_output_schema_to_chat_fn():
     seen = {}
 
     async def chat_fn(*, model, messages, format):
         seen["format"] = format
         seen["model"] = model
-        return {"message": {"content": json.dumps({"narration": "ok", "tool": None, "tool_args": {}})}}
+        return {"message": {"content": json.dumps({"narration": "ok", "tool_call": {"tool": None}})}}
 
     client = NarratorClient(model="qwen3:8b", chat_fn=chat_fn)
     await client.respond([{"role": "user", "content": "hi"}])
@@ -65,7 +87,7 @@ async def test_respond_prepends_the_system_prompt():
 
     async def chat_fn(*, model, messages, format):
         seen["messages"] = messages
-        return {"message": {"content": json.dumps({"narration": "ok", "tool": None, "tool_args": {}})}}
+        return {"message": {"content": json.dumps({"narration": "ok", "tool_call": {"tool": None}})}}
 
     client = NarratorClient(system_prompt="You are a cyberpunk GM.", chat_fn=chat_fn)
     await client.respond([{"role": "user", "content": "hi"}])
@@ -89,8 +111,7 @@ async def test_respond_raises_on_a_hallucinated_tool_name():
     client = NarratorClient(
         chat_fn=_fake_chat_returning({
             "narration": "You lunge for the ledge.",
-            "tool": "Agility Check (DC 15) to leap across the gap",
-            "tool_args": {},
+            "tool_call": {"tool": "Agility Check (DC 15) to leap across the gap", "tool_args": {}},
         }),
     )
     with pytest.raises(ValueError):

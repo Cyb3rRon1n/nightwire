@@ -10,7 +10,8 @@ from server.narration import handle_action
 
 def _fake_client(narration: str, tool: str | None = None, tool_args: dict | None = None) -> NarratorClient:
     async def chat_fn(*, model, messages, format):
-        payload = {"narration": narration, "tool": tool, "tool_args": tool_args or {}}
+        tool_call = {"tool": tool} if tool is None else {"tool": tool, "tool_args": tool_args or {}}
+        payload = {"narration": narration, "tool_call": tool_call}
         return {"message": {"content": json.dumps(payload)}}
     return NarratorClient(chat_fn=chat_fn)
 
