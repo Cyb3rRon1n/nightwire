@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ReadyState } from "react-use-websocket";
 import { useNightwireSocket } from "@/lib/nightwire/useNightwireSocket";
 import type { StateView } from "@/lib/nightwire/protocol";
+import { portraitFor } from "@/lib/nightwire/portrait";
 
 const READY_STATE_LABEL: Record<ReadyState, string> = {
   [ReadyState.CONNECTING]: "Connecting…",
@@ -42,13 +43,19 @@ function VitalsBand({ view, playerId }: { view: StateView; playerId: string }) {
   return (
     <div className="flex flex-col gap-1.5 border-t border-stone-800 pt-2 text-xs text-stone-400">
       <div className="flex flex-wrap gap-x-4 gap-y-1">
-        {characters.map(([id, c]) => (
-          <span key={id} className={id === playerId ? "text-stone-100" : ""}>
-            {c.name} · {c.health}/{c.max_health} HP
-            {c.armor > 0 && ` · ${c.armor} armor`}
-            {c.conditions.length > 0 && ` · ${c.conditions.join(", ")}`}
-          </span>
-        ))}
+        {characters.map(([id, c]) => {
+          const { initials, colorClass } = portraitFor(c.role, c.name);
+          return (
+            <span key={id} className={`inline-flex items-center gap-1.5 ${id === playerId ? "text-stone-100" : ""}`}>
+              <span className={`flex size-5 items-center justify-center rounded text-[10px] font-semibold ${colorClass}`}>
+                {initials}
+              </span>
+              {c.name} · {c.health}/{c.max_health} HP
+              {c.armor > 0 && ` · ${c.armor} armor`}
+              {c.conditions.length > 0 && ` · ${c.conditions.join(", ")}`}
+            </span>
+          );
+        })}
       </div>
       {(view.location || view.scene_mood || view.in_combat) && (
         <div>
