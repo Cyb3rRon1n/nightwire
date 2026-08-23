@@ -9,16 +9,25 @@ from server.dispatch import handle_message
 def create_app(store: JSONFileSessionStore) -> FastAPI:
     app = FastAPI()
     manager = ConnectionManager()
+    sessions: dict[str, Session] = {}  # ponytail: single-process; needs a real store if ever multi-worker
 
     @app.websocket("/ws/{session_id}/{player_id}")
     async def websocket_endpoint(websocket: WebSocket, session_id: str, player_id: str) -> None:
         await websocket.accept()
-        session = store.load(session_id) or Session(session_id=session_id)
+        if session_id not in sessions:
+            sessions[session_id] = store.load(session_id) or Session(session_id=session_id)
+        session = sessions[session_id]
         manager.connect(session_id, player_id, websocket)
 
         try:
             while True:
-                message = await websocket.receive_json()
+                try:
+                    message = await websocket.receive_json()
+                except WebSocketDisconnect:
+                    raise
+                except Exception as e:
+                    await websocket.send_json({"type": "error", "message": f"invalid message: {e}"})
+                    continue
 
                 if message.get("type") == "join":
                     character_id = (message.get("character") or {}).get("player_id")
@@ -31,13 +40,13 @@ def create_app(store: JSONFileSessionStore) -> FastAPI:
 
                 try:
                     handle_message(session, message)
-                except ValueError as e:
+                except (ValueError, TypeError) as e:
                     await websocket.send_json({"type": "error", "message": str(e)})
                     continue
 
                 store.save(session)
                 await manager.broadcast(session_id, session)
         except WebSocketDisconnect:
-            manager.disconnect(session_id, player_id)
+            manager.disconnect(session_id, player_id, websocket)
 
     return app

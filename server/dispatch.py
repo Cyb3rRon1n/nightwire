@@ -18,6 +18,9 @@ def handle_message(session: Session, message: dict) -> None:
         initiative_rolls = message.get("initiative_rolls")
         if initiative_rolls is None:
             raise ValueError("missing 'initiative_rolls' in start_combat message")
+        unknown = set(initiative_rolls) - set(session.characters)
+        if unknown:
+            raise ValueError(f"initiative_rolls for players not in session: {sorted(unknown)}")
         start_combat(session, initiative_rolls)
 
     elif message_type == "advance_turn":

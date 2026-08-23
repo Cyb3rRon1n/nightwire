@@ -72,6 +72,35 @@ def test_join_with_a_character_id_not_matching_the_url_is_rejected(tmp_path):
         assert "does not match" in error["message"]
 
 
+def test_two_connections_to_the_same_session_share_state(tmp_path):
+    client = _client(tmp_path)
+    with client.websocket_connect("/ws/s1/p1") as ws1, client.websocket_connect("/ws/s1/p2") as ws2:
+        ws1.send_json({
+            "type": "join",
+            "character": {"player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"},
+        })
+        ws1.receive_json()  # p1's own join broadcast
+
+        ws2.send_json({
+            "type": "join",
+            "character": {"player_id": "p2", "name": "Ghost", "role": "netrunner", "lifepath": "corpo"},
+        })
+        ws2.receive_json()  # p2's own join broadcast
+        ws1.receive_json()  # p1 re-broadcast after p2 joins
+
+        # p1 (the first connection) mutates the session.
+        ws1.send_json({"type": "advance_turn"})
+        view1 = ws1.receive_json()
+        view2 = ws2.receive_json()
+
+    # Both connections' views must still contain both characters — a private
+    # per-connection Session would drop p2 from p1's broadcast and vice versa.
+    assert "p1" in view1["characters"]
+    assert "p2" in view1["characters"]
+    assert "p1" in view2["characters"]
+    assert "p2" in view2["characters"]
+
+
 def test_state_persists_across_a_reconnect(tmp_path):
     client = _client(tmp_path)
     with client.websocket_connect("/ws/s1/p1") as ws:
