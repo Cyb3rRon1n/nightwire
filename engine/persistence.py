@@ -27,6 +27,8 @@ class JSONFileSessionStore:
             ) from e
 
     def _path_for(self, session_id: str) -> Path:
+        if not session_id or "/" in session_id or session_id in (".", ".."):
+            raise ValueError(f"invalid session_id: {session_id!r}")
         return self.directory / f"{session_id}.json"
 
     def save(self, session: Session) -> None:

@@ -3,7 +3,7 @@ from engine.session import Session
 
 
 def join(session: Session, character: CharacterSheet) -> None:
-    session.characters[character.player_id] = character
+    session.characters.setdefault(character.player_id, character)
     if character.player_id not in session.turn_order:
         session.turn_order.append(character.player_id)
 

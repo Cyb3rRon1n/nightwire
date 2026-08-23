@@ -22,6 +22,21 @@ def test_join_is_safe_to_call_again_for_a_reconnecting_player():
     assert session.turn_order.count("p1") == 1
 
 
+def test_rejoining_does_not_reset_a_live_characters_state():
+    # The reconnect path must not silently overwrite mid-session damage or
+    # loot with a fresh CharacterSheet - a real bug the count-only test
+    # above didn't catch.
+    session = Session(session_id="test-session")
+    join(session, _character("p1"))
+    session.characters["p1"].health = 3
+    session.characters["p1"].inventory.append("stim pack")
+
+    join(session, _character("p1"))  # reconnect with a fresh sheet
+
+    assert session.characters["p1"].health == 3
+    assert session.characters["p1"].inventory == ["stim pack"]
+
+
 def test_current_turn_is_none_outside_combat():
     # The spec's own headline decision: no turn concept applies at all
     # outside combat, regardless of who's joined.
