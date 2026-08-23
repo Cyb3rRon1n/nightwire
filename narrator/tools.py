@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 
 from engine.session import Session
+from ruleset.attributes import modifier
 from ruleset.difficulty import Difficulty
 from ruleset.resolution import resolve_roll
 
@@ -12,7 +13,8 @@ from ruleset.resolution import resolve_roll
 class RequestRoll(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    attribute_mod: int
+    player_id: str
+    attribute: Literal["body", "reflexes", "tech", "cool", "intellect", "presence"]
     skill_mod: int
     difficulty: Literal["easy", "moderate", "hard", "extreme"]
     reason: str
@@ -52,10 +54,25 @@ class EndCombat(BaseModel):
 
 
 def _execute_request_roll(session: Session, tool: RequestRoll) -> dict:
+    if tool.player_id not in session.characters:
+        raise ValueError(f"unknown player_id: {tool.player_id!r}")
+    character = session.characters[tool.player_id]
+    raw_score = character.attributes.get(tool.attribute, 10)
+    attribute_mod = modifier(raw_score)
+    # ponytail: no skill system exists yet (the ruleset's Phase 1 never built
+    # one) - clamp the model-supplied skill_mod to a plausible range instead
+    # of trusting it outright. Real skill lookup when the ruleset adds one.
+    skill_mod = max(-2, min(5, tool.skill_mod))
     die_result = random.randint(1, 10)
     dc = Difficulty[tool.difficulty.upper()].value
-    outcome = resolve_roll(die_result, tool.attribute_mod, tool.skill_mod, dc)
-    return {"die_result": die_result, "dc": dc, "outcome": outcome.value}
+    outcome = resolve_roll(die_result, attribute_mod, skill_mod, dc)
+    return {
+        "die_result": die_result,
+        "attribute_mod": attribute_mod,
+        "skill_mod": skill_mod,
+        "dc": dc,
+        "outcome": outcome.value,
+    }
 
 
 def _execute_apply_character_update(session: Session, tool: ApplyCharacterUpdate) -> dict:
