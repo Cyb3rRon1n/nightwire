@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 from dataclasses import dataclass, field
 
 from pydantic import ValidationError
@@ -38,12 +39,12 @@ def _scores_as_pass(response: NarratorResponse, expected_tool: str | None) -> bo
         return False
 
 
-def run_harness(client: NarratorClient, scenarios: list[Scenario], repeat: int) -> HarnessReport:
+async def run_harness(client: NarratorClient, scenarios: list[Scenario], repeat: int) -> HarnessReport:
     report = HarnessReport()
     for scenario in scenarios:
         result = ScenarioResult()
         for _ in range(repeat):
-            response = client.respond(scenario.messages)
+            response = await client.respond(scenario.messages)
             result.total += 1
             if _scores_as_pass(response, scenario.expected_tool):
                 result.passes += 1
@@ -84,7 +85,7 @@ def main() -> None:
     args = parser.parse_args()
 
     client = NarratorClient(model=args.model, system_prompt=args.system_prompt)
-    report = run_harness(client, DEFAULT_SCENARIOS, args.repeat)
+    report = asyncio.run(run_harness(client, DEFAULT_SCENARIOS, args.repeat))
 
     for name, result in report.results.items():
         rate = result.passes / result.total if result.total else 0.0
