@@ -24,11 +24,11 @@ class NarratorClient:
     ) -> None:
         self.model = model
         self.system_prompt = system_prompt
+        self._client = ollama.AsyncClient(timeout=60)
         self._chat_fn = chat_fn or self._default_chat
 
-    @staticmethod
-    async def _default_chat(*, model: str, messages: list[dict], format: dict) -> dict:
-        return await ollama.AsyncClient().chat(model=model, messages=messages, format=format)
+    async def _default_chat(self, *, model: str, messages: list[dict], format: dict) -> dict:
+        return await self._client.chat(model=model, messages=messages, format=format)
 
     async def respond(self, messages: list[dict]) -> NarratorResponse:
         full_messages = [{"role": "system", "content": self.system_prompt}] + messages
