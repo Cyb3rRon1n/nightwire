@@ -84,3 +84,23 @@ def test_construction_raises_when_parent_directory_blocks_creation(tmp_path):
             JSONFileSessionStore(readonly_parent / "sessions")
     finally:
         readonly_parent.chmod(0o700)
+
+
+def test_save_rejects_a_path_traversal_session_id(tmp_path):
+    store = JSONFileSessionStore(tmp_path)
+    session = Session(session_id="../../escaped")
+    with pytest.raises(ValueError):
+        store.save(session)
+
+
+def test_load_rejects_a_path_traversal_session_id(tmp_path):
+    store = JSONFileSessionStore(tmp_path)
+    with pytest.raises(ValueError):
+        store.load("../../escaped")
+
+
+def test_save_rejects_an_empty_session_id(tmp_path):
+    store = JSONFileSessionStore(tmp_path)
+    session = Session(session_id="")
+    with pytest.raises(ValueError):
+        store.save(session)
