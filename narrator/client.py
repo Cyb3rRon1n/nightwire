@@ -81,14 +81,22 @@ class NarratorClient:
         model: str = "qwen3:8b",
         system_prompt: str = "",
         chat_fn: Callable[..., Awaitable[dict]] | None = None,
+        generate_fn: Callable[..., Awaitable[object]] | None = None,
     ) -> None:
         self.model = model
         self.system_prompt = system_prompt
         self._client = ollama.AsyncClient(timeout=60)
         self._chat_fn = chat_fn or self._default_chat
+        self._generate_fn = generate_fn or self._client.generate
 
     async def _default_chat(self, *, model: str, messages: list[dict], format: dict) -> dict:
         return await self._client.chat(model=model, messages=messages, format=format)
+
+    async def unload(self) -> None:
+        # Ollama's documented way to force-unload a model immediately:
+        # generate with keep_alive=0 and no prompt - no inference runs,
+        # frees VRAM for an image backend that needs the same GPU.
+        await self._generate_fn(model=self.model, keep_alive=0)
 
     async def respond(self, messages: list[dict]) -> NarratorResponse:
         full_messages = [{"role": "system", "content": self.system_prompt}] + messages
