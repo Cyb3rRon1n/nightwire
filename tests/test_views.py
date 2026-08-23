@@ -35,6 +35,7 @@ def test_viewer_sees_their_own_full_sheet():
         "armor": 2,
         "conditions": ["bleeding"],
         "inventory": ["stim pack"],
+        "portrait_path": None,
     }
 
 

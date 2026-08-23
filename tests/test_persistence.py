@@ -27,6 +27,7 @@ def test_save_then_load_round_trips_a_session_with_a_character(tmp_path):
         armor=2,
         conditions=["bleeding"],
         inventory=["stim pack"],
+        portrait_path="sessions/portraits/test-session/p1.png",
     )
     session.turn_order = ["p1"]
     session.current_turn_index = 0
@@ -58,6 +59,7 @@ def test_save_then_load_round_trips_a_session_with_a_character(tmp_path):
     assert loaded_character.max_health == 10
     assert loaded_character.armor == 2
     assert loaded_character.conditions == ["bleeding"]
+    assert loaded_character.portrait_path == "sessions/portraits/test-session/p1.png"
     assert loaded_character.inventory == ["stim pack"]
 
 
