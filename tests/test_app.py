@@ -128,7 +128,7 @@ def test_state_persists_across_a_reconnect(tmp_path):
 def test_action_message_triggers_the_narrator_and_broadcasts_narration(tmp_path):
     async def chat_fn(*, model, messages, format):
         return {"message": {"content": json.dumps({
-            "narration": "The alley is quiet.", "tool": None, "tool_args": {},
+            "narration": "The alley is quiet.", "tool_call": {"tool": None},
         })}}
     narrator_client = NarratorClient(chat_fn=chat_fn)
     client = _client(tmp_path, narrator_client)

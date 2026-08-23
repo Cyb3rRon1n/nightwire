@@ -2,10 +2,7 @@ import argparse
 import asyncio
 from dataclasses import dataclass, field
 
-from pydantic import ValidationError
-
 from narrator.client import NarratorClient, NarratorResponse
-from narrator.tools import TOOL_REGISTRY
 
 
 @dataclass
@@ -27,16 +24,12 @@ class HarnessReport:
 
 
 def _scores_as_pass(response: NarratorResponse, expected_tool: str | None) -> bool:
-    if response.tool != expected_tool:
-        return False
-    if expected_tool is None:
-        return True
-    model_cls, _ = TOOL_REGISTRY[expected_tool]
-    try:
-        model_cls(**response.tool_args)
-        return True
-    except ValidationError:
-        return False
+    # tool_args is now validated against the real per-tool schema at parse
+    # time (NarratorClient.respond() raises before a response with the
+    # wrong argument shape ever reaches here) - re-validating it a second
+    # time here would be dead code checking something that can no longer
+    # be false by the time a response object exists at all.
+    return response.tool == expected_tool
 
 
 async def run_harness(client: NarratorClient, scenarios: list[Scenario], repeat: int) -> HarnessReport:
@@ -44,8 +37,15 @@ async def run_harness(client: NarratorClient, scenarios: list[Scenario], repeat:
     for scenario in scenarios:
         result = ScenarioResult()
         for _ in range(repeat):
-            response = await client.respond(scenario.messages)
             result.total += 1
+            try:
+                response = await client.respond(scenario.messages)
+            except ValueError:
+                # A response that fails schema validation (wrong tool_args
+                # shape, hallucinated tool name, malformed JSON) is exactly
+                # the kind of miss this harness exists to measure - score
+                # it as a failed rep, don't let it crash the whole run.
+                continue
             if _scores_as_pass(response, scenario.expected_tool):
                 result.passes += 1
         report.results[scenario.name] = result
