@@ -7,7 +7,7 @@ from narrator.client import NarratorClient
 from server.app import create_app
 
 
-def _unused_chat_fn(*, model, messages, format):
+async def _unused_chat_fn(*, model, messages, format):
     raise AssertionError("narrator should not be called by this test")
 
 

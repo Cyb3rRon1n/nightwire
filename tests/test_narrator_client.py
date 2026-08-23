@@ -33,7 +33,7 @@ async def test_respond_returns_a_tool_call():
             "narration": "You lunge for the ledge.",
             "tool": "request_roll",
             "tool_args": {
-                "attribute_mod": 2, "skill_mod": 1,
+                "player_id": "p1", "attribute": "reflexes", "skill_mod": 1,
                 "difficulty": "hard", "reason": "leap across a gap",
             },
         }),
