@@ -2,11 +2,13 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 from engine.persistence import JSONFileSessionStore
 from engine.session import Session
+from narrator.client import NarratorClient
 from server.connection_manager import ConnectionManager
 from server.dispatch import handle_message
+from server.narration import handle_action
 
 
-def create_app(store: JSONFileSessionStore) -> FastAPI:
+def create_app(store: JSONFileSessionStore, narrator_client: NarratorClient) -> FastAPI:
     app = FastAPI()
     manager = ConnectionManager()
     sessions: dict[str, Session] = {}  # ponytail: single-process; needs a real store if ever multi-worker
@@ -39,7 +41,10 @@ def create_app(store: JSONFileSessionStore) -> FastAPI:
                         continue
 
                 try:
-                    handle_message(session, message)
+                    if message.get("type") == "action":
+                        await handle_action(session, narrator_client, player_id, message)
+                    else:
+                        handle_message(session, message)
                 except (ValueError, TypeError) as e:
                     await websocket.send_json({"type": "error", "message": str(e)})
                     continue
