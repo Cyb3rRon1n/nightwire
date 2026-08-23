@@ -116,3 +116,20 @@ async def test_respond_raises_on_a_hallucinated_tool_name():
     )
     with pytest.raises(ValueError):
         await client.respond([{"role": "user", "content": "I try to jump the gap."}])
+
+
+@pytest.mark.asyncio
+async def test_unload_calls_generate_with_keep_alive_zero_and_no_prompt():
+    # Ollama's documented way to force-unload a model immediately: a
+    # generate call with keep_alive=0 and no prompt - no inference runs.
+    seen = {}
+
+    async def generate_fn(**kwargs):
+        seen.update(kwargs)
+
+    client = NarratorClient(model="qwen3:8b", generate_fn=generate_fn)
+    await client.unload()
+
+    assert seen["model"] == "qwen3:8b"
+    assert seen["keep_alive"] == 0
+    assert "prompt" not in seen

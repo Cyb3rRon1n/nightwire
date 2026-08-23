@@ -3,12 +3,14 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from engine.persistence import JSONFileSessionStore
 from engine.session import Session
 from narrator.client import NarratorClient
+from narrator.image_backend import ImageBackend
 from server.connection_manager import ConnectionManager
 from server.dispatch import handle_message
 from server.narration import handle_action
+from server.portrait import handle_approve_character
 
 
-def create_app(store: JSONFileSessionStore, narrator_client: NarratorClient) -> FastAPI:
+def create_app(store: JSONFileSessionStore, narrator_client: NarratorClient, image_backend: ImageBackend) -> FastAPI:
     app = FastAPI()
     manager = ConnectionManager()
     sessions: dict[str, Session] = {}  # ponytail: single-process; needs a real store if ever multi-worker
@@ -43,6 +45,8 @@ def create_app(store: JSONFileSessionStore, narrator_client: NarratorClient) -> 
                 try:
                     if message.get("type") == "action":
                         await handle_action(session, narrator_client, player_id, message)
+                    elif message.get("type") == "approve_character":
+                        await handle_approve_character(session, store, narrator_client, image_backend, player_id)
                     else:
                         handle_message(session, message)
                 except Exception as e:

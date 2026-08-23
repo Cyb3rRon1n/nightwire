@@ -11,10 +11,23 @@ async def _unused_chat_fn(*, model, messages, format):
     raise AssertionError("narrator should not be called by this test")
 
 
-def _client(tmp_path, narrator_client=None):
+async def _unused_generate_fn(**kwargs):
+    raise AssertionError("unload should not be called by this test")
+
+
+class _UnusedImageBackend:
+    async def generate_portrait(self, description):
+        raise AssertionError("image backend should not be called by this test")
+
+    async def generate_scene(self, prompt, reference_paths):
+        raise AssertionError("image backend should not be called by this test")
+
+
+def _client(tmp_path, narrator_client=None, image_backend=None):
     store = JSONFileSessionStore(tmp_path)
-    client = narrator_client or NarratorClient(chat_fn=_unused_chat_fn)
-    return TestClient(create_app(store, client))
+    client = narrator_client or NarratorClient(chat_fn=_unused_chat_fn, generate_fn=_unused_generate_fn)
+    backend = image_backend or _UnusedImageBackend()
+    return TestClient(create_app(store, client, backend))
 
 
 def test_join_broadcasts_a_filtered_view_back_to_the_sender(tmp_path):
@@ -160,3 +173,46 @@ def test_action_message_missing_text_sends_an_error(tmp_path):
 
     assert error["type"] == "error"
     assert "text" in error["message"]
+
+
+def test_approve_character_generates_and_broadcasts_a_portrait(tmp_path):
+    generate_calls = []
+
+    async def generate_fn(**kwargs):
+        generate_calls.append(kwargs)
+
+    narrator_client = NarratorClient(chat_fn=_unused_chat_fn, generate_fn=generate_fn)
+
+    class FakeImageBackend:
+        async def generate_portrait(self, description):
+            assert "Rook" in description
+            return b"fake-portrait-bytes"
+
+        async def generate_scene(self, prompt, reference_paths):
+            raise AssertionError("not exercised by this test")
+
+    client = _client(tmp_path, narrator_client, FakeImageBackend())
+
+    with client.websocket_connect("/ws/s1/p1") as ws:
+        ws.send_json({
+            "type": "join",
+            "character": {"player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"},
+        })
+        ws.receive_json()
+
+        ws.send_json({"type": "approve_character"})
+        view = ws.receive_json()
+
+    assert generate_calls == [{"model": narrator_client.model, "keep_alive": 0}]
+    portrait_path = view["characters"]["p1"]["portrait_path"]
+    assert portrait_path is not None
+    assert (tmp_path / portrait_path).read_bytes() == b"fake-portrait-bytes"
+
+
+def test_approve_character_without_a_joined_character_sends_an_error(tmp_path):
+    client = _client(tmp_path)
+    with client.websocket_connect("/ws/s1/p1") as ws:
+        ws.send_json({"type": "approve_character"})
+        error = ws.receive_json()
+
+    assert error["type"] == "error"
