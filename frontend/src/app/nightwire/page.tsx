@@ -29,6 +29,13 @@ function formatComposerInput(mode: ComposerMode, text: string): string {
   return mode === "say" ? `> You say ${quoted}` : `> You think ${quoted}`;
 }
 
+// The viewer's own log lines are server-authored as "{player_id}: {text}" -
+// everything else (narrator prose, other players) reads left-aligned, same
+// split open-dungeon's own page.tsx draws between user/assistant messages.
+function isOwnLine(line: string, playerId: string): boolean {
+  return line.startsWith(`${playerId}: `);
+}
+
 export default function NightwirePage() {
   const [sessionId, setSessionId] = useState("");
   const [playerId, setPlayerId] = useState("");
@@ -136,12 +143,20 @@ export default function NightwirePage() {
 
           {view && (
             <>
-              <div className="flex-1 space-y-1 overflow-y-auto text-sm">
-                {view.log.map((line, i) => (
-                  <p key={i} className="whitespace-pre-wrap text-stone-300">
-                    {line}
-                  </p>
-                ))}
+              <div className="flex-1 space-y-3 overflow-y-auto">
+                {view.log.map((line, i) =>
+                  isOwnLine(line, playerId) ? (
+                    <div key={i} className="ml-auto max-w-[85%]">
+                      <div className="rounded-2xl rounded-br-md border border-stone-800/70 bg-stone-900/60 px-4 py-3 text-sm leading-6 text-stone-300">
+                        <p className="whitespace-pre-wrap text-pretty">{line}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p key={i} className="whitespace-pre-wrap text-pretty font-serif text-stone-100">
+                      {line}
+                    </p>
+                  ),
+                )}
               </div>
 
               <form onSubmit={handleSendAction} className="flex flex-col gap-2">
