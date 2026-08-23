@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { ReadyState } from "react-use-websocket";
 import { useNightwireSocket } from "@/lib/nightwire/useNightwireSocket";
-import type { StateView } from "@/lib/nightwire/protocol";
+import type { CharacterSheet, StateView } from "@/lib/nightwire/protocol";
 import { portraitFor } from "@/lib/nightwire/portrait";
+import { CharacterSheetOverlay } from "./CharacterSheetOverlay";
 
 const READY_STATE_LABEL: Record<ReadyState, string> = {
   [ReadyState.CONNECTING]: "Connecting…",
@@ -80,6 +81,7 @@ export default function NightwirePage() {
   const [composerMode, setComposerMode] = useState<ComposerMode>("do");
   const [composerText, setComposerText] = useState("");
   const [sending, setSending] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const { view, error, send, readyState } = useNightwireSocket(
     connected ? sessionId : null,
@@ -91,6 +93,17 @@ export default function NightwirePage() {
   useEffect(() => {
     setSending(false);
   }, [view]);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "k" && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        setSheetOpen((open) => !open);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   function handleConnect(event: React.FormEvent) {
     event.preventDefault();
@@ -232,6 +245,13 @@ export default function NightwirePage() {
                   {sending ? "Waiting for the GM…" : "Send"}
                 </button>
               </form>
+
+              {sheetOpen && "player_id" in view.characters[playerId] && (
+                <CharacterSheetOverlay
+                  character={view.characters[playerId] as CharacterSheet}
+                  onClose={() => setSheetOpen(false)}
+                />
+              )}
             </>
           )}
         </>
