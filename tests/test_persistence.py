@@ -1,3 +1,4 @@
+import json
 import os
 
 import pytest
@@ -37,6 +38,7 @@ def test_save_then_load_round_trips_a_session_with_a_character(tmp_path):
     session.location = "Night City - Watson district"
     session.scene_mood = "tense"
     session.active_objectives = ["find the fixer", "avoid corpo patrols"]
+    session.speaker_voices["Jax"] = "am_adam"
 
     store.save(session)
     loaded = store.load("test-session")
@@ -50,6 +52,7 @@ def test_save_then_load_round_trips_a_session_with_a_character(tmp_path):
     assert loaded.location == "Night City - Watson district"
     assert loaded.scene_mood == "tense"
     assert loaded.active_objectives == ["find the fixer", "avoid corpo patrols"]
+    assert loaded.speaker_voices == {"Jax": "am_adam"}
     loaded_character = loaded.characters["p1"]
     assert loaded_character.name == "Rook"
     assert loaded_character.role == "solo"
@@ -66,6 +69,23 @@ def test_save_then_load_round_trips_a_session_with_a_character(tmp_path):
 def test_load_returns_none_for_a_session_id_with_no_saved_file(tmp_path):
     store = JSONFileSessionStore(tmp_path)
     assert store.load("never-saved") is None
+
+
+def test_load_defaults_speaker_voices_when_missing_from_a_pre_phase6_file(tmp_path):
+    store = JSONFileSessionStore(tmp_path)
+    session = Session(session_id="legacy-session")
+    # Simulate a session file saved before speaker_voices existed: write the
+    # same shape save() would produce, minus that key.
+    from dataclasses import asdict
+
+    legacy_data = asdict(session)
+    del legacy_data["speaker_voices"]
+    store.directory.joinpath("legacy-session.json").write_text(json.dumps(legacy_data))
+
+    loaded = store.load("legacy-session")
+
+    assert loaded is not None
+    assert loaded.speaker_voices == {}
 
 
 def test_construction_raises_on_an_unwritable_existing_directory(tmp_path):
