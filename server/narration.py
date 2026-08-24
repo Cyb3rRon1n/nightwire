@@ -75,7 +75,14 @@ async def handle_action(
         except (ValueError, TypeError) as e:
             session.log.append(f"[tool error: {e}]")
 
-    if response.image_request is not None:
+    generated_image = False
+    # The model is told "never two turns in a row" but has no way to enforce
+    # its own rule across separate calls - live probing found it violated
+    # this on 3/3 consecutive turns in one run. Server-side cooldown backs
+    # the rule structurally instead of trusting prompt compliance alone,
+    # same pattern as request_roll's forced player_id / apply_character_update's
+    # roster grounding.
+    if response.image_request is not None and not session.last_turn_had_image:
         character = session.characters.get(player_id)
         reference_paths = []
         if character is not None and character.portrait_path is not None:
@@ -88,5 +95,7 @@ async def handle_action(
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_bytes(image_bytes)
             session.log.append(f"[image: {relative_path}]")
+            generated_image = True
         except (ValueError, TypeError, OSError) as e:
             session.log.append(f"[image error: {e}]")
+    session.last_turn_had_image = generated_image
