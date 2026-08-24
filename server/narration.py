@@ -89,6 +89,7 @@ async def handle_action(
             reference_paths.append(str(store.directory / character.portrait_path))
         try:
             await narrator_client.unload()
+            await tts_backend.unload()
             image_bytes = await image_backend.generate_scene(response.image_request.prompt, reference_paths)
             relative_path = f"images/{session.session_id}/{len(session.log)}.png"
             output_path = store.directory / relative_path

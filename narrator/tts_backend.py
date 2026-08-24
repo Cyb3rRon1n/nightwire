@@ -14,6 +14,7 @@ class TTSBackend(Protocol):
     voices: list[VoiceOption]
 
     async def synthesize(self, text: str, voice: str) -> bytes: ...
+    async def unload(self) -> None: ...
 
 
 class KokoroBackend:
@@ -62,6 +63,22 @@ class KokoroBackend:
     async def synthesize(self, text: str, voice: str) -> bytes:
         return await self._speech_fn(text, voice)
 
+    async def unload(self) -> None:
+        # Kokoro-FastAPI's own /dev/unload (gated behind ALLOW_DEV_UNLOAD,
+        # "for homelab deployments where GPU memory is shared across
+        # services" - exactly this deployment) frees its ~1GB resident
+        # footprint; the model reloads automatically on the next
+        # synthesize() call, same auto-reload shape as Ollama's unload().
+        # Real, live-verified need: on an 8GB card, Kokoro's permanent
+        # footprint alone was enough to push scene-image generation's peak
+        # VAE-decode allocation into a CUDA OOM.
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                response = await client.post(f"{self.base_url}/dev/unload")
+                response.raise_for_status()
+        except httpx.HTTPError as e:
+            raise ValueError(f"tts unload failed: {e}") from e
+
 
 class OpenAITTSBackend:
     """Hosted fallback: OpenAI's /v1/audio/speech endpoint. Voice IDs and
@@ -106,3 +123,6 @@ class OpenAITTSBackend:
 
     async def synthesize(self, text: str, voice: str) -> bytes:
         return await self._speech_fn(text, voice)
+
+    async def unload(self) -> None:
+        pass  # hosted backend - no local VRAM to free

@@ -75,10 +75,14 @@ class FakeTTSBackend:
     def __init__(self, audio_bytes: bytes = b"fake-wav-bytes"):
         self.audio_bytes = audio_bytes
         self.calls = []
+        self.unload_calls = 0
 
     async def synthesize(self, text: str, voice: str) -> bytes:
         self.calls.append((text, voice))
         return self.audio_bytes
+
+    async def unload(self) -> None:
+        self.unload_calls += 1
 
 
 class _UnusedTTSBackend:
@@ -89,6 +93,9 @@ class _UnusedTTSBackend:
 
     async def synthesize(self, text, voice):
         raise AssertionError("not exercised by this test")
+
+    async def unload(self) -> None:
+        pass
 
 
 async def _call(session, client, player_id, message, tmp_path, image_backend=None, tts_backend=None):
@@ -234,6 +241,32 @@ async def test_handle_action_generates_a_scene_image_and_logs_its_path(tmp_path)
     image_line = next(line for line in session.log if line.startswith("[image: "))
     image_path = image_line.removeprefix("[image: ").removesuffix("]")
     assert (store.directory / image_path).read_bytes() == b"fake-scene-bytes"
+
+
+@pytest.mark.asyncio
+async def test_handle_action_unloads_the_tts_backend_before_generating_a_scene_image(tmp_path):
+    # Real, live-verified need: on an 8GB card, a resident local TTS backend's
+    # own VRAM footprint was enough by itself to push scene-image generation's
+    # peak VAE-decode allocation into a CUDA OOM. Mirrors the existing
+    # narrator_client.unload() swap-dance.
+    session = _session_with_character()
+    client = _fake_client("The alley opens onto a neon plaza.", image_prompt="a neon cyberpunk plaza")
+    tts_backend = FakeTTSBackend()
+
+    class FakeImageBackend:
+        async def generate_portrait(self, description):
+            raise AssertionError("not exercised by this test")
+
+        async def generate_scene(self, prompt, reference_paths):
+            assert tts_backend.unload_calls == 1, "tts backend must be unloaded before generating"
+            return b"fake-scene-bytes"
+
+    await _call(
+        session, client, "p1", {"text": "I step into the plaza."}, tmp_path,
+        FakeImageBackend(), tts_backend=tts_backend,
+    )
+
+    assert tts_backend.unload_calls == 1
 
 
 @pytest.mark.asyncio
