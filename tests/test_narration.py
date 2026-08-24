@@ -12,10 +12,21 @@ from server.narration import handle_action
 def _fake_client(narration: str, tool: str | None = None, tool_args: dict | None = None, image_prompt: str | None = None) -> NarratorClient:
     async def chat_fn(*, model, messages, format):
         tool_call = {"tool": tool} if tool is None else {"tool": tool, "tool_args": tool_args or {}}
-        payload = {"narration": narration, "tool_call": tool_call}
+        payload = {"narration": [{"speaker": "narrator", "text": narration}], "tool_call": tool_call}
         if image_prompt is not None:
             payload["image_request"] = {"prompt": image_prompt}
         return {"message": {"content": json.dumps(payload)}}
+
+    async def generate_fn(**kwargs):
+        pass
+
+    return NarratorClient(chat_fn=chat_fn, generate_fn=generate_fn)
+
+
+def _fake_client_with_segments(segments: list[dict], tool: str | None = None, tool_args: dict | None = None) -> NarratorClient:
+    async def chat_fn(*, model, messages, format):
+        tool_call = {"tool": tool} if tool is None else {"tool": tool, "tool_args": tool_args or {}}
+        return {"message": {"content": json.dumps({"narration": segments, "tool_call": tool_call})}}
 
     async def generate_fn(**kwargs):
         pass
@@ -192,3 +203,20 @@ async def test_handle_action_logs_an_image_error_without_raising(tmp_path):
     await _call(session, client, "p1", {"text": "I look up."}, tmp_path, FailingImageBackend())
 
     assert any("image error" in line for line in session.log)
+
+
+@pytest.mark.asyncio
+async def test_handle_action_logs_one_line_per_narration_segment(tmp_path):
+    session = _session_with_character()
+    client = _fake_client_with_segments([
+        {"speaker": "narrator", "text": "The alley reeks of ozone."},
+        {"speaker": "Jax", "gender": "male", "text": "You're late, choom."},
+    ])
+
+    await _call(session, client, "p1", {"text": "I check the alley."}, tmp_path)
+
+    assert session.log == [
+        "p1: I check the alley.",
+        "The alley reeks of ozone.",
+        "Jax: You're late, choom.",
+    ]
