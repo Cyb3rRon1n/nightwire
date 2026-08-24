@@ -15,3 +15,4 @@ class Session:
     location: str | None = None
     scene_mood: str | None = None
     active_objectives: list[str] = field(default_factory=list)
+    speaker_voices: dict[str, str] = field(default_factory=dict)

@@ -40,3 +40,13 @@ def test_two_sessions_do_not_share_mutable_objectives_list():
     b = Session(session_id="b")
     a.active_objectives.append("find the fixer")
     assert b.active_objectives == []
+
+
+def test_session_speaker_voices_defaults_to_empty_and_is_independent_per_instance():
+    session_a = Session(session_id="a")
+    session_b = Session(session_id="b")
+
+    assert session_a.speaker_voices == {}
+    session_a.speaker_voices["Jax"] = "am_adam"
+
+    assert session_b.speaker_voices == {}
