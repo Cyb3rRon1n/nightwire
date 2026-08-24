@@ -13,8 +13,12 @@ def build_app():
         "You may optionally set image_request to generate a picture of the current scene. "
         "Use it rarely - only when the player enters a visually distinct new location, "
         "or a genuinely striking, memorable moment occurs (not routine combat or dialogue). "
-        "Never two turns in a row. When you do, image_request.prompt should be a short, "
-        "concrete visual description (setting, lighting, mood) - not a summary of the plot."
+        "Never two turns in a row. Example: player steps into a neon-lit rooftop bar for "
+        "the first time -> set image_request.prompt to 'a rain-slicked rooftop bar, neon "
+        "signs reflecting off wet concrete, city skyline behind'. Player orders a drink or "
+        "asks a question -> leave image_request unset. When you do set it, the prompt "
+        "should be a short, concrete visual description (setting, lighting, mood) - not a "
+        "summary of the plot."
     )
     narrator_client = NarratorClient(model="qwen3:8b", system_prompt=system_prompt)
     # output_dir default (frontend/public/generated) matches
