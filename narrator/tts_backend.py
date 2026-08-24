@@ -48,13 +48,16 @@ class KokoroBackend:
         self._speech_fn = speech_fn or self._default_speech
 
     async def _default_speech(self, text: str, voice: str) -> bytes:
-        async with httpx.AsyncClient(timeout=60) as client:
-            response = await client.post(
-                f"{self.base_url}/v1/audio/speech",
-                json={"model": self.model, "voice": voice, "input": text},
-            )
-            response.raise_for_status()
-            return response.content
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                response = await client.post(
+                    f"{self.base_url}/v1/audio/speech",
+                    json={"model": self.model, "voice": voice, "input": text, "response_format": "wav"},
+                )
+                response.raise_for_status()
+                return response.content
+        except httpx.HTTPError as e:
+            raise ValueError(f"tts request failed: {e}") from e
 
     async def synthesize(self, text: str, voice: str) -> bytes:
         return await self._speech_fn(text, voice)
@@ -89,14 +92,17 @@ class OpenAITTSBackend:
         self._speech_fn = speech_fn or self._default_speech
 
     async def _default_speech(self, text: str, voice: str) -> bytes:
-        async with httpx.AsyncClient(timeout=60) as client:
-            response = await client.post(
-                f"{self.base_url}/v1/audio/speech",
-                json={"model": self.model, "voice": voice, "input": text},
-                headers={"Authorization": f"Bearer {self.api_key}"},
-            )
-            response.raise_for_status()
-            return response.content
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                response = await client.post(
+                    f"{self.base_url}/v1/audio/speech",
+                    json={"model": self.model, "voice": voice, "input": text, "response_format": "wav"},
+                    headers={"Authorization": f"Bearer {self.api_key}"},
+                )
+                response.raise_for_status()
+                return response.content
+        except httpx.HTTPError as e:
+            raise ValueError(f"tts request failed: {e}") from e
 
     async def synthesize(self, text: str, voice: str) -> bytes:
         return await self._speech_fn(text, voice)
