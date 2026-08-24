@@ -16,7 +16,7 @@ def _fake_chat_always_returning(payload: dict):
 @pytest.mark.asyncio
 async def test_run_harness_scores_a_correct_tool_call_as_a_pass():
     client = NarratorClient(chat_fn=_fake_chat_always_returning({
-        "narration": "You reach for your pistol.",
+        "narration": [{"speaker": "narrator", "text": "You reach for your pistol."}],
         "tool_call": {
             "tool": "request_roll",
             "tool_args": {
@@ -42,7 +42,7 @@ async def test_run_harness_scores_a_correct_tool_call_as_a_pass():
 @pytest.mark.asyncio
 async def test_run_harness_scores_a_wrong_tool_call_as_a_fail():
     client = NarratorClient(chat_fn=_fake_chat_always_returning({
-        "narration": "You wander off.", "tool_call": {"tool": None},
+        "narration": [{"speaker": "narrator", "text": "You wander off."}], "tool_call": {"tool": None},
     }))
     scenarios = [
         Scenario(
@@ -61,7 +61,7 @@ async def test_run_harness_scores_a_wrong_tool_call_as_a_fail():
 @pytest.mark.asyncio
 async def test_run_harness_scores_narration_only_scenarios_correctly():
     client = NarratorClient(chat_fn=_fake_chat_always_returning({
-        "narration": "The street is quiet tonight.", "tool_call": {"tool": None},
+        "narration": [{"speaker": "narrator", "text": "The street is quiet tonight."}], "tool_call": {"tool": None},
     }))
     scenarios = [
         Scenario(
@@ -79,7 +79,7 @@ async def test_run_harness_scores_narration_only_scenarios_correctly():
 @pytest.mark.asyncio
 async def test_run_harness_covers_every_scenario_in_the_report():
     client = NarratorClient(chat_fn=_fake_chat_always_returning({
-        "narration": "ok", "tool_call": {"tool": None},
+        "narration": [{"speaker": "narrator", "text": "ok"}], "tool_call": {"tool": None},
     }))
     scenarios = [
         Scenario(name="a", messages=[{"role": "user", "content": "x"}], expected_tool=None),
@@ -94,7 +94,7 @@ async def test_run_harness_covers_every_scenario_in_the_report():
 @pytest.mark.asyncio
 async def test_run_harness_fails_a_scenario_whose_tool_args_dont_validate():
     client = NarratorClient(chat_fn=_fake_chat_always_returning({
-        "narration": "You lunge for the ledge.",
+        "narration": [{"speaker": "narrator", "text": "You lunge for the ledge."}],
         "tool_call": {
             "tool": "request_roll",
             "tool_args": {"player_id": "p1", "attribute": "body", "skill_mod": 1, "difficulty": "nightmarish", "reason": "leap"},

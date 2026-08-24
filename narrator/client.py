@@ -49,8 +49,15 @@ class ImageRequest(BaseModel):
     prompt: str
 
 
+class NarrationSegment(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    speaker: str
+    gender: Literal["male", "female"] | None = None
+    text: str
+
+
 class NarratorResponse(BaseModel):
-    narration: str
+    narration: list[NarrationSegment]
     tool_call: ToolCall
     # Sibling to tool_call, not a tool_call variant: an image request has no
     # engine-state effect to execute/log, it's a presentation decision layered

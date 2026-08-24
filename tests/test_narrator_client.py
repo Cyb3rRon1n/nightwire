@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from narrator.client import NarratorClient, NarratorResponse
+from narrator.client import NarratorClient, NarratorResponse, NarrationSegment
 
 
 def _fake_chat_returning(payload: dict):
@@ -13,15 +13,36 @@ def _fake_chat_returning(payload: dict):
 
 
 @pytest.mark.asyncio
+async def test_respond_parses_narration_as_a_list_of_segments():
+    client = NarratorClient(
+        chat_fn=_fake_chat_returning({
+            "narration": [
+                {"speaker": "narrator", "text": "The alley is quiet."},
+                {"speaker": "Jax", "gender": "male", "text": "You're late, choom."},
+            ],
+            "tool_call": {"tool": None},
+        }),
+    )
+    response = await client.respond([{"role": "user", "content": "I look around."}])
+    assert len(response.narration) == 2
+    assert response.narration[0].speaker == "narrator"
+    assert response.narration[0].gender is None
+    assert response.narration[0].text == "The alley is quiet."
+    assert response.narration[1].speaker == "Jax"
+    assert response.narration[1].gender == "male"
+    assert response.narration[1].text == "You're late, choom."
+
+
+@pytest.mark.asyncio
 async def test_respond_returns_narration_only_when_no_tool_call():
     client = NarratorClient(
         model="qwen3:8b",
         system_prompt="You are a cyberpunk GM.",
-        chat_fn=_fake_chat_returning({"narration": "The alley is quiet.", "tool_call": {"tool": None}}),
+        chat_fn=_fake_chat_returning({"narration": [{"speaker": "narrator", "text": "The alley is quiet."}], "tool_call": {"tool": None}}),
     )
     response = await client.respond([{"role": "user", "content": "I look around."}])
     assert isinstance(response, NarratorResponse)
-    assert response.narration == "The alley is quiet."
+    assert response.narration == [NarrationSegment(speaker="narrator", text="The alley is quiet.")]
     assert response.tool is None
     assert response.tool_args == {}
 
@@ -30,7 +51,7 @@ async def test_respond_returns_narration_only_when_no_tool_call():
 async def test_respond_returns_a_tool_call():
     client = NarratorClient(
         chat_fn=_fake_chat_returning({
-            "narration": "You lunge for the ledge.",
+            "narration": [{"speaker": "narrator", "text": "You lunge for the ledge."}],
             "tool_call": {
                 "tool": "request_roll",
                 "tool_args": {
@@ -55,7 +76,7 @@ async def test_respond_rejects_a_tool_call_with_the_wrong_argument_shape():
     # caught at parse time.
     client = NarratorClient(
         chat_fn=_fake_chat_returning({
-            "narration": "Combat breaks out!",
+            "narration": [{"speaker": "narrator", "text": "Combat breaks out!"}],
             "tool_call": {
                 "tool": "request_roll",
                 "tool_args": {"scene": "alley", "enemies": ["ganger"]},
@@ -73,7 +94,7 @@ async def test_respond_passes_the_structured_output_schema_to_chat_fn():
     async def chat_fn(*, model, messages, format):
         seen["format"] = format
         seen["model"] = model
-        return {"message": {"content": json.dumps({"narration": "ok", "tool_call": {"tool": None}})}}
+        return {"message": {"content": json.dumps({"narration": [{"speaker": "narrator", "text": "ok"}], "tool_call": {"tool": None}})}}
 
     client = NarratorClient(model="qwen3:8b", chat_fn=chat_fn)
     await client.respond([{"role": "user", "content": "hi"}])
@@ -88,7 +109,7 @@ async def test_respond_prepends_the_system_prompt():
 
     async def chat_fn(*, model, messages, format):
         seen["messages"] = messages
-        return {"message": {"content": json.dumps({"narration": "ok", "tool_call": {"tool": None}})}}
+        return {"message": {"content": json.dumps({"narration": [{"speaker": "narrator", "text": "ok"}], "tool_call": {"tool": None}})}}
 
     client = NarratorClient(system_prompt="You are a cyberpunk GM.", chat_fn=chat_fn)
     await client.respond([{"role": "user", "content": "hi"}])
@@ -111,7 +132,7 @@ async def test_respond_raises_on_malformed_model_output():
 async def test_respond_raises_on_a_hallucinated_tool_name():
     client = NarratorClient(
         chat_fn=_fake_chat_returning({
-            "narration": "You lunge for the ledge.",
+            "narration": [{"speaker": "narrator", "text": "You lunge for the ledge."}],
             "tool_call": {"tool": "Agility Check (DC 15) to leap across the gap", "tool_args": {}},
         }),
     )
@@ -140,7 +161,7 @@ async def test_unload_calls_generate_with_keep_alive_zero_and_no_prompt():
 async def test_respond_parses_an_image_request():
     client = NarratorClient(
         chat_fn=_fake_chat_returning({
-            "narration": "The alley opens onto a rain-slicked plaza, neon bleeding into puddles.",
+            "narration": [{"speaker": "narrator", "text": "The alley opens onto a rain-slicked plaza, neon bleeding into puddles."}],
             "tool_call": {"tool": None},
             "image_request": {"prompt": "a rain-slicked cyberpunk plaza, neon reflections"},
         }),
@@ -154,7 +175,7 @@ async def test_respond_parses_an_image_request():
 async def test_respond_image_request_defaults_to_none():
     client = NarratorClient(
         chat_fn=_fake_chat_returning({
-            "narration": "The alley is quiet.",
+            "narration": [{"speaker": "narrator", "text": "The alley is quiet."}],
             "tool_call": {"tool": None},
         }),
     )
