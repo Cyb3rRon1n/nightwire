@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from engine.persistence import JSONFileSessionStore
 from narrator.client import NarratorClient
+from narrator.tts_backend import VoiceOption
 from server.app import create_app
 
 
@@ -23,11 +24,31 @@ class _UnusedImageBackend:
         raise AssertionError("image backend should not be called by this test")
 
 
-def _client(tmp_path, narrator_client=None, image_backend=None):
+class _UnusedTTSBackend:
+    # A single dummy voice, not an empty list - assign_voice() (Task 5)
+    # indexes into whatever voice bank it's given, so an empty list would
+    # crash with IndexError before synthesize()'s AssertionError ever
+    # fires. This backend is only safe to use with tests that never send
+    # an "action" message at all.
+    voices = [VoiceOption(id="unused", gender=None)]
+
+    async def synthesize(self, text, voice):
+        raise AssertionError("tts backend should not be called by this test")
+
+
+class FakeTTSBackend:
+    voices = [VoiceOption(id="af_heart", gender="female")]
+
+    async def synthesize(self, text, voice):
+        return b"fake-wav-bytes"
+
+
+def _client(tmp_path, narrator_client=None, image_backend=None, tts_backend=None):
     store = JSONFileSessionStore(tmp_path)
     client = narrator_client or NarratorClient(chat_fn=_unused_chat_fn, generate_fn=_unused_generate_fn)
     backend = image_backend or _UnusedImageBackend()
-    return TestClient(create_app(store, client, backend))
+    tts = tts_backend or _UnusedTTSBackend()
+    return TestClient(create_app(store, client, backend, tts))
 
 
 def test_join_broadcasts_a_filtered_view_back_to_the_sender(tmp_path):
@@ -144,7 +165,7 @@ def test_action_message_triggers_the_narrator_and_broadcasts_narration(tmp_path)
             "narration": [{"speaker": "narrator", "text": "The alley is quiet."}], "tool_call": {"tool": None},
         })}}
     narrator_client = NarratorClient(chat_fn=chat_fn)
-    client = _client(tmp_path, narrator_client)
+    client = _client(tmp_path, narrator_client, tts_backend=FakeTTSBackend())
 
     with client.websocket_connect("/ws/s1/p1") as ws:
         ws.send_json({
@@ -157,6 +178,29 @@ def test_action_message_triggers_the_narrator_and_broadcasts_narration(tmp_path)
         view = ws.receive_json()
 
     assert "The alley is quiet." in view["log"]
+
+
+def test_action_message_with_a_narration_segment_synthesizes_audio(tmp_path):
+    async def chat_fn(*, model, messages, format):
+        return {"message": {"content": json.dumps({
+            "narration": [{"speaker": "narrator", "text": "The alley is quiet."}],
+            "tool_call": {"tool": None},
+        })}}
+    narrator_client = NarratorClient(chat_fn=chat_fn)
+
+    client = _client(tmp_path, narrator_client, tts_backend=FakeTTSBackend())
+
+    with client.websocket_connect("/ws/s1/p1") as ws:
+        ws.send_json({
+            "type": "join",
+            "character": {"player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"},
+        })
+        ws.receive_json()
+
+        ws.send_json({"type": "action", "text": "I look around."})
+        view = ws.receive_json()
+
+    assert any(line.startswith("[audio: ") for line in view["log"])
 
 
 def test_action_message_missing_text_sends_an_error(tmp_path):
