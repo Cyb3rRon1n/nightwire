@@ -35,7 +35,8 @@ async def handle_action(
 
     session.log.append(f"{player_id}: {action_text}")
     for segment in response.narration:
-        session.log.append(segment.text)
+        line = segment.text if segment.speaker == "narrator" else f"{segment.speaker}: {segment.text}"
+        session.log.append(line)
 
     if response.tool is not None:
         tool_args = dict(response.tool_args)
