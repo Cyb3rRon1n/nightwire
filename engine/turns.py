@@ -1,5 +1,8 @@
+import random
+
 from engine.character import CharacterSheet
 from engine.session import Session
+from ruleset.attributes import modifier
 
 
 def join(session: Session, character: CharacterSheet) -> None:
@@ -29,7 +32,28 @@ def start_combat(session: Session, initiative_rolls: dict[str, int]) -> None:
     session.in_combat = True
 
 
+def roll_initiative(session: Session, player_id: str) -> int | None:
+    # Each connected client can only ever roll for its own player_id (see
+    # server/app.py) - the server, not the client, computes the real
+    # 1d10 + Reflexes total, since a client's own view of teammates'
+    # attributes is redacted (server/views.py) and can't be trusted to
+    # compute it honestly for anyone but itself.
+    if session.in_combat or player_id in session.pending_initiative:
+        return None
+
+    raw_score = session.characters[player_id].attributes.get("reflexes", 10)
+    total = random.randint(1, 10) + modifier(raw_score)
+    session.pending_initiative[player_id] = total
+
+    if set(session.pending_initiative) == set(session.characters):
+        start_combat(session, session.pending_initiative)
+        session.pending_initiative = {}
+
+    return total
+
+
 def end_combat(session: Session) -> None:
+    session.pending_initiative = {}
     if not session.in_combat:
         return
     pre_combat = session.pre_combat_turn_order or []

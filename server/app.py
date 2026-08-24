@@ -59,7 +59,7 @@ def create_app(
                     elif message.get("type") == "approve_character":
                         await handle_approve_character(session, store, narrator_client, image_backend, player_id)
                     else:
-                        handle_message(session, message)
+                        handle_message(session, message, player_id)
                 except Exception as e:
                     await websocket.send_json({"type": "error", "message": str(e)})
                     continue

@@ -39,6 +39,7 @@ def test_save_then_load_round_trips_a_session_with_a_character(tmp_path):
     session.scene_mood = "tense"
     session.active_objectives = ["find the fixer", "avoid corpo patrols"]
     session.speaker_voices["Jax"] = "am_adam"
+    session.pending_initiative["p2"] = 8
 
     store.save(session)
     loaded = store.load("test-session")
@@ -53,6 +54,7 @@ def test_save_then_load_round_trips_a_session_with_a_character(tmp_path):
     assert loaded.scene_mood == "tense"
     assert loaded.active_objectives == ["find the fixer", "avoid corpo patrols"]
     assert loaded.speaker_voices == {"Jax": "am_adam"}
+    assert loaded.pending_initiative == {"p2": 8}
     loaded_character = loaded.characters["p1"]
     assert loaded_character.name == "Rook"
     assert loaded_character.role == "solo"
@@ -86,6 +88,21 @@ def test_load_defaults_speaker_voices_when_missing_from_a_pre_phase6_file(tmp_pa
 
     assert loaded is not None
     assert loaded.speaker_voices == {}
+
+
+def test_load_defaults_pending_initiative_when_missing_from_an_older_file(tmp_path):
+    store = JSONFileSessionStore(tmp_path)
+    session = Session(session_id="legacy-session")
+    from dataclasses import asdict
+
+    legacy_data = asdict(session)
+    del legacy_data["pending_initiative"]
+    store.directory.joinpath("legacy-session.json").write_text(json.dumps(legacy_data))
+
+    loaded = store.load("legacy-session")
+
+    assert loaded is not None
+    assert loaded.pending_initiative == {}
 
 
 def test_construction_raises_on_an_unwritable_existing_directory(tmp_path):
