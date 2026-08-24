@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+  <rect width="1280" height="640" fill="#14161a"/>
+
+  <!-- large faint pulse trace watermark -->
+  <path d="M950 200 L1010 200 L1030 120 L1055 280 L1075 200 L1230 200" stroke="#ff4fa3" stroke-opacity="0.12" stroke-width="3" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+
+  <g transform="translate(70,176) scale(4.5)">
+    <path d="M6 34 L18 34 L24 12 L32 52 L38 30 L58 30" stroke="#ff4fa3" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" fill="none"/>
+    <circle cx="24" cy="12" r="4" fill="#2de1c2"/>
+  </g>
+
+  <text x="432" y="308" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-weight="700" font-size="88" letter-spacing="-1" fill="#f0f2f5">nightwire</text>
+
+  <text x="435" y="360" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="400" font-size="30" fill="#9aa1ab">
+    <tspan x="435" dy="0">A cyberpunk AI game master for real-time</tspan>
+    <tspan x="435" dy="40">tabletop RPG sessions</tspan>
+  </text>
+
+  <text x="70" y="580" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-weight="400" font-size="22" fill="#7c8590" letter-spacing="0.5">you act</text>
+  <text x="182" y="580" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-weight="400" font-size="22" fill="#4a4258">&#8594;</text>
+  <text x="222" y="580" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-weight="400" font-size="22" fill="#7c8590" letter-spacing="0.5">the DM adjudicates</text>
+  <text x="562" y="580" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-weight="400" font-size="22" fill="#4a4258">&#8594;</text>
+  <text x="602" y="580" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-weight="400" font-size="22" fill="#7c8590" letter-spacing="0.5">1d10 decides</text>
+  <text x="812" y="580" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-weight="400" font-size="22" fill="#4a4258">&#8594;</text>
+  <text x="852" y="580" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-weight="400" font-size="22" fill="#2de1c2" letter-spacing="0.5">the city responds</text>
+</svg>
