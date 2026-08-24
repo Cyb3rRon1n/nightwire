@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <style>
+    .wire { stroke: #c22a7a; }
+    .node { fill: #0e93a8; }
+    @media (prefers-color-scheme: dark) {
+      .wire { stroke: #ff4fa3; }
+      .node { fill: #2de1c2; }
+    }
+  </style>
+  <!-- a signal pulse, cut through the dark -->
+  <path class="wire" d="M6 34 L18 34 L24 12 L32 52 L38 30 L58 30" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle class="node" cx="24" cy="12" r="4"/>
+</svg>

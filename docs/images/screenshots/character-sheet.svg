@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="440" viewBox="0 0 980 440">
+<rect width="980" height="440" rx="12" fill="#14161a"/>
+<path d="M0,12 a12,12 0 0 1 12,-12 h956 a12,12 0 0 1 12,12 v34 h-980 z" fill="#1c1f26"/>
+<line x1="0" y1="46" x2="980" y2="46" stroke="#2a2e38" stroke-width="1"/>
+<circle cx="26" cy="23.0" r="7" fill="#e0645a" opacity="0.85"/>
+<circle cx="48" cy="23.0" r="7" fill="#e0b04a" opacity="0.85"/>
+<circle cx="70" cy="23.0" r="7" fill="#5fb87a" opacity="0.85"/>
+<text x="490.0" y="28.0" text-anchor="middle" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-size="15" fill="#7c8590">nightwire — character sheet</text>
+
+<text x="24" y="88" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-size="22" font-weight="700" fill="#f0f2f5" xml:space="preserve">Rae Okafor</text>
+<text x="24" y="114" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-size="16" fill="#9aa1ab" xml:space="preserve">Solo · Nomad</text>
+
+<line x1="0" y1="140" x2="980" y2="140" stroke="#2a2e38" stroke-width="1"/>
+
+<g font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-size="17">
+  <text x="24" y="178" fill="#9aa1ab" xml:space="preserve">BODY</text>
+  <text x="120" y="178" fill="#2de1c2" xml:space="preserve">6</text>
+  <text x="24" y="210" fill="#9aa1ab" xml:space="preserve">REFLEXES</text>
+  <text x="184" y="210" fill="#2de1c2" xml:space="preserve">8</text>
+
+  <text x="358" y="178" fill="#9aa1ab" xml:space="preserve">TECH</text>
+  <text x="450" y="178" fill="#2de1c2" xml:space="preserve">3</text>
+  <text x="358" y="210" fill="#9aa1ab" xml:space="preserve">COOL</text>
+  <text x="450" y="210" fill="#2de1c2" xml:space="preserve">5</text>
+
+  <text x="692" y="178" fill="#9aa1ab" xml:space="preserve">INTELLECT</text>
+  <text x="856" y="178" fill="#2de1c2" xml:space="preserve">4</text>
+  <text x="692" y="210" fill="#9aa1ab" xml:space="preserve">PRESENCE</text>
+  <text x="856" y="210" fill="#2de1c2" xml:space="preserve">5</text>
+</g>
+
+<line x1="0" y1="240" x2="980" y2="240" stroke="#2a2e38" stroke-width="1"/>
+
+<text x="24" y="280" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-size="18" fill="#f0f2f5" xml:space="preserve">HP  9 / 10        ARMOR  2        CONDITIONS  none</text>
+
+<text x="24" y="322" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-size="15" fill="#9aa1ab" xml:space="preserve">INVENTORY</text>
+<text x="24" y="352" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-size="17" fill="#ff4fa3" xml:space="preserve">pistol · monowire · agent deck · 2x stim</text>
+</svg>

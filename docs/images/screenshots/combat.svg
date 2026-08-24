@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="474" viewBox="0 0 980 474">
+<rect width="980" height="474" rx="12" fill="#14161a"/>
+<path d="M0,12 a12,12 0 0 1 12,-12 h956 a12,12 0 0 1 12,12 v34 h-980 z" fill="#1c1f26"/>
+<line x1="0" y1="46" x2="980" y2="46" stroke="#2a2e38" stroke-width="1"/>
+<circle cx="26" cy="23.0" r="7" fill="#e0645a" opacity="0.85"/>
+<circle cx="48" cy="23.0" r="7" fill="#e0b04a" opacity="0.85"/>
+<circle cx="70" cy="23.0" r="7" fill="#5fb87a" opacity="0.85"/>
+<text x="490.0" y="28.0" text-anchor="middle" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-size="15" fill="#7c8590">nightwire — combat</text>
+
+<text x="24" y="82" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-size="18" font-weight="700" fill="#ff4fa3" xml:space="preserve">IN COMBAT — turn 2 of 4</text>
+
+<text x="24" y="126" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-size="18" fill="#2de1c2" xml:space="preserve">›  Rae (Solo)          HP  9/10   ARM 2      ← current turn</text>
+<text x="24" y="158" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-size="18" fill="#9aa1ab" xml:space="preserve">   Jax (NPC)           HP  6/6</text>
+<text x="24" y="190" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-size="18" fill="#9aa1ab" xml:space="preserve">   Nyx (Netrunner)     HP  8/8    ARM 0</text>
+<text x="24" y="222" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-size="18" fill="#9aa1ab" xml:space="preserve">   Chrome-9 (NPC)      HP 14/14</text>
+
+<line x1="0" y1="256" x2="980" y2="256" stroke="#2a2e38" stroke-width="1"/>
+
+<text x="24" y="298" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-size="18" fill="#2de1c2" xml:space="preserve">[ROLL] Rae attacks Chrome-9: 1d10 +4 (Reflexes) → 9 vs DC 6 — hit</text>
+<text x="24" y="330" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-size="18" fill="#f0f2f5" xml:space="preserve">Rae's blade catches Chrome-9's forearm plating — 5 damage.</text>
+
+<line x1="0" y1="374" x2="980" y2="374" stroke="#2a2e38" stroke-width="1"/>
+<text x="24" y="416" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-size="18" fill="#7c8590" xml:space="preserve">&gt; advance turn</text>
+</svg>
