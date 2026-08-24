@@ -34,10 +34,21 @@ function formatComposerInput(mode: ComposerMode, text: string): string {
 }
 
 // The viewer's own log lines are server-authored as "{player_id}: {text}" -
-// everything else (narrator prose, other players) reads left-aligned, same
-// split open-dungeon's own page.tsx draws between user/assistant messages.
+// same split open-dungeon's own page.tsx draws between user/assistant messages.
 function isOwnLine(line: string, playerId: string): boolean {
   return line.startsWith(`${playerId}: `);
+}
+
+// A teammate's own action lines are server-authored the same way
+// ("{their_player_id}: {text}") - every other party member's id is a known,
+// client-visible key of view.characters, so this is distinguishable from
+// narrator prose (including NPC "Speaker: text" segments, which are keyed
+// by in-fiction name, not a real player_id) without any new protocol field.
+function otherPlayerName(line: string, view: StateView, playerId: string): string | null {
+  for (const [pid, character] of Object.entries(view.characters)) {
+    if (pid !== playerId && line.startsWith(`${pid}: `)) return character.name;
+  }
+  return null;
 }
 
 // Reuses the same [tag: value] bracket convention tool results already use
@@ -267,13 +278,27 @@ export default function NightwirePage() {
                   if (audioMatch) {
                     return <audio key={i} controls src={mediaUrl(audioMatch[1])} className="max-w-[85%]" />;
                   }
-                  return isOwnLine(line, playerId) ? (
-                    <div key={i} className="ml-auto max-w-[85%]">
-                      <div className="rounded-2xl rounded-br-md border border-stone-800/70 bg-stone-900/60 px-4 py-3 text-sm leading-6 text-stone-300">
-                        <p className="whitespace-pre-wrap text-pretty">{line}</p>
+                  if (isOwnLine(line, playerId)) {
+                    return (
+                      <div key={i} className="ml-auto max-w-[85%]">
+                        <div className="rounded-2xl rounded-br-md border border-stone-800/70 bg-stone-900/60 px-4 py-3 text-sm leading-6 text-stone-300">
+                          <p className="whitespace-pre-wrap text-pretty">{line}</p>
+                        </div>
                       </div>
-                    </div>
-                  ) : (
+                    );
+                  }
+                  const teammate = otherPlayerName(line, view, playerId);
+                  if (teammate) {
+                    return (
+                      <div key={i} className="mr-auto max-w-[85%]">
+                        <p className="mb-1 text-xs text-stone-500">{teammate}</p>
+                        <div className="rounded-2xl rounded-bl-md border border-stone-800/40 bg-stone-900/30 px-4 py-3 text-sm leading-6 text-stone-400">
+                          <p className="whitespace-pre-wrap text-pretty">{line}</p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
                     <p key={i} className="whitespace-pre-wrap text-pretty font-serif text-stone-100">
                       {line}
                     </p>
