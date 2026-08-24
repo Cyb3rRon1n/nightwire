@@ -3,6 +3,8 @@ from engine.session import Session
 from narrator.client import NarratorClient
 from narrator.image_backend import ImageBackend
 from narrator.tools import execute_tool
+from narrator.tts_backend import TTSBackend
+from narrator.voice_assignment import assign_voice
 
 
 def _build_messages(session: Session, action_text: str) -> list[dict]:
@@ -21,6 +23,7 @@ async def handle_action(
     narrator_client: NarratorClient,
     store: JSONFileSessionStore,
     image_backend: ImageBackend,
+    tts_backend: TTSBackend,
     player_id: str,
     message: dict,
 ) -> None:
@@ -34,9 +37,21 @@ async def handle_action(
     response = await narrator_client.respond(messages)
 
     session.log.append(f"{player_id}: {action_text}")
-    for segment in response.narration:
+
+    for i, segment in enumerate(response.narration):
         line = segment.text if segment.speaker == "narrator" else f"{segment.speaker}: {segment.text}"
         session.log.append(line)
+        log_index = len(session.log)
+        voice = assign_voice(session, segment.speaker, segment.gender, tts_backend.voices)
+        try:
+            audio_bytes = await tts_backend.synthesize(segment.text, voice)
+            relative_path = f"audio/{session.session_id}/{log_index}-{i}.wav"
+            output_path = store.directory / relative_path
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_bytes(audio_bytes)
+            session.log.append(f"[audio: {relative_path}]")
+        except (ValueError, TypeError, OSError) as e:
+            session.log.append(f"[audio error: {e}]")
 
     if response.tool is not None:
         tool_args = dict(response.tool_args)
