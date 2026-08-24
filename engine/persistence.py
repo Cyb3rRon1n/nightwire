@@ -54,4 +54,5 @@ class JSONFileSessionStore:
             location=data["location"],
             scene_mood=data["scene_mood"],
             active_objectives=data["active_objectives"],
+            speaker_voices=data.get("speaker_voices", {}),
         )
