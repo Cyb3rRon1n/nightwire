@@ -129,21 +129,6 @@ def test_update_world_adds_and_removes_objectives():
     assert session.active_objectives == ["avoid corpo patrols"]
 
 
-def test_start_combat_tool_never_mutates_session_state():
-    session = Session(session_id="s1")
-    result = execute_tool(session, "start_combat", {"reason": "ambush"})
-    assert session.in_combat is False
-    assert "note" in result
-
-
-def test_end_combat_tool_never_mutates_session_state():
-    session = Session(session_id="s1")
-    session.in_combat = True
-    result = execute_tool(session, "end_combat", {"reason": "enemies fled"})
-    assert session.in_combat is True
-    assert "note" in result
-
-
 def test_unknown_tool_name_raises_value_error():
     session = Session(session_id="s1")
     with pytest.raises(ValueError, match="unknown tool"):

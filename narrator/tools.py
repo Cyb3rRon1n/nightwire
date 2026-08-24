@@ -41,18 +41,6 @@ class UpdateWorld(BaseModel):
     remove_objectives: list[str] = []
 
 
-class StartCombat(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    reason: str
-
-
-class EndCombat(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    reason: str
-
-
 def _execute_request_roll(session: Session, tool: RequestRoll) -> dict:
     if tool.player_id not in session.characters:
         raise ValueError(f"unknown player_id: {tool.player_id!r}")
@@ -118,20 +106,17 @@ def _execute_update_world(session: Session, tool: UpdateWorld) -> dict:
     }
 
 
-def _execute_start_combat(session: Session, tool: StartCombat) -> dict:
-    return {"acknowledged": True, "note": "combat start requires a player-sent start_combat message"}
-
-
-def _execute_end_combat(session: Session, tool: EndCombat) -> dict:
-    return {"acknowledged": True, "note": "combat end requires a player-sent end_combat message"}
-
-
+# start_combat/end_combat are deliberately absent: real combat state only
+# ever starts via a player-sent message (server/dispatch.py -> engine/turns.py,
+# with real initiative rolls) - the narrator's own copy of these tools was a
+# no-op stub that fired on nearly every turn regardless of instruction
+# (a temperature-resistant model bias, not a fixable prompt-wording bug -
+# see ROADMAP.md's Phase 3 entry). Removing it from the tool surface it can
+# call closes the bug at the root instead of continuing to prompt-tune it.
 TOOL_REGISTRY: dict[str, tuple[type[BaseModel], Callable[[Session, BaseModel], dict]]] = {
     "request_roll": (RequestRoll, _execute_request_roll),
     "apply_character_update": (ApplyCharacterUpdate, _execute_apply_character_update),
     "update_world": (UpdateWorld, _execute_update_world),
-    "start_combat": (StartCombat, _execute_start_combat),
-    "end_combat": (EndCombat, _execute_end_combat),
 }
 
 
