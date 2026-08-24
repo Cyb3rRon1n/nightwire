@@ -10,8 +10,10 @@ def assign_voice(
     gender: Literal["male", "female"] | None,
     voices: list[VoiceOption],
 ) -> str:
-    if speaker in session.speaker_voices:
-        return session.speaker_voices[speaker]
+    key = speaker.strip().casefold()
+
+    if key in session.speaker_voices:
+        return session.speaker_voices[key]
 
     candidates = [v for v in voices if v.gender == gender] if gender else []
     if not candidates:
@@ -21,5 +23,5 @@ def assign_voice(
     unused = [v for v in candidates if v.id not in used]
     chosen = (unused or candidates)[0]
 
-    session.speaker_voices[speaker] = chosen.id
+    session.speaker_voices[key] = chosen.id
     return chosen.id
