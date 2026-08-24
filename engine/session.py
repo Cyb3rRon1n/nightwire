@@ -17,3 +17,4 @@ class Session:
     active_objectives: list[str] = field(default_factory=list)
     speaker_voices: dict[str, str] = field(default_factory=dict)
     pending_initiative: dict[str, int] = field(default_factory=dict)
+    last_turn_had_image: bool = False

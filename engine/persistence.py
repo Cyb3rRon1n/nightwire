@@ -56,4 +56,5 @@ class JSONFileSessionStore:
             active_objectives=data["active_objectives"],
             speaker_voices=data.get("speaker_voices", {}),
             pending_initiative=data.get("pending_initiative", {}),
+            last_turn_had_image=data.get("last_turn_had_image", False),
         )

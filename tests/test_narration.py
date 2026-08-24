@@ -237,6 +237,39 @@ async def test_handle_action_generates_a_scene_image_and_logs_its_path(tmp_path)
 
 
 @pytest.mark.asyncio
+async def test_handle_action_suppresses_image_request_two_turns_in_a_row(tmp_path):
+    # The model is told "never two turns in a row" but has no cross-call way
+    # to enforce it - live probing found it violated on 3/3 consecutive
+    # turns in one run. This is the server-side backstop.
+    session = _session_with_character()
+    client = _fake_client("A neon plaza unfolds.", image_prompt="a neon cyberpunk plaza")
+
+    class CountingImageBackend:
+        calls = 0
+
+        async def generate_portrait(self, description):
+            raise AssertionError("not exercised by this test")
+
+        async def generate_scene(self, prompt, reference_paths):
+            type(self).calls += 1
+            return b"x"
+
+    image_backend = CountingImageBackend()
+
+    await _call(session, client, "p1", {"text": "I step into the plaza."}, tmp_path, image_backend, tts_backend=FakeTTSBackend())
+    assert session.last_turn_had_image is True
+    assert CountingImageBackend.calls == 1
+
+    await _call(session, client, "p1", {"text": "I look around some more."}, tmp_path, image_backend, tts_backend=FakeTTSBackend())
+    assert CountingImageBackend.calls == 1, "image_request fired two turns in a row despite the cooldown"
+    assert not any(line.startswith("[image: ") for line in session.log[-3:])
+    assert session.last_turn_had_image is False
+
+    await _call(session, client, "p1", {"text": "I step into another plaza."}, tmp_path, image_backend, tts_backend=FakeTTSBackend())
+    assert CountingImageBackend.calls == 2, "cooldown should only block the immediately-following turn"
+
+
+@pytest.mark.asyncio
 async def test_handle_action_uses_the_actors_own_portrait_as_a_reference(tmp_path):
     session = _session_with_character()
     session.characters["p1"].portrait_path = "portraits/s1/p1.png"
