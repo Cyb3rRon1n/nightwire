@@ -8,6 +8,16 @@ from narrator.voice_assignment import assign_voice
 
 
 def _build_messages(session: Session, action_text: str) -> list[dict]:
+    # apply_character_update's player_id is trusted as-is (it legitimately
+    # targets a different character than the actor, e.g. damage to a
+    # teammate) - but the model was never told what real player_ids exist,
+    # so on an early turn (nothing in the log yet to infer one from) it
+    # invents a plausible-looking placeholder like "player" instead of the
+    # real "p1", and the update silently fails validation. Grounding every
+    # turn in the real roster fixes the root cause without narrowing who a
+    # future multi-target tool call can address.
+    roster = ", ".join(f"{c.player_id} ({c.name})" for c in session.characters.values())
+    party = f"Party (use these exact player_ids): {roster}\n\n" if roster else ""
     # [start_combat: {...}]-style lines are tool-execution annotations for the
     # UI, not narrative fact - feeding them back verbatim let the model read
     # its own acknowledgment ("combat start requires...") as evidence combat
@@ -15,7 +25,7 @@ def _build_messages(session: Session, action_text: str) -> list[dict]:
     narrative = [line for line in session.log if not line.startswith("[")]
     recent = "\n".join(narrative[-10:])
     context = f"Recent events:\n{recent}\n\n" if recent else ""
-    return [{"role": "user", "content": f"{context}Player action: {action_text}"}]
+    return [{"role": "user", "content": f"{party}{context}Player action: {action_text}"}]
 
 
 async def handle_action(
