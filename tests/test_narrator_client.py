@@ -47,16 +47,17 @@ async def test_respond_returns_a_tool_call():
 
 @pytest.mark.asyncio
 async def test_respond_rejects_a_tool_call_with_the_wrong_argument_shape():
-    # The real bug this fix closes: a model calling start_combat (or any
-    # tool) with a plausible-looking but wrong shape - e.g. a `scene`/
-    # `enemies` object instead of start_combat's real `{"reason": str}` -
-    # must fail validation, the same way a genuinely wrong tool_args dict
-    # already did at execute_tool() time, but now caught at parse time.
+    # The real bug this fix closes: a model calling a tool with a
+    # plausible-looking but wrong shape - e.g. a `scene`/`enemies` object
+    # instead of request_roll's real `{player_id, attribute, skill_mod,
+    # difficulty, reason}` - must fail validation, the same way a genuinely
+    # wrong tool_args dict already did at execute_tool() time, but now
+    # caught at parse time.
     client = NarratorClient(
         chat_fn=_fake_chat_returning({
             "narration": "Combat breaks out!",
             "tool_call": {
-                "tool": "start_combat",
+                "tool": "request_roll",
                 "tool_args": {"scene": "alley", "enemies": ["ganger"]},
             },
         }),

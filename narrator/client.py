@@ -4,7 +4,7 @@ from typing import Annotated, Literal, Union
 import ollama
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from narrator.tools import ApplyCharacterUpdate, EndCombat, RequestRoll, StartCombat, UpdateWorld
+from narrator.tools import ApplyCharacterUpdate, RequestRoll, UpdateWorld
 
 
 # Each variant pairs a Literal tag with the *real* argument model from
@@ -38,20 +38,8 @@ class _UpdateWorldCall(BaseModel):
     tool_args: UpdateWorld
 
 
-class _StartCombatCall(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    tool: Literal["start_combat"]
-    tool_args: StartCombat
-
-
-class _EndCombatCall(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    tool: Literal["end_combat"]
-    tool_args: EndCombat
-
-
 ToolCall = Annotated[
-    Union[_NoTool, _RequestRollCall, _ApplyCharacterUpdateCall, _UpdateWorldCall, _StartCombatCall, _EndCombatCall],
+    Union[_NoTool, _RequestRollCall, _ApplyCharacterUpdateCall, _UpdateWorldCall],
     Field(discriminator="tool"),
 ]
 
