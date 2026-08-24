@@ -75,6 +75,41 @@ async def test_kokoro_backend_default_speech_requests_wav_format(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_kokoro_backend_unload_posts_to_dev_unload(monkeypatch):
+    seen = {}
+
+    async def fake_post(self, url, **kwargs):
+        seen["url"] = url
+        request = httpx.Request("POST", url)
+        return httpx.Response(200, request=request)
+
+    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+    backend = KokoroBackend(base_url="http://127.0.0.1:8880")
+
+    await backend.unload()
+
+    assert seen["url"] == "http://127.0.0.1:8880/dev/unload"
+
+
+@pytest.mark.asyncio
+async def test_kokoro_backend_unload_wraps_httpx_errors_as_value_error(monkeypatch):
+    async def raise_connect_error(self, *args, **kwargs):
+        raise httpx.ConnectError("connection refused")
+
+    monkeypatch.setattr(httpx.AsyncClient, "post", raise_connect_error)
+    backend = KokoroBackend()
+
+    with pytest.raises(ValueError):
+        await backend.unload()
+
+
+@pytest.mark.asyncio
+async def test_openai_tts_backend_unload_is_a_no_op():
+    backend = OpenAITTSBackend(api_key="sk-test")
+    await backend.unload()  # must not raise - no local VRAM to free
+
+
+@pytest.mark.asyncio
 async def test_openai_tts_backend_default_speech_wraps_httpx_errors_as_value_error(monkeypatch):
     async def raise_status_error(self, *args, **kwargs):
         request = httpx.Request("POST", "https://api.openai.com/v1/audio/speech")
