@@ -43,6 +43,8 @@ function isOwnLine(line: string, playerId: string): boolean {
 // Reuses the same [tag: value] bracket convention tool results already use
 // in session.log - no new StateView field for image lines.
 const IMAGE_LINE = /^\[image: (.+)\]$/;
+// Same bracket-tag convention as IMAGE_LINE above, for synthesized narration audio.
+const AUDIO_LINE = /^\[audio: (.+)\]$/;
 
 function VitalsBand({ view, playerId }: { view: StateView; playerId: string }) {
   const characters = Object.entries(view.characters);
@@ -243,6 +245,10 @@ export default function NightwirePage() {
                   if (imageMatch) {
                     // eslint-disable-next-line @next/next/no-img-element
                     return <img key={i} src={mediaUrl(imageMatch[1])} alt="" className="max-w-[85%] rounded-xl" />;
+                  }
+                  const audioMatch = line.match(AUDIO_LINE);
+                  if (audioMatch) {
+                    return <audio key={i} controls src={mediaUrl(audioMatch[1])} className="max-w-[85%]" />;
                   }
                   return isOwnLine(line, playerId) ? (
                     <div key={i} className="ml-auto max-w-[85%]">
