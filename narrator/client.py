@@ -100,7 +100,15 @@ class NarratorClient:
         self._generate_fn = generate_fn or self._client.generate
 
     async def _default_chat(self, *, model: str, messages: list[dict], format: dict) -> dict:
-        return await self._client.chat(model=model, messages=messages, format=format)
+        # Live probing found start_combat firing on 2/5, then 5/5, then 5/5 of
+        # five identical test turns across separate runs - default sampling
+        # temperature (~0.7-0.8 for Qwen3) makes the tool_call.tool decision
+        # too noisy to be steered by prompt wording alone. Lower temperature
+        # trades a little narrative prose variety for a lot more consistency
+        # on this specific structured decision.
+        return await self._client.chat(
+            model=model, messages=messages, format=format, options={"temperature": 0.3}
+        )
 
     async def unload(self) -> None:
         # Ollama's documented way to force-unload a model immediately:
