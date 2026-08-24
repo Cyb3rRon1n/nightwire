@@ -6,7 +6,12 @@ from narrator.tools import execute_tool
 
 
 def _build_messages(session: Session, action_text: str) -> list[dict]:
-    recent = "\n".join(session.log[-10:])
+    # [start_combat: {...}]-style lines are tool-execution annotations for the
+    # UI, not narrative fact - feeding them back verbatim let the model read
+    # its own acknowledgment ("combat start requires...") as evidence combat
+    # was actually ongoing, and re-trigger the tool turn after turn.
+    narrative = [line for line in session.log if not line.startswith("[")]
+    recent = "\n".join(narrative[-10:])
     context = f"Recent events:\n{recent}\n\n" if recent else ""
     return [{"role": "user", "content": f"{context}Player action: {action_text}"}]
 
