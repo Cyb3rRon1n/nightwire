@@ -138,6 +138,33 @@ async def test_handle_action_executes_a_tool_call_and_logs_the_result(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_handle_action_grounds_the_narrator_in_real_player_ids(tmp_path):
+    # apply_character_update trusts the model's player_id as-is (it may
+    # legitimately target a teammate, not just the actor) - so the model
+    # needs the real roster up front, not just whatever it can infer from
+    # log lines a player has already spoken. Regression check for a live
+    # probe where the model invented "player" instead of the real "p1" on
+    # a session's very first turn, when the log had nothing to infer from.
+    session = _session_with_two_characters()
+    sent_messages = []
+
+    async def chat_fn(*, model, messages, format):
+        sent_messages.append(messages)
+        payload = {"narration": [{"speaker": "narrator", "text": "ok"}], "tool_call": {"tool": None}}
+        return {"message": {"content": json.dumps(payload)}}
+
+    async def generate_fn(**kwargs):
+        pass
+
+    client = NarratorClient(chat_fn=chat_fn, generate_fn=generate_fn)
+    await _call(session, client, "p1", {"text": "I look around."}, tmp_path, tts_backend=FakeTTSBackend())
+
+    content = sent_messages[0][-1]["content"]
+    assert "p1 (Rook)" in content
+    assert "someone-else (Ghost)" in content
+
+
+@pytest.mark.asyncio
 async def test_handle_action_overrides_the_models_player_id_for_request_roll(tmp_path):
     # Server-authoritative: the acting player_id always wins for request_roll,
     # regardless of what the model put in tool_args. p1 has reflexes 14
