@@ -34,7 +34,8 @@ async def handle_action(
     response = await narrator_client.respond(messages)
 
     session.log.append(f"{player_id}: {action_text}")
-    session.log.append(response.narration)
+    for segment in response.narration:
+        session.log.append(segment.text)
 
     if response.tool is not None:
         tool_args = dict(response.tool_args)
