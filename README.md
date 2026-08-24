@@ -17,7 +17,7 @@ A cyberpunk tabletop RPG with an AI game master — playable solo or with friend
 
 Sibling project to [`oracle`](https://github.com/Cyb3rRon1n/oracle) (a D&D-flavored AI-DM) — built fresh rather than adapted, and researched independently at every design decision rather than leaning on oracle as precedent (see `ROADMAP.md`'s "Why a fresh project" section for the reasoning, and every spec under `docs/superpowers/specs/` for the citations behind each mechanic).
 
-**Status**: Phases 1–5 built and live-verified — ruleset, engine, AI narrator, web frontend, and image generation all work end to end. Phase 6 (text-to-speech, character-distinct voices) has a committed design spec, not yet implemented. See `ROADMAP.md`'s Phases section for the full build history.
+**Status**: Phases 1–6 built and live-verified — ruleset, engine, AI narrator, web frontend, image generation, and text-to-speech (character-distinct voices) all work end to end. See `ROADMAP.md`'s Phases section for the full build history.
 
 ## What makes it Nightwire
 
@@ -68,18 +68,18 @@ Image generation additionally needs a running `ultra-fast-image-gen` worker (`op
 
 ## Screenshots
 
-Mockups in nightwire's own visual style — the actual frontend is still running on `open-dungeon`'s default theme pending its own reskin, so these represent where the UI is headed rather than a literal current screen.
+Real captures of the live frontend running its own "Neon Noir" theme — a cyberpunk visual identity independent of `open-dungeon`'s default fantasy-tabletop styling (see `ROADMAP.md`'s Phase 4 entry for the design reasoning).
 
 <p align="center">
-  <img src="docs/images/screenshots/session.svg" alt="Nightwire session log example" width="820"><br>
+  <img src="docs/images/screenshots/session.png" alt="Nightwire session log example" width="820"><br>
   <sub>Narration, dice rolls, and player actions in one log</sub>
 </p>
 <p align="center">
-  <img src="docs/images/screenshots/combat.svg" alt="Nightwire combat turn order example" width="820"><br>
+  <img src="docs/images/screenshots/combat.png" alt="Nightwire combat turn order example" width="820"><br>
   <sub>Turn order and combat resolution</sub>
 </p>
 <p align="center">
-  <img src="docs/images/screenshots/character-sheet.svg" alt="Nightwire character sheet example" width="820"><br>
+  <img src="docs/images/screenshots/character-sheet.png" alt="Nightwire character sheet example" width="820"><br>
   <sub>A character sheet — attributes, HP/armor, inventory</sub>
 </p>
 

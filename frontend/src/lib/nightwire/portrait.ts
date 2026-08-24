@@ -1,12 +1,14 @@
 // Deliberately cheap placeholder avatar - initials + a color picked
 // deterministically from role, not real art (that's Phase 5's job).
+// Neon Noir palette (arbitrary values, not shared Tailwind theme tokens -
+// see ../../app/nightwire/theme.css for why this stays route-local).
 const PALETTE = [
-  "bg-amber-200 text-stone-950",
-  "bg-rose-300 text-stone-950",
-  "bg-sky-300 text-stone-950",
-  "bg-emerald-300 text-stone-950",
-  "bg-violet-300 text-stone-950",
-  "bg-orange-300 text-stone-950",
+  "bg-[#b967ff] text-[#0d0620]",
+  "bg-[#00e5ff] text-[#0d0620]",
+  "bg-[#ff4d6d] text-[#0d0620]",
+  "bg-[#39ff88] text-[#0d0620]",
+  "bg-[#ffb84d] text-[#0d0620]",
+  "bg-[#4d8fff] text-[#0d0620]",
 ]
 
 function hashString(value: string): number {
