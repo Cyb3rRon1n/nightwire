@@ -33,6 +33,23 @@ function formatComposerInput(mode: ComposerMode, text: string): string {
   return mode === "say" ? `> You say ${quoted}` : `> You think ${quoted}`;
 }
 
+// Mirrors ruleset/roles.py and ruleset/lifepaths.py - same duplication
+// pattern server/portrait.py's own _ROLE_VISUALS/_LIFEPATH_VISUALS already
+// use for this exact key set, rather than a new REST endpoint for static
+// reference data. Keep in sync if the ruleset's roster changes.
+const ROLES: Array<{ value: string; label: string; description: string }> = [
+  { value: "solo", label: "Solo", description: "Front-line combat specialist. Best attack rolls, highest Health, a passive Initiative/Awareness edge." },
+  { value: "netrunner", label: "Netrunner", description: "Hacking specialist. Bypasses locks, pulls data, and disables weapons/cameras/drones mid-combat." },
+  { value: "techie", label: "Techie", description: "Gear specialist. Repairs damaged equipment and cyberware, installs upgrades, crafts - keeps the party's equipment working, not a healer." },
+  { value: "fixer", label: "Fixer", description: "Social specialist. Negotiation, contacts, contraband access - talks past trouble instead of shooting through it." },
+];
+
+const LIFEPATHS: Array<{ value: string; label: string; description: string }> = [
+  { value: "corpo", label: "Corpo", description: "Came from megacorp life - contacts inside corporate structures, insider knowledge, expects to be listened to." },
+  { value: "streetkid", label: "Streetkid", description: "Grew up in the sprawl - gang contacts, street cred, knows how things really work at ground level." },
+  { value: "nomad", label: "Nomad", description: "Raised outside the city in a clan/family - vehicle know-how, an outsider's read on the corps, strong found-family loyalty." },
+];
+
 // The viewer's own log lines are server-authored as "{player_id}: {text}" -
 // same split open-dungeon's own page.tsx draws between user/assistant messages.
 function isOwnLine(line: string, playerId: string): boolean {
@@ -212,18 +229,40 @@ export default function NightwirePage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
-              <input
-                className="rounded border border-stone-700 bg-stone-900 px-3 py-2 text-sm"
-                placeholder="Role"
+              <select
+                className="rounded border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-stone-100"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-              />
-              <input
-                className="rounded border border-stone-700 bg-stone-900 px-3 py-2 text-sm"
-                placeholder="Lifepath"
+              >
+                <option value="" disabled>
+                  Role
+                </option>
+                {ROLES.map((r) => (
+                  <option key={r.value} value={r.value}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+              {role && (
+                <p className="text-xs text-stone-500">{ROLES.find((r) => r.value === role)?.description}</p>
+              )}
+              <select
+                className="rounded border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-stone-100"
                 value={lifepath}
                 onChange={(e) => setLifepath(e.target.value)}
-              />
+              >
+                <option value="" disabled>
+                  Lifepath
+                </option>
+                {LIFEPATHS.map((l) => (
+                  <option key={l.value} value={l.value}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+              {lifepath && (
+                <p className="text-xs text-stone-500">{LIFEPATHS.find((l) => l.value === lifepath)?.description}</p>
+              )}
               <button
                 type="button"
                 onClick={handleJoin}
