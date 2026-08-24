@@ -7,6 +7,7 @@ import type { CharacterSheet, StateView } from "@/lib/nightwire/protocol";
 import { portraitFor } from "@/lib/nightwire/portrait";
 import { mediaUrl } from "@/lib/nightwire/media";
 import { CharacterSheetOverlay } from "./CharacterSheetOverlay";
+import "./theme.css";
 
 const READY_STATE_LABEL: Record<ReadyState, string> = {
   [ReadyState.CONNECTING]: "Connecting…",
@@ -73,17 +74,25 @@ function otherPlayerName(line: string, view: StateView, playerId: string): strin
 const IMAGE_LINE = /^\[image: (.+)\]$/;
 // Same bracket-tag convention as IMAGE_LINE above, for synthesized narration audio.
 const AUDIO_LINE = /^\[audio: (.+)\]$/;
+// Catch-all for every other bracket-tagged system line ([initiative: ...],
+// [tool: ...], [tool error: ...], [audio error: ...]) - rendered as compact
+// HUD meta text instead of narration prose.
+const BRACKET_LINE = /^\[.+\]$/;
 
 function VitalsBand({ view, playerId }: { view: StateView; playerId: string }) {
   const characters = Object.entries(view.characters);
   return (
-    <div className="flex flex-col gap-1.5 border-t border-stone-800 pt-2 text-xs text-stone-400">
+    <div className="nw-divider nw-hud flex flex-col gap-1.5 border-t pt-2 text-xs nw-text-muted">
       <div className="flex flex-wrap gap-x-4 gap-y-1">
         {characters.map(([id, c]) => {
           const { initials, colorClass } = portraitFor(c.role, c.name);
           const portraitPath = "portrait_path" in c ? c.portrait_path : null;
           return (
-            <span key={id} className={`inline-flex items-center gap-1.5 ${id === playerId ? "text-stone-100" : ""}`}>
+            <span
+              key={id}
+              className="inline-flex items-center gap-1.5"
+              style={id === playerId ? { color: "var(--nw-text)" } : undefined}
+            >
               {portraitPath ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={mediaUrl(portraitPath)} alt="" className="size-5 rounded object-cover" />
@@ -104,7 +113,9 @@ function VitalsBand({ view, playerId }: { view: StateView; playerId: string }) {
           {view.location && <span>{view.location}</span>}
           {view.location && view.scene_mood && " · "}
           {view.scene_mood && <span>{view.scene_mood}</span>}
-          {view.in_combat && <span> · in combat{view.current_turn && ` (${view.current_turn}'s turn)`}</span>}
+          {view.in_combat && (
+            <span className="nw-text-danger"> · in combat{view.current_turn && ` (${view.current_turn}'s turn)`}</span>
+          )}
         </div>
       )}
       {view.active_objectives.length > 0 && <div>{view.active_objectives.join(" · ")}</div>}
@@ -193,47 +204,40 @@ export default function NightwirePage() {
   }
 
   return (
-    <main className="mx-auto flex h-dvh w-full max-w-2xl flex-col gap-4 p-6 text-stone-100">
-      <h1 className="text-lg font-semibold">Nightwire — live feed</h1>
+    <main className="nw-theme mx-auto flex h-dvh w-full max-w-2xl flex-col gap-4 p-6">
+      <h1 className="nw-heading text-lg">Nightwire — live feed</h1>
 
       {!connected ? (
         <form onSubmit={handleConnect} className="flex flex-col gap-2">
           <input
-            className="rounded border border-stone-700 bg-stone-900 px-3 py-2 text-sm"
+            className="nw-field"
             placeholder="Session ID"
             value={sessionId}
             onChange={(e) => setSessionId(e.target.value)}
           />
           <input
-            className="rounded border border-stone-700 bg-stone-900 px-3 py-2 text-sm"
+            className="nw-field"
             placeholder="Player ID"
             value={playerId}
             onChange={(e) => setPlayerId(e.target.value)}
           />
-          <button
-            type="submit"
-            className="rounded bg-amber-200 px-3 py-2 text-sm font-medium text-stone-950"
-          >
+          <button type="submit" className="nw-btn-primary">
             Connect
           </button>
         </form>
       ) : (
         <>
-          <p className="text-xs text-stone-500">{READY_STATE_LABEL[readyState]}</p>
+          <p className="nw-hud text-xs nw-text-faint">{READY_STATE_LABEL[readyState]}</p>
 
           {!view && (
             <div className="flex flex-col gap-2">
               <input
-                className="rounded border border-stone-700 bg-stone-900 px-3 py-2 text-sm"
+                className="nw-field"
                 placeholder="Name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
-              <select
-                className="rounded border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-stone-100"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-              >
+              <select className="nw-field" value={role} onChange={(e) => setRole(e.target.value)}>
                 <option value="" disabled>
                   Role
                 </option>
@@ -244,13 +248,9 @@ export default function NightwirePage() {
                 ))}
               </select>
               {role && (
-                <p className="text-xs text-stone-500">{ROLES.find((r) => r.value === role)?.description}</p>
+                <p className="text-xs nw-text-faint">{ROLES.find((r) => r.value === role)?.description}</p>
               )}
-              <select
-                className="rounded border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-stone-100"
-                value={lifepath}
-                onChange={(e) => setLifepath(e.target.value)}
-              >
+              <select className="nw-field" value={lifepath} onChange={(e) => setLifepath(e.target.value)}>
                 <option value="" disabled>
                   Lifepath
                 </option>
@@ -261,26 +261,26 @@ export default function NightwirePage() {
                 ))}
               </select>
               {lifepath && (
-                <p className="text-xs text-stone-500">{LIFEPATHS.find((l) => l.value === lifepath)?.description}</p>
+                <p className="text-xs nw-text-faint">{LIFEPATHS.find((l) => l.value === lifepath)?.description}</p>
               )}
               <button
                 type="button"
                 onClick={handleJoin}
                 disabled={readyState !== ReadyState.OPEN}
-                className="rounded bg-amber-200 px-3 py-2 text-sm font-medium text-stone-950 disabled:opacity-50"
+                className="nw-btn-primary"
               >
                 Join
               </button>
             </div>
           )}
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="text-sm nw-text-danger">{error}</p>}
 
           {view && "player_id" in view.characters[playerId] &&
             !(view.characters[playerId] as CharacterSheet).portrait_path &&
             !portraitSkipped && (
-              <div className="flex flex-col gap-2 rounded-lg border border-stone-800 p-3 text-sm">
-                <p className="text-stone-300">
+              <div className="nw-divider flex flex-col gap-2 rounded-lg border p-3 text-sm">
+                <p className="nw-text-body">
                   {name} — {role} · {lifepath}. Generate a portrait before playing?
                 </p>
                 <div className="flex gap-2">
@@ -288,7 +288,7 @@ export default function NightwirePage() {
                     type="button"
                     onClick={handleApprovePortrait}
                     disabled={approvingPortrait}
-                    className="flex-1 rounded bg-amber-200 px-3 py-2 text-sm font-medium text-stone-950 disabled:opacity-50"
+                    className="nw-btn-primary flex-1"
                   >
                     {approvingPortrait ? "Generating…" : "Approve & Generate Portrait"}
                   </button>
@@ -296,7 +296,7 @@ export default function NightwirePage() {
                     type="button"
                     onClick={() => setPortraitSkipped(true)}
                     disabled={approvingPortrait}
-                    className="rounded bg-stone-900 px-3 py-2 text-sm text-stone-400 hover:bg-stone-800 disabled:opacity-50"
+                    className="nw-btn-ghost"
                   >
                     Skip for now
                   </button>
@@ -320,7 +320,7 @@ export default function NightwirePage() {
                   if (isOwnLine(line, playerId)) {
                     return (
                       <div key={i} className="ml-auto max-w-[85%]">
-                        <div className="rounded-2xl rounded-br-md border border-stone-800/70 bg-stone-900/60 px-4 py-3 text-sm leading-6 text-stone-300">
+                        <div className="nw-bubble-own px-4 py-3 text-sm leading-6">
                           <p className="whitespace-pre-wrap text-pretty">{line}</p>
                         </div>
                       </div>
@@ -330,15 +330,22 @@ export default function NightwirePage() {
                   if (teammate) {
                     return (
                       <div key={i} className="mr-auto max-w-[85%]">
-                        <p className="mb-1 text-xs text-stone-500">{teammate}</p>
-                        <div className="rounded-2xl rounded-bl-md border border-stone-800/40 bg-stone-900/30 px-4 py-3 text-sm leading-6 text-stone-400">
+                        <p className="nw-name-tag mb-1">{teammate}</p>
+                        <div className="nw-bubble-teammate px-4 py-3 text-sm leading-6">
                           <p className="whitespace-pre-wrap text-pretty">{line}</p>
                         </div>
                       </div>
                     );
                   }
+                  if (BRACKET_LINE.test(line)) {
+                    return (
+                      <p key={i} className="nw-hud text-xs nw-text-faint">
+                        {line}
+                      </p>
+                    );
+                  }
                   return (
-                    <p key={i} className="whitespace-pre-wrap text-pretty font-serif text-stone-100">
+                    <p key={i} className="nw-prose whitespace-pre-wrap text-pretty">
                       {line}
                     </p>
                   );
@@ -347,10 +354,10 @@ export default function NightwirePage() {
 
               <VitalsBand view={view} playerId={playerId} />
 
-              <div className="flex items-center justify-between text-xs">
+              <div className="nw-hud flex items-center justify-between text-xs">
                 {view.in_combat ? (
                   <>
-                    <span className="text-stone-400">
+                    <span className="nw-text-muted">
                       {view.is_your_turn ? "Your turn" : `${view.current_turn ?? "…"}'s turn`}
                     </span>
                     <div className="flex gap-2">
@@ -359,7 +366,7 @@ export default function NightwirePage() {
                           type="button"
                           onClick={handleAdvanceTurn}
                           disabled={combatActionPending}
-                          className="rounded bg-stone-900 px-2.5 py-1 font-medium text-stone-200 hover:bg-stone-800 disabled:opacity-50"
+                          className="nw-btn-ghost py-1 text-xs"
                         >
                           End Turn
                         </button>
@@ -368,7 +375,7 @@ export default function NightwirePage() {
                         type="button"
                         onClick={handleEndCombat}
                         disabled={combatActionPending}
-                        className="rounded bg-stone-900 px-2.5 py-1 font-medium text-red-300 hover:bg-stone-800 disabled:opacity-50"
+                        className="nw-btn-danger py-1 text-xs"
                       >
                         End Combat
                       </button>
@@ -379,7 +386,7 @@ export default function NightwirePage() {
                     type="button"
                     onClick={handleRollInitiative}
                     disabled={combatActionPending}
-                    className="rounded bg-stone-900 px-2.5 py-1 font-medium text-stone-200 hover:bg-stone-800 disabled:opacity-50"
+                    className="nw-btn-ghost py-1 text-xs"
                   >
                     Roll Initiative
                   </button>
@@ -387,16 +394,14 @@ export default function NightwirePage() {
               </div>
 
               <form onSubmit={handleSendAction} className="flex flex-col gap-2">
-                <div className="flex rounded-lg border border-stone-800 bg-stone-950 p-0.5">
+                <div className="nw-divider flex rounded-lg border bg-black/20 p-0.5">
                   {COMPOSER_MODES.map((m) => (
                     <button
                       key={m.value}
                       type="button"
                       aria-pressed={composerMode === m.value}
                       onClick={() => setComposerMode(m.value)}
-                      className={`flex-1 rounded-md px-2.5 py-1 text-xs font-medium text-stone-400 hover:text-stone-200 ${
-                        composerMode === m.value ? "bg-stone-800 text-stone-100" : ""
-                      }`}
+                      className="nw-tab flex-1"
                     >
                       {m.label}
                     </button>
@@ -413,12 +418,12 @@ export default function NightwirePage() {
                   }}
                   placeholder={COMPOSER_MODES.find((m) => m.value === composerMode)?.placeholder}
                   disabled={sending}
-                  className="resize-none rounded border border-stone-700 bg-stone-900 px-3 py-2 text-sm outline-none placeholder:text-stone-600 disabled:cursor-not-allowed disabled:text-stone-600"
+                  className="nw-field resize-none outline-none disabled:cursor-not-allowed"
                 />
                 <button
                   type="submit"
                   disabled={sending || !composerText.trim()}
-                  className="rounded bg-amber-200 px-3 py-2 text-sm font-medium text-stone-950 disabled:opacity-50"
+                  className="nw-btn-primary"
                 >
                   {sending ? "Waiting for the GM…" : "Send"}
                 </button>

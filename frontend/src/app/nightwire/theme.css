@@ -1,0 +1,193 @@
+/* Nightwire's own "Neon Noir" theme — scoped to the /nightwire route only.
+   Deliberately kept out of the shared ../globals.css (open-dungeon's warm
+   fantasy-tabletop palette) so open-dungeon's own routes are untouched.
+   Real cyberpunk precedent, not generic neon-on-black: Cyberpunk 2077's
+   own duotone dialogue treatment for the violet/cyan split, Neon City
+   Overdrive's moodier indigo/violet base and soft glow over CP2077's
+   harsher chrome-black HUD. See docs/superpowers/specs/ for the
+   brainstormed design this implements. */
+
+@import url("https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap");
+
+.nw-theme {
+  --nw-bg-0: #0d0620;
+  --nw-bg-1: #160b2c;
+  --nw-bg-2: #1a0f2e;
+  --nw-violet: #b967ff;
+  --nw-violet-dim: #4a3a5c;
+  --nw-cyan: #00e5ff;
+  --nw-danger: #ff4d6d;
+  --nw-text: #f0e8fa;
+  --nw-text-heading: #e0c3ff;
+  --nw-text-body: #d8cee8;
+  --nw-text-muted: #8878a0;
+  --nw-text-faint: #6b5a85;
+  --nw-border: #3a2a52;
+
+  background: linear-gradient(180deg, var(--nw-bg-0) 0%, var(--nw-bg-1) 60%, var(--nw-bg-2) 100%);
+  color: var(--nw-text);
+  min-height: 100dvh;
+}
+
+.nw-heading {
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--nw-text-heading);
+  text-shadow: 0 0 8px rgba(185, 103, 255, 0.5);
+}
+
+.nw-label {
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.nw-eyebrow {
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 600;
+  font-size: 0.625rem;
+  letter-spacing: 0.1em;
+  color: var(--nw-cyan);
+}
+
+.nw-hud {
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 500;
+}
+
+.nw-text-body {
+  color: var(--nw-text-body);
+}
+
+.nw-text-muted {
+  color: var(--nw-text-muted);
+}
+
+.nw-text-faint {
+  color: var(--nw-text-faint);
+}
+
+.nw-text-danger {
+  color: var(--nw-danger);
+}
+
+.nw-prose {
+  font-family: var(--font-source-serif), Georgia, serif;
+  color: var(--nw-text-body);
+}
+
+.nw-field {
+  border: 1px solid var(--nw-border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--nw-text);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.nw-field::placeholder {
+  color: var(--nw-text-faint);
+}
+
+.nw-field:focus {
+  outline: none;
+  border-color: var(--nw-violet);
+}
+
+.nw-btn-primary {
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: var(--nw-violet);
+  color: var(--nw-bg-0);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  box-shadow: 0 0 12px rgba(185, 103, 255, 0.35);
+}
+
+.nw-btn-primary:disabled {
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+.nw-btn-ghost {
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--nw-border);
+  color: var(--nw-text-muted);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.nw-btn-ghost:hover {
+  border-color: var(--nw-violet-dim);
+  color: var(--nw-text);
+}
+
+.nw-btn-danger {
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--nw-danger);
+  color: var(--nw-danger);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.nw-tab {
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--nw-text-muted);
+  border-radius: 0.3rem;
+  padding: 0.4rem 0.7rem;
+}
+
+.nw-tab[aria-pressed="true"] {
+  background: var(--nw-violet);
+  color: var(--nw-bg-0);
+  box-shadow: 0 0 10px rgba(185, 103, 255, 0.4);
+}
+
+.nw-bubble-own {
+  border: 1px solid var(--nw-violet);
+  background: rgba(185, 103, 255, 0.1);
+  color: var(--nw-text-heading);
+  border-radius: 1rem 1rem 0.25rem 1rem;
+  box-shadow: 0 0 14px rgba(185, 103, 255, 0.15);
+}
+
+.nw-bubble-teammate {
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  background: rgba(0, 229, 255, 0.06);
+  color: #a3ecff;
+  border-radius: 1rem 1rem 1rem 0.25rem;
+}
+
+.nw-name-tag {
+  font-family: "Rajdhani", sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  color: var(--nw-cyan);
+}
+
+.nw-divider {
+  border-color: var(--nw-border);
+}
+
+.nw-portrait-fallback {
+  background: var(--nw-violet);
+  color: var(--nw-bg-0);
+}
+
+.nw-sheet-backdrop {
+  background: rgba(6, 3, 16, 0.85);
+}
+
+.nw-sheet-panel {
+  background: var(--nw-bg-1);
+  border: 1px solid var(--nw-border);
+  box-shadow: 0 0 30px rgba(185, 103, 255, 0.15);
+}
