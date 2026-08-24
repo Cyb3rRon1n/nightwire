@@ -1,9 +1,9 @@
 from engine.character import CharacterSheet
 from engine.session import Session
-from engine.turns import advance_turn, end_combat, join, start_combat
+from engine.turns import advance_turn, end_combat, join, roll_initiative
 
 
-def handle_message(session: Session, message: dict) -> None:
+def handle_message(session: Session, message: dict, player_id: str) -> None:
     message_type = message.get("type")
     if message_type is None:
         raise ValueError("missing 'type' in message")
@@ -14,14 +14,12 @@ def handle_message(session: Session, message: dict) -> None:
             raise ValueError("missing 'character' in join message")
         join(session, CharacterSheet(**character_data))
 
-    elif message_type == "start_combat":
-        initiative_rolls = message.get("initiative_rolls")
-        if initiative_rolls is None:
-            raise ValueError("missing 'initiative_rolls' in start_combat message")
-        unknown = set(initiative_rolls) - set(session.characters)
-        if unknown:
-            raise ValueError(f"initiative_rolls for players not in session: {sorted(unknown)}")
-        start_combat(session, initiative_rolls)
+    elif message_type == "roll_initiative":
+        if player_id not in session.characters:
+            raise ValueError(f"unknown player_id: {player_id!r}")
+        total = roll_initiative(session, player_id)
+        if total is not None:
+            session.log.append(f"[initiative: {session.characters[player_id].name} rolled {total}]")
 
     elif message_type == "advance_turn":
         advance_turn(session)

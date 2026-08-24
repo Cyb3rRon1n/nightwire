@@ -16,3 +16,4 @@ class Session:
     scene_mood: str | None = None
     active_objectives: list[str] = field(default_factory=list)
     speaker_voices: dict[str, str] = field(default_factory=dict)
+    pending_initiative: dict[str, int] = field(default_factory=dict)

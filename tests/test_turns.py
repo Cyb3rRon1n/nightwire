@@ -1,10 +1,22 @@
+from unittest.mock import patch
+
 from engine.character import CharacterSheet
 from engine.session import Session
-from engine.turns import advance_turn, current_turn, end_combat, is_players_turn, join, start_combat
+from engine.turns import (
+    advance_turn,
+    current_turn,
+    end_combat,
+    is_players_turn,
+    join,
+    roll_initiative,
+    start_combat,
+)
 
 
-def _character(player_id: str, name: str = "Rook") -> CharacterSheet:
-    return CharacterSheet(player_id=player_id, name=name, role="solo", lifepath="streetkid")
+def _character(player_id: str, name: str = "Rook", reflexes: int = 10) -> CharacterSheet:
+    return CharacterSheet(
+        player_id=player_id, name=name, role="solo", lifepath="streetkid", attributes={"reflexes": reflexes}
+    )
 
 
 def test_join_adds_the_character_and_the_turn_order():
@@ -140,3 +152,71 @@ def test_end_combat_is_idempotent():
     join(session, _character("p1"))
     end_combat(session)  # never in combat - no-op, no error
     assert session.in_combat is False
+
+
+def test_roll_initiative_adds_the_reflexes_modifier():
+    session = Session(session_id="test-session")
+    join(session, _character("p1", reflexes=16))  # +3 modifier
+    with patch("engine.turns.random.randint", return_value=7):
+        total = roll_initiative(session, "p1")
+    assert total == 10
+
+
+def test_roll_initiative_does_not_lock_combat_until_everyone_has_rolled():
+    session = Session(session_id="test-session")
+    join(session, _character("p1"))
+    join(session, _character("p2"))
+    roll_initiative(session, "p1")
+    assert session.in_combat is False
+    assert "p1" in session.pending_initiative
+
+
+def test_roll_initiative_locks_combat_once_the_whole_roster_has_rolled():
+    session = Session(session_id="test-session")
+    join(session, _character("p1", reflexes=8))  # -1 modifier
+    join(session, _character("p2", reflexes=16))  # +3 modifier
+    with patch("engine.turns.random.randint", side_effect=[5, 5]):
+        roll_initiative(session, "p1")  # 5 - 1 = 4
+        roll_initiative(session, "p2")  # 5 + 3 = 8
+    assert session.in_combat is True
+    assert session.turn_order == ["p2", "p1"]
+    assert session.pending_initiative == {}
+
+
+def test_roll_initiative_locks_immediately_for_a_solo_session():
+    session = Session(session_id="test-session")
+    join(session, _character("p1"))
+    roll_initiative(session, "p1")
+    assert session.in_combat is True
+
+
+def test_roll_initiative_is_a_no_op_for_a_player_who_already_rolled():
+    session = Session(session_id="test-session")
+    join(session, _character("p1"))
+    join(session, _character("p2"))
+    first = roll_initiative(session, "p1")
+    second = roll_initiative(session, "p1")
+    assert second is None
+    assert session.pending_initiative["p1"] == first
+
+
+def test_roll_initiative_is_a_no_op_once_combat_is_already_underway():
+    session = Session(session_id="test-session")
+    join(session, _character("p1"))
+    start_combat(session, {"p1": 8})
+
+    result = roll_initiative(session, "p1")
+
+    assert result is None
+    assert session.pending_initiative == {}
+
+
+def test_end_combat_clears_a_pending_declaration_even_if_combat_never_started():
+    session = Session(session_id="test-session")
+    join(session, _character("p1"))
+    join(session, _character("p2"))
+    roll_initiative(session, "p1")  # p2 hasn't rolled yet - declaration is pending
+
+    end_combat(session)
+
+    assert session.pending_initiative == {}

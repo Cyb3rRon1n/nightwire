@@ -66,9 +66,8 @@ export interface ActionMessage {
   text: string
 }
 
-export interface StartCombatMessage {
-  type: 'start_combat'
-  initiative_rolls: Record<string, number>
+export interface RollInitiativeMessage {
+  type: 'roll_initiative'
 }
 
 export interface AdvanceTurnMessage {
@@ -86,7 +85,7 @@ export interface ApproveCharacterMessage {
 export type ClientMessage =
   | JoinMessage
   | ActionMessage
-  | StartCombatMessage
+  | RollInitiativeMessage
   | AdvanceTurnMessage
   | EndCombatMessage
   | ApproveCharacterMessage

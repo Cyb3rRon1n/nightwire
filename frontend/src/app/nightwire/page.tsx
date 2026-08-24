@@ -97,6 +97,7 @@ export default function NightwirePage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [approvingPortrait, setApprovingPortrait] = useState(false);
   const [portraitSkipped, setPortraitSkipped] = useState(false);
+  const [combatActionPending, setCombatActionPending] = useState(false);
 
   const { view, error, send, readyState } = useNightwireSocket(
     connected ? sessionId : null,
@@ -108,6 +109,7 @@ export default function NightwirePage() {
   useEffect(() => {
     setSending(false);
     setApprovingPortrait(false);
+    setCombatActionPending(false);
   }, [view]);
 
   useEffect(() => {
@@ -145,6 +147,21 @@ export default function NightwirePage() {
   function handleApprovePortrait() {
     send({ type: "approve_character" });
     setApprovingPortrait(true);
+  }
+
+  function handleRollInitiative() {
+    send({ type: "roll_initiative" });
+    setCombatActionPending(true);
+  }
+
+  function handleAdvanceTurn() {
+    send({ type: "advance_turn" });
+    setCombatActionPending(true);
+  }
+
+  function handleEndCombat() {
+    send({ type: "end_combat" });
+    setCombatActionPending(true);
   }
 
   return (
@@ -265,6 +282,45 @@ export default function NightwirePage() {
               </div>
 
               <VitalsBand view={view} playerId={playerId} />
+
+              <div className="flex items-center justify-between text-xs">
+                {view.in_combat ? (
+                  <>
+                    <span className="text-stone-400">
+                      {view.is_your_turn ? "Your turn" : `${view.current_turn ?? "…"}'s turn`}
+                    </span>
+                    <div className="flex gap-2">
+                      {view.is_your_turn && (
+                        <button
+                          type="button"
+                          onClick={handleAdvanceTurn}
+                          disabled={combatActionPending}
+                          className="rounded bg-stone-900 px-2.5 py-1 font-medium text-stone-200 hover:bg-stone-800 disabled:opacity-50"
+                        >
+                          End Turn
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleEndCombat}
+                        disabled={combatActionPending}
+                        className="rounded bg-stone-900 px-2.5 py-1 font-medium text-red-300 hover:bg-stone-800 disabled:opacity-50"
+                      >
+                        End Combat
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleRollInitiative}
+                    disabled={combatActionPending}
+                    className="rounded bg-stone-900 px-2.5 py-1 font-medium text-stone-200 hover:bg-stone-800 disabled:opacity-50"
+                  >
+                    Roll Initiative
+                  </button>
+                )}
+              </div>
 
               <form onSubmit={handleSendAction} className="flex flex-col gap-2">
                 <div className="flex rounded-lg border border-stone-800 bg-stone-950 p-0.5">
