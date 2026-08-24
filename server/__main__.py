@@ -23,7 +23,11 @@ def build_app():
         "signs reflecting off wet concrete, city skyline behind'. Player orders a drink or "
         "asks a question -> leave image_request unset. When you do set it, the prompt "
         "should be a short, concrete visual description (setting, lighting, mood) - not a "
-        "summary of the plot."
+        "summary of the plot. "
+        "Narration is a list of segments, each with a speaker. Use speaker 'narrator' for "
+        "your own descriptive prose; use the exact same name every time a given character "
+        "speaks (don't vary casing or spelling turn to turn). Set gender only the first "
+        "time a new speaker appears - male or female, whichever fits the character."
     )
     narrator_client = NarratorClient(model="qwen3:8b", system_prompt=system_prompt)
     # output_dir default (frontend/public/generated) matches

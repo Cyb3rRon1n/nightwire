@@ -51,8 +51,15 @@ class ImageRequest(BaseModel):
 
 class NarrationSegment(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    speaker: str
-    gender: Literal["male", "female"] | None = None
+    speaker: str = Field(
+        description="Exactly 'narrator' for DM prose, otherwise the in-fiction character's "
+        "name, spelled identically every time they speak this session."
+    )
+    gender: Literal["male", "female"] | None = Field(
+        default=None,
+        description="The speaker's voice gender - set it the first time this speaker "
+        "appears in the session, omit on later lines from the same speaker.",
+    )
     text: str
 
 
