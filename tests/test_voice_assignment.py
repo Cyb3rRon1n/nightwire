@@ -16,12 +16,12 @@ def test_assign_voice_picks_the_first_matching_gender_for_a_new_speaker():
     voice = assign_voice(session, "Jax", "male", _BANK)
 
     assert voice == "am_adam"
-    assert session.speaker_voices["Jax"] == "am_adam"
+    assert session.speaker_voices["jax"] == "am_adam"
 
 
 def test_assign_voice_reuses_the_stored_voice_for_a_returning_speaker_ignoring_gender():
     session = Session(session_id="s1")
-    session.speaker_voices["Jax"] = "am_michael"
+    session.speaker_voices["jax"] = "am_michael"
 
     voice = assign_voice(session, "Jax", "female", _BANK)
 
@@ -64,3 +64,13 @@ def test_assign_voice_falls_back_to_the_full_bank_when_no_voice_declares_that_ge
     voice = assign_voice(session, "narrator", "male", ungendered_bank)
 
     assert voice == "alloy"
+
+
+def test_assign_voice_treats_case_and_whitespace_variants_as_the_same_speaker():
+    session = Session(session_id="s1")
+    first = assign_voice(session, "Rico", "male", _BANK)
+
+    second = assign_voice(session, " rico ", "female", _BANK)
+
+    assert second == first
+    assert len(session.speaker_voices) == 1
