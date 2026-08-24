@@ -3,6 +3,7 @@ import uvicorn
 from engine.persistence import JSONFileSessionStore
 from narrator.client import NarratorClient
 from narrator.image_backend import FluxWorkerBackend
+from narrator.tts_backend import KokoroBackend
 from server.app import create_app
 
 
@@ -29,7 +30,12 @@ def build_app():
     # image_server/optimized_image_server.py's own OUT_DIR default,
     # assuming both processes run from the repo root.
     image_backend = FluxWorkerBackend()
-    return create_app(store, narrator_client, image_backend)
+    # KokoroBackend is the local-first default (coexists with qwen3:8b, no
+    # GPU-swap cost) - swap to OpenAITTSBackend(api_key=...) here for the
+    # hosted fallback; selection is a startup-time config choice, not a
+    # runtime toggle (see docs/superpowers/specs/2026-08-23-tts-narration-design.md).
+    tts_backend = KokoroBackend()
+    return create_app(store, narrator_client, image_backend, tts_backend)
 
 
 if __name__ == "__main__":

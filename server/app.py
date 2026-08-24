@@ -5,13 +5,19 @@ from engine.persistence import JSONFileSessionStore
 from engine.session import Session
 from narrator.client import NarratorClient
 from narrator.image_backend import ImageBackend
+from narrator.tts_backend import TTSBackend
 from server.connection_manager import ConnectionManager
 from server.dispatch import handle_message
 from server.narration import handle_action
 from server.portrait import handle_approve_character
 
 
-def create_app(store: JSONFileSessionStore, narrator_client: NarratorClient, image_backend: ImageBackend) -> FastAPI:
+def create_app(
+    store: JSONFileSessionStore,
+    narrator_client: NarratorClient,
+    image_backend: ImageBackend,
+    tts_backend: TTSBackend,
+) -> FastAPI:
     app = FastAPI()
     # Serves generated portraits/scene images (sessions/portraits/..., sessions/images/...)
     # - store.directory always exists (JSONFileSessionStore creates it), the
@@ -49,7 +55,7 @@ def create_app(store: JSONFileSessionStore, narrator_client: NarratorClient, ima
 
                 try:
                     if message.get("type") == "action":
-                        await handle_action(session, narrator_client, store, image_backend, player_id, message)
+                        await handle_action(session, narrator_client, store, image_backend, tts_backend, player_id, message)
                     elif message.get("type") == "approve_character":
                         await handle_approve_character(session, store, narrator_client, image_backend, player_id)
                     else:
