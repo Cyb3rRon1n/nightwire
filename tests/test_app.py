@@ -1,3 +1,4 @@
+import base64
 import json
 
 from fastapi.testclient import TestClient
@@ -17,7 +18,7 @@ async def _unused_generate_fn(**kwargs):
 
 
 class _UnusedImageBackend:
-    async def generate_portrait(self, description):
+    async def generate_portrait(self, description, reference_photos=None):
         raise AssertionError("image backend should not be called by this test")
 
     async def generate_scene(self, prompt, reference_paths):
@@ -228,7 +229,7 @@ def test_approve_character_generates_and_broadcasts_a_portrait(tmp_path):
     narrator_client = NarratorClient(chat_fn=_unused_chat_fn, generate_fn=generate_fn)
 
     class FakeImageBackend:
-        async def generate_portrait(self, description):
+        async def generate_portrait(self, description, reference_photos=None):
             assert "Rook" in description
             return b"fake-portrait-bytes"
 
@@ -251,6 +252,56 @@ def test_approve_character_generates_and_broadcasts_a_portrait(tmp_path):
     portrait_path = view["characters"]["p1"]["portrait_path"]
     assert portrait_path is not None
     assert (tmp_path / portrait_path).read_bytes() == b"fake-portrait-bytes"
+
+
+def test_approve_character_with_reference_photos_forwards_them_to_the_image_backend(tmp_path):
+    generate_calls = []
+
+    async def generate_fn(**kwargs):
+        generate_calls.append(kwargs)
+
+    narrator_client = NarratorClient(chat_fn=_unused_chat_fn, generate_fn=generate_fn)
+    photo_url = "data:image/png;base64," + base64.b64encode(b"fake-face-bytes").decode()
+    seen = {}
+
+    class FakeImageBackend:
+        async def generate_portrait(self, description, reference_photos=None):
+            seen["reference_photos"] = reference_photos
+            return b"fake-portrait-bytes"
+
+        async def generate_scene(self, prompt, reference_paths):
+            raise AssertionError("not exercised by this test")
+
+    client = _client(tmp_path, narrator_client, FakeImageBackend())
+
+    with client.websocket_connect("/ws/s1/p1") as ws:
+        ws.send_json({
+            "type": "join",
+            "character": {"player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"},
+        })
+        ws.receive_json()
+
+        ws.send_json({"type": "approve_character", "reference_photos": [photo_url]})
+        view = ws.receive_json()
+
+    assert seen["reference_photos"] == [photo_url]
+    assert view["characters"]["p1"]["portrait_path"] is not None
+
+
+def test_approve_character_with_too_many_reference_photos_sends_an_error(tmp_path):
+    client = _client(tmp_path)  # default _UnusedImageBackend proves it's never called
+    with client.websocket_connect("/ws/s1/p1") as ws:
+        ws.send_json({
+            "type": "join",
+            "character": {"player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"},
+        })
+        ws.receive_json()
+
+        ws.send_json({"type": "approve_character", "reference_photos": ["a", "b", "c"]})
+        error = ws.receive_json()
+
+    assert error["type"] == "error"
+    assert "at most 2" in error["message"]
 
 
 def test_approve_character_without_a_joined_character_sends_an_error(tmp_path):
