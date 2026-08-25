@@ -1,8 +1,11 @@
+from typing import get_args
+
 import pytest
 
 from engine.character import CharacterSheet
 from engine.session import Session
-from narrator.tools import execute_tool
+from narrator.tools import RequestRoll, execute_tool
+from ruleset.skills import SKILLS
 
 
 def _session_with_character(**overrides) -> Session:
@@ -146,6 +149,15 @@ def test_apply_character_update_grants_skill_points():
     })
     assert session.characters["p1"].unspent_skill_points == 2
     assert result["unspent_skill_points"] == 2
+
+
+def test_request_roll_skill_literal_matches_the_roster():
+    # Pins RequestRoll.skill's Literal against ruleset.skills.SKILLS so the
+    # two copies of the 14-skill roster can't silently drift: a name only in
+    # the Literal is unreachable by the narrator, a name only in SKILLS
+    # makes character.skills.get(tool.skill, 0) silently return 0 forever.
+    skill_field = RequestRoll.model_fields["skill"]
+    assert set(get_args(skill_field.annotation)) == set(SKILLS)
 
 
 def test_unknown_tool_name_raises_value_error():
