@@ -28,6 +28,9 @@ export const SKILLS: SkillInfo[] = [
   { name: "performance", label: "Performance", governingAttribute: "presence", description: "Holding a crowd - music, acting, showmanship." },
 ];
 
+// Mirrors ruleset/skills.py's STARTING_SKILL_POINTS = 8.
+export const STARTING_SKILL_POINTS = 8;
+
 // Mirrors ruleset/skills.py's skill_cap(): min(5, modifier(score) + 3).
 export function skillCap(attributeScore: number): number {
   const modifier = Math.floor((attributeScore - 10) / 2);
