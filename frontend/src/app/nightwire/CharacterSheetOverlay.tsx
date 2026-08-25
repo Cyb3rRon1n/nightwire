@@ -2,16 +2,19 @@ import { portraitFor } from "@/lib/nightwire/portrait";
 import { mediaUrl } from "@/lib/nightwire/media";
 import type { CharacterSheet } from "@/lib/nightwire/protocol";
 import { SkillPicker } from "./SkillPicker";
+import { AttributePicker } from "./AttributePicker";
 import "./theme.css";
 
 export function CharacterSheetOverlay({
   character,
   onClose,
   onAllocateSkill,
+  onAllocateAttribute,
 }: {
   character: CharacterSheet;
   onClose: () => void;
   onAllocateSkill: (skill: string) => void;
+  onAllocateAttribute: (attribute: string) => void;
 }) {
   const { initials, colorClass } = portraitFor(character.role, character.name);
 
@@ -46,7 +49,14 @@ export function CharacterSheetOverlay({
             <p className="nw-eyebrow mb-1">
               Attributes
             </p>
-            {Object.keys(character.attributes).length === 0 ? (
+            {character.unspent_attribute_points > 0 ? (
+              <AttributePicker
+                attributes={character.attributes}
+                primaryAttribute={null}
+                remaining={character.unspent_attribute_points}
+                onIncrement={onAllocateAttribute}
+              />
+            ) : Object.keys(character.attributes).length === 0 ? (
               <p className="text-sm nw-text-faint">None set.</p>
             ) : (
               <div className="nw-hud grid grid-cols-3 gap-1 text-sm nw-text-body">

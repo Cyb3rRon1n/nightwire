@@ -8,7 +8,7 @@ import { portraitFor } from "@/lib/nightwire/portrait";
 import { mediaUrl } from "@/lib/nightwire/media";
 import { CharacterSheetOverlay } from "./CharacterSheetOverlay";
 import { SkillPicker, STARTING_SKILL_POINTS } from "./SkillPicker";
-import { AttributePicker, startingAttributes } from "./AttributePicker";
+import { AttributePicker, attributeBudgetRemaining, startingAttributes } from "./AttributePicker";
 import "./theme.css";
 
 const READY_STATE_LABEL: Record<ReadyState, string> = {
@@ -354,6 +354,7 @@ export default function NightwirePage() {
               <AttributePicker
                 attributes={attributes}
                 primaryAttribute={primaryAttribute}
+                remaining={attributeBudgetRemaining(mergedAttributes, primaryAttribute)}
                 onIncrement={(attrName) =>
                   setAttributes((a) => ({
                     ...a,
@@ -584,6 +585,7 @@ export default function NightwirePage() {
                   character={view.characters[playerId] as CharacterSheet}
                   onClose={() => setSheetOpen(false)}
                   onAllocateSkill={(skill) => send({ type: "allocate_skill_points", skill, amount: 1 })}
+                  onAllocateAttribute={(attribute) => send({ type: "allocate_attribute_points", attribute, amount: 1 })}
                 />
               )}
             </>

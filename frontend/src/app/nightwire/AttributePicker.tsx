@@ -34,23 +34,40 @@ export function startingAttributes(primaryAttribute: string | null): Record<stri
   return starting;
 }
 
-export function AttributePicker({
-  attributes,
-  primaryAttribute,
-  onIncrement,
-  onDecrement,
-}: {
-  attributes: Record<string, number>;
-  primaryAttribute: string | null;
-  onIncrement: (attributeName: string) => void;
-  onDecrement: (attributeName: string) => void;
-}) {
+// Chargen-only: how many of the 12-point budget are still unspent, given the
+// current draft attributes. Not used post-join - milestone spends draw from
+// CharacterSheet.unspent_attribute_points instead, a separate counter (see
+// server/dispatch.py's allocate_attribute_points), so the caller passes that
+// directly as AttributePicker's `remaining` prop in that context instead of
+// calling this helper.
+export function attributeBudgetRemaining(attributes: Record<string, number>, primaryAttribute: string | null): number {
   const starting = startingAttributes(primaryAttribute);
   const spent = ATTRIBUTES.reduce(
     (total, attr) => total + ((attributes[attr.name] ?? starting[attr.name]) - starting[attr.name]),
     0,
   );
-  const remaining = ATTRIBUTE_BUDGET - spent;
+  return ATTRIBUTE_BUDGET - spent;
+}
+
+// Two call sites share this, same split SkillPicker.tsx already established:
+// the pre-join creation picker (onDecrement present, remaining computed from
+// the chargen budget via attributeBudgetRemaining) and the post-join
+// milestone spend (onDecrement omitted - spend-only, remaining is the
+// character's own unspent_attribute_points, no budget math involved).
+export function AttributePicker({
+  attributes,
+  primaryAttribute,
+  remaining,
+  onIncrement,
+  onDecrement,
+}: {
+  attributes: Record<string, number>;
+  primaryAttribute: string | null;
+  remaining: number;
+  onIncrement: (attributeName: string) => void;
+  onDecrement?: (attributeName: string) => void;
+}) {
+  const starting = startingAttributes(primaryAttribute);
 
   return (
     <div className="nw-hud flex flex-col gap-1 text-sm nw-text-body">
@@ -65,14 +82,16 @@ export function AttributePicker({
               {attr.label} ({score}){attr.name === primaryAttribute ? " ★" : ""}
             </span>
             <div className="flex gap-1">
-              <button
-                type="button"
-                className="nw-btn-ghost"
-                onClick={() => onDecrement(attr.name)}
-                disabled={score <= ATTRIBUTE_MIN}
-              >
-                −
-              </button>
+              {onDecrement && (
+                <button
+                  type="button"
+                  className="nw-btn-ghost"
+                  onClick={() => onDecrement(attr.name)}
+                  disabled={score <= ATTRIBUTE_MIN}
+                >
+                  −
+                </button>
+              )}
               <button
                 type="button"
                 className="nw-btn-ghost"
