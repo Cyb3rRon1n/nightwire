@@ -20,6 +20,8 @@ def _validate_and_finalize_skills(character_data: dict) -> None:
     for skill_name, rank in skills.items():
         if skill_name not in SKILLS:
             raise ValueError(f"unknown skill: {skill_name!r}")
+        if rank < 0:
+            raise ValueError(f"skill {skill_name!r} rank {rank} cannot be negative")
         cap = _skill_rank_cap(skill_name, attributes)
         if rank > cap:
             raise ValueError(f"skill {skill_name!r} rank {rank} exceeds cap {cap}")
