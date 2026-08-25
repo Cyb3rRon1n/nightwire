@@ -110,3 +110,65 @@ def test_join_missing_character_field_raises_value_error():
     session = Session(session_id="s1")
     with pytest.raises(ValueError, match="missing 'character'"):
         handle_message(session, {"type": "join"}, "p1")
+
+
+def test_join_accepts_a_valid_starting_skill_allocation():
+    session = Session(session_id="s1")
+    handle_message(session, {
+        "type": "join",
+        "character": {
+            "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+            "skills": {"stealth": 2, "hacking": 1},
+        },
+    }, "p1")
+
+    character = session.characters["p1"]
+    assert character.skills == {"stealth": 2, "hacking": 1}
+    assert character.unspent_skill_points == 5  # 8 - 3 spent
+
+
+def test_join_rejects_a_starting_allocation_over_budget():
+    session = Session(session_id="s1")
+    with pytest.raises(ValueError, match="exceed the starting budget"):
+        handle_message(session, {
+            "type": "join",
+            "character": {
+                "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+                "skills": {"melee": 3, "athletics": 3, "stealth": 3},  # 9 > budget of 8
+            },
+        }, "p1")
+
+
+def test_join_rejects_a_starting_allocation_over_the_governing_attribute_cap():
+    session = Session(session_id="s1")
+    with pytest.raises(ValueError, match="exceeds cap"):
+        handle_message(session, {
+            "type": "join",
+            "character": {
+                "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+                "skills": {"melee": 4},  # attribute defaults to 10 -> cap 3, 4 > 3
+            },
+        }, "p1")
+
+
+def test_join_rejects_an_unknown_skill_name():
+    session = Session(session_id="s1")
+    with pytest.raises(ValueError, match="unknown skill"):
+        handle_message(session, {
+            "type": "join",
+            "character": {
+                "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+                "skills": {"lockpicking": 1},
+            },
+        }, "p1")
+
+
+def test_join_with_no_skills_field_leaves_the_full_budget_unspent():
+    session = Session(session_id="s1")
+    handle_message(session, {
+        "type": "join",
+        "character": {"player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"},
+    }, "p1")
+
+    assert session.characters["p1"].skills == {}
+    assert session.characters["p1"].unspent_skill_points == 8
