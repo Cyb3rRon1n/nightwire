@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ReadyState } from "react-use-websocket";
 import { useNightwireSocket } from "@/lib/nightwire/useNightwireSocket";
-import type { CharacterSheet, StateView } from "@/lib/nightwire/protocol";
+import type { CharacterSheet, RedactedCharacter, StateView } from "@/lib/nightwire/protocol";
 import { portraitFor } from "@/lib/nightwire/portrait";
 import { mediaUrl } from "@/lib/nightwire/media";
 import { CharacterSheetOverlay } from "./CharacterSheetOverlay";
@@ -52,33 +52,64 @@ const LIFEPATHS: Array<{ value: string; label: string; description: string }> = 
   { value: "nomad", label: "Nomad", description: "Raised outside the city in a clan/family - vehicle know-how, an outsider's read on the corps, strong found-family loyalty." },
 ];
 
-// The viewer's own log lines are server-authored as "{player_id}: {text}" -
-// same split open-dungeon's own page.tsx draws between user/assistant messages.
-function isOwnLine(line: string, playerId: string): boolean {
-  return line.startsWith(`${playerId}: `);
-}
+// Every spoken/acted log line is server-authored as "{who}: {text}" - either
+// a real player_id for the player's own typed action (server/narration.py's
+// `session.log.append(f"{player_id}: {action_text}")`) or an in-fiction
+// character name for narrator-voiced dialogue (same file's segment loop:
+// `f"{segment.speaker}: {segment.text}"`, speaker "narrator" itself getting
+// no prefix at all - that's plain prose, the "narration" case below). A
+// short "word(s): " prefix is dialogue by construction: the system prompt
+// reserves the unprefixed form for the narrator's own prose, so this is
+// safe to match on shape without a new protocol field for known speakers.
+// Case isn't a signal here - the model doesn't always capitalize a
+// role-based NPC name (observed live: "fixer: Rook, you don't just...").
+const SPEAKER_LINE = /^([A-Za-z][A-Za-z0-9' -]{0,29}): ([\s\S]+)$/;
 
-// A teammate's own action lines are server-authored the same way
-// ("{their_player_id}: {text}") - every other party member's id is a known,
-// client-visible key of view.characters, so this is distinguishable from
-// narrator prose (including NPC "Speaker: text" segments, which are keyed
-// by in-fiction name, not a real player_id) without any new protocol field.
-function otherPlayerName(line: string, view: StateView, playerId: string): string | null {
+type LogEntry =
+  | { kind: "own"; text: string }
+  | { kind: "speaking"; text: string; name: string; character: CharacterSheet | RedactedCharacter | null }
+  | { kind: "meta"; text: string }
+  | { kind: "narration"; text: string };
+
+function classifyLine(line: string, view: StateView, playerId: string): LogEntry {
   for (const [pid, character] of Object.entries(view.characters)) {
-    if (pid !== playerId && line.startsWith(`${pid}: `)) return character.name;
+    const prefix = `${pid}: `;
+    if (line.startsWith(prefix)) {
+      const text = line.slice(prefix.length);
+      return pid === playerId ? { kind: "own", text } : { kind: "speaking", text, name: character.name, character };
+    }
   }
-  return null;
+  if (BRACKET_LINE.test(line)) return { kind: "meta", text: line };
+  const match = line.match(SPEAKER_LINE);
+  if (match) {
+    const [, name, text] = match;
+    const own = view.characters[playerId];
+    if (own && own.name === name) return { kind: "own", text };
+    const teammate = Object.entries(view.characters).find(([pid, c]) => pid !== playerId && c.name === name);
+    return { kind: "speaking", text, name, character: teammate ? teammate[1] : null };
+  }
+  return { kind: "narration", text: line };
 }
 
-// The raw "{player_id}: " prefix above is only needed to attribute the line -
-// strip it before display so the UI shows the composer text ("> ...") rather
-// than the internal connection id, matching the name tag teammates already get.
-function stripSpeakerPrefix(line: string, view: StateView): string {
-  for (const pid of Object.keys(view.characters)) {
-    const prefix = `${pid}: `;
-    if (line.startsWith(prefix)) return line.slice(prefix.length);
+// Cheap placeholder avatar next to a speech/action bubble - a real portrait
+// when the viewer is allowed to see one (their own character only; teammates'
+// portrait_path is redacted server-side, see server/views.py), initials
+// otherwise. NPCs have no CharacterSheet at all, so they always get initials,
+// colored off their own name since they have no role to hash instead.
+function SpeakerAvatar({ name, character }: { name: string; character?: CharacterSheet | RedactedCharacter | null }) {
+  const portraitPath = character && "portrait_path" in character ? character.portrait_path : null;
+  if (portraitPath) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={mediaUrl(portraitPath)} alt="" className="size-8 shrink-0 rounded-full object-cover" />
+    );
   }
-  return line;
+  const { initials, colorClass } = portraitFor(character?.role ?? name, name);
+  return (
+    <span className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${colorClass}`}>
+      {initials}
+    </span>
+  );
 }
 
 // Reuses the same [tag: value] bracket convention tool results already use
@@ -341,36 +372,41 @@ export default function NightwirePage() {
                   if (audioMatch) {
                     return <audio key={i} controls src={mediaUrl(audioMatch[1])} className="max-w-[85%]" />;
                   }
-                  if (isOwnLine(line, playerId)) {
+                  const entry = classifyLine(line, view, playerId);
+                  if (entry.kind === "own") {
+                    const ownCharacter = view.characters[playerId];
                     return (
-                      <div key={i} className="ml-auto max-w-[85%]">
+                      <div key={i} className="ml-auto flex max-w-[85%] flex-row-reverse items-end gap-2">
+                        <SpeakerAvatar name={ownCharacter.name} character={ownCharacter} />
                         <div className="nw-bubble-own px-4 py-3 text-sm leading-6">
-                          <p className="whitespace-pre-wrap text-pretty">{stripSpeakerPrefix(line, view)}</p>
+                          <p className="whitespace-pre-wrap text-pretty">{entry.text}</p>
                         </div>
                       </div>
                     );
                   }
-                  const teammate = otherPlayerName(line, view, playerId);
-                  if (teammate) {
+                  if (entry.kind === "speaking") {
                     return (
-                      <div key={i} className="mr-auto max-w-[85%]">
-                        <p className="nw-name-tag mb-1">{teammate}</p>
-                        <div className="nw-bubble-teammate px-4 py-3 text-sm leading-6">
-                          <p className="whitespace-pre-wrap text-pretty">{stripSpeakerPrefix(line, view)}</p>
+                      <div key={i} className="mr-auto flex max-w-[85%] items-end gap-2">
+                        <SpeakerAvatar name={entry.name} character={entry.character} />
+                        <div>
+                          <p className="nw-name-tag mb-1">{entry.name}</p>
+                          <div className="nw-bubble-teammate px-4 py-3 text-sm leading-6">
+                            <p className="whitespace-pre-wrap text-pretty">{entry.text}</p>
+                          </div>
                         </div>
                       </div>
                     );
                   }
-                  if (BRACKET_LINE.test(line)) {
+                  if (entry.kind === "meta") {
                     return (
                       <p key={i} className="nw-hud text-xs nw-text-faint">
-                        {line}
+                        {entry.text}
                       </p>
                     );
                   }
                   return (
                     <p key={i} className="nw-prose whitespace-pre-wrap text-pretty">
-                      {line}
+                      {entry.text}
                     </p>
                   );
                 })}
