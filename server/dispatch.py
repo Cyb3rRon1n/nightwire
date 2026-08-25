@@ -39,6 +39,10 @@ def _validate_and_finalize_skills(character_data: dict) -> None:
     # is the one place total spent is actually verified, so it's also the
     # only place that gets to decide what's left over.
     character_data["unspent_skill_points"] = STARTING_SKILL_POINTS - spent
+    # Drop dead 0-rank entries (e.g. a pre-join +/- that nets back to 0) so
+    # they don't persist forever - CharacterSheetOverlay's "None trained."
+    # fallback checks len(character.skills) == 0 and would never see it again.
+    character_data["skills"] = {name: rank for name, rank in skills.items() if rank > 0}
 
 
 def handle_message(session: Session, message: dict, player_id: str) -> None:

@@ -211,6 +211,19 @@ def test_join_rejects_a_non_dict_skills_value():
         }, "p1")
 
 
+def test_join_drops_zero_rank_skill_entries():
+    session = Session(session_id="s1")
+    handle_message(session, {
+        "type": "join",
+        "character": {
+            "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+            "skills": {"melee": 0, "hacking": 2},
+        },
+    }, "p1")
+
+    assert session.characters["p1"].skills == {"hacking": 2}
+
+
 def test_join_with_no_skills_field_leaves_the_full_budget_unspent():
     session = Session(session_id="s1")
     handle_message(session, {
