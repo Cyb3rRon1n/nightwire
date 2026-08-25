@@ -58,6 +58,36 @@ async def test_generate_scene_encodes_reference_files_as_data_urls(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_generate_portrait_encodes_reference_photos_as_provided_data_urls(tmp_path):
+    (tmp_path / "img4.png").write_bytes(b"fake-portrait-bytes")
+    seen = {}
+    backend = FluxWorkerBackend(
+        output_dir=tmp_path,
+        http_fn=_fake_http_fn({"id": "img4"}, seen),
+    )
+
+    result = await backend.generate_portrait(
+        "a lean netrunner",
+        reference_photos=["data:image/png;base64,QUJD"],
+    )
+
+    assert result == b"fake-portrait-bytes"
+    assert seen["payload"]["references"] == [{"dataUrl": "data:image/png;base64,QUJD"}]
+
+
+@pytest.mark.asyncio
+async def test_generate_portrait_only_sends_the_first_two_reference_photos(tmp_path):
+    (tmp_path / "img5.png").write_bytes(b"x")
+    seen = {}
+    backend = FluxWorkerBackend(output_dir=tmp_path, http_fn=_fake_http_fn({"id": "img5"}, seen))
+    photos = [f"data:image/png;base64,PHOTO{i}" for i in range(3)]
+
+    await backend.generate_portrait("a fixer", reference_photos=photos)
+
+    assert seen["payload"]["references"] == [{"dataUrl": photos[0]}, {"dataUrl": photos[1]}]
+
+
+@pytest.mark.asyncio
 async def test_generate_scene_only_sends_the_first_two_references(tmp_path):
     paths = []
     for i in range(4):
