@@ -445,3 +445,63 @@ def test_allocate_skill_points_for_unjoined_player_raises_value_error():
     session = Session(session_id="s1")
     with pytest.raises(ValueError, match="unknown player_id"):
         handle_message(session, {"type": "allocate_skill_points", "skill": "hacking", "amount": 1}, "ghost")
+
+
+def test_allocate_attribute_points_increases_score_and_decreases_unspent():
+    session = Session(session_id="s1")
+    handle_message(session, {
+        "type": "join",
+        "character": {"player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"},
+    }, "p1")
+    session.characters["p1"].unspent_attribute_points = 3
+
+    handle_message(session, {"type": "allocate_attribute_points", "attribute": "tech", "amount": 2}, "p1")
+
+    character = session.characters["p1"]
+    assert character.attributes["tech"] == 12
+    assert character.unspent_attribute_points == 1
+
+
+def test_allocate_attribute_points_rejects_insufficient_points():
+    session = Session(session_id="s1")
+    handle_message(session, {
+        "type": "join",
+        "character": {"player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"},
+    }, "p1")
+    # unspent_attribute_points defaults to 0
+
+    with pytest.raises(ValueError, match="insufficient attribute points"):
+        handle_message(session, {"type": "allocate_attribute_points", "attribute": "tech", "amount": 1}, "p1")
+
+
+def test_allocate_attribute_points_rejects_exceeding_the_maximum():
+    session = Session(session_id="s1")
+    handle_message(session, {
+        "type": "join",
+        "character": {
+            "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+            "attributes": {"tech": 14},
+        },
+    }, "p1")
+    session.characters["p1"].unspent_attribute_points = 1
+
+    with pytest.raises(ValueError, match="would exceed the maximum"):
+        handle_message(session, {"type": "allocate_attribute_points", "attribute": "tech", "amount": 1}, "p1")
+
+
+def test_allocate_attribute_points_rejects_an_unknown_attribute():
+    session = Session(session_id="s1")
+    handle_message(session, {
+        "type": "join",
+        "character": {"player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"},
+    }, "p1")
+    session.characters["p1"].unspent_attribute_points = 1
+
+    with pytest.raises(ValueError, match="unknown attribute"):
+        handle_message(session, {"type": "allocate_attribute_points", "attribute": "luck", "amount": 1}, "p1")
+
+
+def test_allocate_attribute_points_for_unjoined_player_raises_value_error():
+    session = Session(session_id="s1")
+    with pytest.raises(ValueError, match="unknown player_id"):
+        handle_message(session, {"type": "allocate_attribute_points", "attribute": "tech", "amount": 1}, "ghost")

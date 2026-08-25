@@ -126,6 +126,28 @@ def handle_message(session: Session, message: dict, player_id: str) -> None:
         character.skills[skill_name] = new_rank
         character.unspent_skill_points -= amount
 
+    elif message_type == "allocate_attribute_points":
+        if player_id not in session.characters:
+            raise ValueError(f"unknown player_id: {player_id!r}")
+        attribute_name = message.get("attribute")
+        amount = message.get("amount")
+        if attribute_name not in {attr.value for attr in Attribute}:
+            raise ValueError(f"unknown attribute: {attribute_name!r}")
+        if not isinstance(amount, int) or amount <= 0:
+            raise ValueError(f"invalid amount: {amount!r}")
+        character = session.characters[player_id]
+        if character.unspent_attribute_points < amount:
+            raise ValueError(
+                f"insufficient attribute points: has {character.unspent_attribute_points}, needs {amount}"
+            )
+        new_score = character.attributes.get(attribute_name, ATTRIBUTE_BASE_SCORE) + amount
+        if new_score > ATTRIBUTE_MAX:
+            raise ValueError(
+                f"attribute {attribute_name!r} score {new_score} would exceed the maximum {ATTRIBUTE_MAX}"
+            )
+        character.attributes[attribute_name] = new_score
+        character.unspent_attribute_points -= amount
+
     elif message_type == "advance_turn":
         advance_turn(session)
 

@@ -16,3 +16,4 @@ class CharacterSheet:
     portrait_path: str | None = None
     skills: dict[str, int] = field(default_factory=dict)
     unspent_skill_points: int = 0
+    unspent_attribute_points: int = 0

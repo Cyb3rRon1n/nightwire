@@ -35,6 +35,7 @@ class ApplyCharacterUpdate(BaseModel):
     add_inventory: list[str] = []
     remove_inventory: list[str] = []
     skill_points_delta: int = 0
+    attribute_points_delta: int = 0
 
 
 class UpdateWorld(BaseModel):
@@ -73,6 +74,7 @@ def _execute_apply_character_update(session: Session, tool: ApplyCharacterUpdate
     character.health = max(0, min(character.max_health, character.health + tool.health_delta))
     character.armor = max(0, character.armor + tool.armor_delta)
     character.unspent_skill_points = max(0, character.unspent_skill_points + tool.skill_points_delta)
+    character.unspent_attribute_points = max(0, character.unspent_attribute_points + tool.attribute_points_delta)
 
     for condition in tool.add_conditions:
         if condition not in character.conditions:
@@ -92,6 +94,7 @@ def _execute_apply_character_update(session: Session, tool: ApplyCharacterUpdate
         "health": character.health,
         "armor": character.armor,
         "unspent_skill_points": character.unspent_skill_points,
+        "unspent_attribute_points": character.unspent_attribute_points,
     }
 
 
