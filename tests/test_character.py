@@ -18,6 +18,7 @@ def test_character_sheet_has_sensible_defaults():
     assert sheet.conditions == []
     assert sheet.inventory == []
     assert sheet.portrait_path is None
+    assert sheet.unspent_attribute_points == 0
 
 
 def test_character_sheet_fields_are_mutable():

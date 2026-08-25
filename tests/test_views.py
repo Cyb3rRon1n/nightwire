@@ -38,6 +38,7 @@ def test_viewer_sees_their_own_full_sheet():
         "portrait_path": None,
         "skills": {},
         "unspent_skill_points": 0,
+        "unspent_attribute_points": 0,
     }
 
 

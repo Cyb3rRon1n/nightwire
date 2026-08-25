@@ -79,7 +79,10 @@ def test_apply_character_update_adjusts_health_and_armor():
     })
     assert session.characters["p1"].health == 4
     assert session.characters["p1"].armor == 3
-    assert result == {"player_id": "p1", "health": 4, "armor": 3, "unspent_skill_points": 0}
+    assert result == {
+        "player_id": "p1", "health": 4, "armor": 3,
+        "unspent_skill_points": 0, "unspent_attribute_points": 0,
+    }
 
 
 def test_apply_character_update_clamps_health_to_max_and_zero():
@@ -149,6 +152,15 @@ def test_apply_character_update_grants_skill_points():
     })
     assert session.characters["p1"].unspent_skill_points == 2
     assert result["unspent_skill_points"] == 2
+
+
+def test_apply_character_update_grants_attribute_points():
+    session = _session_with_character()
+    result = execute_tool(session, "apply_character_update", {
+        "player_id": "p1", "attribute_points_delta": 1,
+    })
+    assert session.characters["p1"].unspent_attribute_points == 1
+    assert result["unspent_attribute_points"] == 1
 
 
 def test_request_roll_skill_literal_matches_the_roster():
