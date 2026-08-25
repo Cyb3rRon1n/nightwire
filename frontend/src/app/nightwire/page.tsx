@@ -70,6 +70,17 @@ function otherPlayerName(line: string, view: StateView, playerId: string): strin
   return null;
 }
 
+// The raw "{player_id}: " prefix above is only needed to attribute the line -
+// strip it before display so the UI shows the composer text ("> ...") rather
+// than the internal connection id, matching the name tag teammates already get.
+function stripSpeakerPrefix(line: string, view: StateView): string {
+  for (const pid of Object.keys(view.characters)) {
+    const prefix = `${pid}: `;
+    if (line.startsWith(prefix)) return line.slice(prefix.length);
+  }
+  return line;
+}
+
 // Reuses the same [tag: value] bracket convention tool results already use
 // in session.log - no new StateView field for image lines.
 const IMAGE_LINE = /^\[image: (.+)\]$/;
@@ -206,7 +217,7 @@ export default function NightwirePage() {
   }
 
   return (
-    <main className="nw-theme mx-auto flex h-dvh w-full max-w-2xl flex-col gap-4 p-6">
+    <main className="nw-theme mx-auto flex h-dvh w-full max-w-2xl flex-col gap-4 p-6 lg:max-w-3xl xl:max-w-4xl 2xl:max-w-5xl">
       <h1 className="nw-heading text-lg">Nightwire — live feed</h1>
 
       {!connected ? (
@@ -334,7 +345,7 @@ export default function NightwirePage() {
                     return (
                       <div key={i} className="ml-auto max-w-[85%]">
                         <div className="nw-bubble-own px-4 py-3 text-sm leading-6">
-                          <p className="whitespace-pre-wrap text-pretty">{line}</p>
+                          <p className="whitespace-pre-wrap text-pretty">{stripSpeakerPrefix(line, view)}</p>
                         </div>
                       </div>
                     );
@@ -345,7 +356,7 @@ export default function NightwirePage() {
                       <div key={i} className="mr-auto max-w-[85%]">
                         <p className="nw-name-tag mb-1">{teammate}</p>
                         <div className="nw-bubble-teammate px-4 py-3 text-sm leading-6">
-                          <p className="whitespace-pre-wrap text-pretty">{line}</p>
+                          <p className="whitespace-pre-wrap text-pretty">{stripSpeakerPrefix(line, view)}</p>
                         </div>
                       </div>
                     );

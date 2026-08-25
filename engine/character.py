@@ -8,8 +8,8 @@ class CharacterSheet:
     role: str
     lifepath: str
     attributes: dict[str, int] = field(default_factory=dict)
-    health: int = 10
-    max_health: int = 10
+    health: int = 100
+    max_health: int = 100
     armor: int = 0
     conditions: list[str] = field(default_factory=list)
     inventory: list[str] = field(default_factory=list)
