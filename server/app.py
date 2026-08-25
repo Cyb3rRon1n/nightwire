@@ -57,7 +57,7 @@ def create_app(
                     if message.get("type") == "action":
                         await handle_action(session, narrator_client, store, image_backend, tts_backend, player_id, message)
                     elif message.get("type") == "approve_character":
-                        await handle_approve_character(session, store, narrator_client, image_backend, player_id)
+                        await handle_approve_character(session, store, narrator_client, image_backend, player_id, message)
                     else:
                         handle_message(session, message, player_id)
                 except Exception as e:
