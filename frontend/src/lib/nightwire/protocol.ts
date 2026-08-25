@@ -10,6 +10,8 @@ export interface CharacterSheet {
   conditions: string[]
   inventory: string[]
   portrait_path: string | null
+  skills: Record<string, number>
+  unspent_skill_points: number
 }
 
 export interface RedactedCharacter {
@@ -58,6 +60,7 @@ export interface JoinMessage {
     armor?: number
     conditions?: string[]
     inventory?: string[]
+    skills?: Record<string, number>
   }
 }
 
@@ -82,6 +85,12 @@ export interface ApproveCharacterMessage {
   type: 'approve_character'
 }
 
+export interface AllocateSkillPointsMessage {
+  type: 'allocate_skill_points'
+  skill: string
+  amount: number
+}
+
 export type ClientMessage =
   | JoinMessage
   | ActionMessage
@@ -89,3 +98,4 @@ export type ClientMessage =
   | AdvanceTurnMessage
   | EndCombatMessage
   | ApproveCharacterMessage
+  | AllocateSkillPointsMessage
