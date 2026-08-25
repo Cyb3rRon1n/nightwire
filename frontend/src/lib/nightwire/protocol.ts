@@ -12,6 +12,7 @@ export interface CharacterSheet {
   portrait_path: string | null
   skills: Record<string, number>
   unspent_skill_points: number
+  unspent_attribute_points: number
 }
 
 export interface RedactedCharacter {
@@ -92,6 +93,12 @@ export interface AllocateSkillPointsMessage {
   amount: number
 }
 
+export interface AllocateAttributePointsMessage {
+  type: 'allocate_attribute_points'
+  attribute: string
+  amount: number
+}
+
 export type ClientMessage =
   | JoinMessage
   | ActionMessage
@@ -100,3 +107,4 @@ export type ClientMessage =
   | EndCombatMessage
   | ApproveCharacterMessage
   | AllocateSkillPointsMessage
+  | AllocateAttributePointsMessage
