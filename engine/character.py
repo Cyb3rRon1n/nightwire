@@ -14,3 +14,5 @@ class CharacterSheet:
     conditions: list[str] = field(default_factory=list)
     inventory: list[str] = field(default_factory=list)
     portrait_path: str | None = None
+    skills: dict[str, int] = field(default_factory=dict)
+    unspent_skill_points: int = 0
