@@ -11,15 +11,25 @@ def _skill_rank_cap(skill_name: str, attributes: dict[str, int]) -> int:
 
 def _validate_and_finalize_skills(character_data: dict) -> None:
     skills = character_data.get("skills") or {}
+    if not isinstance(skills, dict):
+        raise ValueError(f"skills must be a dict, got {type(skills).__name__}")
     attributes = character_data.get("attributes") or {}
+    # Type-check every rank before summing - sum() itself throws an
+    # unhandled TypeError on a string/list rank, which would bypass this
+    # function's ValueError-at-the-boundary convention entirely.
+    for skill_name, rank in skills.items():
+        if skill_name not in SKILLS:
+            raise ValueError(f"unknown skill: {skill_name!r}")
+        # bool is a subclass of int (isinstance(True, int) is True) - excluded
+        # explicitly so True/False can't slip through as 1/0.
+        if not isinstance(rank, int) or isinstance(rank, bool):
+            raise ValueError(f"skill {skill_name!r} rank {rank!r} must be an int")
     spent = sum(skills.values())
     if spent > STARTING_SKILL_POINTS:
         raise ValueError(
             f"skill points spent ({spent}) exceed the starting budget ({STARTING_SKILL_POINTS})"
         )
     for skill_name, rank in skills.items():
-        if skill_name not in SKILLS:
-            raise ValueError(f"unknown skill: {skill_name!r}")
         if rank < 0:
             raise ValueError(f"skill {skill_name!r} rank {rank} cannot be negative")
         cap = _skill_rank_cap(skill_name, attributes)
