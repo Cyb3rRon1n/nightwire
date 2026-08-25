@@ -8,6 +8,7 @@ import { portraitFor } from "@/lib/nightwire/portrait";
 import { mediaUrl } from "@/lib/nightwire/media";
 import { CharacterSheetOverlay } from "./CharacterSheetOverlay";
 import { SkillPicker, STARTING_SKILL_POINTS } from "./SkillPicker";
+import { AttributePicker, startingAttributes } from "./AttributePicker";
 import "./theme.css";
 
 const READY_STATE_LABEL: Record<ReadyState, string> = {
@@ -58,11 +59,11 @@ async function fileToResizedDataUrl(file: File, maxDimension: number): Promise<s
 // pattern server/portrait.py's own _ROLE_VISUALS/_LIFEPATH_VISUALS already
 // use for this exact key set, rather than a new REST endpoint for static
 // reference data. Keep in sync if the ruleset's roster changes.
-const ROLES: Array<{ value: string; label: string; description: string }> = [
-  { value: "solo", label: "Solo", description: "Front-line combat specialist. Best attack rolls, highest Health, a passive Initiative/Awareness edge." },
-  { value: "netrunner", label: "Netrunner", description: "Hacking specialist. Bypasses locks, pulls data, and disables weapons/cameras/drones mid-combat." },
-  { value: "techie", label: "Techie", description: "Gear specialist. Repairs damaged equipment and cyberware, installs upgrades, crafts - keeps the party's equipment working, not a healer." },
-  { value: "fixer", label: "Fixer", description: "Social specialist. Negotiation, contacts, contraband access - talks past trouble instead of shooting through it." },
+const ROLES: Array<{ value: string; label: string; description: string; primaryAttribute: string }> = [
+  { value: "solo", label: "Solo", description: "Front-line combat specialist. Best attack rolls, highest Health, a passive Initiative/Awareness edge.", primaryAttribute: "reflexes" },
+  { value: "netrunner", label: "Netrunner", description: "Hacking specialist. Bypasses locks, pulls data, and disables weapons/cameras/drones mid-combat.", primaryAttribute: "tech" },
+  { value: "techie", label: "Techie", description: "Gear specialist. Repairs damaged equipment and cyberware, installs upgrades, crafts - keeps the party's equipment working, not a healer.", primaryAttribute: "tech" },
+  { value: "fixer", label: "Fixer", description: "Social specialist. Negotiation, contacts, contraband access - talks past trouble instead of shooting through it.", primaryAttribute: "presence" },
 ];
 
 const LIFEPATHS: Array<{ value: string; label: string; description: string }> = [
@@ -192,6 +193,9 @@ export default function NightwirePage() {
   const [role, setRole] = useState("");
   const [lifepath, setLifepath] = useState("");
   const [skills, setSkills] = useState<Record<string, number>>({});
+  const [attributes, setAttributes] = useState<Record<string, number>>({});
+  const primaryAttribute = ROLES.find((r) => r.value === role)?.primaryAttribute ?? null;
+  const mergedAttributes = { ...startingAttributes(primaryAttribute), ...attributes };
   const [connected, setConnected] = useState(false);
   const [composerMode, setComposerMode] = useState<ComposerMode>("do");
   const [composerText, setComposerText] = useState("");
@@ -235,7 +239,7 @@ export default function NightwirePage() {
   function handleJoin() {
     send({
       type: "join",
-      character: { player_id: playerId, name, role, lifepath, skills },
+      character: { player_id: playerId, name, role, lifepath, skills, attributes },
     });
   }
 
@@ -321,7 +325,7 @@ export default function NightwirePage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
-              <select className="nw-field" value={role} onChange={(e) => setRole(e.target.value)}>
+              <select className="nw-field" value={role} onChange={(e) => { setRole(e.target.value); setAttributes({}); }}>
                 <option value="" disabled>
                   Role
                 </option>
@@ -347,9 +351,25 @@ export default function NightwirePage() {
               {lifepath && (
                 <p className="text-xs nw-text-faint">{LIFEPATHS.find((l) => l.value === lifepath)?.description}</p>
               )}
+              <AttributePicker
+                attributes={attributes}
+                primaryAttribute={primaryAttribute}
+                onIncrement={(attrName) =>
+                  setAttributes((a) => ({
+                    ...a,
+                    [attrName]: (a[attrName] ?? mergedAttributes[attrName]) + 1,
+                  }))
+                }
+                onDecrement={(attrName) =>
+                  setAttributes((a) => ({
+                    ...a,
+                    [attrName]: (a[attrName] ?? mergedAttributes[attrName]) - 1,
+                  }))
+                }
+              />
               <SkillPicker
                 skills={skills}
-                attributes={{}}
+                attributes={mergedAttributes}
                 remaining={STARTING_SKILL_POINTS - Object.values(skills).reduce((a, b) => a + b, 0)}
                 onIncrement={(name) =>
                   setSkills((s) => ({ ...s, [name]: (s[name] ?? 0) + 1 }))
