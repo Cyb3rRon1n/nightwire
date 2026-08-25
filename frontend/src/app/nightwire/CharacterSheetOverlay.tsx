@@ -24,7 +24,7 @@ export function CharacterSheetOverlay({
         className="nw-sheet-panel w-full max-w-sm rounded-xl p-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="nw-divider flex items-center gap-3 border-b pb-3">
+        <div className="nw-divider flex items-center gap-3 border-b pb-3 mb-3">
           {character.portrait_path ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={mediaUrl(character.portrait_path)} alt="" className="size-10 rounded-lg object-cover" />
@@ -41,66 +41,72 @@ export function CharacterSheetOverlay({
           </div>
         </div>
 
-        <div className="nw-divider border-b py-3">
-          <p className="nw-eyebrow mb-1">
-            Attributes
-          </p>
-          {Object.keys(character.attributes).length === 0 ? (
-            <p className="text-sm nw-text-faint">None set.</p>
-          ) : (
-            <div className="nw-hud grid grid-cols-3 gap-1 text-sm nw-text-body">
-              {Object.entries(character.attributes).map(([attr, value]) => (
-                <span key={attr}>
-                  {attr}: {value}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
+        <div className="flex flex-col gap-3">
+          <div className="nw-sheet-box p-3">
+            <p className="nw-eyebrow mb-1">
+              Attributes
+            </p>
+            {Object.keys(character.attributes).length === 0 ? (
+              <p className="text-sm nw-text-faint">None set.</p>
+            ) : (
+              <div className="nw-hud grid grid-cols-3 gap-1 text-sm nw-text-body">
+                {Object.entries(character.attributes).map(([attr, value]) => (
+                  <span key={attr}>
+                    {attr}: {value}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
 
-        <div className="nw-divider border-b py-3">
-          <p className="nw-eyebrow mb-1">Skills</p>
-          {character.unspent_skill_points > 0 ? (
-            <SkillPicker
-              skills={character.skills}
-              attributes={character.attributes}
-              remaining={character.unspent_skill_points}
-              onIncrement={onAllocateSkill}
-            />
-          ) : Object.keys(character.skills).length === 0 ? (
-            <p className="text-sm nw-text-faint">None trained.</p>
-          ) : (
-            <div className="nw-hud grid grid-cols-2 gap-1 text-sm nw-text-body">
-              {Object.entries(character.skills).map(([skill, rank]) => (
-                <span key={skill}>
-                  {skill}: {rank}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
+          <div className="nw-sheet-box p-3">
+            <p className="nw-eyebrow mb-1">Skills</p>
+            {character.unspent_skill_points > 0 ? (
+              <SkillPicker
+                skills={character.skills}
+                attributes={character.attributes}
+                remaining={character.unspent_skill_points}
+                onIncrement={onAllocateSkill}
+              />
+            ) : Object.keys(character.skills).length === 0 ? (
+              <p className="text-sm nw-text-faint">None trained.</p>
+            ) : (
+              <div className="nw-hud grid grid-cols-2 gap-1 text-sm nw-text-body">
+                {Object.entries(character.skills).map(([skill, rank]) => (
+                  <span key={skill}>
+                    {skill}: {rank}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
 
-        <div className="nw-divider nw-hud border-b py-3 text-sm nw-text-body">
-          <p className="nw-eyebrow mb-1">
-            Condition
-          </p>
-          <p>
-            {character.health}/{character.max_health} HP · {character.armor} armor
-          </p>
-          {character.conditions.length > 0 && (
-            <p className="nw-text-muted">{character.conditions.join(", ")}</p>
-          )}
-        </div>
+          <div className="nw-sheet-box nw-hud p-3 text-sm nw-text-body">
+            <p className="nw-eyebrow mb-1">
+              Condition
+            </p>
+            <p>
+              {character.health}/{character.max_health} HP · {character.armor} armor
+            </p>
+            {character.conditions.length > 0 && (
+              <p className="nw-text-muted">{character.conditions.join(", ")}</p>
+            )}
+          </div>
 
-        <div className="nw-hud pt-3 text-sm nw-text-body">
-          <p className="nw-eyebrow mb-1">
-            Inventory
-          </p>
-          {character.inventory.length === 0 ? (
-            <p className="nw-text-faint">Empty.</p>
-          ) : (
-            <p>{character.inventory.join(", ")}</p>
-          )}
+          <div className="nw-sheet-box nw-hud p-3 text-sm nw-text-body">
+            <p className="nw-eyebrow mb-1">
+              Inventory
+            </p>
+            {character.inventory.length === 0 ? (
+              <p className="nw-text-faint">Empty.</p>
+            ) : (
+              <ul className="flex flex-col gap-0.5">
+                {character.inventory.map((item, i) => (
+                  <li key={i}>{item}</li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
 
         <button type="button" onClick={onClose} className="nw-btn-ghost mt-4 w-full">

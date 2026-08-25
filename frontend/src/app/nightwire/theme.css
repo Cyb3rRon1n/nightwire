@@ -191,3 +191,12 @@
   border: 1px solid var(--nw-border);
   box-shadow: 0 0 30px rgba(185, 103, 255, 0.15);
 }
+
+/* Boxed section inside the sheet panel - thin single-line border only, no
+   glow/shadow (that's the outer panel's job) - whitespace between boxes
+   does the separating, per the physical-tabletop-sheet design approved in
+   ROADMAP.md's "Design already settled" section. */
+.nw-sheet-box {
+  border: 1px solid var(--nw-border);
+  border-radius: 0.5rem;
+}
