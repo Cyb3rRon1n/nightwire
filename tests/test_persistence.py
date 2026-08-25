@@ -29,6 +29,8 @@ def test_save_then_load_round_trips_a_session_with_a_character(tmp_path):
         conditions=["bleeding"],
         inventory=["stim pack"],
         portrait_path="sessions/portraits/test-session/p1.png",
+        skills={"stealth": 3, "hacking": 2},
+        unspent_skill_points=1,
     )
     session.turn_order = ["p1"]
     session.current_turn_index = 0
@@ -68,6 +70,26 @@ def test_save_then_load_round_trips_a_session_with_a_character(tmp_path):
     assert loaded_character.conditions == ["bleeding"]
     assert loaded_character.portrait_path == "sessions/portraits/test-session/p1.png"
     assert loaded_character.inventory == ["stim pack"]
+    assert loaded_character.skills == {"stealth": 3, "hacking": 2}
+    assert loaded_character.unspent_skill_points == 1
+
+
+def test_load_defaults_character_skills_when_missing_from_an_older_character_file(tmp_path):
+    store = JSONFileSessionStore(tmp_path)
+    session = Session(session_id="legacy-session")
+    session.characters["p1"] = CharacterSheet(player_id="p1", name="Rook", role="solo", lifepath="streetkid")
+    from dataclasses import asdict
+
+    session_data = asdict(session)
+    del session_data["characters"]["p1"]["skills"]
+    del session_data["characters"]["p1"]["unspent_skill_points"]
+    store.directory.joinpath("legacy-session.json").write_text(json.dumps(session_data))
+
+    loaded = store.load("legacy-session")
+
+    assert loaded is not None
+    assert loaded.characters["p1"].skills == {}
+    assert loaded.characters["p1"].unspent_skill_points == 0
 
 
 def test_load_returns_none_for_a_session_id_with_no_saved_file(tmp_path):
