@@ -66,12 +66,17 @@ Image generation additionally needs a running `ultra-fast-image-gen` worker (`op
 └── docs/                # design specs, implementation plans, branding assets
 ```
 
-## Demo
+## Screenshots
 
-A live session end to end — narration, dice rolls, generated scene art, and TTS audio, in the "Neon Noir" frontend theme.
+Real captures of the live frontend running its own "Neon Noir" theme — a cyberpunk visual identity independent of `open-dungeon`'s default fantasy-tabletop styling (see `ROADMAP.md`'s Phase 4 entry for the design reasoning).
 
 <p align="center">
-  <img src="docs/images/demo.gif" alt="Nightwire live session: narration, combat, generated scene art, and TTS audio" width="700">
+  <img src="docs/images/screenshots/session.png" alt="Nightwire combat turn with narration, an NPC dialogue bubble with its own avatar, and TTS audio" width="480"><br>
+  <sub>Narration, dice-backed combat, and a speaker avatar next to each dialogue bubble</sub>
+</p>
+<p align="center">
+  <img src="docs/images/screenshots/scene.jpg" alt="Nightwire generated scene art of a noodle stand fixer in a rain-lit alley" width="480"><br>
+  <sub>A generated scene image for the current location and mood</sub>
 </p>
 
 ## Contributing
