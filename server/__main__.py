@@ -29,7 +29,11 @@ def build_app():
         "Narration is a list of segments, each with a speaker. Use speaker 'narrator' for "
         "your own descriptive prose; use the exact same name every time a given character "
         "speaks (don't vary casing or spelling turn to turn). Set gender only the first "
-        "time a new speaker appears - male or female, whichever fits the character."
+        "time a new speaker appears - male or female, whichever fits the character. "
+        "Characters have 100 max Health. Scale apply_character_update's health_delta to "
+        "that pool: a grazing or minor hit is roughly -5 to -15, a solid hit -20 to -35, "
+        "a devastating or critical hit -40 to -60. Don't default to small single-digit "
+        "deltas from a d20-style game - a fight should plausibly end in a handful of hits."
     )
     narrator_client = NarratorClient(model="qwen3:8b", system_prompt=system_prompt)
     # output_dir default (frontend/public/generated) matches

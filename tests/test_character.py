@@ -12,8 +12,8 @@ def test_character_sheet_requires_only_identity_and_build_fields():
 def test_character_sheet_has_sensible_defaults():
     sheet = CharacterSheet(player_id="p1", name="Rook", role="solo", lifepath="streetkid")
     assert sheet.attributes == {}
-    assert sheet.health == 10
-    assert sheet.max_health == 10
+    assert sheet.health == 100
+    assert sheet.max_health == 100
     assert sheet.armor == 0
     assert sheet.conditions == []
     assert sheet.inventory == []
@@ -26,7 +26,7 @@ def test_character_sheet_fields_are_mutable():
     sheet.health -= 3
     sheet.conditions.append("bleeding")
     sheet.inventory.append("stim pack")
-    assert sheet.health == 7
+    assert sheet.health == 97
     assert sheet.conditions == ["bleeding"]
     assert sheet.inventory == ["stim pack"]
 
