@@ -446,6 +446,7 @@ export default function NightwirePage() {
                 <CharacterSheetOverlay
                   character={view.characters[playerId] as CharacterSheet}
                   onClose={() => setSheetOpen(false)}
+                  onAllocateSkill={(skill) => send({ type: "allocate_skill_points", skill, amount: 1 })}
                 />
               )}
             </>

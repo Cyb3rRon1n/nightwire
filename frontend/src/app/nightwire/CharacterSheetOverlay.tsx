@@ -1,14 +1,17 @@
 import { portraitFor } from "@/lib/nightwire/portrait";
 import { mediaUrl } from "@/lib/nightwire/media";
 import type { CharacterSheet } from "@/lib/nightwire/protocol";
+import { SkillPicker } from "./SkillPicker";
 import "./theme.css";
 
 export function CharacterSheetOverlay({
   character,
   onClose,
+  onAllocateSkill,
 }: {
   character: CharacterSheet;
   onClose: () => void;
+  onAllocateSkill: (skill: string) => void;
 }) {
   const { initials, colorClass } = portraitFor(character.role, character.name);
 
@@ -49,6 +52,28 @@ export function CharacterSheetOverlay({
               {Object.entries(character.attributes).map(([attr, value]) => (
                 <span key={attr}>
                   {attr}: {value}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="nw-divider border-b py-3">
+          <p className="nw-eyebrow mb-1">Skills</p>
+          {character.unspent_skill_points > 0 ? (
+            <SkillPicker
+              skills={character.skills}
+              attributes={character.attributes}
+              remaining={character.unspent_skill_points}
+              onIncrement={onAllocateSkill}
+            />
+          ) : Object.keys(character.skills).length === 0 ? (
+            <p className="text-sm nw-text-faint">None trained.</p>
+          ) : (
+            <div className="nw-hud grid grid-cols-2 gap-1 text-sm nw-text-body">
+              {Object.entries(character.skills).map(([skill, rank]) => (
+                <span key={skill}>
+                  {skill}: {rank}
                 </span>
               ))}
             </div>
