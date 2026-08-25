@@ -184,3 +184,64 @@ def test_join_with_no_skills_field_leaves_the_full_budget_unspent():
 
     assert session.characters["p1"].skills == {}
     assert session.characters["p1"].unspent_skill_points == 8
+
+
+def test_allocate_skill_points_increases_rank_and_decreases_unspent():
+    session = Session(session_id="s1")
+    handle_message(session, {
+        "type": "join",
+        "character": {"player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"},
+    }, "p1")
+
+    handle_message(session, {"type": "allocate_skill_points", "skill": "hacking", "amount": 2}, "p1")
+
+    character = session.characters["p1"]
+    assert character.skills["hacking"] == 2
+    assert character.unspent_skill_points == 6
+
+
+def test_allocate_skill_points_rejects_insufficient_points():
+    session = Session(session_id="s1")
+    handle_message(session, {
+        "type": "join",
+        "character": {
+            "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+            "skills": {"hacking": 3, "engineering": 3, "melee": 2},
+        },
+    }, "p1")
+    # all 8 points already spent, 0 unspent left
+
+    with pytest.raises(ValueError, match="insufficient skill points"):
+        handle_message(session, {"type": "allocate_skill_points", "skill": "stealth", "amount": 1}, "p1")
+
+
+def test_allocate_skill_points_rejects_exceeding_the_governing_attribute_cap():
+    session = Session(session_id="s1")
+    handle_message(session, {
+        "type": "join",
+        "character": {
+            "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+            "skills": {"hacking": 3},
+        },
+    }, "p1")
+    # hacking is already at its cap of 3 (attribute defaults to 10)
+
+    with pytest.raises(ValueError, match="would exceed cap"):
+        handle_message(session, {"type": "allocate_skill_points", "skill": "hacking", "amount": 1}, "p1")
+
+
+def test_allocate_skill_points_rejects_an_unknown_skill():
+    session = Session(session_id="s1")
+    handle_message(session, {
+        "type": "join",
+        "character": {"player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"},
+    }, "p1")
+
+    with pytest.raises(ValueError, match="unknown skill"):
+        handle_message(session, {"type": "allocate_skill_points", "skill": "lockpicking", "amount": 1}, "p1")
+
+
+def test_allocate_skill_points_for_unjoined_player_raises_value_error():
+    session = Session(session_id="s1")
+    with pytest.raises(ValueError, match="unknown player_id"):
+        handle_message(session, {"type": "allocate_skill_points", "skill": "hacking", "amount": 1}, "ghost")

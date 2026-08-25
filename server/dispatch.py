@@ -50,6 +50,27 @@ def handle_message(session: Session, message: dict, player_id: str) -> None:
         if total is not None:
             session.log.append(f"[initiative: {session.characters[player_id].name} rolled {total}]")
 
+    elif message_type == "allocate_skill_points":
+        if player_id not in session.characters:
+            raise ValueError(f"unknown player_id: {player_id!r}")
+        skill_name = message.get("skill")
+        amount = message.get("amount")
+        if skill_name not in SKILLS:
+            raise ValueError(f"unknown skill: {skill_name!r}")
+        if not isinstance(amount, int) or amount <= 0:
+            raise ValueError(f"invalid amount: {amount!r}")
+        character = session.characters[player_id]
+        if character.unspent_skill_points < amount:
+            raise ValueError(
+                f"insufficient skill points: has {character.unspent_skill_points}, needs {amount}"
+            )
+        cap = _skill_rank_cap(skill_name, character.attributes)
+        new_rank = character.skills.get(skill_name, 0) + amount
+        if new_rank > cap:
+            raise ValueError(f"skill {skill_name!r} rank {new_rank} would exceed cap {cap}")
+        character.skills[skill_name] = new_rank
+        character.unspent_skill_points -= amount
+
     elif message_type == "advance_turn":
         advance_turn(session)
 
