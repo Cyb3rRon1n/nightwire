@@ -20,31 +20,41 @@ def _session_with_character(**overrides) -> Session:
 def test_request_roll_uses_the_characters_real_attribute_score():
     session = _session_with_character(attributes={"reflexes": 16})
     result = execute_tool(session, "request_roll", {
-        "player_id": "p1", "attribute": "reflexes", "skill_mod": 0, "difficulty": "easy", "reason": "dodge",
+        "player_id": "p1", "attribute": "reflexes", "skill": "stealth", "difficulty": "easy", "reason": "dodge",
     })
     assert result["attribute_mod"] == 3  # modifier(16) == (16 - 10) // 2 == 3
 
 
-def test_request_roll_clamps_skill_mod_to_a_plausible_range():
+def test_request_roll_looks_up_the_characters_real_skill_rank():
+    session = _session_with_character(skills={"ranged_combat": 3})
+    result = execute_tool(session, "request_roll", {
+        "player_id": "p1", "attribute": "reflexes", "skill": "ranged_combat",
+        "difficulty": "easy", "reason": "quickdraw",
+    })
+    assert result["skill_mod"] == 3
+
+
+def test_request_roll_defaults_an_untrained_skill_to_zero():
     session = _session_with_character()
     result = execute_tool(session, "request_roll", {
-        "player_id": "p1", "attribute": "body", "skill_mod": 999, "difficulty": "easy", "reason": "x",
+        "player_id": "p1", "attribute": "body", "skill": "melee",
+        "difficulty": "easy", "reason": "x",
     })
-    assert result["skill_mod"] == 5
+    assert result["skill_mod"] == 0
 
 
 def test_request_roll_rejects_an_unknown_player_id():
     session = Session(session_id="s1")
     with pytest.raises(ValueError, match="unknown player_id"):
         execute_tool(session, "request_roll", {
-            "player_id": "ghost", "attribute": "body", "skill_mod": 0, "difficulty": "easy", "reason": "x",
+            "player_id": "ghost", "attribute": "body", "skill": "melee", "difficulty": "easy", "reason": "x",
         })
 
 
 def test_request_roll_rolls_a_real_die_and_resolves_the_outcome():
-    session = _session_with_character(attributes={"reflexes": 14})
+    session = _session_with_character(attributes={"reflexes": 14}, skills={"stealth": 2})
     result = execute_tool(session, "request_roll", {
-        "player_id": "p1", "attribute": "reflexes", "skill_mod": 2, "difficulty": "easy", "reason": "climbing a wall",
+        "player_id": "p1", "attribute": "reflexes", "skill": "stealth", "difficulty": "easy", "reason": "climbing a wall",
     })
     assert 1 <= result["die_result"] <= 10
     assert result["dc"] == 8
@@ -55,7 +65,7 @@ def test_request_roll_rejects_an_unknown_difficulty():
     session = _session_with_character()
     with pytest.raises(ValueError):
         execute_tool(session, "request_roll", {
-            "player_id": "p1", "attribute": "body", "skill_mod": 0, "difficulty": "impossible", "reason": "x",
+            "player_id": "p1", "attribute": "body", "skill": "melee", "difficulty": "impossible", "reason": "x",
         })
 
 

@@ -134,7 +134,7 @@ async def test_handle_action_executes_a_tool_call_and_logs_the_result(tmp_path):
     client = _fake_client(
         "You lunge for the ledge.", tool="request_roll",
         tool_args={
-            "player_id": "someone-else", "attribute": "reflexes", "skill_mod": 1,
+            "player_id": "someone-else", "attribute": "reflexes", "skill": "athletics",
             "difficulty": "easy", "reason": "leap",
         },
     )
@@ -182,7 +182,7 @@ async def test_handle_action_overrides_the_models_player_id_for_request_roll(tmp
     client = _fake_client(
         "You lunge for the ledge.", tool="request_roll",
         tool_args={
-            "player_id": "someone-else", "attribute": "reflexes", "skill_mod": 1,
+            "player_id": "someone-else", "attribute": "reflexes", "skill": "athletics",
             "difficulty": "easy", "reason": "leap",
         },
     )
