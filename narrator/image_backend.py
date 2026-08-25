@@ -7,7 +7,7 @@ import httpx
 
 
 class ImageBackend(Protocol):
-    async def generate_portrait(self, description: str) -> bytes: ...
+    async def generate_portrait(self, description: str, reference_photos: list[str] | None = None) -> bytes: ...
     async def generate_scene(self, prompt: str, reference_paths: list[str]) -> bytes: ...
 
 
@@ -59,8 +59,16 @@ class FluxWorkerBackend:
             return self.long_side, round(self.long_side * 0.75)
         return self.long_side, self.long_side
 
-    async def _generate(self, prompt: str, aspect: str, reference_paths: list[str]) -> bytes:
-        references = [self._to_data_url(p) for p in reference_paths[:_MAX_REFERENCES]]
+    async def _generate(
+        self,
+        prompt: str,
+        aspect: str,
+        reference_paths: list[str] | None = None,
+        reference_photos: list[str] | None = None,
+    ) -> bytes:
+        from_paths = [self._to_data_url(p) for p in (reference_paths or [])]
+        from_photos = [{"dataUrl": url} for url in (reference_photos or [])]
+        references = (from_paths + from_photos)[:_MAX_REFERENCES]
         width, height = self._dimensions_for(aspect)
         payload = {
             "backend": self.backend,
@@ -73,8 +81,8 @@ class FluxWorkerBackend:
         result = await self._http_fn(payload)
         return (self.output_dir / f"{result['id']}.png").read_bytes()
 
-    async def generate_portrait(self, description: str) -> bytes:
-        return await self._generate(description, aspect="portrait", reference_paths=[])
+    async def generate_portrait(self, description: str, reference_photos: list[str] | None = None) -> bytes:
+        return await self._generate(description, aspect="portrait", reference_photos=reference_photos)
 
     async def generate_scene(self, prompt: str, reference_paths: list[str]) -> bytes:
         return await self._generate(prompt, aspect="square", reference_paths=reference_paths)
