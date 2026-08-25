@@ -55,7 +55,7 @@ async def test_respond_returns_a_tool_call():
             "tool_call": {
                 "tool": "request_roll",
                 "tool_args": {
-                    "player_id": "p1", "attribute": "reflexes", "skill_mod": 1,
+                    "player_id": "p1", "attribute": "reflexes", "skill": "athletics",
                     "difficulty": "hard", "reason": "leap across a gap",
                 },
             },
@@ -70,7 +70,7 @@ async def test_respond_returns_a_tool_call():
 async def test_respond_rejects_a_tool_call_with_the_wrong_argument_shape():
     # The real bug this fix closes: a model calling a tool with a
     # plausible-looking but wrong shape - e.g. a `scene`/`enemies` object
-    # instead of request_roll's real `{player_id, attribute, skill_mod,
+    # instead of request_roll's real `{player_id, attribute, skill,
     # difficulty, reason}` - must fail validation, the same way a genuinely
     # wrong tool_args dict already did at execute_tool() time, but now
     # caught at parse time.
