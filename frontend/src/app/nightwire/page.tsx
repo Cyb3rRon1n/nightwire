@@ -7,7 +7,7 @@ import type { CharacterSheet, StateView } from "@/lib/nightwire/protocol";
 import { portraitFor } from "@/lib/nightwire/portrait";
 import { mediaUrl } from "@/lib/nightwire/media";
 import { CharacterSheetOverlay } from "./CharacterSheetOverlay";
-import { SkillPicker } from "./SkillPicker";
+import { SkillPicker, STARTING_SKILL_POINTS } from "./SkillPicker";
 import "./theme.css";
 
 const READY_STATE_LABEL: Record<ReadyState, string> = {
@@ -268,7 +268,7 @@ export default function NightwirePage() {
               <SkillPicker
                 skills={skills}
                 attributes={{}}
-                remaining={8 - Object.values(skills).reduce((a, b) => a + b, 0)}
+                remaining={STARTING_SKILL_POINTS - Object.values(skills).reduce((a, b) => a + b, 0)}
                 onIncrement={(name) =>
                   setSkills((s) => ({ ...s, [name]: (s[name] ?? 0) + 1 }))
                 }
