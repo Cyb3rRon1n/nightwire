@@ -36,6 +36,8 @@ def test_viewer_sees_their_own_full_sheet():
         "conditions": ["bleeding"],
         "inventory": ["stim pack"],
         "portrait_path": None,
+        "skills": {},
+        "unspent_skill_points": 0,
     }
 
 
