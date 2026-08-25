@@ -7,6 +7,7 @@ import type { CharacterSheet, StateView } from "@/lib/nightwire/protocol";
 import { portraitFor } from "@/lib/nightwire/portrait";
 import { mediaUrl } from "@/lib/nightwire/media";
 import { CharacterSheetOverlay } from "./CharacterSheetOverlay";
+import { SkillPicker } from "./SkillPicker";
 import "./theme.css";
 
 const READY_STATE_LABEL: Record<ReadyState, string> = {
@@ -129,6 +130,7 @@ export default function NightwirePage() {
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [lifepath, setLifepath] = useState("");
+  const [skills, setSkills] = useState<Record<string, number>>({});
   const [connected, setConnected] = useState(false);
   const [composerMode, setComposerMode] = useState<ComposerMode>("do");
   const [composerText, setComposerText] = useState("");
@@ -171,7 +173,7 @@ export default function NightwirePage() {
   function handleJoin() {
     send({
       type: "join",
-      character: { player_id: playerId, name, role, lifepath },
+      character: { player_id: playerId, name, role, lifepath, skills },
     });
   }
 
@@ -263,6 +265,17 @@ export default function NightwirePage() {
               {lifepath && (
                 <p className="text-xs nw-text-faint">{LIFEPATHS.find((l) => l.value === lifepath)?.description}</p>
               )}
+              <SkillPicker
+                skills={skills}
+                attributes={{}}
+                remaining={8 - Object.values(skills).reduce((a, b) => a + b, 0)}
+                onIncrement={(name) =>
+                  setSkills((s) => ({ ...s, [name]: (s[name] ?? 0) + 1 }))
+                }
+                onDecrement={(name) =>
+                  setSkills((s) => ({ ...s, [name]: Math.max(0, (s[name] ?? 0) - 1) }))
+                }
+              />
               <button
                 type="button"
                 onClick={handleJoin}
