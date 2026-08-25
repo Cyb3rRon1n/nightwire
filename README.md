@@ -4,7 +4,7 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Cyb3rRon1n/nightwire/main/docs/images/banner.svg"
+  <img src="docs/images/banner.svg"
        alt="Nightwire - A cyberpunk AI game master for real-time tabletop sessions"
        style="max-width: 100%; height: auto;">
 </p>
@@ -21,12 +21,12 @@ Sibling project to [`oracle`](https://github.com/Cyb3rRon1n/oracle) (a D&D-flavo
 
 ## What makes it Nightwire
 
-- **The server owns all truth.** Character sheets, turn order, combat state — every mechanical number lives in the Python engine (`engine/`). The narrator model only narrates and calls tools (`request_roll`, `apply_character_update`, `update_world`); it never does its own arithmetic.
-- **A tiered 1d10 resolution, not d20.** `1d10 + attribute + skill` against a difficulty class, with two success thresholds rather than one — deliberately the lowest-complexity class of cyberpunk system surveyed (Cyberpunk RED, CY_BORG), not Shadowrun-style dice pools.
-- **Four roles, independently researched against Cyberpunk 2077 itself**: Solo, Netrunner, Techie, Fixer — CP2077's own three official archetypes plus a Fixer role for the social/negotiation mechanics a video game never had to solve with dice. Six attributes (Body, Reflexes, Tech, Cool, Intellect, Presence) in the same shape as D&D's ability scores.
-- **Structured output, not native tool-calling.** `NarratorResponse.tool_call` is a Pydantic discriminated union — the model's tool choice and its arguments are both constrained by a real JSON schema, after live testing found free-form tool-calling inventing plausible-but-wrong argument shapes on nearly every turn.
-- **Character-consistent image generation.** A portrait generated once at character approval becomes a reference image for later scene generation, so a character looks recognizably like themselves across separate generations — not a new face every turn. Runs against a local FLUX.2-klein worker, tuned to fit an 8GB card.
-- **Local-first AI**, Ollama-backed (`qwen3:8b`), with the same local-first-with-hosted-secondary stance planned for the upcoming TTS backend.
+- **The server owns all truth.** Character sheets, turn order, combat state all live in the Python engine (`engine/`). The narrator model only narrates and calls tools — it never does its own arithmetic.
+- **A tiered 1d10 resolution, not d20.** `1d10 + attribute + skill` vs. a difficulty class, deliberately the lowest-complexity class of cyberpunk system surveyed (Cyberpunk RED, CY_BORG), not Shadowrun-style dice pools.
+- **Four roles, checked against Cyberpunk 2077 itself**: Solo, Netrunner, Techie, Fixer — CP2077's three official archetypes plus a Fixer for social/negotiation. Six attributes (Body, Reflexes, Tech, Cool, Intellect, Presence).
+- **Structured output, not native tool-calling.** The narrator's tool choice and arguments are both constrained by a real JSON schema, after live testing found free-form tool-calling inventing plausible-but-wrong arguments on nearly every turn.
+- **Character-consistent image generation.** A portrait generated at character approval becomes a reference image for later scene generation, so a character looks like themselves across turns instead of a new face each time.
+- **Local-first AI** — Ollama-backed (`qwen3:8b`), same stance for the TTS backend.
 
 ## Running it
 
@@ -66,21 +66,12 @@ Image generation additionally needs a running `ultra-fast-image-gen` worker (`op
 └── docs/                # design specs, implementation plans, branding assets
 ```
 
-## Screenshots
+## Demo
 
-Real captures of the live frontend running its own "Neon Noir" theme — a cyberpunk visual identity independent of `open-dungeon`'s default fantasy-tabletop styling (see `ROADMAP.md`'s Phase 4 entry for the design reasoning).
+A live session end to end — narration, dice rolls, generated scene art, and TTS audio, in the "Neon Noir" frontend theme.
 
 <p align="center">
-  <img src="docs/images/screenshots/session.png" alt="Nightwire session log example" width="820"><br>
-  <sub>Narration, dice rolls, and player actions in one log</sub>
-</p>
-<p align="center">
-  <img src="docs/images/screenshots/combat.png" alt="Nightwire combat turn order example" width="820"><br>
-  <sub>Turn order and combat resolution</sub>
-</p>
-<p align="center">
-  <img src="docs/images/screenshots/character-sheet.png" alt="Nightwire character sheet example" width="820"><br>
-  <sub>A character sheet — attributes, HP/armor, inventory</sub>
+  <img src="docs/images/demo.gif" alt="Nightwire live session: narration, combat, generated scene art, and TTS audio" width="700">
 </p>
 
 ## Contributing
