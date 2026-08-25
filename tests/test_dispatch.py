@@ -112,6 +112,157 @@ def test_join_missing_character_field_raises_value_error():
         handle_message(session, {"type": "join"}, "p1")
 
 
+def test_join_with_no_attributes_field_uses_base_scores_and_role_bonus():
+    session = Session(session_id="s1")
+    handle_message(session, {
+        "type": "join",
+        "character": {"player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"},
+    }, "p1")
+
+    assert session.characters["p1"].attributes == {
+        "body": 10, "reflexes": 11, "tech": 10, "cool": 10, "intellect": 10, "presence": 10,
+    }
+
+
+def test_join_role_bonus_only_applies_to_the_selected_roles_primary_attribute():
+    session = Session(session_id="s1")
+    handle_message(session, {
+        "type": "join",
+        "character": {"player_id": "p1", "name": "Ghost", "role": "netrunner", "lifepath": "corpo"},
+    }, "p1")
+
+    attributes = session.characters["p1"].attributes
+    assert attributes["tech"] == 11
+    assert attributes["reflexes"] == 10
+
+
+def test_join_with_unknown_role_uses_base_scores_for_all_attributes():
+    session = Session(session_id="s1")
+    handle_message(session, {
+        "type": "join",
+        "character": {"player_id": "p1", "name": "Zeta", "role": "diplomat", "lifepath": "spacer"},
+    }, "p1")
+
+    assert session.characters["p1"].attributes == {
+        "body": 10, "reflexes": 10, "tech": 10, "cool": 10, "intellect": 10, "presence": 10,
+    }
+
+
+def test_join_accepts_a_valid_attribute_allocation():
+    session = Session(session_id="s1")
+    handle_message(session, {
+        "type": "join",
+        "character": {
+            "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+            "attributes": {"reflexes": 14, "tech": 12},  # (14-11) + (12-10) = 5 <= budget of 12
+        },
+    }, "p1")
+
+    assert session.characters["p1"].attributes == {
+        "body": 10, "reflexes": 14, "tech": 12, "cool": 10, "intellect": 10, "presence": 10,
+    }
+
+
+def test_join_rejects_an_attribute_allocation_over_budget():
+    session = Session(session_id="s1")
+    with pytest.raises(ValueError, match="exceed the budget"):
+        handle_message(session, {
+            "type": "join",
+            "character": {
+                "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+                "attributes": {"reflexes": 14, "tech": 14, "cool": 14, "intellect": 14},  # 3+4+4+4 = 15 > 12
+            },
+        }, "p1")
+
+
+def test_join_rejects_an_attribute_score_below_the_minimum():
+    session = Session(session_id="s1")
+    with pytest.raises(ValueError, match="between 6 and 14"):
+        handle_message(session, {
+            "type": "join",
+            "character": {
+                "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+                "attributes": {"body": 5},
+            },
+        }, "p1")
+
+
+def test_join_rejects_an_attribute_score_above_the_maximum():
+    session = Session(session_id="s1")
+    with pytest.raises(ValueError, match="between 6 and 14"):
+        handle_message(session, {
+            "type": "join",
+            "character": {
+                "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+                "attributes": {"reflexes": 15},
+            },
+        }, "p1")
+
+
+def test_join_rejects_an_unknown_attribute_name():
+    session = Session(session_id="s1")
+    with pytest.raises(ValueError, match="unknown attribute"):
+        handle_message(session, {
+            "type": "join",
+            "character": {
+                "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+                "attributes": {"luck": 10},
+            },
+        }, "p1")
+
+
+def test_join_rejects_a_non_dict_attributes_value():
+    session = Session(session_id="s1")
+    with pytest.raises(ValueError, match="attributes must be a dict"):
+        handle_message(session, {
+            "type": "join",
+            "character": {
+                "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+                "attributes": "not-a-dict",
+            },
+        }, "p1")
+
+
+def test_join_rejects_a_float_attribute_score():
+    session = Session(session_id="s1")
+    with pytest.raises(ValueError, match="must be an int"):
+        handle_message(session, {
+            "type": "join",
+            "character": {
+                "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+                "attributes": {"body": 12.5},
+            },
+        }, "p1")
+
+
+def test_join_rejects_a_string_attribute_score():
+    session = Session(session_id="s1")
+    with pytest.raises(ValueError, match="must be an int"):
+        handle_message(session, {
+            "type": "join",
+            "character": {
+                "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+                "attributes": {"body": "12"},
+            },
+        }, "p1")
+
+
+def test_join_skill_cap_reflects_a_raised_attribute():
+    session = Session(session_id="s1")
+    handle_message(session, {
+        "type": "join",
+        "character": {
+            "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+            "attributes": {"body": 14},  # modifier(14) == 2, cap == min(5, 2+3) == 5
+            "skills": {"melee": 5},  # governed by body - was uniformly capped at 3 before this feature
+        },
+    }, "p1")
+
+    character = session.characters["p1"]
+    assert character.attributes["body"] == 14
+    assert character.skills == {"melee": 5}
+
+
 def test_join_accepts_a_valid_starting_skill_allocation():
     session = Session(session_id="s1")
     handle_message(session, {
