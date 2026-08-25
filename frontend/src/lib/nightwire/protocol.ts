@@ -83,6 +83,7 @@ export interface EndCombatMessage {
 
 export interface ApproveCharacterMessage {
   type: 'approve_character'
+  reference_photos?: string[]
 }
 
 export interface AllocateSkillPointsMessage {

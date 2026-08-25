@@ -35,6 +35,25 @@ function formatComposerInput(mode: ComposerMode, text: string): string {
   return mode === "say" ? `> You say ${quoted}` : `> You think ${quoted}`;
 }
 
+// Downscales an uploaded reference photo client-side before sending it
+// inline over the websocket - full phone-camera resolution buys nothing for
+// a reference image and bloats the message (see docs/superpowers/specs/
+// 2026-08-25-photo-reference-portrait-design.md).
+async function fileToResizedDataUrl(file: File, maxDimension: number): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+  const width = Math.round(bitmap.width * scale);
+  const height = Math.round(bitmap.height * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("canvas 2d context unavailable");
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+  return canvas.toDataURL("image/jpeg", 0.85);
+}
+
 // Mirrors ruleset/roles.py and ruleset/lifepaths.py - same duplication
 // pattern server/portrait.py's own _ROLE_VISUALS/_LIFEPATH_VISUALS already
 // use for this exact key set, rather than a new REST endpoint for static
@@ -180,6 +199,7 @@ export default function NightwirePage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [approvingPortrait, setApprovingPortrait] = useState(false);
   const [portraitSkipped, setPortraitSkipped] = useState(false);
+  const [referencePhotos, setReferencePhotos] = useState<string[]>([]);
   const [combatActionPending, setCombatActionPending] = useState(false);
 
   const { view, error, send, readyState } = useNightwireSocket(
@@ -193,7 +213,7 @@ export default function NightwirePage() {
     setSending(false);
     setApprovingPortrait(false);
     setCombatActionPending(false);
-  }, [view]);
+  }, [view, error]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -228,8 +248,28 @@ export default function NightwirePage() {
   }
 
   function handleApprovePortrait() {
-    send({ type: "approve_character" });
+    send({
+      type: "approve_character",
+      ...(referencePhotos.length > 0 ? { reference_photos: referencePhotos } : {}),
+    });
     setApprovingPortrait(true);
+  }
+
+  async function handleReferencePhotosSelected(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []).slice(0, 2 - referencePhotos.length);
+    event.target.value = "";
+    for (const file of files) {
+      try {
+        const dataUrl = await fileToResizedDataUrl(file, 1024);
+        setReferencePhotos((photos) => [...photos, dataUrl].slice(0, 2));
+      } catch {
+        // Unreadable/corrupt image - skip it, the upload is optional.
+      }
+    }
+  }
+
+  function handleRemoveReferencePhoto(index: number) {
+    setReferencePhotos((photos) => photos.filter((_, i) => i !== index));
   }
 
   function handleRollInitiative() {
@@ -338,6 +378,36 @@ export default function NightwirePage() {
                 <p className="nw-text-body">
                   {name} — {role} · {lifepath}. Generate a portrait before playing?
                 </p>
+                <div className="flex flex-col gap-1">
+                  <label className="nw-hud text-xs nw-text-muted">
+                    Optional — upload 1–2 photos of yourself to guide your portrait&apos;s likeness. Photos are sent once to generate your portrait and are not stored.
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    multiple
+                    onChange={handleReferencePhotosSelected}
+                    disabled={approvingPortrait || referencePhotos.length >= 2}
+                    className="nw-field text-xs"
+                  />
+                  {referencePhotos.length > 0 && (
+                    <div className="flex gap-2">
+                      {referencePhotos.map((photo, i) => (
+                        <div key={i} className="relative">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={photo} alt="" className="size-14 rounded object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveReferencePhoto(i)}
+                            className="nw-btn-ghost absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full p-0 text-[10px] leading-none"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <button
                     type="button"
