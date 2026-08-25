@@ -76,7 +76,7 @@ def test_apply_character_update_adjusts_health_and_armor():
     })
     assert session.characters["p1"].health == 4
     assert session.characters["p1"].armor == 3
-    assert result == {"player_id": "p1", "health": 4, "armor": 3}
+    assert result == {"player_id": "p1", "health": 4, "armor": 3, "unspent_skill_points": 0}
 
 
 def test_apply_character_update_clamps_health_to_max_and_zero():
@@ -137,6 +137,15 @@ def test_update_world_adds_and_removes_objectives():
         "add_objectives": ["avoid corpo patrols"], "remove_objectives": ["find the fixer"],
     })
     assert session.active_objectives == ["avoid corpo patrols"]
+
+
+def test_apply_character_update_grants_skill_points():
+    session = _session_with_character()
+    result = execute_tool(session, "apply_character_update", {
+        "player_id": "p1", "skill_points_delta": 2,
+    })
+    assert session.characters["p1"].unspent_skill_points == 2
+    assert result["unspent_skill_points"] == 2
 
 
 def test_unknown_tool_name_raises_value_error():
