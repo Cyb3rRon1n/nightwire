@@ -1,7 +1,47 @@
 from engine.character import CharacterSheet
 from engine.session import Session
 from engine.turns import advance_turn, end_combat, join, roll_initiative
+from ruleset.attributes import Attribute
+from ruleset.roles import ROLES
 from ruleset.skills import SKILLS, STARTING_SKILL_POINTS, skill_cap
+
+ATTRIBUTE_BASE_SCORE = 10
+ATTRIBUTE_BUDGET = 12
+ATTRIBUTE_MIN = 6
+ATTRIBUTE_MAX = 14
+
+
+def _starting_attributes(role: str) -> dict[str, int]:
+    starting = {attr.value: ATTRIBUTE_BASE_SCORE for attr in Attribute}
+    if role in ROLES:
+        starting[ROLES[role].primary_attribute.value] = ATTRIBUTE_BASE_SCORE + 1
+    return starting
+
+
+def _validate_and_finalize_attributes(character_data: dict) -> None:
+    attributes = character_data.get("attributes") or {}
+    if not isinstance(attributes, dict):
+        raise ValueError(f"attributes must be a dict, got {type(attributes).__name__}")
+    starting = _starting_attributes(character_data.get("role"))
+
+    finalized = dict(starting)
+    spent = 0
+    for name, score in attributes.items():
+        if name not in starting:
+            raise ValueError(f"unknown attribute: {name!r}")
+        if not isinstance(score, int) or isinstance(score, bool):
+            raise ValueError(f"attribute {name!r} score {score!r} must be an int")
+        if score < ATTRIBUTE_MIN or score > ATTRIBUTE_MAX:
+            raise ValueError(
+                f"attribute {name!r} score {score} must be between {ATTRIBUTE_MIN} and {ATTRIBUTE_MAX}"
+            )
+        finalized[name] = score
+        spent += score - starting[name]
+
+    if spent > ATTRIBUTE_BUDGET:
+        raise ValueError(f"attribute points spent ({spent}) exceed the budget ({ATTRIBUTE_BUDGET})")
+
+    character_data["attributes"] = finalized
 
 
 def _skill_rank_cap(skill_name: str, attributes: dict[str, int]) -> int:
@@ -54,6 +94,7 @@ def handle_message(session: Session, message: dict, player_id: str) -> None:
         character_data = message.get("character")
         if character_data is None:
             raise ValueError("missing 'character' in join message")
+        _validate_and_finalize_attributes(character_data)
         _validate_and_finalize_skills(character_data)
         join(session, CharacterSheet(**character_data))
 
