@@ -60,6 +60,20 @@ def test_cpu_only_caps_model_size_even_with_huge_ram():
     assert rec.tier == "cpu-only"
 
 
+def test_lite_and_minimal_tiers_are_distinct():
+    lite = recommend(HardwareProfile(os="linux", gpu_vendor="nvidia", vram_gb=6.0, system_ram_gb=16, cpu_cores=8))
+    minimal = recommend(HardwareProfile(os="linux", gpu_vendor="nvidia", vram_gb=2.5, system_ram_gb=16, cpu_cores=8))
+    floor = recommend(HardwareProfile(os="linux", gpu_vendor="nvidia", vram_gb=1.0, system_ram_gb=16, cpu_cores=8))
+
+    assert lite.tier == "lite"
+    assert lite.ollama_model == "qwen3:4b"
+    assert minimal.tier == "minimal"
+    assert minimal.ollama_model == "qwen3:1.7b"
+    assert floor.tier == "floor"
+    assert floor.ollama_model == "qwen3:0.6b"
+    assert len({lite.tier, minimal.tier, floor.tier}) == 3
+
+
 def test_reasoning_is_a_nonempty_explanation():
     profile = HardwareProfile(os="linux", gpu_vendor="nvidia", vram_gb=7.9, system_ram_gb=32, cpu_cores=8)
 

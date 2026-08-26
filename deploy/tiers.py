@@ -34,6 +34,16 @@ STANDARD_TIER_VRAM_GB = 7.5
 # documented, disclosed estimate, not a verified measurement.
 _UNIFIED_MEMORY_RESERVE_GB = 4.0
 
+# Each _pick_model() bucket gets its own tier name - previously qwen3:4b and
+# qwen3:1.7b were both named "lite", which collapsed two distinct hardware
+# bands into one undifferentiated tier name (see task-10-tiers-fix-report.md).
+_TIER_BY_MODEL = {
+    "qwen3:8b": "standard",
+    "qwen3:4b": "lite",
+    "qwen3:1.7b": "minimal",
+    "qwen3:0.6b": "floor",
+}
+
 
 class Recommendation(BaseModel):
     tier: str
@@ -64,7 +74,7 @@ def recommend(profile: HardwareProfile) -> Recommendation:
         model = _pick_model(budget)
         enable_image_gen = model == "qwen3:8b"
         tts_backend = _tts_for(budget, model)
-        tier = "standard" if enable_image_gen else ("lite" if model != "qwen3:0.6b" else "minimal")
+        tier = _TIER_BY_MODEL[model]
         reasoning = (
             f"{budget:.1f}GB NVIDIA VRAM detected. Recommending {model} "
             f"({MODEL_SIZES_GB[model]}GB, leaves {budget - MODEL_SIZES_GB[model]:.1f}GB headroom). "
