@@ -16,12 +16,13 @@ What it recommends, by tier:
 | Tier | Hardware | Ollama model | Image-gen | TTS |
 |---|---|---|---|---|
 | `standard` | NVIDIA, ≥7.5GB VRAM | `qwen3:8b` | on | Kokoro (local) |
-| `lite` | NVIDIA, 3-7.5GB VRAM | `qwen3:4b` | off | Kokoro (local) |
+| `lite` | NVIDIA, 3-7.5GB VRAM | `qwen3:4b` | off | Kokoro (local) if VRAM ≥4.5GB, else hosted |
 | `minimal` | NVIDIA, 2-3GB VRAM | `qwen3:1.7b` | off | hosted (OpenAI TTS) |
+| `floor` | NVIDIA, <2GB VRAM | `qwen3:0.6b` | off | hosted (OpenAI TTS) |
 | `apple-unified` | Apple Silicon | sized off unified RAM | off (SDNQ is CUDA-only, unverified on Metal) | Kokoro if RAM allows, else hosted |
 | `cpu-only` | no GPU | capped at `qwen3:4b` | off (no CPU path for FLUX.2-klein-4B) | Kokoro if RAM allows, else hosted |
 
-The `standard` tier is the one real, live-verified configuration (the project's own RTX 2080 deployment — see `ROADMAP.md`'s Phase 3/5/6 entries). Everything else follows the same arithmetic (`docs/superpowers/specs/2026-08-26-deployment-tooling-design.md` has the full reasoning and citations) but hasn't been run on real hardware at that tier yet — if something doesn't fit, `customize` at the confirm prompt to override any field.
+The `standard` tier is the one real, live-verified configuration (the project's own RTX 2080 deployment — see `ROADMAP.md`'s Phase 3/5/6 entries). Everything else (`lite`, `minimal`, `floor`, `apple-unified`, `cpu-only`) follows the same arithmetic (`docs/superpowers/specs/2026-08-26-deployment-tooling-design.md` has the full reasoning and citations) but hasn't been run on real hardware at that tier yet — if something doesn't fit, `customize` at the confirm prompt to override any field.
 
 **Image generation needs a private repo.** `ultra-fast-image-gen` isn't public — the installer will ask for its git URL when you confirm image-gen. Leave it blank to skip image-gen even on hardware that could run it.
 
