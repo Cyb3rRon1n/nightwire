@@ -30,7 +30,24 @@ Sibling project to [`oracle`](https://github.com/Cyb3rRon1n/oracle) (a D&D-flavo
 
 ## Running it
 
-Requirements: Python 3.11+, [Ollama](https://ollama.com) with `qwen3:8b` pulled, Node 22+ (frontend build).
+**Server** (detects your GPU/RAM, recommends a model tag and which optional backends fit, confirms before touching anything):
+
+```bash
+pip install -e ".[dev]"
+nightwire-deploy install --role server
+```
+
+**Client** (checks Node, asks which server to connect to):
+
+```bash
+nightwire-deploy install --role client
+cd frontend && npm run dev   # http://localhost:3000/nightwire
+```
+
+See `docs/deployment.md` for what detection checks, the tier table, and troubleshooting.
+
+<details>
+<summary>Manual / advanced (no installer)</summary>
 
 ```bash
 # server
@@ -41,7 +58,9 @@ python -m server                     # ws://localhost:8000
 cd frontend && npm ci && npm run dev # http://localhost:3000/nightwire
 ```
 
-Image generation additionally needs a running `ultra-fast-image-gen` worker (`open-dungeon`'s `image_server/`) on `http://127.0.0.1:7869` — optional; without it, everything except scene/portrait images works normally.
+Image generation additionally needs a running `ultra-fast-image-gen` worker (`open-dungeon`'s `image_server/`) on `http://127.0.0.1:7869` — optional; without it, everything except scene/portrait images works normally. Backend/model selection is environment-driven: `NIGHTWIRE_MODEL`, `NIGHTWIRE_IMAGE_BACKEND` (`flux`/`none`), `NIGHTWIRE_TTS_BACKEND` (`kokoro`/`openai`/`none`), `NIGHTWIRE_TTS_API_KEY`.
+
+</details>
 
 ## Repository layout
 
