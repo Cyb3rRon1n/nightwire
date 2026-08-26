@@ -31,3 +31,6 @@ dist/
 
 # Local-only backup of the superseded Vite frontend scaffold (see ROADMAP.md)
 /frontend-vite-scaffold-backup/
+
+# Isolated worktrees for subagent-driven-development plan execution
+/.worktrees/
