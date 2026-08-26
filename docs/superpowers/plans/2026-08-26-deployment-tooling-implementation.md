@@ -287,18 +287,18 @@ MODEL_SIZES_GB = {
     "qwen3:0.6b": 0.6,
 }
 
-# FLUX.2-klein-4B at 4-bit SDNQ: "8GB VRAM at 512px" - see
-# docs/superpowers/specs/2026-08-23-image-generation-design.md. NVIDIA/CUDA
-# (SDNQ) specific - never recommended on Apple/CPU-only tiers.
-IMAGE_GEN_MIN_VRAM_GB = 8.0
-
 # Kokoro-82M: "~300MB/<2GB VRAM" - see
 # docs/superpowers/specs/2026-08-23-tts-narration-design.md.
 KOKORO_VRAM_GB = 2.0
 
 # The confirmed real deployment (RTX 2080). nvidia-smi sometimes reports a
 # few hundred MB under the nominal 8192MiB due to reserved memory, so 7.5
-# catches the real card without excluding it.
+# catches the real card without excluding it. This same threshold gates
+# BOTH qwen3:8b selection and image-gen (FLUX.2-klein-4B at 4-bit SDNQ:
+# "8GB VRAM at 512px" per docs/superpowers/specs/2026-08-23-image-generation-design.md,
+# NVIDIA/CUDA-only) - they're the same real card fitting both, so using two
+# different threshold values for them would let a card qualify for one but
+# not the other with no real basis for the split.
 STANDARD_TIER_VRAM_GB = 7.5
 
 # Apple unified memory and CPU-only RAM are shared with the OS and every
@@ -335,7 +335,7 @@ def recommend(profile: HardwareProfile) -> Recommendation:
     if profile.gpu_vendor == "nvidia" and profile.vram_gb is not None:
         budget = profile.vram_gb
         model = _pick_model(budget)
-        enable_image_gen = budget >= IMAGE_GEN_MIN_VRAM_GB
+        enable_image_gen = model == "qwen3:8b"
         tts_backend = _tts_for(budget, model)
         tier = "standard" if enable_image_gen else ("lite" if model != "qwen3:0.6b" else "minimal")
         reasoning = (
@@ -608,14 +608,19 @@ from deploy.services import write_launchd_plist, write_systemd_unit, write_windo
 
 
 def test_write_systemd_unit_contains_exec_and_env(tmp_path):
+    # Path("/opt/nightwire") stringifies with the host's native separator
+    # (backslash on Windows) - build the expected value the same way the
+    # implementation does, via str(), rather than hardcoding a forward-slash
+    # literal that would only match on POSIX.
+    working_dir = Path("/opt/nightwire")
     path = write_systemd_unit(
-        "nightwire-server", Path("/opt/nightwire"), "python -m server", {"NIGHTWIRE_MODEL": "qwen3:8b"}, tmp_path
+        "nightwire-server", working_dir, "python -m server", {"NIGHTWIRE_MODEL": "qwen3:8b"}, tmp_path
     )
 
     content = path.read_text()
     assert path.name == "nightwire-nightwire-server.service"
     assert "ExecStart=python -m server" in content
-    assert "WorkingDirectory=/opt/nightwire" in content
+    assert f"WorkingDirectory={working_dir}" in content
     assert "Environment=NIGHTWIRE_MODEL=qwen3:8b" in content
     assert "[Install]" in content
 
@@ -939,10 +944,15 @@ def test_setup_kokoro_skips_uv_install_when_present(tmp_path):
 
 
 def test_kokoro_start_command_picks_gpu_or_cpu_script():
-    assert kokoro_start_command(Path("/x/Kokoro-FastAPI"), device="cuda", is_windows=False) == ["bash", "/x/Kokoro-FastAPI/start-gpu.sh"]
-    assert kokoro_start_command(Path("/x/Kokoro-FastAPI"), device="cpu", is_windows=False) == ["bash", "/x/Kokoro-FastAPI/start-cpu.sh"]
-    assert kokoro_start_command(Path("C:/Kokoro-FastAPI"), device="cuda", is_windows=True) == [
-        "powershell", "-File", "C:/Kokoro-FastAPI/start-gpu.ps1",
+    # Build expected values via f"{repo}/..." - the same construction the
+    # implementation uses - rather than hardcoded forward-slash literals,
+    # so this passes regardless of the host's native path separator.
+    repo = Path("/x/Kokoro-FastAPI")
+    assert kokoro_start_command(repo, device="cuda", is_windows=False) == ["bash", f"{repo}/start-gpu.sh"]
+    assert kokoro_start_command(repo, device="cpu", is_windows=False) == ["bash", f"{repo}/start-cpu.sh"]
+    win_repo = Path("C:/Kokoro-FastAPI")
+    assert kokoro_start_command(win_repo, device="cuda", is_windows=True) == [
+        "powershell", "-File", f"{win_repo}/start-gpu.ps1",
     ]
 
 
@@ -1330,9 +1340,10 @@ def node_version_ok(run: CommandRunner = _default_run) -> tuple[bool, str]:
     return major >= 22, output
 
 
-def run(server_url: str, frontend_dir: Path, run_cmd: Callable[[list[str]], None] = lambda cmd: subprocess.run(cmd, check=True, cwd=frontend_dir)) -> None:
+def run(server_url: str, frontend_dir: Path, run_cmd: Callable[[list[str]], None] | None = None) -> None:
     (frontend_dir / ".env.local").write_text(f"NEXT_PUBLIC_NIGHTWIRE_WS_URL={server_url}\n")
-    run_cmd(["npm", "ci"])
+    actual_run_cmd = run_cmd or (lambda cmd: subprocess.run(cmd, check=True, cwd=frontend_dir))
+    actual_run_cmd(["npm", "ci"])
 ```
 
 - [ ] **Step 4: Run tests to verify they pass**
