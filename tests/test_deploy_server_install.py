@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from deploy.detect import HardwareProfile
-from deploy.server_install import install_ollama, kokoro_start_command, ollama_installed, pull_model, run, setup_kokoro
+from deploy.server_install import install_ollama, kokoro_start_command, ollama_installed, pull_model, run, setup_image_gen, setup_kokoro
 from deploy.tiers import Recommendation
 
 
@@ -112,3 +112,71 @@ def test_run_with_hosted_tts_sets_openai_env_and_api_key(tmp_path):
 
     assert env["NIGHTWIRE_TTS_BACKEND"] == "openai"
     assert env["NIGHTWIRE_TTS_API_KEY"] == "sk-test"
+
+
+def test_setup_image_gen_creates_venv_and_installs_requirements(tmp_path):
+    calls = []
+    repo_dir = tmp_path / "ultra-fast-image-gen"
+    repo_dir.mkdir()
+
+    setup_image_gen(repo_dir, device="cuda", run_cmd=calls.append, which=lambda name: "/usr/bin/python")
+
+    assert any(cmd[:3] == ["python", "-m", "venv"] for cmd in calls)
+    assert any("requirements.txt" in cmd[-1] for cmd in calls if cmd)
+
+
+def test_setup_image_gen_cpu_uses_stable_cpu_wheel_index(tmp_path):
+    calls = []
+    repo_dir = tmp_path / "ultra-fast-image-gen"
+    repo_dir.mkdir()
+
+    setup_image_gen(repo_dir, device="cpu", run_cmd=calls.append, which=lambda name: "/usr/bin/python")
+
+    assert any("download.pytorch.org/whl/cpu" in " ".join(cmd) for cmd in calls)
+
+
+def test_run_with_image_gen_clones_when_url_given(tmp_path):
+    calls = []
+    profile = HardwareProfile(os="linux", gpu_vendor="nvidia", vram_gb=7.9, system_ram_gb=32, cpu_cores=8)
+    recommendation = Recommendation(tier="standard", ollama_model="qwen3:8b", enable_image_gen=True, tts_backend="none", reasoning="test")
+
+    env = run(
+        profile, recommendation, siblings_dir=tmp_path / "siblings", units_dir=tmp_path / "units",
+        run_cmd=lambda cmd: calls.append(cmd), which=lambda name: "something",
+        image_gen_repo_url="git@example.com:private/ultra-fast-image-gen.git",
+    )
+
+    assert env["NIGHTWIRE_IMAGE_BACKEND"] == "flux"
+    assert ["git", "clone", "git@example.com:private/ultra-fast-image-gen.git", str(tmp_path / "siblings" / "ultra-fast-image-gen")] in calls
+    image_unit = tmp_path / "units" / "nightwire-image-server.service"
+    assert image_unit.exists()
+    assert "ULTRA_FAST_IMAGE_GEN_DIR" in image_unit.read_text()
+
+
+def test_run_disables_image_gen_when_no_url_given_even_if_recommended(tmp_path):
+    profile = HardwareProfile(os="linux", gpu_vendor="nvidia", vram_gb=7.9, system_ram_gb=32, cpu_cores=8)
+    recommendation = Recommendation(tier="standard", ollama_model="qwen3:8b", enable_image_gen=True, tts_backend="none", reasoning="test")
+
+    env = run(
+        profile, recommendation, siblings_dir=tmp_path / "siblings", units_dir=tmp_path / "units",
+        run_cmd=lambda cmd: None, which=lambda name: "something", image_gen_repo_url=None,
+    )
+
+    assert env["NIGHTWIRE_IMAGE_BACKEND"] == "none"
+    assert not (tmp_path / "units" / "nightwire-image-server.service").exists()
+
+
+def test_run_on_windows_writes_one_start_script_for_every_enabled_service(tmp_path):
+    profile = HardwareProfile(os="windows", gpu_vendor="nvidia", vram_gb=7.9, system_ram_gb=32, cpu_cores=8)
+    recommendation = Recommendation(tier="standard", ollama_model="qwen3:8b", enable_image_gen=True, tts_backend="kokoro", reasoning="test")
+
+    run(
+        profile, recommendation, siblings_dir=tmp_path / "siblings", units_dir=tmp_path / "units",
+        run_cmd=lambda cmd: None, which=lambda name: "something",
+        image_gen_repo_url="https://example.com/private.git",
+    )
+
+    content = (tmp_path / "units" / "start-all.ps1").read_text()
+    assert "nightwire-server" in content
+    assert "kokoro-server" in content
+    assert "image-server" in content
