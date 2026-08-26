@@ -1,10 +1,38 @@
+import os
+
 import uvicorn
 
 from engine.persistence import JSONFileSessionStore
 from narrator.client import NarratorClient
-from narrator.image_backend import FluxWorkerBackend
-from narrator.tts_backend import KokoroBackend
+from narrator.image_backend import FluxWorkerBackend, ImageBackend
+from narrator.tts_backend import KokoroBackend, OpenAITTSBackend, TTSBackend, VoiceOption
 from server.app import create_app
+
+
+class NullImageBackend:
+    """No-op image backend for NIGHTWIRE_IMAGE_BACKEND=none. Attempts fail
+    soft into an `[image error: ...]` log line via the existing
+    `except (ValueError, TypeError, OSError)` handling in
+    server/narration.py - same mechanism any other image-gen failure uses.
+    """
+
+    async def generate_portrait(self, description: str, reference_photos: list[str] | None = None) -> bytes:
+        raise ValueError("image generation disabled (NIGHTWIRE_IMAGE_BACKEND=none)")
+
+    async def generate_scene(self, prompt: str, reference_paths: list[str]) -> bytes:
+        raise ValueError("image generation disabled (NIGHTWIRE_IMAGE_BACKEND=none)")
+
+
+class NullTTSBackend:
+    """No-op TTS backend for NIGHTWIRE_TTS_BACKEND=none - same fail-soft shape as NullImageBackend."""
+
+    voices: list[VoiceOption] = []
+
+    async def synthesize(self, text: str, voice: str) -> bytes:
+        raise ValueError("tts disabled (NIGHTWIRE_TTS_BACKEND=none)")
+
+    async def unload(self) -> None:
+        pass
 
 
 def build_app():
@@ -35,16 +63,21 @@ def build_app():
         "a devastating or critical hit -40 to -60. Don't default to small single-digit "
         "deltas from a d20-style game - a fight should plausibly end in a handful of hits."
     )
-    narrator_client = NarratorClient(model="qwen3:8b", system_prompt=system_prompt)
-    # output_dir default (frontend/public/generated) matches
-    # image_server/optimized_image_server.py's own OUT_DIR default,
-    # assuming both processes run from the repo root.
-    image_backend = FluxWorkerBackend()
-    # KokoroBackend is the local-first default (coexists with qwen3:8b, no
-    # GPU-swap cost) - swap to OpenAITTSBackend(api_key=...) here for the
-    # hosted fallback; selection is a startup-time config choice, not a
-    # runtime toggle (see docs/superpowers/specs/2026-08-23-tts-narration-design.md).
-    tts_backend = KokoroBackend()
+    model = os.environ.get("NIGHTWIRE_MODEL", "qwen3:8b")
+    narrator_client = NarratorClient(model=model, system_prompt=system_prompt)
+
+    image_choice = os.environ.get("NIGHTWIRE_IMAGE_BACKEND", "flux")
+    image_backend: ImageBackend = FluxWorkerBackend() if image_choice == "flux" else NullImageBackend()
+
+    tts_choice = os.environ.get("NIGHTWIRE_TTS_BACKEND", "kokoro")
+    tts_backend: TTSBackend
+    if tts_choice == "openai":
+        tts_backend = OpenAITTSBackend(api_key=os.environ["NIGHTWIRE_TTS_API_KEY"])
+    elif tts_choice == "none":
+        tts_backend = NullTTSBackend()
+    else:
+        tts_backend = KokoroBackend()
+
     return create_app(store, narrator_client, image_backend, tts_backend)
 
 
