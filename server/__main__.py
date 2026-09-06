@@ -33,7 +33,11 @@ def build_app():
         "Characters have 100 max Health. Scale apply_character_update's health_delta to "
         "that pool: a grazing or minor hit is roughly -5 to -15, a solid hit -20 to -35, "
         "a devastating or critical hit -40 to -60. Don't default to small single-digit "
-        "deltas from a d20-style game - a fight should plausibly end in a handful of hits."
+        "deltas from a d20-style game - a fight should plausibly end in a handful of hits. "
+        "Advancement is rare and milestone-scale - only when the party clears a major "
+        "objective or survives a defining fight, never for routine success. When it's "
+        "earned, set apply_character_update's skill_points_delta to 1-2, or "
+        "attribute_points_delta to 1 (never more); a whole campaign hands out only a few."
     )
     narrator_client = NarratorClient(model="qwen3:8b", system_prompt=system_prompt)
     # output_dir default (frontend/public/generated) matches

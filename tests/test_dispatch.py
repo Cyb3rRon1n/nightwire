@@ -1,7 +1,23 @@
+from dataclasses import fields
+
 import pytest
 
+from engine.character import CharacterSheet
 from engine.session import Session
-from server.dispatch import handle_message
+from server.dispatch import _JOIN_CHARACTER_FIELDS, handle_message
+
+
+def test_join_allowlist_covers_every_client_settable_charactersheet_field():
+    # If a new CharacterSheet field is added that should be client-settable at
+    # join, it must be added to _JOIN_CHARACTER_FIELDS too - otherwise it's
+    # silently dropped and reads as its default. Server-owned fields stay out.
+    server_owned = {
+        "health", "max_health", "armor", "conditions", "inventory",
+        "portrait_path", "unspent_attribute_points",
+    }
+    all_fields = {f.name for f in fields(CharacterSheet)}
+    assert _JOIN_CHARACTER_FIELDS | server_owned == all_fields
+    assert not (_JOIN_CHARACTER_FIELDS & server_owned)
 
 
 def test_join_creates_a_character_and_adds_it_to_turn_order():
@@ -263,6 +279,78 @@ def test_join_skill_cap_reflects_a_raised_attribute():
     assert character.skills == {"melee": 5}
 
 
+def test_join_ignores_client_supplied_server_owned_fields():
+    # A join payload only sets identity + the two finalized allocations.
+    # Without the allowlist a client could bank 999 attribute points (or
+    # 9999 HP) straight through CharacterSheet(**character_data).
+    session = Session(session_id="s1")
+    handle_message(session, {
+        "type": "join",
+        "character": {
+            "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+            "unspent_attribute_points": 999,
+            "unspent_skill_points": 999,
+            "health": 9999,
+            "armor": 500,
+        },
+    }, "p1")
+
+    character = session.characters["p1"]
+    assert character.unspent_attribute_points == 0
+    assert character.unspent_skill_points == 8  # server-computed, full budget unspent
+    assert character.health == 100
+    assert character.armor == 0
+
+
+def test_join_accepts_an_exact_budget_attribute_allocation():
+    session = Session(session_id="s1")
+    handle_message(session, {
+        "type": "join",
+        "character": {
+            "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+            # solo primary is reflexes (starts 11): +3 +4 +3 +2 = 12, exactly the budget
+            "attributes": {"reflexes": 14, "tech": 14, "cool": 13, "intellect": 12},
+        },
+    }, "p1")
+
+    assert session.characters["p1"].attributes == {
+        "body": 10, "reflexes": 14, "tech": 14, "cool": 13, "intellect": 12, "presence": 10,
+    }
+
+
+def test_join_attribute_allocation_refunds_budget_for_lowered_scores():
+    # Flat-cost dump-stat: lowering an attribute below its starting value
+    # refunds budget - the CP2077-style mechanic the whole design rests on.
+    session = Session(session_id="s1")
+    handle_message(session, {
+        "type": "join",
+        "character": {
+            "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+            # reflexes +3, tech +4, cool +4, intellect +2, body -4 refund => 9 net.
+            # Without the refund the gross spend is 13, over the 12 budget - so this
+            # payload only passes *because* lowering body refunds those 4 points.
+            "attributes": {"reflexes": 14, "tech": 14, "cool": 14, "intellect": 12, "body": 6},
+        },
+    }, "p1")
+
+    assert session.characters["p1"].attributes == {
+        "body": 6, "reflexes": 14, "tech": 14, "cool": 14, "intellect": 12, "presence": 10,
+    }
+
+
+def test_join_rejects_a_boolean_attribute_score():
+    # bool is an int subclass - True must not slip through as 1.
+    session = Session(session_id="s1")
+    with pytest.raises(ValueError, match="must be an int"):
+        handle_message(session, {
+            "type": "join",
+            "character": {
+                "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+                "attributes": {"body": True},
+            },
+        }, "p1")
+
+
 def test_join_accepts_a_valid_starting_skill_allocation():
     session = Session(session_id="s1")
     handle_message(session, {
@@ -474,7 +562,9 @@ def test_allocate_attribute_points_rejects_insufficient_points():
         handle_message(session, {"type": "allocate_attribute_points", "attribute": "tech", "amount": 1}, "p1")
 
 
-def test_allocate_attribute_points_rejects_exceeding_the_maximum():
+def test_allocate_attribute_points_can_push_one_step_past_the_chargen_ceiling():
+    # A milestone point on an attribute point-bought to the chargen max (14)
+    # must not be dead currency - it can reach ATTRIBUTE_MILESTONE_MAX (16).
     session = Session(session_id="s1")
     handle_message(session, {
         "type": "join",
@@ -483,6 +573,23 @@ def test_allocate_attribute_points_rejects_exceeding_the_maximum():
             "attributes": {"tech": 14},
         },
     }, "p1")
+    session.characters["p1"].unspent_attribute_points = 2
+
+    handle_message(session, {"type": "allocate_attribute_points", "attribute": "tech", "amount": 2}, "p1")
+
+    assert session.characters["p1"].attributes["tech"] == 16
+
+
+def test_allocate_attribute_points_rejects_exceeding_the_milestone_maximum():
+    session = Session(session_id="s1")
+    handle_message(session, {
+        "type": "join",
+        "character": {
+            "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+            "attributes": {"tech": 14},
+        },
+    }, "p1")
+    session.characters["p1"].attributes["tech"] = 16  # already at the milestone ceiling
     session.characters["p1"].unspent_attribute_points = 1
 
     with pytest.raises(ValueError, match="would exceed the maximum"):

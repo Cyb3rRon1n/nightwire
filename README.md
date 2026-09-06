@@ -17,7 +17,7 @@ A cyberpunk tabletop RPG with an AI game master — playable solo or with friend
 
 Sibling project to [`oracle`](https://github.com/Cyb3rRon1n/oracle) (a D&D-flavored AI-DM) — built fresh rather than adapted, and researched independently at every design decision rather than leaning on oracle as precedent (see `ROADMAP.md`'s "Why a fresh project" section for the reasoning, and every spec under `docs/superpowers/specs/` for the citations behind each mechanic).
 
-**Status**: Phases 1–6 built and live-verified — ruleset, engine, AI narrator, web frontend, image generation, and text-to-speech (character-distinct voices) all work end to end. See `ROADMAP.md`'s Phases section for the full build history.
+**Status**: Phases 1–9 built and live-verified — ruleset, engine, AI narrator, web frontend, image generation, text-to-speech (character-distinct voices), a skill system, photo-reference portraits, and attribute point-buy all work end to end. See `ROADMAP.md`'s Phases section for the full build history.
 
 ## What makes it Nightwire
 

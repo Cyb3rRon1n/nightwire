@@ -42,5 +42,5 @@ export function useNightwireSocket(sessionId: string | null, playerId: string | 
     sendJsonMessage(message)
   }, [sendJsonMessage])
 
-  return { view: state.view, error: state.error, send, readyState }
+  return { view: state.view, error: state.error, errorSeq: state.errorSeq, send, readyState }
 }
