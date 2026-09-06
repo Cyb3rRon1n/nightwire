@@ -163,6 +163,20 @@ def test_apply_character_update_grants_attribute_points():
     assert result["unspent_attribute_points"] == 1
 
 
+def test_apply_character_update_rejects_an_out_of_range_milestone_grant():
+    # Schema-bounded so one hallucinated large value can't max a character
+    # in a single turn (ValidationError is a ValueError subclass).
+    session = _session_with_character()
+    with pytest.raises(ValueError):
+        execute_tool(session, "apply_character_update", {
+            "player_id": "p1", "attribute_points_delta": 50,
+        })
+    with pytest.raises(ValueError):
+        execute_tool(session, "apply_character_update", {
+            "player_id": "p1", "skill_points_delta": 99,
+        })
+
+
 def test_request_roll_skill_literal_matches_the_roster():
     # Pins RequestRoll.skill's Literal against ruleset.skills.SKILLS so the
     # two copies of the 14-skill roster can't silently drift: a name only in

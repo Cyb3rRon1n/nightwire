@@ -9,6 +9,21 @@ ATTRIBUTE_BASE_SCORE = 10
 ATTRIBUTE_BUDGET = 12
 ATTRIBUTE_MIN = 6
 ATTRIBUTE_MAX = 14
+# Post-creation (milestone) growth may push one step past the chargen
+# ceiling - otherwise an attribute point-bought to 14 is dead currency a
+# milestone point can never be spent on. See the attribute point-buy
+# design spec's "Post-creation growth" section.
+ATTRIBUTE_MILESTONE_MAX = 16
+
+# A join payload only gets to set identity, role/lifepath, and the two
+# allocations the validators below finalize. Everything else on
+# CharacterSheet (health, armor, portrait_path, the unspent_* counters) is
+# server-owned - without this filter a client could pass
+# unspent_attribute_points: 999 or health: 9999 straight through
+# CharacterSheet(**character_data).
+_JOIN_CHARACTER_FIELDS = frozenset(
+    {"player_id", "name", "role", "lifepath", "attributes", "skills", "unspent_skill_points"}
+)
 
 
 def _starting_attributes(role: str) -> dict[str, int]:
@@ -96,7 +111,8 @@ def handle_message(session: Session, message: dict, player_id: str) -> None:
             raise ValueError("missing 'character' in join message")
         _validate_and_finalize_attributes(character_data)
         _validate_and_finalize_skills(character_data)
-        join(session, CharacterSheet(**character_data))
+        safe_data = {k: v for k, v in character_data.items() if k in _JOIN_CHARACTER_FIELDS}
+        join(session, CharacterSheet(**safe_data))
 
     elif message_type == "roll_initiative":
         if player_id not in session.characters:
@@ -141,9 +157,9 @@ def handle_message(session: Session, message: dict, player_id: str) -> None:
                 f"insufficient attribute points: has {character.unspent_attribute_points}, needs {amount}"
             )
         new_score = character.attributes.get(attribute_name, ATTRIBUTE_BASE_SCORE) + amount
-        if new_score > ATTRIBUTE_MAX:
+        if new_score > ATTRIBUTE_MILESTONE_MAX:
             raise ValueError(
-                f"attribute {attribute_name!r} score {new_score} would exceed the maximum {ATTRIBUTE_MAX}"
+                f"attribute {attribute_name!r} score {new_score} would exceed the maximum {ATTRIBUTE_MILESTONE_MAX}"
             )
         character.attributes[attribute_name] = new_score
         character.unspent_attribute_points -= amount

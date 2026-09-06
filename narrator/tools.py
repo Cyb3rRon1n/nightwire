@@ -2,7 +2,7 @@ import random
 from collections.abc import Callable
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from engine.session import Session
 from ruleset.attributes import modifier
@@ -34,8 +34,11 @@ class ApplyCharacterUpdate(BaseModel):
     remove_conditions: list[str] = []
     add_inventory: list[str] = []
     remove_inventory: list[str] = []
-    skill_points_delta: int = 0
-    attribute_points_delta: int = 0
+    # Milestone grants from an 8B model - bounded at the schema so one
+    # hallucinated large value can't permanently max a character in a
+    # single turn. A whole campaign hands out only a handful of points.
+    skill_points_delta: int = Field(0, ge=0, le=3)
+    attribute_points_delta: int = Field(0, ge=0, le=1)
 
 
 class UpdateWorld(BaseModel):

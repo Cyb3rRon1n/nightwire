@@ -23,6 +23,9 @@ export const ATTRIBUTE_BASE_SCORE = 10;
 export const ATTRIBUTE_BUDGET = 12;
 export const ATTRIBUTE_MIN = 6;
 export const ATTRIBUTE_MAX = 14;
+// Post-creation milestone growth may push one step past the chargen ceiling
+// - mirrors server/dispatch.py's ATTRIBUTE_MILESTONE_MAX.
+export const ATTRIBUTE_MILESTONE_MAX = 16;
 
 // The role's primary attribute starts at +1 over base - mirrors
 // server/dispatch.py's _starting_attributes exactly.
@@ -58,12 +61,16 @@ export function AttributePicker({
   attributes,
   primaryAttribute,
   remaining,
+  maxScore = ATTRIBUTE_MAX,
   onIncrement,
   onDecrement,
 }: {
   attributes: Record<string, number>;
   primaryAttribute: string | null;
   remaining: number;
+  // Chargen caps at ATTRIBUTE_MAX; the post-join milestone picker passes
+  // ATTRIBUTE_MILESTONE_MAX so a point-bought-to-14 attribute isn't stuck.
+  maxScore?: number;
   onIncrement: (attributeName: string) => void;
   onDecrement?: (attributeName: string) => void;
 }) {
@@ -96,7 +103,7 @@ export function AttributePicker({
                 type="button"
                 className="nw-btn-ghost"
                 onClick={() => onIncrement(attr.name)}
-                disabled={score >= ATTRIBUTE_MAX || remaining <= 0}
+                disabled={score >= maxScore || remaining <= 0}
               >
                 +
               </button>

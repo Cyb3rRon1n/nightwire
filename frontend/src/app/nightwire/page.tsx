@@ -206,18 +206,20 @@ export default function NightwirePage() {
   const [referencePhotos, setReferencePhotos] = useState<string[]>([]);
   const [combatActionPending, setCombatActionPending] = useState(false);
 
-  const { view, error, send, readyState } = useNightwireSocket(
+  const { view, error, errorSeq, send, readyState } = useNightwireSocket(
     connected ? sessionId : null,
     connected ? playerId : null,
   );
 
   // The only signal a sent action actually resolved is the next broadcast
-  // this connection receives - the protocol has no per-request ack.
+  // this connection receives - the protocol has no per-request ack. Key on
+  // errorSeq, not error: a repeated identical error string is Object.is-equal
+  // and would otherwise leave the button stuck at "Generating..." on retry.
   useEffect(() => {
     setSending(false);
     setApprovingPortrait(false);
     setCombatActionPending(false);
-  }, [view, error]);
+  }, [view, errorSeq]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {

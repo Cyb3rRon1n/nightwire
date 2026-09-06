@@ -1,6 +1,6 @@
 # Nightwire Attribute Point-Buy Design — Phase 9
 
-Status: designed, not yet implemented. Closes a gap Phase 1's own ruleset spec explicitly flagged as open ("Not independently researched against alternative attribute-count/generation schemes") and Phase 7's skill system spec flagged again as a known, security-relevant gap. Every choice below is grounded in independent external research — no oracle-precedent citations.
+Status: implemented 2026-08-25 (server validation + frontend allocator), post-creation growth added and reviewed 2026-09-06 (see "Post-creation growth" below). Closes a gap Phase 1's own ruleset spec explicitly flagged as open ("Not independently researched against alternative attribute-count/generation schemes") and Phase 7's skill system spec flagged again as a known, security-relevant gap. Every choice below is grounded in independent external research — no oracle-precedent citations.
 
 ## The actual requirement
 
@@ -53,9 +53,18 @@ This closes the exact trust gap Phase 7 flagged: attribute scores become as serv
 
 A new allocation step in `page.tsx`'s pre-join character-creation form, positioned **before** the existing `SkillPicker` (confirmed with the project owner) — skill caps shown in that picker become the real, attribute-driven numbers instead of a uniform 3 for everyone, which is the whole point of building this. Role selection happens first (already the case), so the primary-attribute bonus and its starting-value implications are known before the player starts spending attribute points.
 
+## Post-creation growth (built as a Phase 9 follow-up, 2026-09-06)
+
+The original spec deferred post-creation attribute growth. It was built anyway in the same phase (an attribute-side twin of Phase 7's `skill_points_delta` / `allocate_skill_points`), and a whole-branch review flagged that it had shipped without the two design decisions this section now records. The broader leveling economy stays deferred — this only covers what the growth mechanic itself needs to be coherent.
+
+- **Grant path**: the narrator grants points via `apply_character_update`'s `attribute_points_delta` (accumulated into `CharacterSheet.unspent_attribute_points`); the player spends them with a new `allocate_attribute_points` message, validated server-side exactly like `allocate_skill_points` (unknown name, non-positive amount, insufficient points, ceiling).
+- **Grant rate is bounded at the schema, not left to model judgment alone.** `attribute_points_delta` is `Field(0, ge=0, le=1)` — at most one attribute point per turn, so a single hallucinated large value can't permanently max a character. (`skill_points_delta` is `le=3` for the same reason.) The system prompt tells the narrator advancement is rare and milestone-scale — a whole campaign hands out only a few.
+- **Post-creation ceiling: 16, one step above the chargen ceiling of 14** (`ATTRIBUTE_MILESTONE_MAX` in `server/dispatch.py`, mirrored in `AttributePicker.tsx`). Without this, an attribute point-bought to 14 — which the spec's own worked example does — would be dead currency a milestone point could never be spent on. `modifier(16) == 3`, a real but still-bounded further step. Chargen itself is unchanged: `_validate_and_finalize_attributes` still rejects anything above 14.
+
 ## What's deliberately deferred
 
 - Exact frontend component shape/props for the new allocator — implementation-phase work, same as every prior phase's UI has deferred it.
-- Post-creation attribute growth (an attribute-side equivalent to `skill_points_delta`'s milestone spends) — not touched here; Phase 7 already left the broader leveling economy as an open gap, and this design doesn't need to solve it to make starting attributes real.
+- **What formally triggers a milestone** — currently pure narrator judgment via `attribute_points_delta` / `skill_points_delta`, with only prompt guidance. A real advancement economy (session/objective triggers, whether a milestone also touches HP/max_health) stays the open gap Phase 7 already named.
 - Role-weighted *budgets* (different total points per role, not just a starting bonus on one attribute) — the flat-budget-every-role choice here deliberately matches Phase 7's skill-budget precedent rather than diverging from it; revisit both together if this ever becomes a real balance problem, not preemptively.
-- Any attribute range/cap changes beyond starting-character generation (e.g. a wider ceiling unlocked by later advancement) — out of scope until the leveling economy above actually exists.
+- Any attribute ceiling beyond the milestone step to 16 (a wider range unlocked by deeper advancement) — out of scope until the milestone economy above actually exists.
+- Skill/attribute respec — spend-only on both, no mechanism to undo an allocation.
