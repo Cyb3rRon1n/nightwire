@@ -1,0 +1,77 @@
+name: nightwire
+
+# Self-hosted Nightwire stack: game server + web frontend.
+#   docker compose up -d --build
+#
+# Local narrator (Ollama) instead of a hosted model:
+#   docker compose --profile ollama up -d --build
+#   docker compose exec ollama ollama pull "${NIGHTWIRE_MODEL:-qwen3:8b}"
+#   ...and in .env: OLLAMA_HOST=http://ollama:11434
+#
+# Already run Anvil on this host? Point OLLAMA_HOST at Anvil's Ollama
+# instead of the profile above — one GPU can't usefully feed two Ollamas.
+#
+# NOT included: scene/portrait image generation. narrator/image_backend.py
+# talks to open-dungeon's ultra-fast-image-gen worker, which is MLX-based
+# (Apple Silicon only) — it can't run in this Linux container stack. Set
+# FLUX_WORKER_URL if you run that worker natively on a Mac reachable from
+# this host; there's no shared-volume wiring here for its output, so
+# generated images won't reach the web frontend without more plumbing.
+#
+# TTS (Kokoro) is real and containerizable — enable with --profile voice.
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nightwire-server
+    restart: unless-stopped
+    environment:
+      NIGHTWIRE_MODEL: ${NIGHTWIRE_MODEL:-qwen3:8b}
+      OLLAMA_HOST: ${OLLAMA_HOST:-}
+      FLUX_WORKER_URL: ${FLUX_WORKER_URL:-}
+      KOKORO_URL: ${KOKORO_URL:-http://kokoro:8880}
+    volumes:
+      - sessions:/data/sessions
+    ports:
+      - "${SERVER_PORT:-8000}:8000"
+
+  web:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    image: nightwire-web
+    restart: unless-stopped
+    environment:
+      OLLAMA_BASE_URL: ${OLLAMA_HOST:-http://127.0.0.1:11434}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+
+  # Local narrator. Only starts with --profile ollama.
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ollama"]
+    restart: unless-stopped
+    volumes:
+      - ollama:/root/.ollama
+    # NVIDIA GPU (needs the NVIDIA Container Toolkit on the host — without
+    # it Ollama silently runs on CPU). Uncomment to enable:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # Character-distinct TTS narration. Only starts with --profile voice.
+  kokoro:
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:latest
+    profiles: ["voice"]
+    restart: unless-stopped
+
+volumes:
+  sessions:
+  ollama:
