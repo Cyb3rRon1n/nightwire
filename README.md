@@ -68,6 +68,18 @@ MLX-based — Apple Silicon only, can't run in a Linux container. Set
 no shared-volume wiring here for its output image files, so generated
 images won't reach the containerized web frontend without more plumbing.
 
+### Homepage dashboard tile
+
+Co-located Vulcan install with Homepage enabled? Add a click-through tile:
+
+```bash
+pip install --user pyyaml   # if not already present
+python3 homepage_integrate.py --url http://192.168.1.x:3000/nightwire
+```
+
+Auto-detects a sibling `vulcan/stack`; pass `--vulcan-dir` otherwise. Safe to
+re-run — only touches its own "Nightwire" group.
+
 ## Repository layout
 
 ```
