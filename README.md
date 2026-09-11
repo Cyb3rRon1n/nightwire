@@ -17,7 +17,7 @@ A cyberpunk tabletop RPG with an AI game master — playable solo or with friend
 
 Sibling project to [`oracle`](https://github.com/Cyb3rRon1n/oracle) (a D&D-flavored AI-DM) — built fresh rather than adapted, and researched independently at every design decision rather than leaning on oracle as precedent (see `ROADMAP.md`'s "Why a fresh project" section for the reasoning, and every spec under `docs/superpowers/specs/` for the citations behind each mechanic).
 
-**Status**: Phases 1–6 built and live-verified — ruleset, engine, AI narrator, web frontend, image generation, and text-to-speech (character-distinct voices) all work end to end. See `ROADMAP.md`'s Phases section for the full build history.
+**Status**: Phases 1–9 built and live-verified — ruleset, engine, AI narrator, web frontend, image generation, text-to-speech (character-distinct voices), a skill system, photo-reference portraits, and attribute point-buy all work end to end. See `ROADMAP.md`'s Phases section for the full build history.
 
 ## What makes it Nightwire
 
@@ -42,6 +42,43 @@ cd frontend && npm ci && npm run dev # http://localhost:3000/nightwire
 ```
 
 Image generation additionally needs a running `ultra-fast-image-gen` worker (`open-dungeon`'s `image_server/`) on `http://127.0.0.1:7869` — optional; without it, everything except scene/portrait images works normally.
+
+### Run as a Docker stack
+
+```bash
+docker compose up -d --build          # server on :8000, web on :3000/nightwire
+
+# local narrator instead of a hosted model:
+docker compose --profile ollama up -d --build
+docker compose exec ollama ollama pull qwen3:8b
+#   ...and in .env:  OLLAMA_HOST=http://ollama:11434
+
+# character-distinct TTS narration:
+docker compose --profile voice up -d --build
+#   ...and in .env:  KOKORO_URL=http://kokoro:8880   (compose default already points here)
+```
+
+Already run Anvil on this host? Point `OLLAMA_HOST` at Anvil's Ollama instead
+of the `ollama` profile — one GPU can't usefully feed two.
+
+**Image generation is not part of the Docker stack.** `image_backend.py`
+talks to `open-dungeon`'s `ultra-fast-image-gen` worker, which is
+MLX-based — Apple Silicon only, can't run in a Linux container. Set
+`FLUX_WORKER_URL` if you run that worker natively on a reachable Mac; there's
+no shared-volume wiring here for its output image files, so generated
+images won't reach the containerized web frontend without more plumbing.
+
+### Homepage dashboard tile
+
+Co-located Vulcan install with Homepage enabled? Add a click-through tile:
+
+```bash
+pip install --user pyyaml   # if not already present
+python3 homepage_integrate.py --url http://192.168.1.x:3000/nightwire
+```
+
+Auto-detects a sibling `vulcan/stack`; pass `--vulcan-dir` otherwise. Safe to
+re-run — only touches its own "Nightwire" group.
 
 ## Repository layout
 

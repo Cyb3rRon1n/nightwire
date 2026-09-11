@@ -2,7 +2,7 @@ import { portraitFor } from "@/lib/nightwire/portrait";
 import { mediaUrl } from "@/lib/nightwire/media";
 import type { CharacterSheet } from "@/lib/nightwire/protocol";
 import { SkillPicker } from "./SkillPicker";
-import { AttributePicker } from "./AttributePicker";
+import { AttributePicker, ATTRIBUTE_MILESTONE_MAX } from "./AttributePicker";
 import "./theme.css";
 
 export function CharacterSheetOverlay({
@@ -54,6 +54,7 @@ export function CharacterSheetOverlay({
                 attributes={character.attributes}
                 primaryAttribute={null}
                 remaining={character.unspent_attribute_points}
+                maxScore={ATTRIBUTE_MILESTONE_MAX}
                 onIncrement={onAllocateAttribute}
               />
             ) : Object.keys(character.attributes).length === 0 ? (

@@ -45,6 +45,14 @@ def _validate_reference_photos(raw: object) -> list[str]:
         media_type = header[len("data:"):header.index(";")]
         if media_type not in _ALLOWED_REFERENCE_PHOTO_TYPES:
             raise ValueError(f"reference_photos: unsupported image type {media_type!r}")
+        # Reject on encoded length before decoding, so a huge data URL isn't
+        # fully materialized in memory just to be rejected. base64 inflates
+        # ~4/3, so this is a loose upper bound; the exact check on the
+        # decoded bytes below still applies.
+        if len(encoded) > _MAX_REFERENCE_PHOTO_BYTES * 4 // 3 + 4:
+            raise ValueError(
+                f"reference_photos: encoded image exceeds the {_MAX_REFERENCE_PHOTO_BYTES} byte limit"
+            )
         try:
             decoded = base64.b64decode(encoded, validate=True)
         except ValueError as e:

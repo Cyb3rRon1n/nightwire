@@ -8,6 +8,10 @@ const extraDevOrigins = (process.env.ALLOWED_DEV_ORIGINS || "")
   .filter(Boolean);
 
 const nextConfig: NextConfig = {
+  // Self-contained server bundle for the Docker image (frontend/Dockerfile) —
+  // copies only what `next start` actually needs instead of the whole
+  // node_modules tree. No effect on `next dev`/`next build` outside Docker.
+  output: "standalone",
   allowedDevOrigins: ["localhost", "127.0.0.1", ...extraDevOrigins],
   devIndicators: false,
   serverExternalPackages: ["better-sqlite3"],
