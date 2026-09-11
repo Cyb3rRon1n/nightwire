@@ -43,6 +43,31 @@ cd frontend && npm ci && npm run dev # http://localhost:3000/nightwire
 
 Image generation additionally needs a running `ultra-fast-image-gen` worker (`open-dungeon`'s `image_server/`) on `http://127.0.0.1:7869` — optional; without it, everything except scene/portrait images works normally.
 
+### Run as a Docker stack
+
+```bash
+docker compose up -d --build          # server on :8000, web on :3000/nightwire
+
+# local narrator instead of a hosted model:
+docker compose --profile ollama up -d --build
+docker compose exec ollama ollama pull qwen3:8b
+#   ...and in .env:  OLLAMA_HOST=http://ollama:11434
+
+# character-distinct TTS narration:
+docker compose --profile voice up -d --build
+#   ...and in .env:  KOKORO_URL=http://kokoro:8880   (compose default already points here)
+```
+
+Already run Anvil on this host? Point `OLLAMA_HOST` at Anvil's Ollama instead
+of the `ollama` profile — one GPU can't usefully feed two.
+
+**Image generation is not part of the Docker stack.** `image_backend.py`
+talks to `open-dungeon`'s `ultra-fast-image-gen` worker, which is
+MLX-based — Apple Silicon only, can't run in a Linux container. Set
+`FLUX_WORKER_URL` if you run that worker natively on a reachable Mac; there's
+no shared-volume wiring here for its output image files, so generated
+images won't reach the containerized web frontend without more plumbing.
+
 ## Repository layout
 
 ```
