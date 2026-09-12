@@ -216,9 +216,12 @@ export default function NightwirePage() {
   // errorSeq, not error: a repeated identical error string is Object.is-equal
   // and would otherwise leave the button stuck at "Generating..." on retry.
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- syncing to an
+     * external system (websocket broadcasts), not derivable during render. */
     setSending(false);
     setApprovingPortrait(false);
     setCombatActionPending(false);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [view, errorSeq]);
 
   useEffect(() => {
