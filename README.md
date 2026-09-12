@@ -1,4 +1,5 @@
 <p align="center">
+  <a href="https://github.com/Cyb3rRon1n/nightwire/actions/workflows/ci.yml"><img src="https://github.com/Cyb3rRon1n/nightwire/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/python-3.11%2B-blue.svg" alt="Python 3.11+">
 </p>
