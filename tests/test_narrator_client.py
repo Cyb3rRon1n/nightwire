@@ -181,3 +181,42 @@ async def test_respond_image_request_defaults_to_none():
     )
     response = await client.respond([{"role": "user", "content": "I look around."}])
     assert response.image_request is None
+
+
+def test_num_ctx_defaults_to_8192():
+    client = NarratorClient()
+    assert client.num_ctx == 8192
+
+
+def test_num_ctx_is_configurable():
+    client = NarratorClient(num_ctx=4096)
+    assert client.num_ctx == 4096
+
+
+@pytest.mark.asyncio
+async def test_summarize_builds_system_and_user_messages():
+    seen = {}
+
+    async def summarize_fn(*, model, messages):
+        seen["model"] = model
+        seen["messages"] = messages
+        return {"message": {"content": "The party met a fixer and agreed to a job."}}
+
+    client = NarratorClient(model="qwen3:8b", summarize_fn=summarize_fn)
+    result = await client.summarize("p1: I approach the fixer.\nThe fixer nods.")
+
+    assert seen["model"] == "qwen3:8b"
+    assert seen["messages"][0]["role"] == "system"
+    assert seen["messages"][1] == {"role": "user", "content": "p1: I approach the fixer.\nThe fixer nods."}
+    assert result == "The party met a fixer and agreed to a job."
+
+
+@pytest.mark.asyncio
+async def test_summarize_strips_whitespace_from_the_response():
+    async def summarize_fn(*, model, messages):
+        return {"message": {"content": "  A tense standoff at the docks.  \n"}}
+
+    client = NarratorClient(summarize_fn=summarize_fn)
+    result = await client.summarize("some events")
+
+    assert result == "A tense standoff at the docks."

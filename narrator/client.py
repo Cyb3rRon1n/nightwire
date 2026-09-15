@@ -7,6 +7,12 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from narrator.tools import ApplyCharacterUpdate, RequestRoll, UpdateWorld
 
 
+_SUMMARY_SYSTEM_PROMPT = (
+    "Summarize the following tabletop RPG session events in 2-3 sentences. "
+    "Preserve named characters, promises, and key decisions made. Prose only, no lists."
+)
+
+
 # Each variant pairs a Literal tag with the *real* argument model from
 # narrator/tools.py (not a loose dict) - Ollama's structured-output format
 # param is a real JSON schema it constrains generation against, so a bare
@@ -94,12 +100,16 @@ class NarratorClient:
         system_prompt: str = "",
         chat_fn: Callable[..., Awaitable[dict]] | None = None,
         generate_fn: Callable[..., Awaitable[object]] | None = None,
+        summarize_fn: Callable[..., Awaitable[dict]] | None = None,
+        num_ctx: int = 8192,
     ) -> None:
         self.model = model
         self.system_prompt = system_prompt
+        self.num_ctx = num_ctx
         self._client = ollama.AsyncClient(timeout=60)
         self._chat_fn = chat_fn or self._default_chat
         self._generate_fn = generate_fn or self._client.generate
+        self._summarize_fn = summarize_fn or self._default_summarize
 
     async def _default_chat(self, *, model: str, messages: list[dict], format: dict) -> dict:
         # Live probing found start_combat firing on 2/5, then 5/5, then 5/5 of
@@ -109,7 +119,17 @@ class NarratorClient:
         # trades a little narrative prose variety for a lot more consistency
         # on this specific structured decision.
         return await self._client.chat(
-            model=model, messages=messages, format=format, options={"temperature": 0.3}
+            model=model,
+            messages=messages,
+            format=format,
+            options={"temperature": 0.3, "num_ctx": self.num_ctx},
+        )
+
+    async def _default_summarize(self, *, model: str, messages: list[dict]) -> dict:
+        return await self._client.chat(
+            model=model,
+            messages=messages,
+            options={"temperature": 0.3, "num_ctx": self.num_ctx},
         )
 
     async def unload(self) -> None:
@@ -129,3 +149,11 @@ class NarratorClient:
             return NarratorResponse.model_validate_json(response["message"]["content"])
         except ValidationError as e:
             raise ValueError(f"model returned invalid structured output: {e}") from e
+
+    async def summarize(self, text: str) -> str:
+        messages = [
+            {"role": "system", "content": _SUMMARY_SYSTEM_PROMPT},
+            {"role": "user", "content": text},
+        ]
+        response = await self._summarize_fn(model=self.model, messages=messages)
+        return response["message"]["content"].strip()
