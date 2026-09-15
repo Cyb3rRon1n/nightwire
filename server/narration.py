@@ -1,4 +1,5 @@
 import httpx
+import ollama
 
 from engine.persistence import JSONFileSessionStore
 from engine.session import Session
@@ -17,6 +18,32 @@ _VERBATIM_BUDGET_FRACTION = 0.65
 # No tokenizer dependency - this is a "getting close to budget" trigger,
 # not an exact accounting requirement.
 _CHARS_PER_TOKEN_ESTIMATE = 4
+# Hysteresis: only re-fire compaction once at least this many additional
+# lines have been excluded since the last firing, not on every turn that
+# excludes anything at all. Without this, steady-state play (each turn
+# appending ~2+ lines past the budget threshold) triggers a full LLM
+# summarization call on nearly every single turn.
+_RECOMPACT_LINE_THRESHOLD = 8
+# ponytail: caps the full-rebuild summarization input so its own prompt
+# can't silently exceed num_ctx and self-truncate (the same failure class
+# this phase exists to fix, just at a higher threshold). 24000 chars is
+# Task 4's own live-verified session size, not a tuned ceiling - if a
+# session needs to run meaningfully longer than ~2x that, this needs
+# either a higher live-verified cap or a switch to incremental (not
+# full-rebuild) summarization, which the design spec explicitly deferred.
+_MAX_SUMMARIZE_INPUT_CHARS = 24000
+
+
+def _cap_for_summarization(excluded: list[str]) -> list[str]:
+    total = 0
+    capped: list[str] = []
+    for line in reversed(excluded):
+        total += len(line) + 1
+        if total > _MAX_SUMMARIZE_INPUT_CHARS:
+            break
+        capped.append(line)
+    capped.reverse()
+    return capped
 
 
 def _select_verbatim_narrative(narrative: list[str], num_ctx: int) -> list[str]:
@@ -62,13 +89,13 @@ async def _maybe_compact(session: Session, narrator_client: NarratorClient) -> N
     narrative = [line for line in session.log if not line.startswith("[")]
     verbatim = _select_verbatim_narrative(narrative, narrator_client.num_ctx)
     excluded_count = len(narrative) - len(verbatim)
-    if excluded_count <= session.narrative_summary_line_count:
+    if excluded_count < session.narrative_summary_line_count + _RECOMPACT_LINE_THRESHOLD:
         return
     excluded = narrative[:excluded_count]
     try:
-        session.narrative_summary = await narrator_client.summarize("\n".join(excluded))
+        session.narrative_summary = await narrator_client.summarize("\n".join(_cap_for_summarization(excluded)))
         session.narrative_summary_line_count = excluded_count
-    except (ValueError, TypeError, httpx.HTTPError) as e:
+    except (ValueError, TypeError, httpx.HTTPError, ollama.ResponseError, ConnectionError, KeyError) as e:
         session.log.append(f"[summary error: {e}]")
 
 
@@ -144,4 +171,5 @@ async def handle_action(
         except (ValueError, TypeError, OSError, httpx.HTTPError, RuntimeError) as e:
             session.log.append(f"[image error: {e}]")
     session.last_turn_had_image = generated_image
-    await _maybe_compact(session, narrator_client)
+    if not generated_image:
+        await _maybe_compact(session, narrator_client)
