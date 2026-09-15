@@ -18,7 +18,7 @@ A cyberpunk tabletop RPG with an AI game master — playable solo or with friend
 
 Sibling project to [`oracle`](https://github.com/Cyb3rRon1n/oracle) (a D&D-flavored AI-DM) — built fresh rather than adapted, and researched independently at every design decision rather than leaning on oracle as precedent (see `ROADMAP.md`'s "Why a fresh project" section for the reasoning, and every spec under `docs/superpowers/specs/` for the citations behind each mechanic).
 
-**Status**: Phases 1–9 built and live-verified — ruleset, engine, AI narrator, web frontend, image generation, text-to-speech (character-distinct voices), a skill system, photo-reference portraits, and attribute point-buy all work end to end. See `ROADMAP.md`'s Phases section for the full build history.
+**Status**: Phases 1–10 built and live-verified — ruleset, engine, AI narrator, web frontend, image generation (two backends, MLX and ComfyUI), text-to-speech (character-distinct voices), a skill system, photo-reference portraits, and attribute point-buy all work end to end. See `ROADMAP.md`'s Phases section for the full build history.
 
 ## What makes it Nightwire
 
@@ -26,7 +26,7 @@ Sibling project to [`oracle`](https://github.com/Cyb3rRon1n/oracle) (a D&D-flavo
 - **A tiered 1d10 resolution, not d20.** `1d10 + attribute + skill` vs. a difficulty class, deliberately the lowest-complexity class of cyberpunk system surveyed (Cyberpunk RED, CY_BORG), not Shadowrun-style dice pools.
 - **Four roles, checked against Cyberpunk 2077 itself**: Solo, Netrunner, Techie, Fixer — CP2077's three official archetypes plus a Fixer for social/negotiation. Six attributes (Body, Reflexes, Tech, Cool, Intellect, Presence).
 - **Structured output, not native tool-calling.** The narrator's tool choice and arguments are both constrained by a real JSON schema, after live testing found free-form tool-calling inventing plausible-but-wrong arguments on nearly every turn.
-- **Character-consistent image generation.** A portrait generated at character approval becomes a reference image for later scene generation, so a character looks like themselves across turns instead of a new face each time.
+- **Character-consistent image generation.** A portrait generated at character approval becomes a reference image for later scene generation, so a character looks like themselves across turns instead of a new face each time — on the default `flux_worker` backend. The `comfyui` backend (Docker/Linux-friendly, see below) doesn't support this yet: no IPAdapter/InstantID on the verified target instance, so it's text-prompt-only.
 - **Local-first AI** — Ollama-backed (`qwen3:8b`), same stance for the TTS backend.
 
 ## Running it
@@ -42,7 +42,7 @@ python -m server                     # ws://localhost:8000
 cd frontend && npm ci && npm run dev # http://localhost:3000/nightwire
 ```
 
-Image generation additionally needs a running `ultra-fast-image-gen` worker (`open-dungeon`'s `image_server/`) on `http://127.0.0.1:7869` — optional; without it, everything except scene/portrait images works normally.
+Image generation additionally needs a backend running — the default (`IMAGE_BACKEND=flux_worker`) is a running `ultra-fast-image-gen` worker (`open-dungeon`'s `image_server/`) on `http://127.0.0.1:7869`; set `IMAGE_BACKEND=comfyui` and `COMFYUI_URL` to use a ComfyUI instance instead (no MLX/Apple-Silicon requirement). Optional either way — without one, everything except scene/portrait images works normally.
 
 ### Run as a Docker stack
 
@@ -96,7 +96,8 @@ re-run — only touches its own "Nightwire" group.
 ├── narrator/            # the AI game master
 │   ├── client.py       #   Ollama client, NarratorResponse schema
 │   ├── tools.py         #   tool execution against engine state
-│   └── image_backend.py #   ImageBackend protocol + FluxWorkerBackend
+│   ├── image_backend.py #   ImageBackend protocol + FluxWorkerBackend + create_image_backend()
+│   └── comfyui_backend.py #   ComfyUIBackend — cross-platform, Docker-friendly, text-prompt-only
 ├── server/              # WebSocket server (FastAPI)
 │   ├── app.py            #   app factory, connection lifecycle
 │   ├── dispatch.py       #   incoming message routing
