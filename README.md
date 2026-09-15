@@ -62,12 +62,15 @@ docker compose --profile voice up -d --build
 Already run Anvil on this host? Point `OLLAMA_HOST` at Anvil's Ollama instead
 of the `ollama` profile — one GPU can't usefully feed two.
 
-**Image generation is not part of the Docker stack.** `image_backend.py`
-talks to `open-dungeon`'s `ultra-fast-image-gen` worker, which is
-MLX-based — Apple Silicon only, can't run in a Linux container. Set
-`FLUX_WORKER_URL` if you run that worker natively on a reachable Mac; there's
-no shared-volume wiring here for its output image files, so generated
-images won't reach the containerized web frontend without more plumbing.
+**Image generation has two backends.** `image_backend.py`'s default
+(`IMAGE_BACKEND=flux_worker`) talks to `open-dungeon`'s
+`ultra-fast-image-gen` worker, which is MLX-based — Apple Silicon only,
+can't run in a Linux container. Set `FLUX_WORKER_URL` if you run that
+worker natively on a reachable Mac; there's no shared-volume wiring here
+for its output image files, so generated images won't reach the
+containerized web frontend without more plumbing. `IMAGE_BACKEND=comfyui`
+has no such limitation — it's a plain HTTP client, so it works directly
+from the Docker stack. Set `COMFYUI_URL` to a reachable ComfyUI instance.
 
 ### Homepage dashboard tile
 

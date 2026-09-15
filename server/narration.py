@@ -1,3 +1,5 @@
+import httpx
+
 from engine.persistence import JSONFileSessionStore
 from engine.session import Session
 from narrator.client import NarratorClient
@@ -97,6 +99,6 @@ async def handle_action(
             output_path.write_bytes(image_bytes)
             session.log.append(f"[image: {relative_path}]")
             generated_image = True
-        except (ValueError, TypeError, OSError) as e:
+        except (ValueError, TypeError, OSError, httpx.HTTPError, RuntimeError) as e:
             session.log.append(f"[image error: {e}]")
     session.last_turn_had_image = generated_image

@@ -91,14 +91,19 @@ class ComfyUIBackend:
             response = await self._client.get(f"/history/{prompt_id}")
             response.raise_for_status()
             history = response.json()
-            if prompt_id in history:
+            if history.get(prompt_id, {}).get("outputs"):
                 break
             await self._sleep(self.poll_interval)
         else:
             raise TimeoutError(f"ComfyUI didn't finish generating within {self.timeout}s")
 
         outputs = history[prompt_id]["outputs"]
-        image_info = next(image for node_output in outputs.values() for image in node_output.get("images", []))
+        image_info = next(
+            (image for node_output in outputs.values() for image in node_output.get("images", [])),
+            None,
+        )
+        if image_info is None:
+            raise RuntimeError(f"ComfyUI returned no images for prompt {prompt_id}")
 
         view = await self._client.get(
             "/view",
