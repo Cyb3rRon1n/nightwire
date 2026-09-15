@@ -9,7 +9,30 @@ from narrator.tts_backend import TTSBackend
 from narrator.voice_assignment import assign_voice
 
 
-def _build_messages(session: Session, action_text: str) -> list[dict]:
+# Verbatim recent narrative gets this fraction of num_ctx (in estimated
+# tokens), leaving room for the system prompt, party roster, the action
+# text, and response generation. A starting value, not a tuned optimum -
+# see the Phase 11 design spec.
+_VERBATIM_BUDGET_FRACTION = 0.65
+# No tokenizer dependency - this is a "getting close to budget" trigger,
+# not an exact accounting requirement.
+_CHARS_PER_TOKEN_ESTIMATE = 4
+
+
+def _select_verbatim_narrative(narrative: list[str], num_ctx: int) -> list[str]:
+    budget_chars = int(num_ctx * _VERBATIM_BUDGET_FRACTION * _CHARS_PER_TOKEN_ESTIMATE)
+    selected: list[str] = []
+    total = 0
+    for line in reversed(narrative):
+        total += len(line) + 1
+        if total > budget_chars:
+            break
+        selected.append(line)
+    selected.reverse()
+    return selected
+
+
+def _build_messages(session: Session, action_text: str, num_ctx: int) -> list[dict]:
     # apply_character_update's player_id is trusted as-is (it legitimately
     # targets a different character than the actor, e.g. damage to a
     # teammate) - but the model was never told what real player_ids exist,
@@ -25,9 +48,28 @@ def _build_messages(session: Session, action_text: str) -> list[dict]:
     # its own acknowledgment ("combat start requires...") as evidence combat
     # was actually ongoing, and re-trigger the tool turn after turn.
     narrative = [line for line in session.log if not line.startswith("[")]
-    recent = "\n".join(narrative[-10:])
-    context = f"Recent events:\n{recent}\n\n" if recent else ""
+    verbatim = _select_verbatim_narrative(narrative, num_ctx)
+    parts = []
+    if session.narrative_summary:
+        parts.append(f"Summary of earlier events: {session.narrative_summary}")
+    if verbatim:
+        parts.append("Recent events:\n" + "\n".join(verbatim))
+    context = "\n\n".join(parts) + "\n\n" if parts else ""
     return [{"role": "user", "content": f"{party}{context}Player action: {action_text}"}]
+
+
+async def _maybe_compact(session: Session, narrator_client: NarratorClient) -> None:
+    narrative = [line for line in session.log if not line.startswith("[")]
+    verbatim = _select_verbatim_narrative(narrative, narrator_client.num_ctx)
+    excluded_count = len(narrative) - len(verbatim)
+    if excluded_count <= session.narrative_summary_line_count:
+        return
+    excluded = narrative[:excluded_count]
+    try:
+        session.narrative_summary = await narrator_client.summarize("\n".join(excluded))
+        session.narrative_summary_line_count = excluded_count
+    except (ValueError, TypeError, httpx.HTTPError) as e:
+        session.log.append(f"[summary error: {e}]")
 
 
 async def handle_action(
@@ -45,7 +87,7 @@ async def handle_action(
     if len(action_text) > 1000:
         raise ValueError("action text too long")
 
-    messages = _build_messages(session, action_text)
+    messages = _build_messages(session, action_text, narrator_client.num_ctx)
     response = await narrator_client.respond(messages)
 
     session.log.append(f"{player_id}: {action_text}")
@@ -102,3 +144,4 @@ async def handle_action(
         except (ValueError, TypeError, OSError, httpx.HTTPError, RuntimeError) as e:
             session.log.append(f"[image error: {e}]")
     session.last_turn_had_image = generated_image
+    await _maybe_compact(session, narrator_client)

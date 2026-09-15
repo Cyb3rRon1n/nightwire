@@ -36,6 +36,20 @@ def _fake_client_with_segments(segments: list[dict], tool: str | None = None, to
     return NarratorClient(chat_fn=chat_fn, generate_fn=generate_fn)
 
 
+def _fake_client_with_summary(narration: str, summary_text: str) -> NarratorClient:
+    async def chat_fn(*, model, messages, format):
+        payload = {"narration": [{"speaker": "narrator", "text": narration}], "tool_call": {"tool": None}}
+        return {"message": {"content": json.dumps(payload)}}
+
+    async def generate_fn(**kwargs):
+        pass
+
+    async def summarize_fn(*, model, messages):
+        return {"message": {"content": summary_text}}
+
+    return NarratorClient(chat_fn=chat_fn, generate_fn=generate_fn, summarize_fn=summarize_fn, num_ctx=100)
+
+
 def _session_with_character() -> Session:
     session = Session(session_id="s1")
     session.characters["p1"] = CharacterSheet(
@@ -445,3 +459,121 @@ async def test_handle_action_logs_an_audio_error_without_raising(tmp_path):
     await _call(session, client, "p1", {"text": "..."}, tmp_path, tts_backend=FailingTTSBackend())
 
     assert any("audio error" in line for line in session.log)
+
+
+def test_select_verbatim_narrative_keeps_everything_under_budget():
+    from server.narration import _select_verbatim_narrative
+
+    narrative = ["short line one", "short line two"]
+    # num_ctx=100 -> budget = int(100 * 0.65 * 4) = 260 chars, both lines fit
+    result = _select_verbatim_narrative(narrative, num_ctx=100)
+
+    assert result == narrative
+
+
+def test_select_verbatim_narrative_drops_oldest_lines_past_budget():
+    from server.narration import _select_verbatim_narrative
+
+    # num_ctx=10 -> budget = int(10 * 0.65 * 4) = 26 chars
+    narrative = ["a" * 20, "b" * 20, "c" * 20]
+    result = _select_verbatim_narrative(narrative, num_ctx=10)
+
+    # Only the most recent line(s) that fit within 26 chars survive, in order
+    assert result == ["c" * 20]
+
+
+def test_build_messages_includes_narrative_summary_when_present():
+    from server.narration import _build_messages
+
+    session = _session_with_character()
+    session.narrative_summary = "Earlier, the party met a fixer named Jax."
+    session.log = ["p1: I nod at Jax."]
+
+    messages = _build_messages(session, "I ask Jax about the job.", num_ctx=8192)
+
+    content = messages[0]["content"]
+    assert "Summary of earlier events: Earlier, the party met a fixer named Jax." in content
+    assert "Recent events:\np1: I nod at Jax." in content
+
+
+def test_build_messages_omits_summary_section_when_empty():
+    from server.narration import _build_messages
+
+    session = _session_with_character()
+    session.log = ["p1: I look around."]
+
+    messages = _build_messages(session, "I move forward.", num_ctx=8192)
+
+    assert "Summary of earlier events" not in messages[0]["content"]
+
+
+@pytest.mark.asyncio
+async def test_maybe_compact_does_nothing_when_nothing_excluded():
+    from server.narration import _maybe_compact
+
+    session = _session_with_character()
+    session.log = ["p1: I look around.", "The alley is quiet."]
+    client = _fake_client_with_summary("ok", "should not be called")
+
+    await _maybe_compact(session, client)
+
+    assert session.narrative_summary == ""
+    assert session.narrative_summary_line_count == 0
+
+
+@pytest.mark.asyncio
+async def test_maybe_compact_summarizes_excluded_lines_once_budget_exceeded():
+    from server.narration import _maybe_compact
+
+    session = _session_with_character()
+    # num_ctx=100 on the fake client -> budget = 260 chars; make the log
+    # clearly exceed that so some lines are excluded from the verbatim window.
+    session.log = [f"line {i}: " + ("x" * 30) for i in range(20)]
+    client = _fake_client_with_summary("ok", "The party wandered the district for a while.")
+
+    await _maybe_compact(session, client)
+
+    assert session.narrative_summary == "The party wandered the district for a while."
+    assert session.narrative_summary_line_count > 0
+
+
+@pytest.mark.asyncio
+async def test_maybe_compact_does_not_re_summarize_when_excluded_count_unchanged():
+    from server.narration import _maybe_compact
+
+    session = _session_with_character()
+    session.log = [f"line {i}: " + ("x" * 30) for i in range(20)]
+    client = _fake_client_with_summary("ok", "first summary")
+
+    await _maybe_compact(session, client)
+    first_summary = session.narrative_summary
+    assert first_summary == "first summary"
+
+    # Same client would return "first summary" again if called - but nothing
+    # new was added to session.log, so a second call must be a no-op.
+    await _maybe_compact(session, client)
+
+    assert session.narrative_summary == first_summary
+
+
+@pytest.mark.asyncio
+async def test_maybe_compact_logs_summary_error_and_keeps_prior_summary_on_failure():
+    from server.narration import _maybe_compact
+
+    session = _session_with_character()
+    session.log = [f"line {i}: " + ("x" * 30) for i in range(20)]
+    session.narrative_summary = "an existing summary"
+    session.narrative_summary_line_count = 0  # force the trigger to fire again
+
+    async def failing_summarize_fn(*, model, messages):
+        raise ValueError("model unavailable")
+
+    async def chat_fn(*, model, messages, format):
+        return {"message": {"content": json.dumps({"narration": [], "tool_call": {"tool": None}})}}
+
+    client = NarratorClient(chat_fn=chat_fn, summarize_fn=failing_summarize_fn, num_ctx=100)
+
+    await _maybe_compact(session, client)
+
+    assert session.narrative_summary == "an existing summary"
+    assert any("[summary error:" in line for line in session.log)
