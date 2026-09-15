@@ -11,7 +11,7 @@ from narrator.tts_backend import VoiceOption
 from server.narration import handle_action
 
 
-def _fake_client(narration: str, tool: str | None = None, tool_args: dict | None = None, image_prompt: str | None = None) -> NarratorClient:
+def _fake_client(narration: str, tool: str | None = None, tool_args: dict | None = None, image_prompt: str | None = None, num_ctx: int = 8192, summarize_fn=None) -> NarratorClient:
     async def chat_fn(*, model, messages, format):
         tool_call = {"tool": tool} if tool is None else {"tool": tool, "tool_args": tool_args or {}}
         payload = {"narration": [{"speaker": "narrator", "text": narration}], "tool_call": tool_call}
@@ -22,7 +22,7 @@ def _fake_client(narration: str, tool: str | None = None, tool_args: dict | None
     async def generate_fn(**kwargs):
         pass
 
-    return NarratorClient(chat_fn=chat_fn, generate_fn=generate_fn)
+    return NarratorClient(chat_fn=chat_fn, generate_fn=generate_fn, num_ctx=num_ctx, summarize_fn=summarize_fn)
 
 
 def _fake_client_with_segments(segments: list[dict], tool: str | None = None, tool_args: dict | None = None) -> NarratorClient:
@@ -577,3 +577,100 @@ async def test_maybe_compact_logs_summary_error_and_keeps_prior_summary_on_failu
 
     assert session.narrative_summary == "an existing summary"
     assert any("[summary error:" in line for line in session.log)
+
+
+@pytest.mark.asyncio
+async def test_maybe_compact_catches_ollama_response_error():
+    from server.narration import _maybe_compact
+    import ollama
+
+    session = _session_with_character()
+    session.log = [f"line {i}: " + ("x" * 30) for i in range(20)]
+
+    async def failing_summarize_fn(*, model, messages):
+        raise ollama.ResponseError("model unavailable", status_code=500)
+
+    client = NarratorClient(summarize_fn=failing_summarize_fn, num_ctx=100)
+
+    await _maybe_compact(session, client)
+
+    assert any("[summary error:" in line for line in session.log)
+
+
+@pytest.mark.asyncio
+async def test_maybe_compact_requires_threshold_growth_before_refiring():
+    from server.narration import _maybe_compact
+
+    session = _session_with_character()
+    session.log = [f"line {i}: " + ("x" * 30) for i in range(20)]
+    calls = []
+
+    async def counting_summarize_fn(*, model, messages):
+        calls.append(messages)
+        return {"message": {"content": f"summary call {len(calls)}"}}
+
+    client = NarratorClient(summarize_fn=counting_summarize_fn, num_ctx=100)
+
+    await _maybe_compact(session, client)
+    assert len(calls) == 1
+
+    # Add one line - fewer than the hysteresis threshold - must NOT re-fire.
+    session.log.append("a small addition")
+    await _maybe_compact(session, client)
+    assert len(calls) == 1
+
+    # Add enough lines to cross the threshold - must re-fire.
+    for i in range(20, 30):
+        session.log.append(f"line {i}: " + ("x" * 30))
+    await _maybe_compact(session, client)
+    assert len(calls) == 2
+
+
+@pytest.mark.asyncio
+async def test_maybe_compact_caps_the_summarization_input_size():
+    from server.narration import _maybe_compact, _MAX_SUMMARIZE_INPUT_CHARS
+
+    session = _session_with_character()
+    session.log = [f"line {i}: " + ("x" * 500) for i in range(200)]
+    seen = {}
+
+    async def summarize_fn(*, model, messages):
+        seen["text_len"] = len(messages[1]["content"])
+        return {"message": {"content": "a capped summary"}}
+
+    client = NarratorClient(summarize_fn=summarize_fn, num_ctx=100)
+
+    await _maybe_compact(session, client)
+
+    assert seen["text_len"] <= _MAX_SUMMARIZE_INPUT_CHARS
+
+
+@pytest.mark.asyncio
+async def test_handle_action_skips_compaction_on_a_turn_that_generated_an_image(tmp_path):
+    session = _session_with_character()
+    session.log = [f"line {i}: " + ("x" * 30) for i in range(20)]
+    calls = []
+
+    async def counting_summarize_fn(*, model, messages):
+        calls.append(messages)
+        return {"message": {"content": "should not be called"}}
+
+    client = _fake_client(
+        "The alley opens onto a neon plaza.", image_prompt="a neon cyberpunk plaza",
+        num_ctx=100, summarize_fn=counting_summarize_fn,
+    )
+
+    class FakeImageBackend:
+        async def generate_portrait(self, description):
+            raise AssertionError("not exercised by this test")
+
+        async def generate_scene(self, prompt, reference_paths):
+            return b"fake-scene-bytes"
+
+    await _call(
+        session, client, "p1", {"text": "I step into the plaza."}, tmp_path,
+        FakeImageBackend(), tts_backend=FakeTTSBackend(),
+    )
+
+    assert calls == []
+    assert session.narrative_summary_line_count == 0
