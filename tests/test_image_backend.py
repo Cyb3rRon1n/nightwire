@@ -104,3 +104,33 @@ async def test_generate_scene_only_sends_the_first_two_references(tmp_path):
     # prepare_reference_paths) only ever reads references[:2] - sending more
     # is silently wasted bandwidth, not an error, but there's no reason to.
     assert len(seen["payload"]["references"]) == 2
+
+
+from narrator.comfyui_backend import ComfyUIBackend
+from narrator.image_backend import create_image_backend
+
+
+def test_create_image_backend_defaults_to_flux_worker(monkeypatch):
+    monkeypatch.delenv("IMAGE_BACKEND", raising=False)
+
+    backend = create_image_backend()
+
+    assert isinstance(backend, FluxWorkerBackend)
+
+
+def test_create_image_backend_selects_comfyui(monkeypatch):
+    monkeypatch.setenv("IMAGE_BACKEND", "comfyui")
+    monkeypatch.setenv("COMFYUI_URL", "http://192.168.10.19:8188")
+    monkeypatch.setenv("COMFYUI_CHECKPOINT", "v1-5-pruned-emaonly-fp16.safetensors")
+
+    backend = create_image_backend()
+
+    assert isinstance(backend, ComfyUIBackend)
+    assert backend.checkpoint == "v1-5-pruned-emaonly-fp16.safetensors"
+
+
+def test_create_image_backend_rejects_unknown_value(monkeypatch):
+    monkeypatch.setenv("IMAGE_BACKEND", "not-a-real-backend")
+
+    with pytest.raises(ValueError, match="not-a-real-backend"):
+        create_image_backend()

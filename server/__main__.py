@@ -4,7 +4,7 @@ import uvicorn
 
 from engine.persistence import JSONFileSessionStore
 from narrator.client import NarratorClient
-from narrator.image_backend import FluxWorkerBackend
+from narrator.image_backend import create_image_backend
 from narrator.tts_backend import KokoroBackend
 from server.app import create_app
 
@@ -42,15 +42,10 @@ def build_app():
         "attribute_points_delta to 1 (never more); a whole campaign hands out only a few."
     )
     narrator_client = NarratorClient(model=os.environ.get("NIGHTWIRE_MODEL", "qwen3:8b"), system_prompt=system_prompt)
-    # output_dir default (frontend/public/generated) matches
-    # image_server/optimized_image_server.py's own OUT_DIR default,
-    # assuming both processes run from the repo root - still true when
-    # FLUX_WORKER_URL points elsewhere (a container split needs a shared
-    # volume mounted at this same path in both containers).
-    image_backend = FluxWorkerBackend(
-        base_url=os.environ.get("FLUX_WORKER_URL", "http://127.0.0.1:7869"),
-        output_dir=os.environ.get("IMAGE_OUTPUT_DIR", "frontend/public/generated"),
-    )
+    # IMAGE_BACKEND selects flux_worker (default, MLX-only) or comfyui
+    # (Docker/Linux-friendly, no reference-photo support) - see
+    # docs/superpowers/specs/2026-09-15-comfyui-image-backend-design.md.
+    image_backend = create_image_backend()
     # KokoroBackend is the local-first default (coexists with qwen3:8b, no
     # GPU-swap cost) - swap to OpenAITTSBackend(api_key=...) here for the
     # hosted fallback; selection is a startup-time config choice, not a
