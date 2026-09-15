@@ -57,4 +57,6 @@ class JSONFileSessionStore:
             speaker_voices=data.get("speaker_voices", {}),
             pending_initiative=data.get("pending_initiative", {}),
             last_turn_had_image=data.get("last_turn_had_image", False),
+            narrative_summary=data.get("narrative_summary", ""),
+            narrative_summary_line_count=data.get("narrative_summary_line_count", 0),
         )

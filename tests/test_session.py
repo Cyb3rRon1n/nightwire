@@ -50,3 +50,16 @@ def test_session_speaker_voices_defaults_to_empty_and_is_independent_per_instanc
     session_a.speaker_voices["Jax"] = "am_adam"
 
     assert session_b.speaker_voices == {}
+
+
+def test_session_narrative_summary_defaults_to_empty_and_is_independent_per_instance():
+    session_a = Session(session_id="a")
+    session_b = Session(session_id="b")
+
+    assert session_a.narrative_summary == ""
+    assert session_a.narrative_summary_line_count == 0
+    session_a.narrative_summary = "The party met a fixer."
+    session_a.narrative_summary_line_count = 12
+
+    assert session_b.narrative_summary == ""
+    assert session_b.narrative_summary_line_count == 0

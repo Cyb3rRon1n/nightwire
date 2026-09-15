@@ -18,3 +18,5 @@ class Session:
     speaker_voices: dict[str, str] = field(default_factory=dict)
     pending_initiative: dict[str, int] = field(default_factory=dict)
     last_turn_had_image: bool = False
+    narrative_summary: str = ""
+    narrative_summary_line_count: int = 0
