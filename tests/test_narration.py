@@ -1,5 +1,6 @@
 import json
 
+import httpx
 import pytest
 
 from engine.character import CharacterSheet
@@ -346,6 +347,35 @@ async def test_handle_action_logs_an_image_error_without_raising(tmp_path):
     )
 
     assert any("image error" in line for line in session.log)
+
+
+@pytest.mark.asyncio
+async def test_handle_action_logs_an_image_error_from_httpx_without_raising(tmp_path):
+    # ComfyUIBackend's realistic failures (dead/unreachable instance, bad
+    # checkpoint name) surface as httpx exceptions, not ValueError/TypeError/
+    # OSError - those must be caught here too, or the whole turn (narration,
+    # audio, tool call already applied) is lost when this propagates up to
+    # server/app.py's outer handler.
+    session = _session_with_character()
+    client = _fake_client("The scene shifts.", image_prompt="a scene")
+
+    class UnreachableImageBackend:
+        async def generate_portrait(self, description):
+            raise AssertionError("not exercised by this test")
+
+        async def generate_scene(self, prompt, reference_paths):
+            raise httpx.ConnectError("connection refused")
+
+    store = await _call(
+        session, client, "p1", {"text": "I look up."}, tmp_path,
+        UnreachableImageBackend(), tts_backend=FakeTTSBackend(),
+    )
+
+    assert any("image error" in line for line in session.log)
+    # The rest of the turn survived - narration is still there, not just the
+    # error - matching what the caller (server/app.py) will store.save().
+    assert any("The scene shifts." in line for line in session.log)
+    assert store is not None
 
 
 @pytest.mark.asyncio

@@ -19,7 +19,7 @@ class _FakeComfyClient:
     """Stands in for httpx.AsyncClient - only the methods ComfyUIBackend
     actually calls (post, get), duck-typed to httpx's own response shape."""
 
-    def __init__(self, prompt_id="abc123", history=None, image_bytes=b"fake-comfyui-png"):
+    def __init__(self, prompt_id="abc123", history=None, history_sequence=None, image_bytes=b"fake-comfyui-png"):
         self.prompt_id = prompt_id
         self.history = history if history is not None else {
             "abc123": {
@@ -28,6 +28,11 @@ class _FakeComfyClient:
                 }
             }
         }
+        # When set, each /history poll pops the next entry off this list
+        # instead of returning the fixed self.history - lets a test simulate
+        # history changing shape across successive polls (e.g. present-but-
+        # empty, then populated).
+        self.history_sequence = list(history_sequence) if history_sequence is not None else None
         self.image_bytes = image_bytes
         self.calls = []
 
@@ -38,6 +43,9 @@ class _FakeComfyClient:
     async def get(self, url, params=None):
         self.calls.append(("get", url, params))
         if url.startswith("/history/"):
+            if self.history_sequence is not None:
+                next_history = self.history_sequence.pop(0) if self.history_sequence else self.history
+                return _FakeResponse(json_data=next_history)
             return _FakeResponse(json_data=self.history)
         if url == "/view":
             return _FakeResponse(content=self.image_bytes)
@@ -115,4 +123,44 @@ async def test_generate_portrait_raises_timeout_error_when_never_ready():
     backend = ComfyUIBackend(client=client, sleep_fn=_no_sleep, timeout=0.05, poll_interval=0.01)
 
     with pytest.raises(TimeoutError):
+        await backend.generate_portrait("a fixer")
+
+
+@pytest.mark.asyncio
+async def test_generate_portrait_does_not_break_on_history_entry_with_no_outputs_yet():
+    # Some ComfyUI versions insert the history[prompt_id] key at execution
+    # start, before "outputs" is populated - the poll loop must not treat a
+    # present-but-outputs-less entry as "done".
+    client = _FakeComfyClient(
+        prompt_id="abc123",
+        history_sequence=[
+            {"abc123": {}},  # key present, no outputs yet - must not break
+            {"abc123": {"outputs": {}}},  # outputs present but empty - must not break
+            {
+                "abc123": {
+                    "outputs": {
+                        "9": {"images": [{"filename": "done.png", "subfolder": "", "type": "output"}]}
+                    }
+                }
+            },
+        ],
+    )
+    backend = ComfyUIBackend(client=client, sleep_fn=_no_sleep, timeout=5.0, poll_interval=0.0)
+
+    result = await backend.generate_portrait("a fixer")
+
+    assert result == b"fake-comfyui-png"
+    history_polls = [c for c in client.calls if c[0] == "get" and c[1].startswith("/history/")]
+    assert len(history_polls) == 3
+
+
+@pytest.mark.asyncio
+async def test_generate_portrait_raises_runtime_error_when_outputs_have_no_images():
+    client = _FakeComfyClient(
+        prompt_id="abc123",
+        history={"abc123": {"outputs": {"9": {"images": []}}}},
+    )
+    backend = ComfyUIBackend(client=client, sleep_fn=_no_sleep)
+
+    with pytest.raises(RuntimeError, match="abc123"):
         await backend.generate_portrait("a fixer")

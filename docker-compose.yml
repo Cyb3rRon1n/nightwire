@@ -11,12 +11,17 @@ name: nightwire
 # Already run Anvil on this host? Point OLLAMA_HOST at Anvil's Ollama
 # instead of the profile above — one GPU can't usefully feed two Ollamas.
 #
-# NOT included: scene/portrait image generation. narrator/image_backend.py
-# talks to open-dungeon's ultra-fast-image-gen worker, which is MLX-based
-# (Apple Silicon only) — it can't run in this Linux container stack. Set
-# FLUX_WORKER_URL if you run that worker natively on a Mac reachable from
-# this host; there's no shared-volume wiring here for its output, so
-# generated images won't reach the web frontend without more plumbing.
+# Scene/portrait image generation (narrator/image_backend.py). Two backends:
+#   IMAGE_BACKEND=flux_worker (default) talks to open-dungeon's
+#     ultra-fast-image-gen worker, which is MLX-based (Apple Silicon only) —
+#     it can't run in this Linux container stack. Set FLUX_WORKER_URL if you
+#     run that worker natively on a Mac reachable from this host; there's no
+#     shared-volume wiring here for its output, so generated images won't
+#     reach the web frontend without more plumbing.
+#   IMAGE_BACKEND=comfyui talks to a real ComfyUI instance over plain HTTP —
+#     no MLX/Apple-Silicon dependency, no shared-volume issue. Set
+#     COMFYUI_URL to a reachable ComfyUI instance and it works directly from
+#     this container.
 #
 # TTS (Kokoro) is real and containerizable — enable with --profile voice.
 
@@ -31,6 +36,9 @@ services:
       NIGHTWIRE_MODEL: ${NIGHTWIRE_MODEL:-qwen3:8b}
       OLLAMA_HOST: ${OLLAMA_HOST:-}
       FLUX_WORKER_URL: ${FLUX_WORKER_URL:-}
+      IMAGE_BACKEND: ${IMAGE_BACKEND:-flux_worker}
+      COMFYUI_URL: ${COMFYUI_URL:-http://192.168.10.19:8188}
+      COMFYUI_CHECKPOINT: ${COMFYUI_CHECKPOINT:-v1-5-pruned-emaonly-fp16.safetensors}
       KOKORO_URL: ${KOKORO_URL:-http://kokoro:8880}
     volumes:
       - sessions:/data/sessions
