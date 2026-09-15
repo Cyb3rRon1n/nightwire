@@ -1,9 +1,12 @@
 import base64
+import os
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Protocol
 
 import httpx
+
+from narrator.comfyui_backend import ComfyUIBackend
 
 
 class ImageBackend(Protocol):
@@ -86,3 +89,21 @@ class FluxWorkerBackend:
 
     async def generate_scene(self, prompt: str, reference_paths: list[str]) -> bytes:
         return await self._generate(prompt, aspect="square", reference_paths=reference_paths)
+
+
+def create_image_backend() -> ImageBackend:
+    """IMAGE_BACKEND selects the image backend at startup - config, not a
+    runtime toggle, same shape TTSBackend selection already uses. Defaults
+    to flux_worker (current behavior, unchanged for existing deployments)."""
+    backend = os.environ.get("IMAGE_BACKEND", "flux_worker").strip().lower()
+    if backend == "flux_worker":
+        return FluxWorkerBackend(
+            base_url=os.environ.get("FLUX_WORKER_URL", "http://127.0.0.1:7869"),
+            output_dir=os.environ.get("IMAGE_OUTPUT_DIR", "frontend/public/generated"),
+        )
+    if backend == "comfyui":
+        return ComfyUIBackend(
+            base_url=os.environ.get("COMFYUI_URL", "http://192.168.10.19:8188"),
+            checkpoint=os.environ.get("COMFYUI_CHECKPOINT", "v1-5-pruned-emaonly-fp16.safetensors"),
+        )
+    raise ValueError(f"Unknown IMAGE_BACKEND {backend!r}. Valid backends: 'flux_worker', 'comfyui'.")
