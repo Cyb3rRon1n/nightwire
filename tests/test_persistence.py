@@ -46,6 +46,7 @@ def test_save_then_load_round_trips_a_session_with_a_character(tmp_path):
     session.last_turn_had_image = True
     session.narrative_summary = "The party met a fixer and agreed to a job."
     session.narrative_summary_line_count = 14
+    session.npc_memory["Jax"] = ["offered the party a job", "runs a noodle stand in Watson"]
 
     store.save(session)
     loaded = store.load("test-session")
@@ -64,6 +65,7 @@ def test_save_then_load_round_trips_a_session_with_a_character(tmp_path):
     assert loaded.last_turn_had_image is True
     assert loaded.narrative_summary == "The party met a fixer and agreed to a job."
     assert loaded.narrative_summary_line_count == 14
+    assert loaded.npc_memory == {"Jax": ["offered the party a job", "runs a noodle stand in Watson"]}
     loaded_character = loaded.characters["p1"]
     assert loaded_character.name == "Rook"
     assert loaded_character.role == "solo"
@@ -213,3 +215,18 @@ def test_load_defaults_narrative_summary_when_missing_from_an_older_file(tmp_pat
     assert loaded is not None
     assert loaded.narrative_summary == ""
     assert loaded.narrative_summary_line_count == 0
+
+
+def test_load_defaults_npc_memory_when_missing_from_an_older_file(tmp_path):
+    store = JSONFileSessionStore(tmp_path)
+    session = Session(session_id="legacy-session")
+    from dataclasses import asdict
+
+    legacy_data = asdict(session)
+    del legacy_data["npc_memory"]
+    store.directory.joinpath("legacy-session.json").write_text(json.dumps(legacy_data))
+
+    loaded = store.load("legacy-session")
+
+    assert loaded is not None
+    assert loaded.npc_memory == {}
