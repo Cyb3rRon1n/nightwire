@@ -803,6 +803,19 @@ def test_select_npc_memory_for_context_drops_everything_past_a_tiny_budget():
     assert result == {}
 
 
+def test_select_npc_memory_keeps_the_most_recently_touched_when_over_budget():
+    from narrator.tools import execute_tool
+    from server.narration import _select_npc_memory_for_context
+
+    session = Session(session_id="s1")
+    for i in range(14):
+        execute_tool(session, "remember_npc", {"name": f"npc{i:02d}", "fact": "x" * 150})
+
+    result = _select_npc_memory_for_context(session, num_ctx=8192)
+
+    assert list(result) == [f"npc{i:02d}" for i in range(4, 14)]
+
+
 def test_build_messages_includes_known_npcs_when_present():
     from server.narration import _build_messages
 

@@ -37,6 +37,13 @@ _MAX_SUMMARIZE_INPUT_CHARS = 24000
 # chars), conservative against the ~1,940 tokens of generation headroom
 # Phase 11's own final review measured. A starting value, not tuned.
 _NPC_MEMORY_BUDGET_FRACTION = 0.05
+# A single NPC entry can never exceed 1,110 chars (name<=100 + ": " + up
+# to 5 facts<=200 each + 4 "; " separators - see narrator/tools.py's
+# _MAX_FACTS_PER_NPC), safely below this budget even at num_ctx=6144's
+# documented fallback (1,228 chars) - so one oversized entry can never
+# starve the whole selection window. This only holds as long as those
+# write-time caps and this read-time budget stay in this relationship;
+# don't change one without checking the other.
 
 
 def _cap_for_summarization(excluded: list[str]) -> list[str]:
@@ -64,13 +71,16 @@ def _select_verbatim_narrative(narrative: list[str], num_ctx: int) -> list[str]:
     return selected
 
 
+def _npc_entry(name: str, facts: list[str]) -> str:
+    return f"{name}: {'; '.join(facts)}"
+
+
 def _select_npc_memory_for_context(session: Session, num_ctx: int) -> dict[str, list[str]]:
     budget_chars = int(num_ctx * _NPC_MEMORY_BUDGET_FRACTION * _CHARS_PER_TOKEN_ESTIMATE)
     selected: list[tuple[str, list[str]]] = []
     total = 0
     for name, facts in reversed(session.npc_memory.items()):
-        entry = f"{name}: {'; '.join(facts)}"
-        total += len(entry) + 1
+        total += len(_npc_entry(name, facts)) + 1
         if total > budget_chars:
             break
         selected.append((name, facts))
@@ -100,7 +110,7 @@ def _build_messages(session: Session, action_text: str, num_ctx: int) -> list[di
         parts.append(f"Summary of earlier events: {session.narrative_summary}")
     npc_memory = _select_npc_memory_for_context(session, num_ctx)
     if npc_memory:
-        npc_lines = "\n".join(f"{name}: {'; '.join(facts)}" for name, facts in npc_memory.items())
+        npc_lines = "\n".join(_npc_entry(name, facts) for name, facts in npc_memory.items())
         parts.append(f"Known NPCs:\n{npc_lines}")
     if verbatim:
         parts.append("Recent events:\n" + "\n".join(verbatim))
