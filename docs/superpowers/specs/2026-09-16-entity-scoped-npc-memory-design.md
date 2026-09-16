@@ -1,6 +1,6 @@
-# Nightwire Entity-Scoped NPC Memory Design — Phase 12
+# Nightwire Entity-Scoped NPC Memory Design — Phase 13
 
-Status: designed, not yet implemented. Second sub-phase of the "Long-session memory" candidate (`ROADMAP.md`'s Candidate future phases), following Phase 11's rolling narrative compaction. Grounded in `kiselyovd/dungeon-master-ai`'s real, shipped `remember_npc`/`recall_npc` pattern (independently verified 2026-09-15 research pass) and this project's own repeated, hard-won lessons about tool-firing reliability and context-budget bounding — not oracle-precedent (oracle's own "NPC notes field," per its ROADMAP, is not consulted here).
+Status: designed, not yet implemented. Second sub-phase of the "Long-session memory" candidate (`ROADMAP.md`'s Candidate future phases), following Phase 11's rolling narrative compaction. Numbered Phase 13, not 12 — Phase 12 turned out to already be claimed by a separately-shipped "pluggable narrator backend" phase (`docs/superpowers/specs/2026-09-16-pluggable-narrator-backend-design.md`, landed on `main` while this spec was being written; ROADMAP.md corrected same day). Grounded in `kiselyovd/dungeon-master-ai`'s real, shipped `remember_npc`/`recall_npc` pattern (independently verified 2026-09-15 research pass) and this project's own repeated, hard-won lessons about tool-firing reliability and context-budget bounding — not oracle-precedent (oracle's own "NPC notes field," per its ROADMAP, is not consulted here).
 
 ## The actual gap
 
