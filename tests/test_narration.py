@@ -778,3 +778,49 @@ async def test_handle_action_works_with_the_openai_compat_backend(tmp_path):
 
     assert session.log[0] == "p1: I look around."
     assert session.log[1] == "The alley is quiet."
+
+
+def test_select_npc_memory_for_context_keeps_everything_under_budget():
+    from server.narration import _select_npc_memory_for_context
+
+    session = Session(session_id="s1")
+    session.npc_memory = {"Jax": ["offered a job"], "Mora": ["bypassed a lock"]}
+
+    result = _select_npc_memory_for_context(session, num_ctx=8192)
+
+    assert result == session.npc_memory
+
+
+def test_select_npc_memory_for_context_drops_everything_past_a_tiny_budget():
+    from server.narration import _select_npc_memory_for_context
+
+    # num_ctx=10 -> budget = int(10 * 0.05 * 4) = 2 chars - nothing fits.
+    session = Session(session_id="s1")
+    session.npc_memory = {"Jax": ["a fact"], "Mora": ["another fact"]}
+
+    result = _select_npc_memory_for_context(session, num_ctx=10)
+
+    assert result == {}
+
+
+def test_build_messages_includes_known_npcs_when_present():
+    from server.narration import _build_messages
+
+    session = _session_with_character()
+    session.npc_memory = {"Jax": ["offered the party a job"]}
+    session.log = ["p1: I look around."]
+
+    messages = _build_messages(session, "I ask about Jax.", num_ctx=8192)
+
+    assert "Known NPCs:\nJax: offered the party a job" in messages[0]["content"]
+
+
+def test_build_messages_omits_known_npcs_when_empty():
+    from server.narration import _build_messages
+
+    session = _session_with_character()
+    session.log = ["p1: I look around."]
+
+    messages = _build_messages(session, "I move forward.", num_ctx=8192)
+
+    assert "Known NPCs" not in messages[0]["content"]

@@ -32,6 +32,11 @@ _RECOMPACT_LINE_THRESHOLD = 8
 # either a higher live-verified cap or a switch to incremental (not
 # full-rebuild) summarization, which the design spec explicitly deferred.
 _MAX_SUMMARIZE_INPUT_CHARS = 24000
+# A separate, smaller reserved slice of num_ctx - not renegotiating
+# _VERBATIM_BUDGET_FRACTION. 5% at num_ctx=8192 is ~410 tokens (~1,640
+# chars), conservative against the ~1,940 tokens of generation headroom
+# Phase 11's own final review measured. A starting value, not tuned.
+_NPC_MEMORY_BUDGET_FRACTION = 0.05
 
 
 def _cap_for_summarization(excluded: list[str]) -> list[str]:
@@ -59,6 +64,20 @@ def _select_verbatim_narrative(narrative: list[str], num_ctx: int) -> list[str]:
     return selected
 
 
+def _select_npc_memory_for_context(session: Session, num_ctx: int) -> dict[str, list[str]]:
+    budget_chars = int(num_ctx * _NPC_MEMORY_BUDGET_FRACTION * _CHARS_PER_TOKEN_ESTIMATE)
+    selected: list[tuple[str, list[str]]] = []
+    total = 0
+    for name, facts in reversed(session.npc_memory.items()):
+        entry = f"{name}: {'; '.join(facts)}"
+        total += len(entry) + 1
+        if total > budget_chars:
+            break
+        selected.append((name, facts))
+    selected.reverse()
+    return dict(selected)
+
+
 def _build_messages(session: Session, action_text: str, num_ctx: int) -> list[dict]:
     # apply_character_update's player_id is trusted as-is (it legitimately
     # targets a different character than the actor, e.g. damage to a
@@ -79,6 +98,10 @@ def _build_messages(session: Session, action_text: str, num_ctx: int) -> list[di
     parts = []
     if session.narrative_summary:
         parts.append(f"Summary of earlier events: {session.narrative_summary}")
+    npc_memory = _select_npc_memory_for_context(session, num_ctx)
+    if npc_memory:
+        npc_lines = "\n".join(f"{name}: {'; '.join(facts)}" for name, facts in npc_memory.items())
+        parts.append(f"Known NPCs:\n{npc_lines}")
     if verbatim:
         parts.append("Recent events:\n" + "\n".join(verbatim))
     context = "\n\n".join(parts) + "\n\n" if parts else ""
