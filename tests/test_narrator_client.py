@@ -220,3 +220,9 @@ async def test_summarize_strips_whitespace_from_the_response():
     result = await client.summarize("some events")
 
     assert result == "A tense standoff at the docks."
+
+
+def test_narrator_client_satisfies_the_narrator_backend_protocol():
+    from narrator.client import NarratorBackend
+    client = NarratorClient()
+    assert isinstance(client, NarratorBackend)

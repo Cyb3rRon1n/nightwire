@@ -1,5 +1,5 @@
 from collections.abc import Awaitable, Callable
-from typing import Annotated, Literal, Union
+from typing import Annotated, Literal, Protocol, Union, runtime_checkable
 
 import ollama
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -91,6 +91,13 @@ class NarratorResponse(BaseModel):
         if isinstance(self.tool_call, _NoTool):
             return {}
         return self.tool_call.tool_args.model_dump()
+
+
+@runtime_checkable
+class NarratorBackend(Protocol):
+    async def respond(self, messages: list[dict]) -> NarratorResponse: ...
+    async def summarize(self, text: str) -> str: ...
+    async def unload(self) -> None: ...
 
 
 class NarratorClient:
