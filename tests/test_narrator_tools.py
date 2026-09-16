@@ -190,3 +190,57 @@ def test_unknown_tool_name_raises_value_error():
     session = Session(session_id="s1")
     with pytest.raises(ValueError, match="unknown tool"):
         execute_tool(session, "nonsense", {})
+
+
+def test_remember_npc_stores_a_fact():
+    session = Session(session_id="s1")
+    result = execute_tool(session, "remember_npc", {"name": "Jax", "fact": "offered the party a job"})
+    assert session.npc_memory["Jax"] == ["offered the party a job"]
+    assert result == {"name": "Jax", "facts": ["offered the party a job"]}
+
+
+def test_remember_npc_appends_multiple_facts_for_the_same_npc():
+    session = Session(session_id="s1")
+    execute_tool(session, "remember_npc", {"name": "Jax", "fact": "first fact"})
+    execute_tool(session, "remember_npc", {"name": "Jax", "fact": "second fact"})
+    assert session.npc_memory["Jax"] == ["first fact", "second fact"]
+
+
+def test_remember_npc_caps_facts_per_npc_dropping_the_oldest():
+    session = Session(session_id="s1")
+    for i in range(7):
+        execute_tool(session, "remember_npc", {"name": "Jax", "fact": f"fact {i}"})
+    assert session.npc_memory["Jax"] == ["fact 2", "fact 3", "fact 4", "fact 5", "fact 6"]
+
+
+def test_remember_npc_evicts_the_least_recently_touched_npc_once_over_the_cap():
+    session = Session(session_id="s1")
+    for i in range(51):
+        execute_tool(session, "remember_npc", {"name": f"npc{i}", "fact": "x"})
+    assert len(session.npc_memory) == 50
+    assert "npc0" not in session.npc_memory
+    assert "npc50" in session.npc_memory
+
+
+def test_remember_npc_touching_an_existing_npc_protects_it_from_eviction():
+    session = Session(session_id="s1")
+    for i in range(50):
+        execute_tool(session, "remember_npc", {"name": f"npc{i}", "fact": "x"})
+    # Touch npc0 again - it moves to most-recently-touched.
+    execute_tool(session, "remember_npc", {"name": "npc0", "fact": "y"})
+    # One more new NPC should now evict npc1 (the new least-recently-touched), not npc0.
+    execute_tool(session, "remember_npc", {"name": "npc50", "fact": "x"})
+    assert "npc0" in session.npc_memory
+    assert "npc1" not in session.npc_memory
+
+
+def test_remember_npc_rejects_a_fact_over_the_length_limit():
+    session = Session(session_id="s1")
+    with pytest.raises(ValueError):
+        execute_tool(session, "remember_npc", {"name": "Jax", "fact": "x" * 500})
+
+
+def test_remember_npc_rejects_a_name_over_the_length_limit():
+    session = Session(session_id="s1")
+    with pytest.raises(ValueError):
+        execute_tool(session, "remember_npc", {"name": "x" * 500, "fact": "a fact"})

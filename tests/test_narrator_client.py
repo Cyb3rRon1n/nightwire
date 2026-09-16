@@ -269,3 +269,19 @@ def test_create_narrator_backend_rejects_unknown_value(monkeypatch):
 
     with pytest.raises(ValueError, match="not-a-real-backend"):
         create_narrator_backend()
+
+
+@pytest.mark.asyncio
+async def test_respond_returns_a_remember_npc_tool_call():
+    client = NarratorClient(
+        chat_fn=_fake_chat_returning({
+            "narration": [{"speaker": "narrator", "text": "Jax nods slowly."}],
+            "tool_call": {
+                "tool": "remember_npc",
+                "tool_args": {"name": "Jax", "fact": "offered the party a job"},
+            },
+        }),
+    )
+    response = await client.respond([{"role": "user", "content": "I shake Jax's hand."}])
+    assert response.tool == "remember_npc"
+    assert response.tool_args == {"name": "Jax", "fact": "offered the party a job"}

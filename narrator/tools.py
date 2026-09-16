@@ -9,6 +9,13 @@ from ruleset.attributes import modifier
 from ruleset.difficulty import Difficulty
 from ruleset.resolution import resolve_roll
 
+# Write-time sanity caps, not the primary context-budget mechanism (that's
+# server/narration.py's _select_npc_memory_for_context, a separate,
+# num_ctx-adaptive read-time bound) - these just stop truly unbounded
+# growth over a very long campaign. Deliberately generous.
+_MAX_NPCS = 50
+_MAX_FACTS_PER_NPC = 5
+
 
 class RequestRoll(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -48,6 +55,17 @@ class UpdateWorld(BaseModel):
     scene_mood: str | None = None
     add_objectives: list[str] = []
     remove_objectives: list[str] = []
+
+
+class RememberNPC(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    # Schema-bounded so one verbose value from an 8B model can't consume a
+    # large fraction of the already-small NPC memory context budget on its
+    # own - same precedent ApplyCharacterUpdate's skill_points_delta/
+    # attribute_points_delta already establishes in this file.
+    name: str = Field(..., max_length=100)
+    fact: str = Field(..., max_length=200)
 
 
 def _execute_request_roll(session: Session, tool: RequestRoll) -> dict:
@@ -120,6 +138,19 @@ def _execute_update_world(session: Session, tool: UpdateWorld) -> dict:
     }
 
 
+def _execute_remember_npc(session: Session, tool: RememberNPC) -> dict:
+    # .pop then re-insert moves this NPC to the end of the dict - Python's
+    # insertion-ordering gives LRU-by-touch for free, no extra state needed.
+    facts = session.npc_memory.pop(tool.name, [])
+    facts.append(tool.fact)
+    facts = facts[-_MAX_FACTS_PER_NPC:]
+    session.npc_memory[tool.name] = facts
+    if len(session.npc_memory) > _MAX_NPCS:
+        oldest = next(iter(session.npc_memory))
+        del session.npc_memory[oldest]
+    return {"name": tool.name, "facts": list(facts)}
+
+
 # start_combat/end_combat are deliberately absent: real combat state only
 # ever starts via a player-sent message (server/dispatch.py -> engine/turns.py,
 # with real initiative rolls) - the narrator's own copy of these tools was a
@@ -131,6 +162,7 @@ TOOL_REGISTRY: dict[str, tuple[type[BaseModel], Callable[[Session, BaseModel], d
     "request_roll": (RequestRoll, _execute_request_roll),
     "apply_character_update": (ApplyCharacterUpdate, _execute_apply_character_update),
     "update_world": (UpdateWorld, _execute_update_world),
+    "remember_npc": (RememberNPC, _execute_remember_npc),
 }
 
 
