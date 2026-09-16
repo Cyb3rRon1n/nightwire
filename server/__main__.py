@@ -3,7 +3,7 @@ import os
 import uvicorn
 
 from engine.persistence import JSONFileSessionStore
-from narrator.client import NarratorClient
+from narrator.client import create_narrator_backend
 from narrator.image_backend import create_image_backend
 from narrator.tts_backend import KokoroBackend
 from server.app import create_app
@@ -41,7 +41,8 @@ def build_app():
         "earned, set apply_character_update's skill_points_delta to 1-2, or "
         "attribute_points_delta to 1 (never more); a whole campaign hands out only a few."
     )
-    narrator_client = NarratorClient(model=os.environ.get("NIGHTWIRE_MODEL", "qwen3:8b"), system_prompt=system_prompt)
+    narrator_client = create_narrator_backend()
+    narrator_client.system_prompt = system_prompt
     # IMAGE_BACKEND selects flux_worker (default, MLX-only) or comfyui
     # (Docker/Linux-friendly, no reference-photo support) - see
     # docs/superpowers/specs/2026-09-15-comfyui-image-backend-design.md.

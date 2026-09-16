@@ -112,3 +112,17 @@ async def test_unload_is_a_noop():
     backend = OpenAICompatNarratorBackend(base_url="http://localhost:8080/v1", model="test-model", client=fake_client)
     await backend.unload()
     assert len(fake_client.calls) == 0
+
+
+@pytest.mark.asyncio
+async def test_respond_prepends_system_prompt_as_a_message():
+    import json
+    payload = json.dumps({"narration": [{"speaker": "narrator", "text": "ok"}], "tool_call": {"tool": None}})
+    fake_client = _FakeOpenAIClient(_chat_response(payload))
+    backend = OpenAICompatNarratorBackend(base_url="http://localhost:8080/v1", model="test-model", client=fake_client)
+    backend.system_prompt = "You are a cyberpunk GM."
+
+    await backend.respond([{"role": "user", "content": "hi"}])
+
+    _, body, _ = fake_client.calls[0]
+    assert body["messages"][0] == {"role": "system", "content": "You are a cyberpunk GM."}
