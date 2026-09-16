@@ -63,3 +63,13 @@ def test_session_narrative_summary_defaults_to_empty_and_is_independent_per_inst
 
     assert session_b.narrative_summary == ""
     assert session_b.narrative_summary_line_count == 0
+
+
+def test_session_npc_memory_defaults_to_empty_and_is_independent_per_instance():
+    session_a = Session(session_id="a")
+    session_b = Session(session_id="b")
+
+    assert session_a.npc_memory == {}
+    session_a.npc_memory["Jax"] = ["offered the party a job"]
+
+    assert session_b.npc_memory == {}

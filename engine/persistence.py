@@ -59,4 +59,5 @@ class JSONFileSessionStore:
             last_turn_had_image=data.get("last_turn_had_image", False),
             narrative_summary=data.get("narrative_summary", ""),
             narrative_summary_line_count=data.get("narrative_summary_line_count", 0),
+            npc_memory=data.get("npc_memory", {}),
         )

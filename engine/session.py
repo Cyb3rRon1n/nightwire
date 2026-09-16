@@ -20,3 +20,4 @@ class Session:
     last_turn_had_image: bool = False
     narrative_summary: str = ""
     narrative_summary_line_count: int = 0
+    npc_memory: dict[str, list[str]] = field(default_factory=dict)
