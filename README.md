@@ -117,8 +117,8 @@ Real captures of the live frontend running its own "Neon Noir" theme — a cyber
   <sub>Narration, dice-backed combat, and a speaker avatar next to each dialogue bubble</sub>
 </p>
 <p align="center">
-  <img src="docs/images/screenshots/scene.jpg" alt="Nightwire generated scene art of a noodle stand fixer in a rain-lit alley" width="480"><br>
-  <sub>A generated scene image for the current location and mood</sub>
+  <img src="docs/images/screenshots/scene.jpg" alt="Nightwire generated scene art of a flooded underpass lit by a flickering vending machine" width="480"><br>
+  <sub>A generated scene image for the current location and mood — real ComfyUI generation on a real GPU</sub>
 </p>
 
 ## Contributing
