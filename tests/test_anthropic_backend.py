@@ -1,0 +1,99 @@
+import json
+
+import httpx
+import pytest
+
+from narrator.anthropic_backend import AnthropicNarratorBackend
+
+
+class _FakeResponse:
+    def __init__(self, json_data):
+        self._json_data = json_data
+
+    def json(self):
+        return self._json_data
+
+    def raise_for_status(self):
+        pass
+
+
+class _FakeAnthropicClient:
+    """Stands in for httpx.AsyncClient - only the method
+    AnthropicNarratorBackend actually calls (post), duck-typed to httpx's
+    own response shape."""
+
+    def __init__(self, response_json):
+        self.response_json = response_json
+        self.calls = []
+
+    async def post(self, url, json=None, headers=None):
+        self.calls.append((url, json, headers))
+        return _FakeResponse(self.response_json)
+
+
+def _tool_use_response(tool_input: dict):
+    return {
+        "content": [
+            {"type": "tool_use", "name": "narrator_response", "input": tool_input},
+        ],
+    }
+
+
+@pytest.mark.asyncio
+async def test_respond_forces_tool_use_and_parses_the_tool_input():
+    payload = {
+        "narration": [{"speaker": "narrator", "text": "The alley is quiet."}],
+        "tool_call": {"tool": None},
+    }
+    fake_client = _FakeAnthropicClient(_tool_use_response(payload))
+    backend = AnthropicNarratorBackend(api_key="test-key", client=fake_client)
+
+    response = await backend.respond([{"role": "user", "content": "I look around."}])
+
+    assert response.narration[0].text == "The alley is quiet."
+    assert response.tool is None
+    # Forced tool-use is the whole point - assert the actual request shape,
+    # not just that a request happened.
+    _, body, headers = fake_client.calls[0]
+    assert body["tool_choice"] == {"type": "tool", "name": "narrator_response"}
+    assert body["tools"][0]["name"] == "narrator_response"
+    assert headers["x-api-key"] == "test-key"
+
+
+@pytest.mark.asyncio
+async def test_respond_raises_value_error_on_missing_tool_use_block():
+    fake_client = _FakeAnthropicClient({"content": [{"type": "text", "text": "oops, no tool call"}]})
+    backend = AnthropicNarratorBackend(api_key="test-key", client=fake_client)
+
+    with pytest.raises(ValueError, match="no tool_use block"):
+        await backend.respond([{"role": "user", "content": "I look around."}])
+
+
+@pytest.mark.asyncio
+async def test_respond_raises_value_error_on_schema_mismatch():
+    # tool_input is missing the required "narration" field entirely.
+    fake_client = _FakeAnthropicClient(_tool_use_response({"tool_call": {"tool": None}}))
+    backend = AnthropicNarratorBackend(api_key="test-key", client=fake_client)
+
+    with pytest.raises(ValueError):
+        await backend.respond([{"role": "user", "content": "I look around."}])
+
+
+@pytest.mark.asyncio
+async def test_summarize_sends_a_plain_unconstrained_request():
+    fake_client = _FakeAnthropicClient({"content": [{"type": "text", "text": "  A short summary.  "}]})
+    backend = AnthropicNarratorBackend(api_key="test-key", client=fake_client)
+
+    result = await backend.summarize("Some session events.")
+
+    assert result == "A short summary."
+    _, body, _ = fake_client.calls[0]
+    assert "tools" not in body
+    assert "tool_choice" not in body
+
+
+@pytest.mark.asyncio
+async def test_unload_is_a_noop():
+    backend = AnthropicNarratorBackend(api_key="test-key", client=_FakeAnthropicClient({}))
+    await backend.unload()  # must not raise, must not call the fake client
+    assert len(backend._client.calls) == 0
