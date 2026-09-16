@@ -1,8 +1,16 @@
-"""AnthropicNarratorBackend - forced tool-use for schema-constrained
-output, the real Anthropic-API equivalent of Ollama's format= JSON-schema
-param NarratorClient.respond() already relies on. Raw httpx, no anthropic
-SDK dependency - matches every other backend in this project
-(ComfyUIBackend, FluxWorkerBackend, KokoroBackend)."""
+"""AnthropicNarratorBackend - forces the model to call a schema-shaped tool,
+then validates the result the same way NarratorClient.respond() already
+validates Ollama's output - not true constrained decoding (Anthropic's
+forced tool-use guarantees the tool gets called, not that its input matches
+the schema; model_validate is what actually catches non-conformance and
+raises ValueError). Raw httpx, no anthropic SDK dependency - matches every
+other backend in this project (ComfyUIBackend, FluxWorkerBackend,
+KokoroBackend).
+
+Note: forced tool_choice of type "tool" returns a 400 error on the
+claude-fable-5-1 / claude-mythos-5-1 model family. NARRATOR_ANTHROPIC_MODEL
+is user-settable, so pointing it at a Fable-family model fails hard here
+with no hint why."""
 
 import httpx
 from pydantic import ValidationError
@@ -20,10 +28,12 @@ class AnthropicNarratorBackend:
         api_key: str,
         model: str = "claude-sonnet-5",
         client: httpx.AsyncClient | None = None,
+        num_ctx: int = 8192,
     ) -> None:
         self.api_key = api_key
         self.model = model
         self.system_prompt = ""
+        self.num_ctx = num_ctx
         self._client = client or httpx.AsyncClient(timeout=60.0)
         self._tool_schema = NarratorResponse.model_json_schema()
 
@@ -77,7 +87,11 @@ class AnthropicNarratorBackend:
         result = await self._client.post(_API_URL, json=body, headers=self._headers())
         result.raise_for_status()
         data = result.json()
-        text_block = next(block for block in data["content"] if block.get("type") == "text")
+        text_block = next(
+            (block for block in data["content"] if block.get("type") == "text"), None,
+        )
+        if text_block is None:
+            raise ValueError("Anthropic response had no text block")
         return text_block["text"].strip()
 
     async def unload(self) -> None:

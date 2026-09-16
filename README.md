@@ -44,7 +44,7 @@ cd frontend && npm ci && npm run dev # http://localhost:3000/nightwire
 
 Image generation additionally needs a backend running — the default (`IMAGE_BACKEND=flux_worker`) is a running `ultra-fast-image-gen` worker (`open-dungeon`'s `image_server/`) on `http://127.0.0.1:7869`; set `IMAGE_BACKEND=comfyui` and `COMFYUI_URL` to use a ComfyUI instance instead (no MLX/Apple-Silicon requirement). Optional either way — without one, everything except scene/portrait images works normally.
 
-The narrator itself is also swappable: the default (`NARRATOR_BACKEND=ollama`) is local Ollama; set `NARRATOR_BACKEND=anthropic` (needs `ANTHROPIC_API_KEY`) or `NARRATOR_BACKEND=openai_compat` (needs `NARRATOR_OPENAI_COMPAT_BASE_URL` and `NARRATOR_OPENAI_COMPAT_MODEL`, e.g. for OpenRouter or a local vLLM/llama.cpp-server) for a hosted alternative — same `NarratorResponse` schema either way, so behavior is directly comparable across backends.
+The narrator itself is also swappable: the default (`NARRATOR_BACKEND=ollama`) is local Ollama; set `NARRATOR_BACKEND=anthropic` (needs `ANTHROPIC_API_KEY`; optionally `NARRATOR_ANTHROPIC_MODEL` to override the default model) or `NARRATOR_BACKEND=openai_compat` (needs `NARRATOR_OPENAI_COMPAT_BASE_URL` and `NARRATOR_OPENAI_COMPAT_MODEL`, e.g. for OpenRouter or a local vLLM/llama.cpp-server; optionally `NARRATOR_OPENAI_COMPAT_API_KEY` if the endpoint requires one) for a hosted alternative — same `NarratorResponse` schema either way, so behavior is directly comparable across backends.
 
 ### Run as a Docker stack
 

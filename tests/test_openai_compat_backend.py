@@ -107,6 +107,19 @@ async def test_summarize_sends_a_plain_chat_completion():
 
 
 @pytest.mark.asyncio
+async def test_summarize_raises_value_error_on_null_content():
+    # A real shape for refusals/reasoning-only messages on some
+    # OpenAI-compatible servers: content: null. Used to crash with
+    # AttributeError ('NoneType' object has no attribute 'strip'), which
+    # escapes server/narration.py's fail-soft exception tuple entirely.
+    fake_client = _FakeOpenAIClient(_chat_response(None))
+    backend = OpenAICompatNarratorBackend(base_url="http://localhost:8080/v1", model="test-model", client=fake_client)
+
+    with pytest.raises(ValueError, match="non-string content"):
+        await backend.summarize("Some session events.")
+
+
+@pytest.mark.asyncio
 async def test_unload_is_a_noop():
     fake_client = _FakeOpenAIClient({})
     backend = OpenAICompatNarratorBackend(base_url="http://localhost:8080/v1", model="test-model", client=fake_client)
