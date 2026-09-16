@@ -96,6 +96,13 @@ class NarratorResponse(BaseModel):
 
 @runtime_checkable
 class NarratorBackend(Protocol):
+    # Plain attribute, not a method - runtime_checkable's isinstance() check
+    # only verifies method presence, not this, so it can't catch a backend
+    # that forgets it. See the num_ctx regression tests in
+    # tests/test_narration.py, which drive the real handle_action code path
+    # instead.
+    num_ctx: int
+
     async def respond(self, messages: list[dict]) -> NarratorResponse: ...
     async def summarize(self, text: str) -> str: ...
     async def unload(self) -> None: ...

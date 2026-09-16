@@ -6,7 +6,9 @@ import pytest
 from engine.character import CharacterSheet
 from engine.persistence import JSONFileSessionStore
 from engine.session import Session
+from narrator.anthropic_backend import AnthropicNarratorBackend
 from narrator.client import NarratorClient
+from narrator.openai_compat_backend import OpenAICompatNarratorBackend
 from narrator.tts_backend import VoiceOption
 from server.narration import handle_action
 
@@ -708,3 +710,71 @@ async def test_handle_action_skips_compaction_on_a_turn_that_generated_an_image(
 
     assert calls == []
     assert session.narrative_summary_line_count == 0
+
+
+class _FakeHTTPResponse:
+    def __init__(self, json_data):
+        self._json_data = json_data
+
+    def json(self):
+        return self._json_data
+
+    def raise_for_status(self):
+        pass
+
+
+class _FakeHTTPClient:
+    """Stands in for httpx.AsyncClient - only the method the hosted
+    backends actually call (post)."""
+
+    def __init__(self, response_json):
+        self.response_json = response_json
+
+    async def post(self, url, json=None, headers=None):
+        return _FakeHTTPResponse(self.response_json)
+
+
+# Finding 1 regression: server/narration.py reads narrator_client.num_ctx on
+# every real player action (_build_messages, _maybe_compact). Neither new
+# backend defined it, so this crashed with AttributeError on the very first
+# turn after switching NARRATOR_BACKEND. A bare hasattr() check wouldn't
+# have caught this shape of bug convincingly - runtime_checkable Protocol
+# isinstance() checks don't verify plain attributes either - so these drive
+# the real handle_action code path instead, against each new backend, with a
+# fake HTTP client standing in for the network.
+@pytest.mark.asyncio
+async def test_handle_action_works_with_the_anthropic_backend(tmp_path):
+    session = _session_with_character()
+    fake_http = _FakeHTTPClient({
+        "content": [{
+            "type": "tool_use",
+            "name": "narrator_response",
+            "input": {
+                "narration": [{"speaker": "narrator", "text": "The alley is quiet."}],
+                "tool_call": {"tool": None},
+            },
+        }],
+    })
+    backend = AnthropicNarratorBackend(api_key="test-key", client=fake_http)
+
+    store = await _call(session, backend, "p1", {"text": "I look around."}, tmp_path, tts_backend=FakeTTSBackend())
+
+    assert session.log[0] == "p1: I look around."
+    assert session.log[1] == "The alley is quiet."
+    assert store is not None
+
+
+@pytest.mark.asyncio
+async def test_handle_action_works_with_the_openai_compat_backend(tmp_path):
+    session = _session_with_character()
+    payload = json.dumps({
+        "narration": [{"speaker": "narrator", "text": "The alley is quiet."}],
+        "tool_call": {"tool": None},
+    })
+    fake_http = _FakeHTTPClient({"choices": [{"message": {"content": payload}}]})
+    backend = OpenAICompatNarratorBackend(base_url="http://localhost:8080/v1", model="test-model", client=fake_http)
+
+    await _call(session, backend, "p1", {"text": "I look around."}, tmp_path, tts_backend=FakeTTSBackend())
+
+    assert session.log[0] == "p1: I look around."
+    assert session.log[1] == "The alley is quiet."

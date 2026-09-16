@@ -1,6 +1,3 @@
-import json
-
-import httpx
 import pytest
 
 from narrator.anthropic_backend import AnthropicNarratorBackend
@@ -90,6 +87,18 @@ async def test_summarize_sends_a_plain_unconstrained_request():
     _, body, _ = fake_client.calls[0]
     assert "tools" not in body
     assert "tool_choice" not in body
+
+
+@pytest.mark.asyncio
+async def test_summarize_raises_value_error_when_response_has_no_text_block():
+    # A thinking-only or refusal response with no text content block used to
+    # crash with StopIteration (surfaced as RuntimeError by asyncio), which
+    # escapes server/narration.py's fail-soft exception tuple entirely.
+    fake_client = _FakeAnthropicClient({"content": [{"type": "thinking", "thinking": "..."}]})
+    backend = AnthropicNarratorBackend(api_key="test-key", client=fake_client)
+
+    with pytest.raises(ValueError, match="no text block"):
+        await backend.summarize("Some session events.")
 
 
 @pytest.mark.asyncio
