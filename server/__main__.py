@@ -39,7 +39,14 @@ def build_app():
         "Advancement is rare and milestone-scale - only when the party clears a major "
         "objective or survives a defining fight, never for routine success. When it's "
         "earned, set apply_character_update's skill_points_delta to 1-2, or "
-        "attribute_points_delta to 1 (never more); a whole campaign hands out only a few."
+        "attribute_points_delta to 1 (never more); a whole campaign hands out only a few. "
+        "You may also call remember_npc to record a durable fact about a named NPC - use it "
+        "rarely, only for facts likely to matter again: a name, a promise made, a debt owed, "
+        "a distinguishing trait or motive. Example: a fixer named Jax offers a job and says "
+        "he'll remember who helps him -> call remember_npc with name 'Jax' and fact 'offered "
+        "the party a job; said he'll remember who helps him'. Don't call it for routine "
+        "dialogue, restating something already established, or NPCs who won't matter again "
+        "(a random ganger in a fight, a background vendor)."
     )
     narrator_client = create_narrator_backend()
     narrator_client.system_prompt = system_prompt
