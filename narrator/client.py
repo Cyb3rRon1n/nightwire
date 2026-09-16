@@ -1,3 +1,4 @@
+import os
 from collections.abc import Awaitable, Callable
 from typing import Annotated, Literal, Protocol, Union, runtime_checkable
 
@@ -164,3 +165,28 @@ class NarratorClient:
         ]
         response = await self._summarize_fn(model=self.model, messages=messages)
         return response["message"]["content"].strip()
+
+
+def create_narrator_backend() -> NarratorBackend:
+    # NARRATOR_BACKEND selects the narrator backend at startup - config, not
+    # a runtime toggle, same shape IMAGE_BACKEND/create_image_backend already
+    # use. Defaults to ollama (current behavior, unchanged for existing
+    # deployments). Imports are local to avoid a hard import-time dependency
+    # from every narrator/client.py user onto the hosted-backend modules.
+    backend = os.environ.get("NARRATOR_BACKEND", "ollama").strip().lower()
+    if backend == "ollama":
+        return NarratorClient(model=os.environ.get("NIGHTWIRE_MODEL", "qwen3:8b"))
+    if backend == "anthropic":
+        from narrator.anthropic_backend import AnthropicNarratorBackend
+        return AnthropicNarratorBackend(
+            api_key=os.environ["ANTHROPIC_API_KEY"],
+            model=os.environ.get("NARRATOR_ANTHROPIC_MODEL", "claude-sonnet-5"),
+        )
+    if backend == "openai_compat":
+        from narrator.openai_compat_backend import OpenAICompatNarratorBackend
+        return OpenAICompatNarratorBackend(
+            base_url=os.environ["NARRATOR_OPENAI_COMPAT_BASE_URL"],
+            model=os.environ["NARRATOR_OPENAI_COMPAT_MODEL"],
+            api_key=os.environ.get("NARRATOR_OPENAI_COMPAT_API_KEY"),
+        )
+    raise ValueError(f"Unknown NARRATOR_BACKEND {backend!r}. Valid backends: 'ollama', 'anthropic', 'openai_compat'.")
