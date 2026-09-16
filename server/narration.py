@@ -158,9 +158,19 @@ async def handle_action(
         reference_paths = []
         if character is not None and character.portrait_path is not None:
             reference_paths.append(str(store.directory / character.portrait_path))
+        # Best-effort VRAM headroom before generating - freeing the narrator/TTS
+        # backends' own resident weights matters most on small cards, but a dead
+        # TTS/narrator backend must never block the actual image generation it
+        # has nothing to do with.
         try:
             await narrator_client.unload()
+        except (ValueError, TypeError, OSError, httpx.HTTPError, RuntimeError):
+            pass
+        try:
             await tts_backend.unload()
+        except (ValueError, TypeError, OSError, httpx.HTTPError, RuntimeError):
+            pass
+        try:
             image_bytes = await image_backend.generate_scene(response.image_request.prompt, reference_paths)
             relative_path = f"images/{session.session_id}/{len(session.log)}.png"
             output_path = store.directory / relative_path

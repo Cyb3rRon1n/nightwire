@@ -285,6 +285,40 @@ async def test_handle_action_unloads_the_tts_backend_before_generating_a_scene_i
 
 
 @pytest.mark.asyncio
+async def test_handle_action_still_generates_image_when_tts_unload_fails(tmp_path):
+    # Real bug found live: a dead/unreachable TTS backend's unload() raising
+    # was caught by the same try/except wrapping generate_scene, silently
+    # aborting image generation for a failure that had nothing to do with it.
+    session = _session_with_character()
+    client = _fake_client("The alley opens onto a neon plaza.", image_prompt="a neon cyberpunk plaza")
+
+    class DeadTTSBackend:
+        voices = [VoiceOption(id="unused", gender=None)]
+
+        async def synthesize(self, text, voice):
+            return b"fake-wav-bytes"
+
+        async def unload(self) -> None:
+            raise httpx.HTTPError("tts backend unreachable")
+
+    class FakeImageBackend:
+        async def generate_portrait(self, description):
+            raise AssertionError("not exercised by this test")
+
+        async def generate_scene(self, prompt, reference_paths):
+            return b"fake-scene-bytes"
+
+    store = await _call(
+        session, client, "p1", {"text": "I step into the plaza."}, tmp_path,
+        FakeImageBackend(), tts_backend=DeadTTSBackend(),
+    )
+
+    image_line = next(line for line in session.log if line.startswith("[image: "))
+    image_path = image_line.removeprefix("[image: ").removesuffix("]")
+    assert (store.directory / image_path).read_bytes() == b"fake-scene-bytes"
+
+
+@pytest.mark.asyncio
 async def test_handle_action_suppresses_image_request_two_turns_in_a_row(tmp_path):
     # The model is told "never two turns in a row" but has no cross-call way
     # to enforce it - live probing found it violated on 3/3 consecutive
