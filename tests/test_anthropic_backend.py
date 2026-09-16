@@ -97,3 +97,17 @@ async def test_unload_is_a_noop():
     backend = AnthropicNarratorBackend(api_key="test-key", client=_FakeAnthropicClient({}))
     await backend.unload()  # must not raise, must not call the fake client
     assert len(backend._client.calls) == 0
+
+
+@pytest.mark.asyncio
+async def test_respond_sends_system_prompt_as_top_level_system_field():
+    payload = {"narration": [{"speaker": "narrator", "text": "ok"}], "tool_call": {"tool": None}}
+    fake_client = _FakeAnthropicClient(_tool_use_response(payload))
+    backend = AnthropicNarratorBackend(api_key="test-key", client=fake_client)
+    backend.system_prompt = "You are a cyberpunk GM."
+
+    await backend.respond([{"role": "user", "content": "hi"}])
+
+    _, body, _ = fake_client.calls[0]
+    assert body["system"] == "You are a cyberpunk GM."
+    assert all(m["role"] != "system" for m in body["messages"])
