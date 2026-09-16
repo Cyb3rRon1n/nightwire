@@ -226,3 +226,46 @@ def test_narrator_client_satisfies_the_narrator_backend_protocol():
     from narrator.client import NarratorBackend
     client = NarratorClient()
     assert isinstance(client, NarratorBackend)
+
+
+def test_create_narrator_backend_defaults_to_ollama(monkeypatch):
+    monkeypatch.delenv("NARRATOR_BACKEND", raising=False)
+    from narrator.client import create_narrator_backend
+
+    backend = create_narrator_backend()
+
+    assert isinstance(backend, NarratorClient)
+
+
+def test_create_narrator_backend_selects_anthropic(monkeypatch):
+    monkeypatch.setenv("NARRATOR_BACKEND", "anthropic")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    from narrator.client import create_narrator_backend
+    from narrator.anthropic_backend import AnthropicNarratorBackend
+
+    backend = create_narrator_backend()
+
+    assert isinstance(backend, AnthropicNarratorBackend)
+    assert backend.api_key == "test-key"
+
+
+def test_create_narrator_backend_selects_openai_compat(monkeypatch):
+    monkeypatch.setenv("NARRATOR_BACKEND", "openai_compat")
+    monkeypatch.setenv("NARRATOR_OPENAI_COMPAT_BASE_URL", "http://localhost:8080/v1")
+    monkeypatch.setenv("NARRATOR_OPENAI_COMPAT_MODEL", "local-model")
+    from narrator.client import create_narrator_backend
+    from narrator.openai_compat_backend import OpenAICompatNarratorBackend
+
+    backend = create_narrator_backend()
+
+    assert isinstance(backend, OpenAICompatNarratorBackend)
+    assert backend.base_url == "http://localhost:8080/v1"
+    assert backend.model == "local-model"
+
+
+def test_create_narrator_backend_rejects_unknown_value(monkeypatch):
+    monkeypatch.setenv("NARRATOR_BACKEND", "not-a-real-backend")
+    from narrator.client import create_narrator_backend
+
+    with pytest.raises(ValueError, match="not-a-real-backend"):
+        create_narrator_backend()
