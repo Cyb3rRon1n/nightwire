@@ -29,6 +29,15 @@ Sibling project to [`oracle`](https://github.com/Cyb3rRon1n/oracle) (a D&D-flavo
 - **Character-consistent image generation.** A portrait generated at character approval becomes a reference image for later scene generation, so a character looks like themselves across turns instead of a new face each time — on the default `flux_worker` backend. The `comfyui` backend (Docker/Linux-friendly, see below) doesn't support this yet: no IPAdapter/InstantID on the verified target instance, so it's text-prompt-only.
 - **Local-first AI** — Ollama-backed (`qwen3:8b`), same stance for the TTS backend.
 
+## World
+
+Nightwire's setting is **Kuroshio**, an original Japanese megacity in 2089 where everyone's chrome is on credit. It lives in `narrator/worlds/kuroshio.toml`:
+
+- **`primer` + `[glossary]`**: always in the narrator's system prompt (max 1,600 chars together).
+- **`[[district]]` / `[[faction]]`**: `name`, `aliases`, `card` (max 400 chars). Each turn, up to 4 cards are added: the district matching the current location first, then anything mentioned in the player's action or recent narration.
+
+To add a place or faction, add an entry. Keep each card standalone (don't refer to "they" from another card), and make sure names and aliases are unique (matching ignores case and accents, so "Ōgane" already matches "Ogane"). The server checks the file at startup and refuses to start if it's invalid.
+
 ## Running it
 
 Requirements: Python 3.11+, [Ollama](https://ollama.com) with `qwen3:8b` pulled, Node 22+ (frontend build).
