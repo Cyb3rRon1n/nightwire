@@ -52,7 +52,11 @@ def _entries(raw: dict, kind: str) -> tuple[WorldEntry, ...]:
         card = item["card"].strip()
         if len(card) > _MAX_CARD_CHARS:
             raise ValueError(f"world {kind} {item['name']!r} card is {len(card)} chars (max {_MAX_CARD_CHARS})")
-        entries.append(WorldEntry(item["name"], tuple(item.get("aliases", [])), card))
+        aliases = item.get("aliases", [])
+        # An empty alias would compile to \b\b and match every text.
+        if not isinstance(aliases, list) or not all(isinstance(a, str) and a.strip() for a in aliases):
+            raise ValueError(f"world {kind} {item['name']!r} aliases must be a list of non-empty strings")
+        entries.append(WorldEntry(item["name"], tuple(aliases), card))
     return tuple(entries)
 
 
