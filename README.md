@@ -33,8 +33,8 @@ Sibling project to [`oracle`](https://github.com/Cyb3rRon1n/oracle) (a D&D-flavo
 
 Nightwire's setting is **Kuroshio**, an original Japanese megacity in 2089 where everyone's chrome is on credit. It lives in `narrator/worlds/kuroshio.toml`:
 
-- **`primer` + `[glossary]`**: always in the narrator's system prompt (max 1,600 chars together).
-- **`[[district]]` / `[[faction]]`**: `name`, `aliases`, `card` (max 400 chars). Each turn, up to 4 cards are added: the district matching the current location first, then anything mentioned in the player's action or recent narration.
+- **`primer` + `[glossary]`**: always in the narrator's system prompt (max 1,900 chars together).
+- **`[[district]]` / `[[faction]]` / `[[npc]]`**: `name`, `aliases`, `card` (max 400 chars); an NPC can also have a `home` district. Each turn, up to 4 cards are added: the district matching the current location first, then one NPC who lives there (unless a local NPC is already in the scene), then anything mentioned in the player's action or recent narration.
 
 To add a place or faction, add an entry. Keep each card standalone (don't refer to "they" from another card), and make sure names and aliases are unique (matching ignores case and accents, so "Ōgane" already matches "Ogane"). The server checks the file at startup and refuses to start if it's invalid.
 
