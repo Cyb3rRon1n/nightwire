@@ -6,12 +6,16 @@ from engine.persistence import JSONFileSessionStore
 from narrator.client import create_narrator_backend
 from narrator.image_backend import create_image_backend
 from narrator.tts_backend import KokoroBackend
+from narrator.world import kuroshio
 from server.app import create_app
 
 
-def build_app():
-    store = JSONFileSessionStore(os.environ.get("SESSION_STORE_DIR", "./sessions"))
-    system_prompt = (
+def build_system_prompt() -> str:
+    # Game-master rules first, then the world (Phase 14): the primer + glossary
+    # are always on; district/faction cards are added per turn in
+    # server/narration.py. kuroshio() validates the world file, so a broken
+    # one fails here, at startup.
+    rules = (
         "You are a cyberpunk tabletop game master. "
         "Most turns should set tool_call.tool to null - plain narration, dialogue, and "
         "exploration need no tool at all. Combat start/end is entirely player-controlled "
@@ -48,8 +52,13 @@ def build_app():
         "dialogue, restating something already established, or NPCs who won't matter again "
         "(a random ganger in a fight, a background vendor)."
     )
+    return f"{rules}\n\n{kuroshio().system_block()}"
+
+
+def build_app():
+    store = JSONFileSessionStore(os.environ.get("SESSION_STORE_DIR", "./sessions"))
     narrator_client = create_narrator_backend()
-    narrator_client.system_prompt = system_prompt
+    narrator_client.system_prompt = build_system_prompt()
     # IMAGE_BACKEND selects flux_worker (default, MLX-only) or comfyui
     # (Docker/Linux-friendly, no reference-photo support) - see
     # docs/superpowers/specs/2026-09-15-comfyui-image-backend-design.md.
