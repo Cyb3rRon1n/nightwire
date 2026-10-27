@@ -942,3 +942,109 @@ async def test_other_players_can_act_while_one_roll_is_pending(tmp_path):
     await _call(session, client, "someone-else", {"text": "I wait."}, tmp_path, tts_backend=FakeTTSBackend())
 
     assert "Ghost waits." in session.log
+
+
+async def _roll(session, client, player_id, tmp_path, tts_backend=None):
+    from server.narration import handle_roll
+
+    store = JSONFileSessionStore(tmp_path)
+    await handle_roll(session, client, store, _UnusedImageBackend(), tts_backend or FakeTTSBackend(), player_id)
+    return store
+
+
+def _pending(session, difficulty="hard", dc=16):
+    session.pending_rolls["p1"] = {
+        "player_id": "p1", "attribute": "reflexes", "skill": "stealth",
+        "difficulty": difficulty, "reason": "slip past the guard", "dc": dc, "name": "Rook",
+    }
+
+
+@pytest.mark.asyncio
+async def test_roll_with_nothing_pending_is_refused(tmp_path):
+    session = _session_with_character()
+
+    with pytest.raises(ValueError, match="no roll pending"):
+        await _roll(session, _fake_client("unused"), "p1", tmp_path)
+
+
+@pytest.mark.asyncio
+async def test_roll_resolves_logs_visible_line_and_clears_pending(tmp_path, monkeypatch):
+    session = _session_with_character()  # reflexes 14 -> modifier +2, stealth rank 0
+    _pending(session)
+    monkeypatch.setattr("narrator.tools.random.randint", lambda a, b: 7)
+
+    await _roll(session, _fake_client("The guard never turns."), "p1", tmp_path)
+
+    assert "p1" not in session.pending_rolls
+    assert "Rook rolls Stealth (Reflexes) vs Hard: a failure (7 +2 +0 = 9 vs 16)." in session.log
+    roll_line = next(line for line in session.log if line.startswith("[roll: "))
+    data = json.loads(roll_line[len("[roll: "):-1])
+    assert data["die_result"] == 7 and data["outcome"] == "failure" and data["skill"] == "stealth"
+    assert "The guard never turns." in session.log
+
+
+@pytest.mark.asyncio
+async def test_natural_ten_and_one_are_called_out(tmp_path, monkeypatch):
+    session = _session_with_character()
+    _pending(session)
+    monkeypatch.setattr("narrator.tools.random.randint", lambda a, b: 10)
+    await _roll(session, _fake_client("ok"), "p1", tmp_path)
+    assert any(line.endswith("vs 16) — a natural 10.") and "a clean success" in line for line in session.log)
+
+    _pending(session)
+    monkeypatch.setattr("narrator.tools.random.randint", lambda a, b: 1)
+    await _roll(session, _fake_client("ok"), "p1", tmp_path)
+    assert any(line.endswith("vs 16) — a natural 1.") and "a failure" in line for line in session.log)
+
+
+@pytest.mark.asyncio
+async def test_resolution_prompt_contains_the_result(tmp_path, monkeypatch):
+    session = _session_with_character()
+    _pending(session)
+    monkeypatch.setattr("narrator.tools.random.randint", lambda a, b: 7)
+    sent = []
+
+    async def chat_fn(*, model, messages, format):
+        sent.append(messages)
+        payload = {"narration": [{"speaker": "narrator", "text": "ok"}], "tool_call": {"tool": None}}
+        return {"message": {"content": json.dumps(payload)}}
+
+    async def generate_fn(**kwargs):
+        pass
+
+    await _roll(session, NarratorClient(chat_fn=chat_fn, generate_fn=generate_fn), "p1", tmp_path)
+
+    content = sent[0][-1]["content"]
+    assert "Roll result for Rook: a failure on slip past the guard." in content
+    assert "Rook rolls Stealth (Reflexes) vs Hard: a failure" in content
+
+
+@pytest.mark.asyncio
+async def test_no_new_roll_during_a_resolution(tmp_path, monkeypatch):
+    session = _session_with_character()
+    _pending(session)
+    monkeypatch.setattr("narrator.tools.random.randint", lambda a, b: 7)
+    client = _fake_client(
+        "The guard spins.", tool="request_roll",
+        tool_args={"player_id": "p1", "attribute": "reflexes", "skill": "athletics", "difficulty": "easy", "reason": "dodge"},
+    )
+
+    await _roll(session, client, "p1", tmp_path)
+
+    assert session.pending_rolls == {}
+    assert "[tool error: no new rolls during a roll resolution]" in session.log
+
+
+@pytest.mark.asyncio
+async def test_resolution_can_apply_consequences(tmp_path, monkeypatch):
+    session = _session_with_character()
+    _pending(session)
+    monkeypatch.setattr("narrator.tools.random.randint", lambda a, b: 2)
+    client = _fake_client(
+        "The guard's baton cracks your ribs.", tool="apply_character_update",
+        tool_args={"player_id": "p1", "health_delta": -20},
+    )
+
+    await _roll(session, client, "p1", tmp_path)
+
+    assert session.characters["p1"].health == 80

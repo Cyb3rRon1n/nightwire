@@ -299,3 +299,54 @@ async def _run_turn(
     session.last_turn_had_image = generated_image
     if not generated_image:
         await _maybe_compact(session, narrator_client)
+
+
+_OUTCOME_TEXT = {
+    "clean_success": "a clean success",
+    "complication": "success with a complication",
+    "failure": "a failure",
+}
+
+
+def _label(name: str) -> str:
+    return name.replace("_", " ").capitalize()
+
+
+def _roll_line(pending: dict, result: dict) -> str:
+    # A visible story line (not bracketed), so later turns' prompts keep it -
+    # the narrator remembers how the dice actually fell.
+    die, attr_mod, skill_mod = result["die_result"], result["attribute_mod"], result["skill_mod"]
+    total = die + attr_mod + skill_mod
+    line = (
+        f"{pending['name']} rolls {_label(pending['skill'])} ({_label(pending['attribute'])}) "
+        f"vs {_label(pending['difficulty'])}: {_OUTCOME_TEXT[result['outcome']]} "
+        f"({die} {attr_mod:+d} {skill_mod:+d} = {total} vs {result['dc']})"
+    )
+    if die in (1, 10):
+        line += f" — a natural {die}"
+    return line + "."
+
+
+async def handle_roll(
+    session: Session,
+    narrator_client: NarratorClient,
+    store: JSONFileSessionStore,
+    image_backend: ImageBackend,
+    tts_backend: TTSBackend,
+    player_id: str,
+) -> None:
+    pending = session.pending_rolls.pop(player_id, None)
+    if pending is None:
+        raise ValueError("no roll pending")
+    args = {k: pending[k] for k in ("player_id", "attribute", "skill", "difficulty", "reason")}
+    result = execute_tool(session, "request_roll", args)
+    session.log.append(_roll_line(pending, result))
+    session.log.append(f"[roll: {json.dumps({**result, **pending})}]")
+    await _run_turn(
+        session, narrator_client, store, image_backend, tts_backend, player_id,
+        prompt_text=(
+            f"Roll result for {pending['name']}: {_OUTCOME_TEXT[result['outcome']]} on "
+            f"{pending['reason']}. Narrate what happens now, true to that result."
+        ),
+        actor_line=None, allow_roll=False,
+    )
