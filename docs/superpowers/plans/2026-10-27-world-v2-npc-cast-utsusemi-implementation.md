@@ -276,7 +276,7 @@ Expected: PASS for every test in this file. If the shipped world fails a length 
 
 Run: `.venv/bin/python -m pytest tests/ -q`
 
-Expected: `tests/test_world.py::test_matching_is_diacritic_insensitive` and the `tests/test_narration.py` scene test may still pass at this point, because selection is unchanged until Task 2. Everything should pass.
+Expected: everything passes. Selection doesn't use NPCs until Task 2, so no other existing test changes behavior here.
 
 ```bash
 git add narrator/world.py narrator/worlds/kuroshio.toml tests/test_world.py
@@ -418,8 +418,9 @@ def select_cards(world: World, session: Session, action_text: str, budget_chars:
     # Put someone on stage even when nobody was named.
     # ponytail: first resident in file order always wins; rotate or pick the
     # least-recently-shown resident if scenes start to feel samey.
-    if district and len(ordered) < _MAX_CARDS:
-        resident = next((n for n in world.npcs if n.home == district.name and n not in ordered), None)
+    # One local face per scene: skip if a resident is already on stage by mention.
+    if district and len(ordered) < _MAX_CARDS and not any(e.home == district.name for e in ordered):
+        resident = next((n for n in world.npcs if n.home == district.name), None)
         if resident:
             ordered.append(resident)
     cards: list[str] = []
@@ -432,15 +433,7 @@ def select_cards(world: World, session: Session, action_text: str, budget_chars:
     return cards
 ```
 
-Notes for the implementer:
-- In `test_mentioned_resident_is_not_added_twice_and_next_resident_is_not_forced`, Mama Sato is already selected by mention, so the resident step finds the next Ikebe resident, **Old Hara**, and would add him. **That contradicts the test's expected list.** The rule is "one resident NPC so a scene has someone on stage". If a resident is already on stage because they were mentioned, no extra resident is added. Implement it that way: skip the resident step when any already-selected NPC has `home == district.name`. Replace the `resident = ...` condition with:
-
-```python
-    if district and len(ordered) < _MAX_CARDS and not any(n.home == district.name for n in ordered if n in world.npcs):
-        resident = next((n for n in world.npcs if n.home == district.name), None)
-```
-
-- Use exactly this version in the function above. The spec's intent is one local face per scene, not two.
+Note for the implementer: `e.home` is `None` for districts and factions, so the `any(...)` check only ever matches NPCs. If a resident was already mentioned (for example "I ask Mama Sato…" in Ikebe Low), no second resident is added.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
