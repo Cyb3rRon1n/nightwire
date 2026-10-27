@@ -233,7 +233,7 @@ def test_mentioned_resident_is_not_added_twice_and_next_resident_is_not_forced()
     assert cards == [_card(world, "Ikebe Low"), _card(world, "Mama Sato")]
 
 
-def test_resident_outranks_older_mentions_when_cap_is_full():
+def test_resident_outranks_other_mentions_when_cap_is_full():
     world = kuroshio()
     session = Session(session_id="s", location="Ikebe Low")
 
