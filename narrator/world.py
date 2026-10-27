@@ -114,29 +114,28 @@ def _mentions(entry: WorldEntry, normalized_text: str) -> bool:
 def select_cards(world: World, session: Session, action_text: str, budget_chars: int) -> list[str]:
     """Cards for this turn: the current location's district first, then
     districts/factions/NPCs mentioned in the action or recent narrative, most
-    recent first, then one NPC who lives in that district if there's room.
+    recent first, then one NPC who lives in that district (right after the district, ahead of other mentions).
     Capped by count and by budget_chars."""
-    ordered: list[WorldEntry] = []
     location = _normalize(session.location or "")
     district = next((d for d in world.districts if location and _mentions(d, location)), None)
-    if district:
-        ordered.append(district)
     # [image: ...]-style lines are UI annotations, not narrative (same filter
     # server/narration.py applies).
     narrative = [line for line in session.log if not line.startswith("[")][-_SCAN_LINES:]
+    mentions: list[WorldEntry] = []
     for text in (action_text, *reversed(narrative)):
         normalized = _normalize(text)
         for entry in world.districts + world.factions + world.npcs:
-            if entry not in ordered and _mentions(entry, normalized):
-                ordered.append(entry)
-    # Put someone on stage even when nobody was named.
+            if entry is not district and entry not in mentions and _mentions(entry, normalized):
+                mentions.append(entry)
+    # Put someone on stage even when nobody was named, ahead of older mentions
+    # so stale faction chatter can't crowd them out of the card cap.
     # ponytail: first resident in file order always wins; rotate or pick the
     # least-recently-shown resident if scenes start to feel samey.
-    # One local face per scene: skip if a resident is already on stage by mention.
-    if district and len(ordered) < _MAX_CARDS and not any(e.home == district.name for e in ordered):
+    # One local face per scene: skip if a local NPC is already mentioned.
+    resident = None
+    if district and not any(e.home == district.name for e in mentions):
         resident = next((n for n in world.npcs if n.home == district.name), None)
-        if resident:
-            ordered.append(resident)
+    ordered = [e for e in (district, resident) if e] + mentions
     cards: list[str] = []
     total = 0
     for entry in ordered[:_MAX_CARDS]:
