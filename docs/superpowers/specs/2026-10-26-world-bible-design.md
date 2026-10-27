@@ -172,7 +172,7 @@ The primer tells the narrator to set `update_world.location` to a district name,
 > The Loop is the elevated ring expressway around the city, with arcade towers glowing at every off-ramp. Every night Kaminari Run bikes race it, light-trails bending through the rain. Kaminari Run holds it after dark; Ōgane traffic drones hold it by day. Hazard: speed duels settle disputes here, and the loser forfeits their ride. Hook: someone is racing the Loop on a bike with no rider.
 
 **Yomi Line**: aliases `the sealed line`, `the dead line`
-> The Yomi Line is a subway line sealed after an AI incident twenty years ago. Station signs still announce trains that never come, and the net is so thick that the dead speak through the platform speakers. Tsukumogami nest in the ticket machines and the abandoned trains. Hazard: stay too long and Yomi seeps into your chrome. Hook: the Lantern Guild wants something carried out of the deepest station.
+> The Yomi Line is a subway line sealed after an AI incident twenty years ago. Station signs still announce trains that never come, and the net is so thick that the dead speak through the platform speakers. Tsukumogami nest in the ticket machines and the dead trains. Hazard: stay too long and Yomi seeps into your chrome. Hook: the Lantern Guild wants something carried out of the deepest station.
 
 ### Factions
 
