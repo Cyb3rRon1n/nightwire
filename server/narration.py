@@ -8,13 +8,17 @@ from narrator.image_backend import ImageBackend
 from narrator.tools import execute_tool
 from narrator.tts_backend import TTSBackend
 from narrator.voice_assignment import assign_voice
+from narrator.world import kuroshio, select_cards
 
 
 # Verbatim recent narrative gets this fraction of num_ctx (in estimated
-# tokens), leaving room for the system prompt, party roster, the action
-# text, and response generation. A starting value, not a tuned optimum -
-# see the Phase 11 design spec.
-_VERBATIM_BUDGET_FRACTION = 0.65
+# tokens), leaving room for the system prompt (now including the world
+# primer), party roster, NPC memory, world cards, the action text, and
+# response generation. Lowered from 0.65 by Phase 14 to fund the world
+# primer + cards while keeping generation headroom roughly where it was
+# (~1,400 vs ~1,550 tokens at num_ctx=8192 - see the Phase 14 spec).
+# A starting value, not a tuned optimum.
+_VERBATIM_BUDGET_FRACTION = 0.55
 # No tokenizer dependency - this is a "getting close to budget" trigger,
 # not an exact accounting requirement.
 _CHARS_PER_TOKEN_ESTIMATE = 4
@@ -37,6 +41,9 @@ _MAX_SUMMARIZE_INPUT_CHARS = 24000
 # chars), conservative against the ~1,940 tokens of generation headroom
 # Phase 11's own final review measured. A starting value, not tuned.
 _NPC_MEMORY_BUDGET_FRACTION = 0.05
+# World cards (Phase 14): ~490 tokens at num_ctx=8192, enough for the
+# 4-card cap at the 400-char card limit. A starting value, not tuned.
+_WORLD_BUDGET_FRACTION = 0.06
 # A single NPC entry can never exceed 1,110 chars (name<=100 + ": " + up
 # to 5 facts<=200 each + 4 "; " separators - see narrator/tools.py's
 # _MAX_FACTS_PER_NPC), safely below this budget even at num_ctx=6144's
@@ -88,6 +95,17 @@ def _select_npc_memory_for_context(session: Session, num_ctx: int) -> dict[str, 
     return dict(selected)
 
 
+def _scene_line(session: Session) -> str:
+    parts = []
+    if session.location:
+        parts.append(session.location)
+    if session.scene_mood:
+        parts.append(f"mood: {session.scene_mood}")
+    if session.active_objectives:
+        parts.append("objectives: " + "; ".join(session.active_objectives))
+    return "Scene: " + " · ".join(parts) if parts else ""
+
+
 def _build_messages(session: Session, action_text: str, num_ctx: int) -> list[dict]:
     # apply_character_update's player_id is trusted as-is (it legitimately
     # targets a different character than the actor, e.g. damage to a
@@ -114,6 +132,16 @@ def _build_messages(session: Session, action_text: str, num_ctx: int) -> list[di
         parts.append(f"Known NPCs:\n{npc_lines}")
     if verbatim:
         parts.append("Recent events:\n" + "\n".join(verbatim))
+    # Scene + world notes go last, right before the action - content
+    # nearest the end of the prompt carries the most weight (Phase 14
+    # spec, SillyTavern World Info insertion-depth precedent).
+    scene = _scene_line(session)
+    if scene:
+        parts.append(scene)
+    world_budget = int(num_ctx * _WORLD_BUDGET_FRACTION * _CHARS_PER_TOKEN_ESTIMATE)
+    cards = select_cards(kuroshio(), session, action_text, world_budget)
+    if cards:
+        parts.append("World notes:\n" + "\n".join(cards))
     context = "\n\n".join(parts) + "\n\n" if parts else ""
     return [{"role": "user", "content": f"{party}{context}Player action: {action_text}"}]
 
