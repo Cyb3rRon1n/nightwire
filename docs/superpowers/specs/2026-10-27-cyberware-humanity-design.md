@@ -1,6 +1,6 @@
-# Nightwire Cyberware, Humanity and Chrome Debt Design: Phase 16
+# Nightwire Cyberware, Humanity and Chrome Debt Design: Phase 17
 
-Status: designed, not yet implemented; to be revised before planning. Brainstormed with the owner on 2026-10-27, against the Kuroshio world (Phase 14: `narrator/worlds/kuroshio.toml`). Renumbered from 15 to 16 on 2026-10-27: the owner chose to build World v2 (the NPC cast and utsusemi, `2026-10-27-world-v2-npc-cast-utsusemi-design.md`) first. Owner note: Edgerunners is an influence, not a template, and the Altered Carbon pass was rolled back: the elite are plain corporate royalty, and sleeves exist only as utsusemi, rented AI shells (which a debt loop could also repossess). Revisit this spec's framing against World v2 before writing its plan, for example tying the debt loop to Jun Arakawa's gigs and to Old Hara's ability to unthrottle.
+Status: designed, not yet implemented; to be revised before planning. Brainstormed with the owner on 2026-10-27, against the Kuroshio world (Phase 14: `narrator/worlds/kuroshio.toml`). Renumbered from 15 to 16, then 17, on 2026-10-27 (two-step rolls became Phase 16): the owner chose to build World v2 (the NPC cast and utsusemi, `2026-10-27-world-v2-npc-cast-utsusemi-design.md`) first. Owner note: Edgerunners is an influence, not a template, and the Altered Carbon pass was rolled back: the elite are plain corporate royalty, and sleeves exist only as utsusemi, rented AI shells (which a debt loop could also repossess). Revisit this spec's framing against World v2 before writing its plan, for example tying the debt loop to Jun Arakawa's gigs and to Old Hara's ability to unthrottle.
 
 ## The actual gap
 
