@@ -2,16 +2,21 @@
 selected per turn - see docs/superpowers/specs/2026-10-26-world-bible-design.md."""
 
 import functools
+import re
 import tomllib
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
+
+from engine.session import Session
 
 _KUROSHIO_PATH = Path(__file__).parent / "worlds" / "kuroshio.toml"
 # Heuristic sizes for an 8B narrator (no published authoritative numbers -
 # see the spec's research section); live verification is the real check.
 _MAX_CARD_CHARS = 400
 _MAX_SYSTEM_BLOCK_CHARS = 1600
+_MAX_CARDS = 4
+_SCAN_LINES = 6
 
 
 @dataclass(frozen=True)
@@ -77,3 +82,36 @@ def load_world(path: Path) -> World:
 @functools.cache
 def kuroshio() -> World:
     return load_world(_KUROSHIO_PATH)
+
+
+def _mentions(entry: WorldEntry, normalized_text: str) -> bool:
+    return any(
+        re.search(rf"\b{re.escape(_normalize(key))}\b", normalized_text)
+        for key in (entry.name, *entry.aliases)
+    )
+
+
+def select_cards(world: World, session: Session, action_text: str, budget_chars: int) -> list[str]:
+    """Cards for this turn: the current location's district first, then
+    districts/factions mentioned in the action or recent narrative, most
+    recent first. Capped by count and by budget_chars."""
+    ordered: list[WorldEntry] = []
+    location = _normalize(session.location or "")
+    if location:
+        ordered += [d for d in world.districts if _mentions(d, location)][:1]
+    # [image: ...]-style lines are UI annotations, not narrative (same filter
+    # server/narration.py applies).
+    narrative = [line for line in session.log if not line.startswith("[")][-_SCAN_LINES:]
+    for text in (action_text, *reversed(narrative)):
+        normalized = _normalize(text)
+        for entry in world.districts + world.factions:
+            if entry not in ordered and _mentions(entry, normalized):
+                ordered.append(entry)
+    cards: list[str] = []
+    total = 0
+    for entry in ordered[:_MAX_CARDS]:
+        total += len(entry.card) + 1
+        if total > budget_chars:
+            break
+        cards.append(entry.card)
+    return cards
