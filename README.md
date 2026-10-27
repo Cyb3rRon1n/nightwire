@@ -27,6 +27,7 @@ Sibling project to [`oracle`](https://github.com/Cyb3rRon1n/oracle) (a D&D-flavo
 - **Four roles, checked against Cyberpunk 2077 itself**: Solo, Netrunner, Techie, Fixer — CP2077's three official archetypes plus a Fixer for social/negotiation. Six attributes (Body, Reflexes, Tech, Cool, Intellect, Presence).
 - **Structured output, not native tool-calling.** The narrator's tool choice and arguments are both constrained by a real JSON schema, after live testing found free-form tool-calling inventing plausible-but-wrong arguments on nearly every turn.
 - **Character-consistent image generation.** A portrait generated at character approval becomes a reference image for later scene generation, so a character looks like themselves across turns instead of a new face each time — on the default `flux_worker` backend. The `comfyui` backend (Docker/Linux-friendly, see below) doesn't support this yet: no IPAdapter/InstantID on the verified target instance, so it's text-prompt-only.
+- **You roll the dice, the narrator lives with them.** When an action is risky, the narrator sets up the moment and stops; you click **Roll**, watch the d10 land with your modifiers, then the narrator tells what happens — true to the result, which stays in the story so it's remembered later.
 - **Local-first AI** — Ollama-backed (`qwen3:8b`), same stance for the TTS backend.
 
 ## World
@@ -126,6 +127,10 @@ Real captures of the live frontend running its own "Neon Noir" theme — a cyber
 <p align="center">
   <img src="docs/images/screenshots/session.png" alt="Nightwire combat turn with narration, an NPC dialogue bubble with its own avatar, and TTS audio" width="480"><br>
   <sub>Narration, dice-backed combat, and a speaker avatar next to each dialogue bubble</sub>
+</p>
+<p align="center">
+  <img src="docs/images/screenshots/roll.png" alt="A Nightwire roll card: Stealth vs Hard 16, a d10 showing 6, the breakdown 6 +0 Cool +0 Stealth = 6 vs 16 and a red Failure badge, followed by the narrator's resolution" width="480"><br>
+  <sub>A player roll: the narrator set up the moment, the player clicked Roll, and the resolution follows the real result</sub>
 </p>
 <p align="center">
   <img src="docs/images/screenshots/scene.jpg" alt="Nightwire generated scene art of a flooded underpass lit by a flickering vending machine" width="480"><br>
