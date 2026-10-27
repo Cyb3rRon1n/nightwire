@@ -27,7 +27,7 @@ What remains is a toned-down elite: **ordinary cyberpunk corporate royalty** (th
 - They are leased by Hoshikawa on the same payment plans as human chrome, so the torite repossess shells too.
 - This mirrors the core theme instead of replacing it. Chrome asks how much machine before a person stops being human. Utsusemi ask how much body before a machine starts being someone.
 
-**Order.** This phase comes first. The cyberware, humanity and debt spec (`2026-10-27-cyberware-humanity-design.md`) is revised and built afterwards as Phase 16.
+**Order.** This phase comes first. The cyberware, humanity and debt spec (`2026-10-27-cyberware-humanity-design.md`) is revised and built afterwards as Phase 17.
 
 ## Research grounding
 
@@ -36,7 +36,7 @@ What remains is a toned-down elite: **ordinary cyberpunk corporate royalty** (th
 - Blades in the Dark's faction and NPC structure is: who they are, what they want, how they act.
 - This phase adds a **secret** and a **voice** to each card. A secret gives the narrator something to reveal, and a voice keeps the NPC consistent across sessions.
 
-**Recurring NPCs as the engine of play.** In Cyberpunk 2077 and RED, fixers are the recurring faces that hand out gigs. In Blades in the Dark, factions and their people generate the jobs. The cast includes a fixer, Jun Arakawa, as the default source of paid work. That also gives Phase 16's debt loop a ready place to work off installments.
+**Recurring NPCs as the engine of play.** In Cyberpunk 2077 and RED, fixers are the recurring faces that hand out gigs. In Blades in the Dark, factions and their people generate the jobs. The cast includes a fixer, Jun Arakawa, as the default source of paid work. That also gives Phase 17's debt loop a ready place to work off installments.
 
 **AI bodies.** Ghost in the Shell is already a Phase 14 touchstone: its "shell" is the body a ghost inhabits, and AIs and cyborgs move between them. Ghostwire: Tokyo, also a Phase 14 touchstone, layers folklore into modern machines. Utsusemi combine the two, following tsukumogami folklore (objects that gain a spirit after long use) into a rented body. (General knowledge, not freshly sourced.)
 
@@ -151,7 +151,7 @@ Record:
 
 ## Not in this phase
 
-- Cyberware, humanity and debt (Phase 16). Utsusemi as a *mechanic* (an AI player character, shell slots, shell repossession) also belongs there or later; here utsusemi are world content only.
+- Cyberware, humanity and debt (Phase 17). Utsusemi as a *mechanic* (an AI player character, shell slots, shell repossession) also belongs there or later; here utsusemi are world content only.
 - NPC relationship or reputation tracking (Phase 13 memory covers history).
 - NPC schedules or movement.
 - Engine-generated gigs from NPCs (a natural follow-up once the debt loop exists).
