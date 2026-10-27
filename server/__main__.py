@@ -51,6 +51,12 @@ def build_system_prompt() -> str:
         "the party a job; said he'll remember who helps him'. Don't call it for routine "
         "dialogue, restating something already established, or NPCs who won't matter again "
         "(a random ganger in a fight, a background vendor)."
+        " When you call request_roll, narrate only the lead-up to the moment of risk "
+        "and stop before the result - the player rolls next, then you'll be told the "
+        "outcome and narrate it. Example: player sneaks past a guard -> narrate the "
+        "guard turning toward the curtain, the creak of a floorboard, then request_roll "
+        "(stealth, hard). Don't narrate whether they made it. When you're given a roll "
+        "result, narrate what happens true to that result; never contradict it."
     )
     return f"{rules}\n\n{kuroshio().system_block()}"
 

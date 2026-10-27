@@ -146,19 +146,26 @@ async def test_handle_action_raises_on_missing_text(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_handle_action_executes_a_tool_call_and_logs_the_result(tmp_path):
+async def test_request_roll_becomes_a_pending_roll_not_a_roll(tmp_path):
     session = _session_with_character()
     client = _fake_client(
-        "You lunge for the ledge.", tool="request_roll",
+        "You eye the ledge.", tool="request_roll",
         tool_args={
             "player_id": "someone-else", "attribute": "reflexes", "skill": "athletics",
-            "difficulty": "easy", "reason": "leap",
+            "difficulty": "hard", "reason": "leap the gap",
         },
     )
 
     await _call(session, client, "p1", {"text": "I leap the gap."}, tmp_path, tts_backend=FakeTTSBackend())
 
-    assert any("request_roll" in line for line in session.log)
+    pending = session.pending_rolls["p1"]
+    assert pending["player_id"] == "p1"
+    assert pending["skill"] == "athletics" and pending["difficulty"] == "hard"
+    assert pending["dc"] == 16 and pending["name"] == "Rook"
+    assert "You eye the ledge." in session.log
+    pending_line = next(line for line in session.log if line.startswith("[roll pending: "))
+    assert json.loads(pending_line[len("[roll pending: "):-1])["skill"] == "athletics"
+    assert not any(line.startswith("[request_roll") for line in session.log)
 
 
 @pytest.mark.asyncio
@@ -189,15 +196,12 @@ async def test_handle_action_grounds_the_narrator_in_real_player_ids(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_handle_action_overrides_the_models_player_id_for_request_roll(tmp_path):
-    # Server-authoritative: the acting player_id always wins for request_roll,
-    # regardless of what the model put in tool_args. p1 has reflexes 14
-    # (modifier 2); someone-else has reflexes 20 (modifier 5). If the
-    # override were ever removed, the roll would use someone-else's
-    # attribute_mod of 5 instead of the actual actor's 2.
+async def test_pending_roll_is_keyed_to_the_actor_not_the_models_player_id(tmp_path):
+    # Server-authoritative: the acting player always owns the roll they
+    # triggered, whatever player_id the model put in tool_args.
     session = _session_with_two_characters()
     client = _fake_client(
-        "You lunge for the ledge.", tool="request_roll",
+        "You eye the ledge.", tool="request_roll",
         tool_args={
             "player_id": "someone-else", "attribute": "reflexes", "skill": "athletics",
             "difficulty": "easy", "reason": "leap",
@@ -206,9 +210,8 @@ async def test_handle_action_overrides_the_models_player_id_for_request_roll(tmp
 
     await _call(session, client, "p1", {"text": "I leap the gap."}, tmp_path, tts_backend=FakeTTSBackend())
 
-    result_line = next(line for line in session.log if "request_roll" in line)
-    assert "'attribute_mod': 2" in result_line
-    assert "'attribute_mod': 5" not in result_line
+    assert list(session.pending_rolls) == ["p1"]
+    assert session.pending_rolls["p1"]["player_id"] == "p1"
 
 
 @pytest.mark.asyncio
@@ -918,3 +921,24 @@ def test_build_messages_world_notes_from_mentions_without_location():
 
     assert f"World notes:\n{loop}\n\nPlayer action: I ride out onto the Loop." in content
     assert "Scene:" not in content
+
+
+@pytest.mark.asyncio
+async def test_action_is_refused_while_that_players_roll_is_pending(tmp_path):
+    session = _session_with_character()
+    session.pending_rolls["p1"] = {"player_id": "p1"}
+    client = _fake_client("unused")
+
+    with pytest.raises(ValueError, match="roll first"):
+        await _call(session, client, "p1", {"text": "I run."}, tmp_path)
+
+
+@pytest.mark.asyncio
+async def test_other_players_can_act_while_one_roll_is_pending(tmp_path):
+    session = _session_with_two_characters()
+    session.pending_rolls["p1"] = {"player_id": "p1"}
+    client = _fake_client("Ghost waits.")
+
+    await _call(session, client, "someone-else", {"text": "I wait."}, tmp_path, tts_backend=FakeTTSBackend())
+
+    assert "Ghost waits." in session.log
