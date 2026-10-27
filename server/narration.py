@@ -327,6 +327,37 @@ def _roll_line(pending: dict, result: dict) -> str:
     return line + "."
 
 
+def resolve_roll(session: Session, player_id: str) -> dict:
+    pending = session.pending_rolls.pop(player_id, None)
+    if pending is None:
+        raise ValueError("no roll pending")
+    args = {k: pending[k] for k in ("player_id", "attribute", "skill", "difficulty", "reason")}
+    result = execute_tool(session, "request_roll", args)
+    session.log.append(_roll_line(pending, result))
+    rolled = {**result, **pending}
+    session.log.append(f"[roll: {json.dumps(rolled)}]")
+    return rolled
+
+
+async def narrate_roll(
+    session: Session,
+    narrator_client: NarratorClient,
+    store: JSONFileSessionStore,
+    image_backend: ImageBackend,
+    tts_backend: TTSBackend,
+    player_id: str,
+    rolled: dict,
+) -> None:
+    await _run_turn(
+        session, narrator_client, store, image_backend, tts_backend, player_id,
+        prompt_text=(
+            f"Roll result for {rolled['name']}: {_OUTCOME_TEXT[rolled['outcome']]} on "
+            f"{rolled['reason']}. Narrate what happens now, true to that result."
+        ),
+        actor_line=None, allow_roll=False,
+    )
+
+
 async def handle_roll(
     session: Session,
     narrator_client: NarratorClient,
@@ -335,18 +366,5 @@ async def handle_roll(
     tts_backend: TTSBackend,
     player_id: str,
 ) -> None:
-    pending = session.pending_rolls.pop(player_id, None)
-    if pending is None:
-        raise ValueError("no roll pending")
-    args = {k: pending[k] for k in ("player_id", "attribute", "skill", "difficulty", "reason")}
-    result = execute_tool(session, "request_roll", args)
-    session.log.append(_roll_line(pending, result))
-    session.log.append(f"[roll: {json.dumps({**result, **pending})}]")
-    await _run_turn(
-        session, narrator_client, store, image_backend, tts_backend, player_id,
-        prompt_text=(
-            f"Roll result for {pending['name']}: {_OUTCOME_TEXT[result['outcome']]} on "
-            f"{pending['reason']}. Narrate what happens now, true to that result."
-        ),
-        actor_line=None, allow_roll=False,
-    )
+    rolled = resolve_roll(session, player_id)
+    await narrate_roll(session, narrator_client, store, image_backend, tts_backend, player_id, rolled)

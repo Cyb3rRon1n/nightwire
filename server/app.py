@@ -8,7 +8,7 @@ from narrator.image_backend import ImageBackend
 from narrator.tts_backend import TTSBackend
 from server.connection_manager import ConnectionManager
 from server.dispatch import handle_message
-from server.narration import handle_action, handle_roll
+from server.narration import handle_action, narrate_roll, resolve_roll
 from server.portrait import handle_approve_character
 
 
@@ -57,7 +57,11 @@ def create_app(
                     if message.get("type") == "action":
                         await handle_action(session, narrator_client, store, image_backend, tts_backend, player_id, message)
                     elif message.get("type") == "roll":
-                        await handle_roll(session, narrator_client, store, image_backend, tts_backend, player_id)
+                        rolled = resolve_roll(session, player_id)
+                        # Show the die landing now; the resolution narration (slow) follows.
+                        store.save(session)
+                        await manager.broadcast(session_id, session)
+                        await narrate_roll(session, narrator_client, store, image_backend, tts_backend, player_id, rolled)
                     elif message.get("type") == "approve_character":
                         await handle_approve_character(session, store, narrator_client, image_backend, player_id, message)
                     else:
