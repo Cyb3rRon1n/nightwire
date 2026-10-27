@@ -24,6 +24,23 @@ export interface RedactedCharacter {
   conditions: string[]
 }
 
+export interface PendingRoll {
+  player_id: string
+  attribute: string
+  skill: string
+  difficulty: 'easy' | 'moderate' | 'hard' | 'extreme'
+  reason: string
+  dc: number
+  name: string
+}
+
+export interface RollResult extends PendingRoll {
+  die_result: number
+  attribute_mod: number
+  skill_mod: number
+  outcome: 'clean_success' | 'complication' | 'failure'
+}
+
 export interface StateView {
   type: 'state'
   session_id: string
@@ -35,6 +52,7 @@ export interface StateView {
   scene_mood: string | null
   active_objectives: string[]
   characters: Record<string, CharacterSheet | RedactedCharacter>
+  pending_rolls: Record<string, PendingRoll>
 }
 
 export interface ErrorMessage {
@@ -74,6 +92,10 @@ export interface RollInitiativeMessage {
   type: 'roll_initiative'
 }
 
+export interface RollMessage {
+  type: 'roll'
+}
+
 export interface AdvanceTurnMessage {
   type: 'advance_turn'
 }
@@ -103,6 +125,7 @@ export type ClientMessage =
   | JoinMessage
   | ActionMessage
   | RollInitiativeMessage
+  | RollMessage
   | AdvanceTurnMessage
   | EndCombatMessage
   | ApproveCharacterMessage

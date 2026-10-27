@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { ReadyState } from "react-use-websocket";
 import { useNightwireSocket } from "@/lib/nightwire/useNightwireSocket";
-import type { CharacterSheet, RedactedCharacter, StateView } from "@/lib/nightwire/protocol";
+import type { CharacterSheet, RedactedCharacter, RollResult, StateView } from "@/lib/nightwire/protocol";
 import { portraitFor } from "@/lib/nightwire/portrait";
 import { mediaUrl } from "@/lib/nightwire/media";
+import { PendingRollCard, RollResultCard } from "./RollCard";
 import { CharacterSheetOverlay } from "./CharacterSheetOverlay";
 import { SkillPicker, STARTING_SKILL_POINTS } from "./SkillPicker";
 import { AttributePicker, attributeBudgetRemaining, startingAttributes } from "./AttributePicker";
@@ -135,6 +136,8 @@ function SpeakerAvatar({ name, character }: { name: string; character?: Characte
 // Reuses the same [tag: value] bracket convention tool results already use
 // in session.log - no new StateView field for image lines.
 const IMAGE_LINE = /^\[image: (.+)\]$/;
+const ROLL_LINE = /^\[roll: (.+)\]$/;
+const ROLL_PENDING_LINE = /^\[roll pending: .+\]$/;
 // Same bracket-tag convention as IMAGE_LINE above, for synthesized narration audio.
 const AUDIO_LINE = /^\[audio: (.+)\]$/;
 // Catch-all for every other bracket-tagged system line ([initiative: ...],
@@ -200,6 +203,7 @@ export default function NightwirePage() {
   const [composerMode, setComposerMode] = useState<ComposerMode>("do");
   const [composerText, setComposerText] = useState("");
   const [sending, setSending] = useState(false);
+  const [rolling, setRolling] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [approvingPortrait, setApprovingPortrait] = useState(false);
   const [portraitSkipped, setPortraitSkipped] = useState(false);
@@ -219,6 +223,7 @@ export default function NightwirePage() {
     /* eslint-disable react-hooks/set-state-in-effect -- syncing to an
      * external system (websocket broadcasts), not derivable during render. */
     setSending(false);
+    setRolling(false);
     setApprovingPortrait(false);
     setCombatActionPending(false);
     /* eslint-enable react-hooks/set-state-in-effect */
@@ -247,6 +252,9 @@ export default function NightwirePage() {
       character: { player_id: playerId, name, role, lifepath, skills, attributes },
     });
   }
+
+  const myRollPending = Boolean(view?.pending_rolls?.[playerId]);
+  const lastRollIndex = view ? view.log.findLastIndex((l) => ROLL_LINE.test(l)) : -1;
 
   function handleSendAction(event: React.FormEvent) {
     event.preventDefault();
@@ -459,6 +467,20 @@ export default function NightwirePage() {
             <>
               <div className="flex-1 space-y-3 overflow-y-auto">
                 {view.log.map((line, i) => {
+                  if (ROLL_PENDING_LINE.test(line)) return null;
+                  const rollMatch = line.match(ROLL_LINE);
+                  if (rollMatch) {
+                    try {
+                      const roll = JSON.parse(rollMatch[1]) as RollResult;
+                      return <RollResultCard key={i} roll={roll} animate={i === lastRollIndex} />;
+                    } catch {
+                      return (
+                        <p key={i} className="nw-hud text-xs nw-text-faint">
+                          {line}
+                        </p>
+                      );
+                    }
+                  }
                   const imageMatch = line.match(IMAGE_LINE);
                   if (imageMatch) {
                     // eslint-disable-next-line @next/next/no-img-element
@@ -506,6 +528,18 @@ export default function NightwirePage() {
                     </p>
                   );
                 })}
+                {Object.values(view.pending_rolls ?? {}).map((roll) => (
+                  <PendingRollCard
+                    key={roll.player_id}
+                    roll={roll}
+                    isMine={roll.player_id === playerId}
+                    onRoll={() => {
+                      setRolling(true);
+                      send({ type: "roll" });
+                    }}
+                    rolling={rolling}
+                  />
+                ))}
               </div>
 
               <VitalsBand view={view} playerId={playerId} />
@@ -572,13 +606,13 @@ export default function NightwirePage() {
                       e.currentTarget.form?.requestSubmit();
                     }
                   }}
-                  placeholder={COMPOSER_MODES.find((m) => m.value === composerMode)?.placeholder}
-                  disabled={sending}
+                  placeholder={myRollPending ? "Roll first" : COMPOSER_MODES.find((m) => m.value === composerMode)?.placeholder}
+                  disabled={sending || myRollPending}
                   className="nw-field resize-none outline-none disabled:cursor-not-allowed"
                 />
                 <button
                   type="submit"
-                  disabled={sending || !composerText.trim()}
+                  disabled={sending || myRollPending || !composerText.trim()}
                   className="nw-btn-primary"
                 >
                   {sending ? "Waiting for the GM…" : "Send"}
