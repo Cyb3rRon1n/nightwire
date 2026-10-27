@@ -514,7 +514,7 @@ def test_select_verbatim_narrative_drops_oldest_lines_past_budget():
     narrative = ["a" * 20, "b" * 20, "c" * 20]
     result = _select_verbatim_narrative(narrative, num_ctx=10)
 
-    # Only the most recent line(s) that fit within 26 chars survive, in order
+    # Only the most recent line(s) that fit within 22 chars survive, in order
     assert result == ["c" * 20]
 
 
@@ -867,6 +867,31 @@ def test_scene_line_drops_empty_parts():
     session.scene_mood = "quiet"
 
     assert _scene_line(session) == "Scene: mood: quiet"
+
+
+def test_scene_line_keeps_only_last_five_objectives():
+    from server.narration import _scene_line
+
+    session = _session_with_character()
+    session.active_objectives = [f"obj{i:02d}" for i in range(20)]
+
+    line = _scene_line(session)
+
+    assert "obj14; obj15; obj16; obj17; obj18; obj19" not in line
+    assert line == "Scene: objectives: obj15; obj16; obj17; obj18; obj19"
+
+
+def test_scene_line_truncates_long_fields():
+    from server.narration import _scene_line
+
+    session = _session_with_character()
+    session.location = "L" * 500
+    session.scene_mood = "M" * 500
+    session.active_objectives = ["O" * 500]
+
+    line = _scene_line(session)
+
+    assert line == f"Scene: {'L' * 120} · mood: {'M' * 120} · objectives: {'O' * 120}"
 
 
 def test_build_messages_omits_scene_and_world_notes_when_nothing_applies():

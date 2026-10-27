@@ -16,7 +16,9 @@ from narrator.world import kuroshio, select_cards
 # primer), party roster, NPC memory, world cards, the action text, and
 # response generation. Lowered from 0.65 by Phase 14 to fund the world
 # primer + cards while keeping generation headroom roughly where it was
-# (~1,400 vs ~1,550 tokens at num_ctx=8192 - see the Phase 14 spec).
+# (~1,400 vs ~1,550 tokens at num_ctx=8192 - chars/4 ESTIMATES, not
+# measurements; Phase 13 measured nearer 3.4-3.8 chars/token, so real
+# headroom is lower - see the Phase 14 spec).
 # A starting value, not a tuned optimum.
 _VERBATIM_BUDGET_FRACTION = 0.55
 # No tokenizer dependency - this is a "getting close to budget" trigger,
@@ -95,14 +97,22 @@ def _select_npc_memory_for_context(session: Session, num_ctx: int) -> dict[str, 
     return dict(selected)
 
 
+# The Scene line sits outside every num_ctx budget, and location / mood /
+# objectives are model-written with no length limit (objectives only
+# grow), so cap them on the read side: per-field chars, newest objectives.
+_SCENE_FIELD_MAX_CHARS = 120
+_SCENE_MAX_OBJECTIVES = 5
+
+
 def _scene_line(session: Session) -> str:
     parts = []
     if session.location:
-        parts.append(session.location)
+        parts.append(session.location[:_SCENE_FIELD_MAX_CHARS])
     if session.scene_mood:
-        parts.append(f"mood: {session.scene_mood}")
+        parts.append(f"mood: {session.scene_mood[:_SCENE_FIELD_MAX_CHARS]}")
     if session.active_objectives:
-        parts.append("objectives: " + "; ".join(session.active_objectives))
+        recent = session.active_objectives[-_SCENE_MAX_OBJECTIVES:]
+        parts.append("objectives: " + "; ".join(o[:_SCENE_FIELD_MAX_CHARS] for o in recent))
     return "Scene: " + " · ".join(parts) if parts else ""
 
 

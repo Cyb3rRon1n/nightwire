@@ -155,3 +155,17 @@ def test_no_match_returns_empty():
     session = Session(session_id="s", location="somewhere unnamed")
 
     assert select_cards(kuroshio(), session, "I wait.", budget_chars=10_000) == []
+
+
+def test_bare_string_aliases_rejected():
+    bad = [{"name": "Ikebe Low", "aliases": "Ikebe", "card": "Old alleys."}]
+
+    with pytest.raises(ValueError, match="aliases"):
+        parse_world(_raw(district=bad))
+
+
+def test_empty_alias_rejected():
+    bad = [{"name": "Ikebe Low", "aliases": [""], "card": "Old alleys."}]
+
+    with pytest.raises(ValueError, match="aliases"):
+        parse_world(_raw(district=bad))
