@@ -1,6 +1,6 @@
-# Nightwire Cyberware, Humanity and Chrome Debt Design: Phase 15
+# Nightwire Cyberware, Humanity and Chrome Debt Design: Phase 16
 
-Status: designed, not yet implemented. Brainstormed with the owner on 2026-10-27, against the Kuroshio world (Phase 14: `narrator/worlds/kuroshio.toml`).
+Status: designed, not yet implemented; to be revised before planning. Brainstormed with the owner on 2026-10-27, against the Kuroshio world (Phase 14: `narrator/worlds/kuroshio.toml`). Renumbered from 15 to 16 on 2026-10-27: the owner chose to build World v2 (Kumoi and the NPC cast, `2026-10-27-world-v2-kumoi-npc-cast-design.md`) first. Owner note: Edgerunners is an influence, not a template, and Altered Carbon colors only the rich side (no sleeves). Revisit this spec's framing against World v2 before writing its plan, for example tying the debt loop to Jun Arakawa's gigs and to Old Hara's ability to unthrottle.
 
 ## The actual gap
 
@@ -33,7 +33,7 @@ A researcher pass on 2026-10-27. Labels follow that report: [S] is sourced; [G] 
 **Cyberpunk: Edgerunners.**
 - David's decline comes from heavy Sandevistan use, framed as dependency.
 - Lucy confronts him with symptoms and urges a downgrade; he chooses to refuse [S, [Looper](https://looper.com/1036614/the-ending-of-cyberpunk-edgerunners-explained)].
-- This is the template for the one-time "Lucy moment" warning: a choice, not a punishment.
+- This is the template for the one-time confrontation scene: a choice, not a punishment.
 
 **Debt and dependency.**
 - **Deus Ex: Human Revolution.** Neuropozyne is ongoing, company-controlled dependency, and missing it means rejection [S, [wiki](https://deusex.fandom.com/wiki/Neuropozyne)]. This is the closest precedent for chrome on credit.
@@ -67,7 +67,7 @@ A researcher pass on 2026-10-27. Labels follow that report: [S] is sourced; [G] 
 | 0 | Gone too far | as Edge, plus no new installs and no overclocking until humanity is back above 20 |
 
 - **The lock at 0.** When humanity reaches 0, the engine sets `gone_too_far = True`. While it is set, installs and overclocks are refused. It clears when humanity rises above 20.
-- **The Lucy moment.** The first time a character drops below 40, the engine sets `slipping_warned = True` and adds a one-turn `World event:` line telling the narrator that someone close notices and confronts them. It fires once per character.
+- **The confrontation scene.** The first time a character drops below 40, the engine sets `slipping_warned = True` and adds a one-turn `World event:` line telling the narrator that someone close notices and confronts them. It fires once per character.
 - **Tier text** for the narrator is a short line per tier in the system prompt (see Prompt), not a rules list.
 
 ### Slots
@@ -123,7 +123,7 @@ If the character has an **armed overclock** that applies to this roll:
 - Yomi jack adds +3 (plus the tier bonus) on hacking.
 
 Then:
-- The engine rolls 1d6 and subtracts it from humanity (which can set `gone_too_far` and fire the Lucy moment).
+- The engine rolls 1d6 and subtracts it from humanity (which can set `gone_too_far` and fire the confrontation scene).
 - It clears `overclock_armed`.
 - It adds `overclock` and `humanity_loss` to the returned result dict, so the roll's log line shows them.
 
@@ -192,7 +192,7 @@ The set stays small. The lesson behind this is that model-triggered mechanics ar
 
 The engine does all the math for each of these, and they all broadcast the updated view as existing messages do.
 
-- **`accept_chrome`:** requires a pending offer for this player, a free slot, and `gone_too_far` not set. Installs the item: adds it to `chrome`, subtracts humanity, adds installments, applies stats, and fires the Lucy moment if the install crosses below 40. Then clears the offer.
+- **`accept_chrome`:** requires a pending offer for this player, a free slot, and `gone_too_far` not set. Installs the item: adds it to `chrome`, subtracts humanity, adds installments, applies stats, and fires the confrontation scene if the install crosses below 40. Then clears the offer.
 - **`decline_chrome`:** clears the offer.
 - **`overclock {item}`:** the item must be installed, have an overclock, not be throttled, and `gone_too_far` must not be set. Sets `overclock_armed = item`, replacing any previously armed one.
 - **`remove_chrome {item}`:** the item must be installed. Removes it, returns half its humanity cost, reverses its stats, and clears `throttled`, `overclock_armed` or `pending_repo` if they pointed at it. Installments stay owed.
@@ -209,7 +209,7 @@ Rook: humanity 62 (Frayed), chrome: Kagerou, Hawkeye optics, owes 3, repo clock 
 
 Throttled and pending-repo items are marked inline. Characters with no chrome and no debt get no entry.
 
-**`World event:` line.** It is added right after the Scene line, for the turn on which an engine event fired (Lucy moment, notice, throttle, repo). It is held in a transient `session.pending_world_events` list that `_build_messages` consumes and clears.
+**`World event:` line.** It is added right after the Scene line, for the turn on which an engine event fired (confrontation scene, notice, throttle, repo). It is held in a transient `session.pending_world_events` list that `_build_messages` consumes and clears.
 
 **System prompt.** It gets a short chrome-and-humanity block alongside the existing rules:
 - what each tier looks like in play:
@@ -247,7 +247,7 @@ As in Phase 14, there are no anti-cliché rules.
 - **Clock:** ticks only while owing; 10 actions per tick; 6 ticks per strike.
 - **Escalation:** notice, then throttle (the newest item, with stats removed), then repo. Payment resets the clock and unthrottles.
 - **`remove_chrome`:** only acts on a `pending_repo`.
-- **Lucy moment:** fires once.
+- **confrontation scene:** fires once.
 - **Join:** `starting_chrome` is validated; the client can't set humanity, chrome or debt fields.
 - **Persistence:** round-trip, plus loading a pre-Phase-15 session file.
 - **Prompt:** the status line and the `World event:` line appear and are consumed once.
@@ -258,7 +258,7 @@ As in Phase 14, there are no anti-cliché rules.
 2. **Overclock turns:** does the narration reflect the cost?
 3. **A forced repo event:** set the clock state directly. Does the narrator stage the torite?
 4. **Tier narration:** set humanity to 60, 30, 10 and 0. Does the narration match the tier without anyone losing control?
-5. **The Lucy moment.**
+5. **The confrontation scene.**
 
 Record schema and tool error rates, and report n honestly.
 
