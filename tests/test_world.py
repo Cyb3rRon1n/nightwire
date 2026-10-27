@@ -233,14 +233,27 @@ def test_mentioned_resident_is_not_added_twice_and_next_resident_is_not_forced()
     assert cards == [_card(world, "Ikebe Low"), _card(world, "Mama Sato")]
 
 
-def test_resident_skipped_when_cap_is_full():
+def test_resident_outranks_older_mentions_when_cap_is_full():
     world = kuroshio()
     session = Session(session_id="s", location="Ikebe Low")
 
     cards = select_cards(world, session, "The Loop, the Docks and Hanabira.", budget_chars=10_000)
 
+    assert cards == [_card(world, n) for n in ("Ikebe Low", "Mama Sato", "Hanabira-chō", "Kuroshio Docks")]
+
+
+def test_resident_comes_before_stale_faction_mentions():
+    world = kuroshio()
+    session = Session(
+        session_id="s",
+        location="Hanabira-chō - a karaoke box",
+        log=["The Kuze-gumi and Kaminari Run are at war.", "Hoshikawa repo men watch the door."],
+    )
+
+    cards = select_cards(world, session, "I look for work.", budget_chars=10_000)
+
+    assert cards[:2] == [_card(world, "Hanabira-chō"), _card(world, "Jun Arakawa")]
     assert len(cards) == 4
-    assert _card(world, "Mama Sato") not in cards
 
 
 def test_resident_skipped_when_budget_is_full():
