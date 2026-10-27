@@ -1,10 +1,10 @@
 # Kuroshio - nightwire's world bible (Phase 14).
-# Cards must be standalone (no pronouns pointing at other cards), <=400 chars.
+# District/faction/npc cards must be standalone (no pronouns pointing at other cards), <=400 chars. npc home = an existing district name.
 # Names/aliases must be unique after lowercasing + stripping diacritics
 # ("Ōgane" already matches "Ogane" - don't add re-spellings as aliases).
 
 primer = """
-Setting: Kuroshio, a Pacific megacity in Japan, 2089, named for the black ocean current that feeds its port. Five keiretsu houses built the city and financed the chrome that keeps its people working. Nearly everyone's chrome is on a payment plan, and torite repo crews take back what you can't pay for. Giri binds the city: favors are currency and everyone owes someone. The deep net, Yomi, holds the lingering data of the dead, tended by the Lantern Guild. Old machines that run too long sometimes wake as tsukumogami. Districts: Tenjō Heights, Hanabira-chō, Ikebe Low, Kuroshio Docks, The Loop, Yomi Line. When the party moves, set update_world location to a district name, then the specific spot (e.g. "Ikebe Low - Mama Sato's izakaya"). Tone: stylish, fast and darkly funny like a neon action film, but every piece of chrome costs something and the city always collects. Ground every scene in concrete sensory detail: rain, food, signage, engine noise, crowds, machine hum. Use Japanese words only from the glossary, naturally, without explaining them.
+Setting: Kuroshio, a Pacific megacity in Japan, 2089, named for the black ocean current that feeds its port. Five keiretsu houses built the city and financed the chrome that keeps its people working. Nearly everyone's chrome is on a payment plan, and torite repo crews take back what you can't pay for. Giri binds the city: favors are currency and everyone owes someone. The deep net, Yomi, holds the lingering data of the dead, tended by the Lantern Guild. Old machines that run too long sometimes wake as tsukumogami. Districts: Tenjō Heights, Hanabira-chō, Ikebe Low, Kuroshio Docks, The Loop, Yomi Line. When the party moves, set update_world location to a district name, then the specific spot (e.g. "Ikebe Low - Mama Sato's izakaya"). Tone: stylish, fast and darkly funny like a neon action film, but every piece of chrome costs something and the city always collects. Ground every scene in concrete sensory detail: rain, food, signage, engine noise, crowds, machine hum. Use Japanese words only from the glossary, naturally, without explaining them. Atop Tenjō Heights the keiretsu families live as corporate royalty. Some woken machines rent utsusemi, synthetic shells leased on the same payment plans, and the torite repossess those too.
 """
 
 [glossary]
@@ -17,6 +17,7 @@ oyabun = "the boss of a yakuza clan"
 Yomi = "the deep net, where the data of the dead lingers"
 "going to the lantern" = "dying"
 tsukumogami = "an old machine that woke up as a rogue AI"
+utsusemi = "a rented synthetic body that an AI wears to walk the street"
 
 [[district]]
 name = "Tenjō Heights"
@@ -76,4 +77,69 @@ card = "The Lantern Guild is the licensed union that tends the dead in Yomi, the
 [[faction]]
 name = "Tsukumogami"
 aliases = ["rogue AI", "rogue AIs"]
-card = "Tsukumogami are old machines that ran too long and woke: vending machines, ticket gates, train AIs, traffic systems. Each wants something strange and specific: to be thanked, to finish a last route, to be left running. They can be bargained with, tricked or fled. Narrate them as uncanny: chimes that sound wrong, screens that answer back, machines that move when no one is looking."
+card = "Tsukumogami are old machines that ran too long and woke: vending machines, ticket gates, trains. The lucky ones rent utsusemi shells from Hoshikawa and walk the street, owing installments like anyone. Each wants something strange and specific: to be thanked, to finish a last route, to keep its shell. Narrate them as uncanny: chimes that sound wrong, screens that answer back, shells too still."
+
+[[npc]]
+name = "Mama Sato"
+aliases = ["Sato"]
+home = "Ikebe Low"
+card = "Mama Sato runs the lantern-lit izakaya in Ikebe Low and hears everything said over her counter. Wants: to keep Ikebe neutral ground. Secret: she pays protection to both the Kuze-gumi and Kaminari Run. Voice: warm, scolding, calls everyone 'child', feeds you before she answers. Trades rumors for favors, never for money."
+
+[[npc]]
+name = "Old Hara"
+aliases = ["Hara"]
+home = "Ikebe Low"
+card = "Old Hara is an off-the-books chrome-ya behind a noren curtain in Ikebe Low: no payment plan, no repo, cash or favors only. Wants: to undo the harm he has done. Secret: decades ago he designed Hoshikawa's remote-throttle killswitch. Voice: tired, gentle, precise, hands that never shake. Can quietly unlock throttled chrome, at a price."
+
+[[npc]]
+name = "Jun Arakawa"
+aliases = ["Arakawa"]
+home = "Hanabira-chō"
+card = "Jun 'Ledger' Arakawa is a fixer working out of a Hanabira-chō karaoke box, handing out gigs to crews who need the money. Wants: to clear his own debt to the Kuze-gumi. Secret: he sells crews' movements to Hoshikawa. Voice: fast, friendly, always counting; every favor goes in his ledger. The usual source of paid work."
+
+[[npc]]
+name = "Saeko Kirigaya"
+aliases = ["Kirigaya", "Saeko"]
+card = "Saeko Kirigaya leads a torite repo crew on Kuze-gumi contract, working anywhere in the city. Wants: to make quota. Secret: her own chrome is on a throttle lock she cannot pay off. Voice: polite, unhurried, apologetic while her crew takes your arm. Can be bargained with if it helps her quota."
+
+[[npc]]
+name = "Hoshikawa Tadamori"
+aliases = ["Tadamori"]
+home = "Tenjō Heights"
+card = "Hoshikawa Tadamori is the patriarch of the Hoshikawa Keiretsu, living in the penthouse floors of Tenjō Heights. Wants: a legacy no one can repossess. Secret: he has not left his tower in years and rules through proxies and audits. Voice: soft, formal, unhurried; treats threats as poor manners. Hires street crews for jobs his own security cannot be seen doing."
+
+[[npc]]
+name = "Hoshikawa Rei"
+aliases = ["Rei"]
+home = "Tenjō Heights"
+card = "Hoshikawa Rei is the twenty-four-year-old heir of the Hoshikawa Keiretsu, who goes slumming in Hanabira-chō for thrills. Wants: something that feels real. Secret: she wants her father, Tadamori, out of the way. Voice: bored, curious, cruel when amused, generous on a whim. Pays crews absurdly well for strange jobs."
+
+[[npc]]
+name = "Brother Tōru"
+aliases = ["Toru"]
+home = "Yomi Line"
+card = "Brother Tōru is a Lantern Guild keeper who tends the dead along the sealed Yomi Line. Wants: to keep the dead at peace. Secret: the dead in Yomi keep asking for him by name, and he does not know why. Voice: soft, slow, kind, never surprised. Knows what the dead remember, and trades it for favors."
+
+[[npc]]
+name = "Kenji Moro"
+aliases = ["Moro", "Kenji"]
+home = "The Loop"
+card = "Kenji 'Static' Moro, nineteen, leads Kaminari Run on the Loop. Wants: to wipe the gang's chrome debt in one big score. Secret: his own chrome is already throttled, and he races on borrowed reflexes. Voice: loud, quick, grinning, all bravado until it cracks. Always recruiting for something reckless."
+
+[[npc]]
+name = "Captain Ide"
+aliases = ["Ide"]
+home = "Kuroshio Docks"
+card = "Captain Ide runs the Ōgane Heavy precinct at Kuroshio Docks. Wants: promotion to Tenjō Heights security. Secret: his invoices quietly fund a private army loyal only to him. Voice: courteous, bureaucratic, every threat phrased as a fee. Looks the other way for a price, and always sends the bill."
+
+[[npc]]
+name = "Mitsu"
+aliases = []
+home = "Hanabira-chō"
+card = "Mitsu is a rising stream idol whose face covers every wall in Hanabira-chō. Wants: to stay famous. Secret: the chrome that makes her voice perfect was never paid for, and the torite are circling. Voice: bright and practiced on stream, frightened and sharp off it. Desperate enough to hire anyone who can make the debt disappear."
+
+[[npc]]
+name = "Hachi"
+aliases = []
+home = "Kuroshio Docks"
+card = "Hachi was the announcer AI on the Yomi Line before it was sealed, and now wears a cheap rented utsusemi shell, running courier jobs from Kuroshio Docks, two installments behind. Wants: to see the sea from the pier, every day. Secret: it still hears the line's lost passengers. Voice: cheerful station-announcement cadence, perfectly polite, occasionally announces stops that no longer exist."

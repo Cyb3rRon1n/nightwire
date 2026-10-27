@@ -1,4 +1,4 @@
-"""Nightwire's world bible: an always-on primer plus district/faction cards
+"""Nightwire's world bible: an always-on primer plus district/faction/NPC cards
 selected per turn - see docs/superpowers/specs/2026-10-26-world-bible-design.md."""
 
 import functools
@@ -14,7 +14,7 @@ _KUROSHIO_PATH = Path(__file__).parent / "worlds" / "kuroshio.toml"
 # Heuristic sizes for an 8B narrator (no published authoritative numbers -
 # see the spec's research section); live verification is the real check.
 _MAX_CARD_CHARS = 400
-_MAX_SYSTEM_BLOCK_CHARS = 1600
+_MAX_SYSTEM_BLOCK_CHARS = 1900
 _MAX_CARDS = 4
 _SCAN_LINES = 6
 
@@ -24,6 +24,8 @@ class WorldEntry:
     name: str
     aliases: tuple[str, ...]
     card: str
+    # NPCs only: the district they live in (an existing district name).
+    home: str | None = None
 
 
 @dataclass(frozen=True)
@@ -32,6 +34,7 @@ class World:
     glossary: dict[str, str]
     districts: tuple[WorldEntry, ...]
     factions: tuple[WorldEntry, ...]
+    npcs: tuple[WorldEntry, ...] = ()
 
     def system_block(self) -> str:
         terms = "\n".join(f"{term}: {definition}" for term, definition in self.glossary.items())
@@ -56,7 +59,10 @@ def _entries(raw: dict, kind: str) -> tuple[WorldEntry, ...]:
         # An empty alias would compile to \b\b and match every text.
         if not isinstance(aliases, list) or not all(isinstance(a, str) and a.strip() for a in aliases):
             raise ValueError(f"world {kind} {item['name']!r} aliases must be a list of non-empty strings")
-        entries.append(WorldEntry(item["name"], tuple(aliases), card))
+        home = item.get("home")
+        if home is not None and (not isinstance(home, str) or not home.strip()):
+            raise ValueError(f"world {kind} {item['name']!r} home must be a district name")
+        entries.append(WorldEntry(item["name"], tuple(aliases), card, home))
     return tuple(entries)
 
 
@@ -64,12 +70,22 @@ def parse_world(raw: dict) -> World:
     primer = raw.get("primer")
     if not isinstance(primer, str) or not primer.strip():
         raise ValueError("world is missing 'primer'")
-    world = World(primer.strip(), dict(raw.get("glossary", {})), _entries(raw, "district"), _entries(raw, "faction"))
+    world = World(
+        primer.strip(),
+        dict(raw.get("glossary", {})),
+        _entries(raw, "district"),
+        _entries(raw, "faction"),
+        _entries(raw, "npc"),
+    )
     block_len = len(world.system_block())
     if block_len > _MAX_SYSTEM_BLOCK_CHARS:
         raise ValueError(f"world primer + glossary is {block_len} chars (max {_MAX_SYSTEM_BLOCK_CHARS})")
+    district_names = {d.name for d in world.districts}
+    for npc in world.npcs:
+        if npc.home is not None and npc.home not in district_names:
+            raise ValueError(f"world npc {npc.name!r} home {npc.home!r} is not a district")
     seen: dict[str, str] = {}
-    for entry in world.districts + world.factions:
+    for entry in world.districts + world.factions + world.npcs:
         for key in (entry.name, *entry.aliases):
             normalized = _normalize(key)
             if normalized in seen:
