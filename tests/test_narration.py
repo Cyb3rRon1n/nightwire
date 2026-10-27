@@ -849,13 +849,14 @@ def test_build_messages_puts_scene_and_world_notes_right_before_the_action():
     session.active_objectives = ["find the chrome-ya", "pay off the torite"]
     session.log = ["p1: I look around."]
     ikebe = next(d.card for d in kuroshio().districts if d.name == "Ikebe Low")
+    sato = next(n.card for n in kuroshio().npcs if n.name == "Mama Sato")
 
     content = _build_messages(session, "I order a drink.", num_ctx=8192)[0]["content"]
 
     assert content.endswith(
         "Recent events:\np1: I look around.\n\n"
         "Scene: Ikebe Low - Mama Sato's izakaya · mood: tense · objectives: find the chrome-ya; pay off the torite\n\n"
-        f"World notes:\n{ikebe}\n\n"
+        f"World notes:\n{ikebe}\n{sato}\n\n"
         "Player action: I order a drink."
     )
 
