@@ -80,7 +80,7 @@ from narrator.world import select_cards
 
 
 def _card(world, name):
-    return next(e.card for e in world.districts + world.factions if e.name == name)
+    return next(e.card for e in world.districts + world.factions + world.npcs if e.name == name)
 
 
 def test_location_district_comes_first_even_if_others_mentioned_more_recently():
@@ -98,7 +98,9 @@ def test_matching_is_diacritic_insensitive():
     world = kuroshio()
     session = Session(session_id="s", location="Tenjo Heights - lobby")
 
-    assert select_cards(world, session, "I wait.", budget_chars=10_000) == [_card(world, "Tenjō Heights")]
+    cards = select_cards(world, session, "I wait.", budget_chars=10_000)
+
+    assert cards[0] == _card(world, "Tenjō Heights")
 
 
 def test_matching_is_whole_word():
@@ -204,3 +206,64 @@ def test_npc_alias_colliding_with_a_faction_alias_fails():
 def test_overlong_npc_card_fails():
     with pytest.raises(ValueError, match="400"):
         parse_world(_raw(npc=[{"name": "Mama Sato", "aliases": [], "card": "x" * 401}]))
+
+
+def test_npc_matched_by_mention_and_alias():
+    world = kuroshio()
+    session = Session(session_id="s")
+
+    assert select_cards(world, session, "I ask Arakawa for work.", budget_chars=10_000) == [_card(world, "Jun Arakawa")]
+
+
+def test_resident_npc_joins_location_when_nobody_is_named():
+    world = kuroshio()
+    session = Session(session_id="s", location="Ikebe Low - the izakaya")
+
+    cards = select_cards(world, session, "I sit down.", budget_chars=10_000)
+
+    assert cards == [_card(world, "Ikebe Low"), _card(world, "Mama Sato")]
+
+
+def test_mentioned_resident_is_not_added_twice_and_next_resident_is_not_forced():
+    world = kuroshio()
+    session = Session(session_id="s", location="Ikebe Low - the izakaya")
+
+    cards = select_cards(world, session, "I ask Mama Sato about the chrome-ya.", budget_chars=10_000)
+
+    assert cards == [_card(world, "Ikebe Low"), _card(world, "Mama Sato")]
+
+
+def test_resident_skipped_when_cap_is_full():
+    world = kuroshio()
+    session = Session(session_id="s", location="Ikebe Low")
+
+    cards = select_cards(world, session, "The Loop, the Docks and Hanabira.", budget_chars=10_000)
+
+    assert len(cards) == 4
+    assert _card(world, "Mama Sato") not in cards
+
+
+def test_resident_skipped_when_budget_is_full():
+    world = kuroshio()
+    session = Session(session_id="s", location="Ikebe Low")
+    ikebe = _card(world, "Ikebe Low")
+
+    assert select_cards(world, session, "I wait.", budget_chars=len(ikebe) + 1) == [ikebe]
+
+
+def test_no_resident_without_a_location_match():
+    world = kuroshio()
+    session = Session(session_id="s", location="somewhere unnamed")
+
+    assert select_cards(world, session, "I wait.", budget_chars=10_000) == []
+
+
+def test_npc_without_home_is_never_a_resident():
+    world = kuroshio()
+    homeless = [n.name for n in world.npcs if n.home is None]
+    session = Session(session_id="s", location="Ikebe Low")
+
+    cards = select_cards(world, session, "I wait.", budget_chars=10_000)
+
+    assert homeless == ["Saeko Kirigaya"]
+    assert _card(world, "Saeko Kirigaya") not in cards
