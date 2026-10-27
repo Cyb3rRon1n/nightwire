@@ -33,3 +33,12 @@ def test_build_app_gives_the_narrator_the_world_system_prompt(tmp_path, monkeypa
     main.build_app()
 
     assert recorder.system_prompt == main.build_system_prompt()
+
+
+def test_system_prompt_tells_the_narrator_to_stop_before_the_roll_result():
+    from server.__main__ import build_system_prompt
+
+    prompt = build_system_prompt()
+
+    assert "narrate only the lead-up" in prompt
+    assert "never contradict it" in prompt

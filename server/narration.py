@@ -1,3 +1,5 @@
+import json
+
 import httpx
 import ollama
 
@@ -5,10 +7,11 @@ from engine.persistence import JSONFileSessionStore
 from engine.session import Session
 from narrator.client import NarratorClient
 from narrator.image_backend import ImageBackend
-from narrator.tools import execute_tool
+from narrator.tools import RequestRoll, execute_tool
 from narrator.tts_backend import TTSBackend
 from narrator.voice_assignment import assign_voice
 from narrator.world import kuroshio, select_cards
+from ruleset.difficulty import Difficulty
 
 
 # Verbatim recent narrative gets this fraction of num_ctx (in estimated
@@ -170,6 +173,27 @@ async def _maybe_compact(session: Session, narrator_client: NarratorClient) -> N
         session.log.append(f"[summary error: {e}]")
 
 
+def _hold_roll(session: Session, player_id: str, tool_args: dict) -> None:
+    # Two-step rolls (Phase 16): don't roll yet - the player rolls next, then
+    # the narrator resolves knowing the result. Server-authoritative actor,
+    # same as before: never the model's own player_id.
+    tool_args["player_id"] = player_id
+    try:
+        request = RequestRoll(**tool_args)
+    except (ValueError, TypeError) as e:
+        session.log.append(f"[tool error: {e}]")
+        return
+    character = session.characters.get(player_id)
+    if character is None:
+        session.log.append(f"[tool error: unknown player_id: {player_id!r}]")
+        return
+    pending = request.model_dump()
+    pending["dc"] = Difficulty[request.difficulty.upper()].value
+    pending["name"] = character.name
+    session.pending_rolls[player_id] = pending
+    session.log.append(f"[roll pending: {json.dumps(pending)}]")
+
+
 async def handle_action(
     session: Session,
     narrator_client: NarratorClient,
@@ -184,11 +208,30 @@ async def handle_action(
         raise ValueError("missing 'text' in action message")
     if len(action_text) > 1000:
         raise ValueError("action text too long")
+    if player_id in session.pending_rolls:
+        raise ValueError("roll first")
+    await _run_turn(
+        session, narrator_client, store, image_backend, tts_backend, player_id,
+        prompt_text=action_text, actor_line=f"{player_id}: {action_text}", allow_roll=True,
+    )
 
-    messages = _build_messages(session, action_text, narrator_client.num_ctx)
+
+async def _run_turn(
+    session: Session,
+    narrator_client: NarratorClient,
+    store: JSONFileSessionStore,
+    image_backend: ImageBackend,
+    tts_backend: TTSBackend,
+    player_id: str,
+    prompt_text: str,
+    actor_line: str | None,
+    allow_roll: bool,
+) -> None:
+    messages = _build_messages(session, prompt_text, narrator_client.num_ctx)
     response = await narrator_client.respond(messages)
 
-    session.log.append(f"{player_id}: {action_text}")
+    if actor_line is not None:
+        session.log.append(actor_line)
 
     for i, segment in enumerate(response.narration):
         line = segment.text if segment.speaker == "narrator" else f"{segment.speaker}: {segment.text}"
@@ -208,14 +251,16 @@ async def handle_action(
     if response.tool is not None:
         tool_args = dict(response.tool_args)
         if response.tool == "request_roll":
-            # Server-authoritative: never trust the model's own player_id for
-            # whose attributes apply to a roll it requested on the actor's behalf.
-            tool_args["player_id"] = player_id
-        try:
-            result = execute_tool(session, response.tool, tool_args)
-            session.log.append(f"[{response.tool}: {result}]")
-        except (ValueError, TypeError) as e:
-            session.log.append(f"[tool error: {e}]")
+            if allow_roll:
+                _hold_roll(session, player_id, tool_args)
+            else:
+                session.log.append("[tool error: no new rolls during a roll resolution]")
+        else:
+            try:
+                result = execute_tool(session, response.tool, tool_args)
+                session.log.append(f"[{response.tool}: {result}]")
+            except (ValueError, TypeError) as e:
+                session.log.append(f"[tool error: {e}]")
 
     generated_image = False
     # The model is told "never two turns in a row" but has no way to enforce
