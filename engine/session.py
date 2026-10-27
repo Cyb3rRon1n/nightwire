@@ -21,3 +21,6 @@ class Session:
     narrative_summary: str = ""
     narrative_summary_line_count: int = 0
     npc_memory: dict[str, list[str]] = field(default_factory=dict)
+    # Rolls the narrator requested that the player hasn't rolled yet
+    # (two-step rolls, Phase 16): player_id -> RequestRoll args + dc + name.
+    pending_rolls: dict[str, dict] = field(default_factory=dict)
