@@ -23,3 +23,6 @@ asyncio_mode = "auto"
 
 [tool.setuptools.packages.find]
 include = ["ruleset", "engine", "server", "narrator"]
+
+[tool.setuptools.package-data]
+narrator = ["worlds/*.toml"]

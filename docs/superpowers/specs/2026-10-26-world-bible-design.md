@@ -47,7 +47,8 @@ Three approaches were considered:
 - **B. A primer plus triggered cards.** Chosen.
 - **C. A `recall_lore` tool.** It needs a multi-round tool loop, which Phase 13 already rejected for `recall_npc`, and small models are unreliable at deciding when to look things up. Rejected.
 
-### Storage: `world/kuroshio.toml`
+### Storage: `narrator/worlds/kuroshio.toml`
+(Amended 2026-10-26 during planning: it lives inside the `narrator` package so `pip install .` and the Dockerfile's `COPY narrator/` ship it; a repo-root `world/` would be left out of both.)
 
 The file is TOML, which Python reads with the standard library's `tomllib`, so there is no new dependency. Shape:
 
@@ -87,7 +88,7 @@ Two functions:
   - **Limits.** Each card is included at most once. At most 4 cards. Selection stops when the next card would exceed `budget_chars`.
   - **No match** returns an empty list.
 
-The world file path is a module constant (`world/kuroshio.toml`). There is no environment variable, because only one world exists. A `WORLD_FILE` setting can be added if a second world ever does.
+The world file path is a module constant (`narrator/worlds/kuroshio.toml`). There is no environment variable, because only one world exists. A `WORLD_FILE` setting can be added if a second world ever does.
 
 ### Prompt assembly (`server/narration.py`)
 
@@ -134,7 +135,7 @@ The primer tells the narrator to set `update_world.location` to a district name,
 - Multiple worlds.
 - Any change to tools or session fields.
 
-## World content (initial `world/kuroshio.toml`)
+## World content (initial `narrator/worlds/kuroshio.toml`)
 
 ### Primer
 
@@ -201,7 +202,7 @@ The primer tells the narrator to set `update_world.location` to a district name,
 **Unit tests** (pytest, alongside the existing suite):
 
 `narrator/world.py`:
-- The shipped `world/kuroshio.toml` loads.
+- The shipped `narrator/worlds/kuroshio.toml` loads.
 - These each fail with a clear error:
   - a missing `card`;
   - an over-length card;
@@ -248,4 +249,4 @@ Report the sample size honestly, and treat small-sample results as indicative on
 ## Docs
 
 - A `ROADMAP.md` Phase 14 entry, written once it is built and verified.
-- A short "World" section in the README explaining how to edit `world/kuroshio.toml`: add districts or factions, keep cards standalone and under 400 characters, and note that aliases must be unique.
+- A short "World" section in the README explaining how to edit `narrator/worlds/kuroshio.toml`: add districts or factions, keep cards standalone and under 400 characters, and note that aliases must be unique.

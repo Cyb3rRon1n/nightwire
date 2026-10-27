@@ -1,0 +1,79 @@
+# Kuroshio - nightwire's world bible (Phase 14).
+# Cards must be standalone (no pronouns pointing at other cards), <=400 chars.
+# Names/aliases must be unique after lowercasing + stripping diacritics
+# ("Ōgane" already matches "Ogane" - don't add re-spellings as aliases).
+
+primer = """
+Setting: Kuroshio, a Pacific megacity in Japan, 2089, named for the black ocean current that feeds its port. Five keiretsu houses built the city and financed the chrome that keeps its people working. Nearly everyone's chrome is on a payment plan, and torite repo crews take back what you can't pay for. Giri binds the city: favors are currency and everyone owes someone. The deep net, Yomi, holds the lingering data of the dead, tended by the Lantern Guild. Old machines that run too long sometimes wake as tsukumogami. Districts: Tenjō Heights, Hanabira-chō, Ikebe Low, Kuroshio Docks, The Loop, Yomi Line. When the party moves, set update_world location to a district name, then the specific spot (e.g. "Ikebe Low - Mama Sato's izakaya"). Tone: stylish, fast and darkly funny like a neon action film, but every piece of chrome costs something and the city always collects. Ground every scene in concrete sensory detail: rain, food, signage, engine noise, crowds, machine hum. Use Japanese words only from the glossary, naturally, without explaining them.
+"""
+
+[glossary]
+chrome = "cyberware, any implant or cybernetic part"
+chrome-ya = "a back-alley cyberware clinic, or the doctor who runs one"
+torite = "a repo crew that reclaims unpaid chrome, by force if needed"
+giri = "obligation; a debt of favor you owe someone"
+keiretsu = "one of the five corporate houses that run the city"
+oyabun = "the boss of a yakuza clan"
+Yomi = "the deep net, where the data of the dead lingers"
+"going to the lantern" = "dying"
+tsukumogami = "an old machine that woke up as a rogue AI"
+
+[[district]]
+name = "Tenjō Heights"
+aliases = ["Tenjo", "the Heights"]
+card = "Tenjō Heights is the keiretsu high city: towers linked by sky bridges above the smog line, filtered air sold by the breath, silent maglev pods, staff who smile on contract. Held by Hoshikawa Keiretsu and Ōgane Heavy security; outsiders need a sponsor badge. Hazard: every camera feeds Ōgane, and trespass is billed. Hook: a junior Hoshikawa auditor wants to sell the debt ledgers."
+
+[[district]]
+name = "Hanabira-chō"
+aliases = ["Hanabira"]
+card = "Hanabira-chō is the pleasure district: idol streams on every wall, host clubs, the roar of pachinko halls, capsule love hotels, yakitori smoke. Held by the Kuze-gumi, who collect from every door. Hazard: debts run up here are sold to Hoshikawa by morning. Hook: a rising stream idol is hiding chrome she never paid for, and the torite are circling."
+
+[[district]]
+name = "Ikebe Low"
+aliases = ["Ikebe", "the Low"]
+card = "Ikebe Low is old wooden-era alleys under the expressway: lantern-lit izakaya, family chrome-ya clinics behind noren curtains, alley shrines strung with prayer-cable. Nobody holds it; the Kuze-gumi, Kaminari Run and Hoshikawa repo men all work its streets. Hazard: power cuts drop whole blocks into darkness. Hook: an old chrome-ya installs chrome off the books, with no payment plan and no repo."
+
+[[district]]
+name = "Kuroshio Docks"
+aliases = ["the Docks", "the port"]
+card = "Kuroshio Docks is container canyons and gantry cranes, black water slapping the piers, rusting ships turned into offshore data havens. Ōgane Heavy guards it on paper; smugglers pay the right shift. Hazard: automated cranes do not stop for people. Hook: a container arrived with no manifest, and something inside is still running."
+
+[[district]]
+name = "The Loop"
+aliases = ["Loop"]
+card = "The Loop is the elevated ring expressway around the city, with arcade towers glowing at every off-ramp. Every night Kaminari Run bikes race it, light-trails bending through the rain. Kaminari Run holds it after dark; Ōgane traffic drones hold it by day. Hazard: speed duels settle disputes here, and the loser forfeits their ride. Hook: someone is racing the Loop on a bike with no rider."
+
+[[district]]
+name = "Yomi Line"
+aliases = ["the sealed line", "the dead line"]
+card = "The Yomi Line is a subway line sealed after an AI incident twenty years ago. Station signs still announce trains that never come, and the net is so thick that the dead speak through the platform speakers. Tsukumogami nest in the ticket machines and the dead trains. Hazard: stay too long and Yomi seeps into your chrome. Hook: the Lantern Guild wants something carried out of the deepest station."
+
+[[faction]]
+name = "Hoshikawa Keiretsu"
+aliases = ["Hoshikawa"]
+card = "Hoshikawa Keiretsu financed the city's chrome and owns its debt. Wants: everyone on a payment plan, forever. Method: polite, patient and total, through contract law, credit scores and torite crews hired through the Kuze-gumi. Rival of Ōgane Heavy for control of Tenjō Heights. Narrate them with soft voices, perfect manners and the quiet threat of a balance due."
+
+[[faction]]
+name = "Ōgane Heavy"
+aliases = ["Ogane"]
+card = "Ōgane Heavy is an arms maker and the city's contracted police. Wants: order it can bill for. Method: drones, checkpoints, armored response teams and a fine for everything. Allied with Hoshikawa in public, competing with it in private. Narrate them as heavy boots, visor glare and an invoice after every arrest."
+
+[[faction]]
+name = "Kuze-gumi"
+aliases = ["Kuze"]
+card = "The Kuze-gumi is an old yakuza clan gone half-corporate; its oyabun sits on a Hoshikawa subsidiary board. Wants: to stay relevant as the city goes corporate. Method: protection rackets in Hanabira-chō and repo contracts for Hoshikawa. Its old members resent the suits. Narrate them through tradition worn thin: formal greetings, tattoos under business suits, very old grudges."
+
+[[faction]]
+name = "Kaminari Run"
+aliases = ["Kaminari"]
+card = "Kaminari Run is a bōsōzoku biker gang that rules the Loop at night. Wants: speed, and freedom from chrome debt; they ride on unpaid chrome and fight the torite. Method: races, swarm raids and loyalty to the crew above all. Enemies of the Kuze-gumi repo crews. Narrate them loud, young and flamboyant: painted jackets, engine roar, bravado hiding fear."
+
+[[faction]]
+name = "Lantern Guild"
+aliases = ["lantern-keepers", "lantern-keeper", "Yomi"]
+card = "The Lantern Guild is the licensed union that tends the dead in Yomi, the deep net. Wants: the dead left in peace, and the Guild left alone. Method: they hear what the dead remember and trade those secrets for favors, never money. Neutral, and every faction needs them sooner or later. Narrate them calm and soft-spoken, with paper lanterns and unhurried certainty."
+
+[[faction]]
+name = "Tsukumogami"
+aliases = ["rogue AI", "rogue AIs"]
+card = "Tsukumogami are old machines that ran too long and woke: vending machines, ticket gates, train AIs, traffic systems. Each wants something strange and specific: to be thanked, to finish a last route, to be left running. They can be bargained with, tricked or fled. Narrate them as uncanny: chimes that sound wrong, screens that answer back, machines that move when no one is looking."
