@@ -54,6 +54,7 @@ What remains is a toned-down elite: **ordinary cyberpunk corporate royalty** (th
 1. **Priority 1 is unchanged:** the district matched by `session.location`.
 2. **Priority 2:** mentions in the action and recent narration now scan districts, factions **and NPCs**, most recent first.
 3. **Priority 3 (new): one resident NPC.** If the location matched a district and there is room, add the first NPC (in file order) whose `home` is that district and who isn't already selected. This puts someone on stage even when nobody was named. It is deterministic. Ceiling: the first resident in file order always wins the slot when nobody is named. Upgrade path: rotate residents or pick the least recently shown.
+   **Amended 2026-10-27 (fix `3a7bab1`):** the resident now ranks directly after the location district, ahead of other mentions, instead of after them. Reason: a live probe showed stale faction mentions filled the 4-card cap in Hanabira-chō and at the Docks, so the resident was dropped and the narrator invented unnamed NPCs. The resident is still skipped when a local NPC is already mentioned, and the budget can still drop it.
 4. **The 4-card cap and the character budget are unchanged.** 4 × 400 characters fits the existing `_WORLD_BUDGET_FRACTION = 0.06`, which is about 1,966 characters at `num_ctx=8192`.
 
 **Primer and glossary.**
@@ -131,7 +132,7 @@ Appended to the primer:
 - An NPC is matched by mention, including through an alias.
 - With location Ikebe Low and nobody named, the result is the Ikebe Low card plus Mama Sato (the resident).
 - A resident NPC is not added twice when it was also mentioned.
-- The resident is skipped when the cap or the budget is full.
+- The resident outranks other mentions when the cap is full, and is still dropped when the budget is full.
 - No resident is picked when there is no location match.
 - NPCs without a `home` are never picked as residents.
 

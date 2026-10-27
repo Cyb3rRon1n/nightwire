@@ -112,10 +112,10 @@ def _mentions(entry: WorldEntry, normalized_text: str) -> bool:
 
 
 def select_cards(world: World, session: Session, action_text: str, budget_chars: int) -> list[str]:
-    """Cards for this turn: the current location's district first, then
-    districts/factions/NPCs mentioned in the action or recent narrative, most
-    recent first, then one NPC who lives in that district (right after the district, ahead of other mentions).
-    Capped by count and by budget_chars."""
+    """Cards for this turn, in priority order: the current location's district;
+    then one NPC who lives there (skipped if a local NPC is already mentioned);
+    then districts/factions/NPCs mentioned in the action or recent narrative,
+    most recent first. Capped by count and by budget_chars."""
     location = _normalize(session.location or "")
     district = next((d for d in world.districts if location and _mentions(d, location)), None)
     # [image: ...]-style lines are UI annotations, not narrative (same filter
