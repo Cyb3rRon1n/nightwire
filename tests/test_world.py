@@ -19,6 +19,8 @@ def test_shipped_kuroshio_world_loads():
 
     assert len(world.districts) == 6
     assert len(world.factions) == 6
+    assert len(world.npcs) == 11
+    assert "utsusemi" in world.system_block()
     assert "Kuroshio" in world.primer
 
 
@@ -69,8 +71,8 @@ def test_alias_that_only_differs_by_diacritics_counts_as_duplicate():
 
 
 def test_overlong_primer_plus_glossary_fails():
-    with pytest.raises(ValueError, match="1600"):
-        parse_world(_raw(primer="x" * 1600))
+    with pytest.raises(ValueError, match="1900"):
+        parse_world(_raw(primer="x" * 1900))
 
 
 from engine.session import Session
@@ -169,3 +171,36 @@ def test_empty_alias_rejected():
 
     with pytest.raises(ValueError, match="aliases"):
         parse_world(_raw(district=bad))
+
+
+def test_parse_world_builds_npcs_with_home():
+    raw = _raw(npc=[{"name": "Mama Sato", "aliases": ["Sato"], "home": "Ikebe Low", "card": "Mama Sato runs an izakaya."}])
+
+    world = parse_world(raw)
+
+    assert world.npcs == (WorldEntry("Mama Sato", ("Sato",), "Mama Sato runs an izakaya.", "Ikebe Low"),)
+
+
+def test_npc_without_home_is_allowed():
+    world = parse_world(_raw(npc=[{"name": "Saeko Kirigaya", "aliases": [], "card": "A torite boss."}]))
+
+    assert world.npcs[0].home is None
+
+
+def test_npc_home_must_be_an_existing_district():
+    raw = _raw(npc=[{"name": "Mama Sato", "aliases": [], "home": "Nowhere", "card": "An izakaya owner."}])
+
+    with pytest.raises(ValueError, match="home"):
+        parse_world(raw)
+
+
+def test_npc_alias_colliding_with_a_faction_alias_fails():
+    raw = _raw(npc=[{"name": "Kuze Taro", "aliases": ["Kuze"], "card": "A clan soldier."}])
+
+    with pytest.raises(ValueError, match="duplicates"):
+        parse_world(raw)
+
+
+def test_overlong_npc_card_fails():
+    with pytest.raises(ValueError, match="400"):
+        parse_world(_raw(npc=[{"name": "Mama Sato", "aliases": [], "card": "x" * 401}]))
