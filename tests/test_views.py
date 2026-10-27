@@ -111,3 +111,13 @@ def test_view_has_a_state_type_discriminator():
     view = build_view(session, "p1")
 
     assert view["type"] == "state"
+
+
+def test_view_exposes_pending_rolls_to_every_viewer():
+    session = Session(session_id="s1")
+    session.characters["p1"] = _character("p1", "Rook")
+    session.characters["p2"] = _character("p2", "Vex")
+    session.pending_rolls["p1"] = {"player_id": "p1", "skill": "stealth", "dc": 16}
+
+    assert build_view(session, "p1")["pending_rolls"] == {"p1": {"player_id": "p1", "skill": "stealth", "dc": 16}}
+    assert build_view(session, "p2")["pending_rolls"] == {"p1": {"player_id": "p1", "skill": "stealth", "dc": 16}}

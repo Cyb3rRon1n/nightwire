@@ -25,5 +25,6 @@ def build_view(session: Session, viewer_id: str) -> dict:
         "location": session.location,
         "scene_mood": session.scene_mood,
         "active_objectives": session.active_objectives,
+        "pending_rolls": session.pending_rolls,
         "characters": characters,
     }

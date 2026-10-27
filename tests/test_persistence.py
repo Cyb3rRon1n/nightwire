@@ -230,3 +230,24 @@ def test_load_defaults_npc_memory_when_missing_from_an_older_file(tmp_path):
 
     assert loaded is not None
     assert loaded.npc_memory == {}
+
+
+def test_pending_rolls_round_trip(tmp_path):
+    store = JSONFileSessionStore(tmp_path)
+    session = Session(session_id="s1")
+    session.pending_rolls["p1"] = {"player_id": "p1", "skill": "stealth", "dc": 16}
+
+    store.save(session)
+
+    assert store.load("s1").pending_rolls == {"p1": {"player_id": "p1", "skill": "stealth", "dc": 16}}
+
+
+def test_load_defaults_pending_rolls_when_missing_from_an_older_file(tmp_path):
+    store = JSONFileSessionStore(tmp_path)
+    store.save(Session(session_id="s1"))
+    path = tmp_path / "s1.json"
+    data = json.loads(path.read_text())
+    del data["pending_rolls"]
+    path.write_text(json.dumps(data))
+
+    assert store.load("s1").pending_rolls == {}
