@@ -1048,3 +1048,18 @@ async def test_resolution_can_apply_consequences(tmp_path, monkeypatch):
     await _roll(session, client, "p1", tmp_path)
 
     assert session.characters["p1"].health == 80
+
+
+def test_resolve_roll_returns_merged_result_and_logs_lines(monkeypatch):
+    from server.narration import resolve_roll
+
+    session = _session_with_character()
+    _pending(session)
+    monkeypatch.setattr("narrator.tools.random.randint", lambda a, b: 7)
+
+    rolled = resolve_roll(session, "p1")
+
+    assert "p1" not in session.pending_rolls
+    assert rolled["die_result"] == 7 and rolled["outcome"] == "failure" and rolled["skill"] == "stealth"
+    assert "Rook rolls Stealth (Reflexes) vs Hard: a failure (7 +2 +0 = 9 vs 16)." in session.log
+    assert any(line.startswith("[roll: ") for line in session.log)

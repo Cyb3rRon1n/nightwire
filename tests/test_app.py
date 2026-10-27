@@ -327,3 +327,36 @@ def test_roll_message_with_nothing_pending_sends_an_error(tmp_path):
 
     assert error["type"] == "error"
     assert "no roll pending" in error["message"]
+
+
+def test_roll_is_broadcast_before_the_resolution_narration(tmp_path):
+    calls = []
+
+    async def chat_fn(*, model, messages, format):
+        calls.append(1)
+        if len(calls) == 1:
+            payload = {"narration": [{"speaker": "narrator", "text": "The guard watches."}], "tool_call": {
+                "tool": "request_roll",
+                "tool_args": {"player_id": "p1", "attribute": "reflexes", "skill": "stealth", "difficulty": "easy", "reason": "slip past"},
+            }}
+        else:
+            payload = {"narration": [{"speaker": "narrator", "text": "You slip by."}], "tool_call": {"tool": None}}
+        return {"message": {"content": json.dumps(payload)}}
+
+    client = _client(tmp_path, NarratorClient(chat_fn=chat_fn), tts_backend=FakeTTSBackend())
+    with client.websocket_connect("/ws/s1/p1") as ws:
+        ws.send_json({
+            "type": "join",
+            "character": {"player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"},
+        })
+        ws.receive_json()
+        ws.send_json({"type": "action", "text": "I sneak."})
+        ws.receive_json()
+
+        ws.send_json({"type": "roll"})
+        first = ws.receive_json()
+        second = ws.receive_json()
+
+    assert any(line.startswith("[roll: ") for line in first["log"])
+    assert "You slip by." not in first["log"] and len(calls) == 2
+    assert "You slip by." in second["log"]
