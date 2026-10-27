@@ -501,7 +501,7 @@ def test_select_verbatim_narrative_keeps_everything_under_budget():
     from server.narration import _select_verbatim_narrative
 
     narrative = ["short line one", "short line two"]
-    # num_ctx=100 -> budget = int(100 * 0.65 * 4) = 260 chars, both lines fit
+    # num_ctx=100 -> budget = int(100 * 0.55 * 4) = 220 chars, both lines fit
     result = _select_verbatim_narrative(narrative, num_ctx=100)
 
     assert result == narrative
@@ -510,7 +510,7 @@ def test_select_verbatim_narrative_keeps_everything_under_budget():
 def test_select_verbatim_narrative_drops_oldest_lines_past_budget():
     from server.narration import _select_verbatim_narrative
 
-    # num_ctx=10 -> budget = int(10 * 0.65 * 4) = 26 chars
+    # num_ctx=10 -> budget = int(10 * 0.55 * 4) = 22 chars
     narrative = ["a" * 20, "b" * 20, "c" * 20]
     result = _select_verbatim_narrative(narrative, num_ctx=10)
 
@@ -837,3 +837,58 @@ def test_build_messages_omits_known_npcs_when_empty():
     messages = _build_messages(session, "I move forward.", num_ctx=8192)
 
     assert "Known NPCs" not in messages[0]["content"]
+
+
+def test_build_messages_puts_scene_and_world_notes_right_before_the_action():
+    from narrator.world import kuroshio
+    from server.narration import _build_messages
+
+    session = _session_with_character()
+    session.location = "Ikebe Low - Mama Sato's izakaya"
+    session.scene_mood = "tense"
+    session.active_objectives = ["find the chrome-ya", "pay off the torite"]
+    session.log = ["p1: I look around."]
+    ikebe = next(d.card for d in kuroshio().districts if d.name == "Ikebe Low")
+
+    content = _build_messages(session, "I order a drink.", num_ctx=8192)[0]["content"]
+
+    assert content.endswith(
+        "Recent events:\np1: I look around.\n\n"
+        "Scene: Ikebe Low - Mama Sato's izakaya · mood: tense · objectives: find the chrome-ya; pay off the torite\n\n"
+        f"World notes:\n{ikebe}\n\n"
+        "Player action: I order a drink."
+    )
+
+
+def test_scene_line_drops_empty_parts():
+    from server.narration import _scene_line
+
+    session = _session_with_character()
+    session.scene_mood = "quiet"
+
+    assert _scene_line(session) == "Scene: mood: quiet"
+
+
+def test_build_messages_omits_scene_and_world_notes_when_nothing_applies():
+    from server.narration import _build_messages
+
+    session = _session_with_character()
+    session.log = ["p1: I look around."]
+
+    content = _build_messages(session, "I move forward.", num_ctx=8192)[0]["content"]
+
+    assert "Scene:" not in content
+    assert "World notes:" not in content
+
+
+def test_build_messages_world_notes_from_mentions_without_location():
+    from narrator.world import kuroshio
+    from server.narration import _build_messages
+
+    session = _session_with_character()
+    loop = next(d.card for d in kuroshio().districts if d.name == "The Loop")
+
+    content = _build_messages(session, "I ride out onto the Loop.", num_ctx=8192)[0]["content"]
+
+    assert f"World notes:\n{loop}\n\nPlayer action: I ride out onto the Loop." in content
+    assert "Scene:" not in content
