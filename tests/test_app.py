@@ -311,3 +311,19 @@ def test_approve_character_without_a_joined_character_sends_an_error(tmp_path):
         error = ws.receive_json()
 
     assert error["type"] == "error"
+
+
+def test_roll_message_with_nothing_pending_sends_an_error(tmp_path):
+    client = _client(tmp_path)
+    with client.websocket_connect("/ws/s1/p1") as ws:
+        ws.send_json({
+            "type": "join",
+            "character": {"player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"},
+        })
+        ws.receive_json()
+
+        ws.send_json({"type": "roll"})
+        error = ws.receive_json()
+
+    assert error["type"] == "error"
+    assert "no roll pending" in error["message"]
