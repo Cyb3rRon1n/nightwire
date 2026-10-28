@@ -61,4 +61,6 @@ class JSONFileSessionStore:
             narrative_summary_line_count=data.get("narrative_summary_line_count", 0),
             npc_memory=data.get("npc_memory", {}),
             pending_rolls=data.get("pending_rolls", {}),
+            pending_chrome_offers=data.get("pending_chrome_offers", {}),
+            pending_world_events=data.get("pending_world_events", []),
         )

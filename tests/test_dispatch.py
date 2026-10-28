@@ -14,6 +14,7 @@ def test_join_allowlist_covers_every_client_settable_charactersheet_field():
     server_owned = {
         "health", "max_health", "armor", "conditions", "inventory",
         "portrait_path", "unspent_attribute_points",
+        "humanity", "chrome", "installments_owed", "slipping_warned", "gone_too_far",
     }
     all_fields = {f.name for f in fields(CharacterSheet)}
     assert _JOIN_CHARACTER_FIELDS | server_owned == all_fields
