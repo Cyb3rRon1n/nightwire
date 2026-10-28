@@ -95,14 +95,18 @@ class AnthropicNarratorBackend:
         return text_block["text"].strip()
 
     async def judge(self, messages: list[dict], schema: dict) -> dict:
+        # The Messages API rejects a system role inside messages - it goes in the top-level field.
+        system = [m["content"] for m in messages if m["role"] == "system"]
         body = {
             "model": self.model,
             "max_tokens": 200,
             "temperature": 0,
-            "messages": messages,
+            "messages": [m for m in messages if m["role"] != "system"],
             "tools": [{"name": "referee", "description": "Answer every referee question.", "input_schema": schema}],
             "tool_choice": {"type": "tool", "name": "referee"},
         }
+        if system:
+            body["system"] = "\n\n".join(system)
         result = await self._client.post(_API_URL, json=body, headers=self._headers())
         result.raise_for_status()
         tool_use = next((b for b in result.json().get("content", []) if b.get("type") == "tool_use"), None)

@@ -75,7 +75,7 @@ def test_system_prompt_has_tsukumogami_rules():
 def test_system_prompt_no_longer_tells_narrator_to_set_referee_fields():
     from server.__main__ import build_system_prompt
     prompt = build_system_prompt()
-    for field in ("humanity_delta", "selfhood_loss", "installments_paid", "new_shell", "unthrottle", "set repossess"):
+    for field in ("repossess", "humanity_delta", "selfhood_loss", "installments_paid", "new_shell", "unthrottle"):
         assert field not in prompt
     for staging in ("Arakawa", "Saeko", "Old Hara", "bodiless", "Appliance"):
         assert staging in prompt

@@ -334,7 +334,7 @@ async def test_default_judge_sends_think_false_and_zero_temperature():
     client._client = _Fake()
     await client.judge([], {"type": "object", "properties": {}, "required": []})
     assert seen["think"] is False
-    assert seen["options"]["temperature"] == 0 and seen["options"]["num_predict"] == 80
+    assert seen["options"]["temperature"] == 0 and seen["options"]["num_predict"] == 200
 
 
 async def test_think_option_reaches_narrator_chat_only_when_set():

@@ -1,6 +1,5 @@
 import json
 import random
-from pathlib import Path
 
 import httpx
 import ollama
@@ -276,9 +275,8 @@ def _is_player_voice(session: Session, speaker: str) -> bool:
     return any(s in (c.name.strip().lower(), c.player_id.strip().lower()) for c in session.characters.values())
 
 
-async def _log_narration(session, response, store, tts_backend) -> tuple[list[Path], str]:
-    """Logs and voices the response's segments; returns (audio files written, narration text)."""
-    audio_paths: list[Path] = []
+async def _log_narration(session, response, store, tts_backend) -> str:
+    """Logs and voices the response's segments; returns the narration text that was kept."""
     texts: list[str] = []
     for i, segment in enumerate(response.narration):
         if segment.speaker != "narrator" and _is_player_voice(session, segment.speaker):
@@ -295,30 +293,44 @@ async def _log_narration(session, response, store, tts_backend) -> tuple[list[Pa
             output_path = store.directory / relative_path
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_bytes(audio_bytes)
-            audio_paths.append(output_path)
             session.log.append(f"[audio: {relative_path}]")
         except (ValueError, TypeError, OSError) as e:
             session.log.append(f"[audio error: {e}]")
-    return audio_paths, " ".join(texts)
+    return " ".join(texts)
 
 
-def _apply_tool(session, response, player_id, allow_roll) -> str | None:
-    """Runs the narrator's tool call; returns the refusal message if the engine refused it."""
-    if response.tool is None:
+def _in_fiction_refusal(session, response, player_id, allow_roll) -> str | None:
+    """The engine refusal worth a redo: a bodiless character asked to roll a physical skill."""
+    if not allow_roll or response.tool != "request_roll":
         return None
+    character = session.characters.get(player_id)
+    if character is None or not character.bodiless:
+        return None
+    try:
+        request = RequestRoll(**{**response.tool_args, "player_id": player_id})
+    except (ValueError, TypeError):
+        return None
+    if SKILLS[request.skill].governing_attribute in (Attribute.BODY, Attribute.REFLEXES):
+        return f"{character.name} has no body"
+    return None
+
+
+def _apply_tool(session, response, player_id, allow_roll) -> None:
+    """Runs the narrator's tool call; an engine refusal is logged as a tool error."""
+    if response.tool is None:
+        return
     tool_args = dict(response.tool_args)
     if response.tool == "request_roll":
         if allow_roll:
-            return _hold_roll(session, player_id, tool_args)
-        session.log.append("[tool error: no new rolls during a roll resolution]")
-        return None
+            _hold_roll(session, player_id, tool_args)
+        else:
+            session.log.append("[tool error: no new rolls during a roll resolution]")
+        return
     try:
         result = execute_tool(session, response.tool, tool_args)
         session.log.append(f"[{response.tool}: {result}]")
-        return None
     except (ValueError, TypeError) as e:
         session.log.append(f"[tool error: {e}]")
-        return str(e)
 
 
 async def _run_turn(
@@ -339,30 +351,26 @@ async def _run_turn(
     response = await narrator_client.respond(messages)
     del session.pending_world_events[:len(shown_events)]
 
-    turn_start = len(session.log)
-    if actor_line is not None:
-        session.log.append(actor_line)
-    audio_paths, narration_text = await _log_narration(session, response, store, tts_backend)
-    refusal = _apply_tool(session, response, player_id, allow_roll)
-
-    if refusal is not None and allow_roll:
-        # Redo once (Phase 18): drop what was narrated and narrate again with the refusal as fact.
-        for path in audio_paths:
-            path.unlink(missing_ok=True)
-        del session.log[turn_start:]
+    refusal = _in_fiction_refusal(session, response, player_id, allow_roll)
+    if refusal is not None:
+        # Redo once (Phase 18), decided before anything is logged or voiced: the
+        # refused narration is never shown; narrate again with the refusal as fact.
         session.pending_world_events[:0] = shown_events
         retry_prompt = f"{prompt_text}\n\nEngine: {refusal}. That does not happen - narrate the attempt failing or not being possible."
         messages = _build_messages(session, retry_prompt, narrator_client.num_ctx)
         response = await narrator_client.respond(messages)
         del session.pending_world_events[:len(shown_events)]
-        if actor_line is not None:
-            session.log.append(actor_line)
-        session.log.append(f"[redo: {refusal}]")
-        _, narration_text = await _log_narration(session, response, store, tts_backend)
-        _apply_tool(session, response, player_id, allow_roll)  # a second refusal is only logged
 
-    # Referee (Phase 18): not on the setup turn that opened a roll - the outcome isn't known yet.
-    if player_id not in session.pending_rolls:
+    if actor_line is not None:
+        session.log.append(actor_line)
+    if refusal is not None:
+        session.log.append(f"[redo: {refusal}]")
+    narration_text = await _log_narration(session, response, store, tts_backend)
+    _apply_tool(session, response, player_id, allow_roll)  # a refusal on the redo is only logged
+
+    # Referee (Phase 18): not on the setup turn that opened a roll - the outcome
+    # isn't known yet - nor when every segment was voice-filtered.
+    if player_id not in session.pending_rolls and narration_text:
         await run_referee(session, narrator_client, player_id, prompt_text, narration_text)
 
     generated_image = False

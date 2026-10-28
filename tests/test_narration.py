@@ -1427,16 +1427,71 @@ async def test_redo_does_not_loop(tmp_path):
     assert "p1" not in session.pending_rolls
 
 
-async def test_redo_removes_the_discarded_audio(tmp_path):
+async def test_redo_writes_only_one_set_of_audio(tmp_path):
     session = _session_with_character()
     session.characters["p1"].bodiless = True
     climb = {"player_id": "p1", "attribute": "body", "skill": "athletics", "stakes": "normal", "reason": "climb"}
     client = _scripted_client([_say("You climb.", "request_roll", climb), _say("You can't.")])
-    store = await _call(session, client, "p1", {"text": "I climb."}, tmp_path, tts_backend=FakeTTSBackend())
+    tts = FakeTTSBackend()
+    store = await _call(session, client, "p1", {"text": "I climb."}, tmp_path, tts_backend=tts)
+    assert [text for text, _ in tts.calls] == ["You can't."]
     audio_lines = [l for l in session.log if l.startswith("[audio: ")]
     assert len(audio_lines) == 1
     files = list((store.directory / "audio" / session.session_id).glob("*.wav"))
     assert len(files) == 1
+
+
+async def test_redo_log_order_is_actor_then_redo_then_narration(tmp_path):
+    session = _session_with_character()
+    session.characters["p1"].bodiless = True
+    climb = {"player_id": "p1", "attribute": "body", "skill": "athletics", "stakes": "normal", "reason": "climb"}
+    client = _scripted_client([_say("You climb.", "request_roll", climb), _say("You can't.")])
+    await _call(session, client, "p1", {"text": "I climb."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert session.log[:3] == ["p1: I climb.", "[redo: Rook has no body]", "You can't."]
+
+
+async def test_unknown_player_id_tool_error_does_not_redo(tmp_path):
+    session = _session_with_character()
+    seen = []
+    client = _scripted_client([_say("You check your gear.", "apply_character_update", {"player_id": "ghost"})], seen=seen)
+    await _call(session, client, "p1", {"text": "I check my gear."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert len(seen) == 1
+    assert "You check your gear." in session.log
+    assert any(line.startswith("[tool error: unknown player_id") for line in session.log)
+    assert not any(line.startswith("[redo: ") for line in session.log)
+
+
+async def test_redo_never_removes_earlier_log_lines(tmp_path):
+    session = _session_with_character()
+    session.characters["p1"].bodiless = True
+    session.log = ["Ghost: I watch the door.", "The rain keeps falling."]
+    climb = {"player_id": "p1", "attribute": "body", "skill": "athletics", "stakes": "normal", "reason": "climb"}
+    client = _scripted_client([_say("You climb.", "request_roll", climb), _say("You can't.")])
+    await _call(session, client, "p1", {"text": "I climb."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert session.log[:2] == ["Ghost: I watch the door.", "The rain keeps falling."]
+    assert "You climb." not in session.log
+
+
+async def test_redo_shows_pending_world_events_to_both_calls_then_drops_them(tmp_path):
+    session = _session_with_character()
+    session.characters["p1"].bodiless = True
+    session.pending_world_events = ["A siren wails two blocks over."]
+    climb = {"player_id": "p1", "attribute": "body", "skill": "athletics", "stakes": "normal", "reason": "climb"}
+    seen = []
+    client = _scripted_client([_say("You climb.", "request_roll", climb), _say("You can't.")], seen=seen)
+    await _call(session, client, "p1", {"text": "I climb."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert len(seen) == 2
+    assert all("A siren wails two blocks over." in call[-1]["content"] for call in seen)
+    assert session.pending_world_events == []
+
+
+async def test_referee_skipped_when_every_segment_is_voice_filtered(tmp_path):
+    session = _session_with_character()
+    client = _scripted_client([_say("I'll take the job.", speaker="Rook")], judge_answers=[])
+    await _call(session, client, "p1", {"text": "I nod."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert "[voice filtered: Rook]" in session.log
+    # judge_answers=[] makes any referee call fail, which run_referee would log.
+    assert not any(line.startswith("[referee error") for line in session.log)
 
 
 async def test_referee_runs_on_action_turns_and_applies(tmp_path):

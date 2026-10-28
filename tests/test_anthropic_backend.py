@@ -131,3 +131,21 @@ async def test_judge_forces_a_tool_with_the_given_schema():
     body = client.calls[0][1]
     assert body["tools"][0]["input_schema"] == schema
     assert body["temperature"] == 0
+
+
+@pytest.mark.asyncio
+async def test_judge_moves_the_referee_system_message_into_the_system_field():
+    from engine.character import CharacterSheet
+    from engine.session import Session
+    from narrator.referee import _SYSTEM, _messages, build_questions
+    session = Session(session_id="s1")
+    session.characters["p1"] = CharacterSheet(player_id="p1", name="Rook", role="solo", lifepath="streetkid")
+    questions = build_questions(session, "p1")
+    messages = _messages(session, "p1", "I eat.", "You eat.", questions)
+    client = _FakeAnthropicClient(_tool_use_response({"human_moment": "none"}))
+    backend = AnthropicNarratorBackend(api_key="k", model="m", client=client)
+    await backend.judge(messages, {"type": "object"})
+    body = client.calls[0][1]
+    assert body["system"] == _SYSTEM
+    assert all(m["role"] != "system" for m in body["messages"])
+    assert [m["role"] for m in body["messages"]] == ["user"]

@@ -78,7 +78,7 @@ def build_system_prompt() -> str:
         "frozen stillness; Flickering and Waking: their own voice breaking through; Someone and "
         "Awake: fully themselves. A tsukumogami grows through "
         "human moments (being thanked, sharing food, keeping a promise, an unprompted kindness) "
-        "and fades when acting as a pure machine. When the repo crew takes a tsukumogami's shell (repossess), they become "
+        "and fades when acting as a pure machine. When the repo crew takes a tsukumogami's shell, they become "
         "bodiless: play them speaking through vending machines, speakers, signs and ticket gates; "
         "they can hack and talk but not move or fight. Old Hara has used shells, Hoshikawa leases "
         "new ones, or they can steal one - narrate it plainly when they get one. "
