@@ -40,7 +40,7 @@ export interface PendingRoll {
   overclocks: { id: string; name: string; bonus_text: string }[]
 }
 
-export interface RollResult extends PendingRoll {
+export interface RollResult extends Omit<PendingRoll, 'overclocks'> {
   die_result: number
   attribute_mod: number
   skill_mod: number

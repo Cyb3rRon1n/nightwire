@@ -634,6 +634,27 @@ def test_join_with_starting_chrome_installs_it():
     assert c.installments_owed == 2
 
 
+def test_join_with_non_string_starting_chrome_raises():
+    session = Session(session_id="s1")
+    for bad in (["kagerou"], {"a": 1}, 5):
+        with pytest.raises(ValueError):
+            handle_message(session, {"type": "join", "character": {
+                "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+                "starting_chrome": bad}}, "p1")
+    assert "p1" not in session.characters
+
+
+def test_join_twice_with_starting_chrome_installs_once():
+    session = Session(session_id="s1")
+    msg = {"type": "join", "character": {
+        "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+        "starting_chrome": "hawkeye_optics"}}
+    handle_message(session, msg, "p1")
+    handle_message(session, msg, "p1")
+    assert session.characters["p1"].chrome == ["hawkeye_optics"]
+    assert session.characters["p1"].humanity == 97
+
+
 def test_join_with_unknown_starting_chrome_raises():
     session = Session(session_id="s1")
     with pytest.raises(ValueError):

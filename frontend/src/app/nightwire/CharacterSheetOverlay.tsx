@@ -131,7 +131,11 @@ export function CharacterSheetOverlay({
                   return (
                     <li key={id} className="flex items-center justify-between gap-2">
                       <span>{c ? `${c.name} — ${c.effect}` : id}</span>
-                      <button type="button" className="nw-btn-ghost text-xs" onClick={() => onRemoveChrome(id)}>
+                      <button type="button" className="nw-btn-ghost text-xs" onClick={() => {
+                          const name = c ? c.name : id;
+                          if (window.confirm(`Remove ${name}? You get back half its humanity cost; the installments stay owed.`)) onRemoveChrome(id);
+                        }}
+                      >
                         Remove
                       </button>
                     </li>
