@@ -117,11 +117,17 @@ _CREW_ENTRY_MAX_CHARS = 200
 def _crew_line(session: Session) -> str:
     entries = []
     for c in session.characters.values():
-        if not c.chrome and c.humanity == 100:
+        if not c.chrome and c.humanity == 100 and c.installments_owed <= 0:
             continue
         entry = f"{c.name}: humanity {c.humanity} ({humanity_tier(c.humanity)})"
         if c.chrome:
             entry += ", chrome: " + ", ".join(CHROME[i].name for i in c.chrome)
+        if c.installments_owed > 0:
+            entry += f", owes {c.installments_owed}, repo clock {c.repo_clock}/6"
+        if c.throttled:
+            entry += f", throttled: {CHROME[c.throttled].name}"
+        if c.pending_repo:
+            entry += f", repo crew coming for: {CHROME[c.pending_repo].name}"
         entries.append(entry[:_CREW_ENTRY_MAX_CHARS])
     return "Crew: " + "; ".join(entries) if entries else ""
 
@@ -176,7 +182,8 @@ def _build_messages(session: Session, action_text: str, num_ctx: int) -> list[di
     if session.pending_world_events:
         parts.append("World event: " + " ".join(session.pending_world_events))
     world_budget = int(num_ctx * _WORLD_BUDGET_FRACTION * _CHARS_PER_TOKEN_ESTIMATE)
-    cards = select_cards(kuroshio(), session, action_text, world_budget)
+    scan_text = " ".join([action_text, *session.pending_world_events])
+    cards = select_cards(kuroshio(), session, scan_text, world_budget)
     if cards:
         parts.append("World notes:\n" + "\n".join(cards))
     context = "\n\n".join(parts) + "\n\n" if parts else ""

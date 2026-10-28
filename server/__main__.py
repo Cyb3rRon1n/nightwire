@@ -67,6 +67,12 @@ def build_system_prompt() -> str:
         "say the chrome is installed - the player accepts or declines. For therapy or a real "
         "human moment (a friend, a meal, choosing restraint), you may set "
         "apply_character_update's humanity_delta to 1-5; never for routine scenes."
+        " Chrome debt: the Crew line shows who owes installments and their repo clock. When "
+        "someone in debt asks for work, Jun Arakawa (a fixer in Hanabira-chō) has paid gigs; "
+        "when a gig pays out, set apply_character_update's installments_paid to 1. When a repo "
+        "crew is coming, stage Saeko Kirigaya's crew; set repossess to true only if the "
+        "character loses or gives the chrome up. If a character asks Old Hara to unlock "
+        "throttled chrome, he can - set unthrottle to true - but they'll owe him."
     )
     return f"{rules}\n\n{kuroshio().system_block()}"
 
