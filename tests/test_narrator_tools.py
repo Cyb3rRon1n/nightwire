@@ -334,23 +334,6 @@ def test_chrome_id_literal_matches_catalog():
     assert set(ChromeId.__args__) == set(CHROME)
 
 
-def test_humanity_delta_is_bounded_and_applies():
-    import pytest
-    from pydantic import ValidationError
-    from engine.character import CharacterSheet
-    from engine.session import Session
-    from narrator.tools import ApplyCharacterUpdate, execute_tool
-
-    with pytest.raises(ValidationError):
-        ApplyCharacterUpdate(player_id="p1", humanity_delta=6)
-    with pytest.raises(ValidationError):
-        ApplyCharacterUpdate(player_id="p1", humanity_delta=-1)
-    session = Session(session_id="s")
-    session.characters["p1"] = CharacterSheet(player_id="p1", name="Rook", role="solo", lifepath="streetkid", humanity=50)
-    execute_tool(session, "apply_character_update", {"player_id": "p1", "humanity_delta": 5})
-    assert session.characters["p1"].humanity == 55
-
-
 def test_roll_check_ignores_throttled_chrome(monkeypatch):
     from engine.character import CharacterSheet
     from narrator.tools import roll_check
@@ -370,161 +353,14 @@ def _update(session, **kw):
     return execute_tool(session, "apply_character_update", {"player_id": "p1", **kw})
 
 
-def test_installments_paid_is_bounded_to_one():
-    from pydantic import ValidationError
-    from narrator.tools import ApplyCharacterUpdate
-    with pytest.raises(ValidationError):
-        ApplyCharacterUpdate(player_id="p1", installments_paid=2)
-
-
-def test_installments_paid_reduces_debt_and_resets_clock():
-    session = _owing_session()
-    c = session.characters["p1"]
-    owed = c.installments_owed
-    c.repo_clock, c.repo_actions = 3, 4
-    _update(session, installments_paid=1)
-    assert c.installments_owed == owed - 1
-    assert (c.repo_clock, c.repo_actions) == (0, 0)
-
-
-def test_repossess_without_pending_repo_raises():
-    session = _owing_session()
-    with pytest.raises(ValueError, match="no repo pending"):
-        _update(session, repossess=True)
-
-
-def test_repossess_with_pending_repo_removes_chrome_and_logs():
-    session = _owing_session()
-    c = session.characters["p1"]
-    c.pending_repo = "kagerou"
-    _update(session, repossess=True)
-    assert "kagerou" not in c.chrome
-    assert any("[torite: Saeko's crew took Rook's Kagerou]" in line for line in session.log)
-
-
-def test_unthrottle_without_throttle_raises():
-    session = _owing_session()
-    with pytest.raises(ValueError, match="nothing is throttled"):
-        _update(session, unthrottle=True)
-
-
-def test_bad_repossess_changes_nothing():
-    session = _owing_session()
-    c = session.characters["p1"]
-    with pytest.raises(ValueError):
-        _update(session, health_delta=-3, repossess=True)
-    assert c.health == 7
-
-
-def test_unthrottle_restores_stats_and_adds_objective_once():
-    from engine.chrome import _apply_stats
-    from ruleset.cyberware import CHROME
-    session = _owing_session()
-    c = session.characters["p1"]
-    before = dict(c.attributes)
-    for _ in range(2):
-        c.throttled = "kagerou"
-        _apply_stats(c, CHROME["kagerou"], -1)
-        _update(session, unthrottle=True)
-        assert c.throttled is None
-        assert c.attributes == before
-    assert session.active_objectives.count("Owe Old Hara a favor") == 1
-
-
-def test_repossess_with_payment_in_one_update():
-    session = _owing_session()
-    c = session.characters["p1"]
-    owed = c.installments_owed
-    c.pending_repo = "kagerou"
-    _update(session, installments_paid=1, repossess=True)
-    assert "kagerou" not in c.chrome
-    assert c.installments_owed == owed - 1
-    assert any("[torite:" in line for line in session.log)
-
-
-def test_unthrottle_with_payment_in_one_update():
-    from engine.chrome import _apply_stats
-    from ruleset.cyberware import CHROME
-    session = _owing_session()
-    c = session.characters["p1"]
-    owed = c.installments_owed
-    c.throttled = "kagerou"
-    _apply_stats(c, CHROME["kagerou"], -1)
-    _update(session, installments_paid=1, unthrottle=True)
-    assert c.throttled is None
-    assert c.installments_owed == owed - 1
-    assert session.active_objectives.count("Owe Old Hara a favor") == 1
-
-
-def test_bad_unthrottle_changes_nothing():
-    session = _owing_session()
-    c = session.characters["p1"]
-    with pytest.raises(ValueError):
-        _update(session, health_delta=-3, unthrottle=True)
-    assert c.health == 7
-
-
 def _hachi_session(**kw):
     return _session_with_character(name="Hachi", lifepath="tsukumogami", humanity=30, **kw)
 
 
-def test_selfhood_loss_is_bounded():
+@pytest.mark.parametrize("field", ["humanity_delta", "selfhood_loss", "repossess", "installments_paid", "new_shell", "unthrottle"])
+def test_narrator_can_no_longer_set_referee_fields(field):
     from pydantic import ValidationError
     from narrator.tools import ApplyCharacterUpdate
+    value = True if field in ("repossess", "new_shell", "unthrottle") else 1
     with pytest.raises(ValidationError):
-        ApplyCharacterUpdate(player_id="p1", selfhood_loss=6)
-
-
-def test_selfhood_loss_rejected_for_humans_before_any_mutation():
-    session = _session_with_character()
-    with pytest.raises(ValueError, match="selfhood_loss is only for tsukumogami"):
-        _update(session, health_delta=-3, selfhood_loss=2)
-    assert session.characters["p1"].health == 7
-
-
-def test_selfhood_gain_and_loss_are_logged():
-    session = _hachi_session()
-    _update(session, humanity_delta=3)
-    _update(session, selfhood_loss=2)
-    assert session.characters["p1"].humanity == 31
-    assert "[selfhood: +3]" in session.log and "[selfhood: -2]" in session.log
-
-
-def test_human_humanity_gain_logs_no_selfhood_line():
-    session = _session_with_character(humanity=50)
-    _update(session, humanity_delta=3)
-    assert not any(line.startswith("[selfhood") for line in session.log)
-
-
-def test_shell_repossess_logs_the_drop():
-    from engine.debt import SHELL
-    session = _hachi_session()
-    session.characters["p1"].pending_repo = SHELL
-    _update(session, repossess=True)
-    assert session.characters["p1"].bodiless
-    assert "[torite: Saeko's crew took Hachi's shell - Hachi drops into the nearest machine]" in session.log
-
-
-def test_new_shell_requires_bodiless_before_any_mutation():
-    session = _hachi_session()
-    with pytest.raises(ValueError, match="not bodiless"):
-        _update(session, health_delta=-3, new_shell=True)
-    assert session.characters["p1"].health == 7
-
-
-def test_new_shell_wakes_them_and_logs():
-    session = _hachi_session(bodiless=True)
-    _update(session, new_shell=True)
-    c = session.characters["p1"]
-    assert not c.bodiless and c.installments_owed == 4
-    assert "[utsusemi: Hachi wakes in a new shell]" in session.log
-
-
-def test_selfhood_log_records_applied_change_not_requested():
-    session = _hachi_session()
-    session.characters["p1"].humanity = 2
-    _update(session, selfhood_loss=5)
-    assert "[selfhood: -2]" in session.log
-    session.log.clear()
-    _update(session, selfhood_loss=3)  # already 0: nothing applied, no line
-    assert not any(line.startswith("[selfhood") for line in session.log)
+        ApplyCharacterUpdate(player_id="p1", **{field: value})

@@ -137,3 +137,31 @@ async def test_run_referee_failure_logs_and_changes_nothing():
         await run_referee(s, client, "p1", "a", "b")
         assert s.characters["p1"].humanity == 50
         assert any(line.startswith("[referee error: ") for line in s.log)
+
+
+def test_unthrottle_runs_before_payment():
+    s = _session()
+    c = s.characters["p1"]
+    install_chrome(c, "kagerou")
+    c.throttled = "kagerou"
+    apply_verdict(s, "p1", {"human_moment": "none", "gig_paid_out": True, "hara_unlocked_chrome": True})
+    assert c.throttled is None and c.installments_owed == 4
+    assert s.active_objectives.count("Owe Old Hara a favor") == 1
+
+
+def test_selfhood_gain_is_logged_and_human_gain_is_not():
+    t = _session(lifepath="tsukumogami", humanity=30)
+    apply_verdict(t, "p1", {"human_moment": "big", "acted_as_machine": "none"})
+    assert any(line.startswith("[selfhood: +") for line in t.log)
+    h = _session()
+    apply_verdict(h, "p1", {"human_moment": "big"})
+    assert not any(line.startswith("[selfhood") for line in h.log)
+
+
+def test_selfhood_log_records_applied_change_not_requested():
+    t = _session(lifepath="tsukumogami", humanity=2)
+    apply_verdict(t, "p1", {"human_moment": "none", "acted_as_machine": "big"})
+    assert "[selfhood: -2]" in t.log
+    t.log.clear()
+    apply_verdict(t, "p1", {"human_moment": "none", "acted_as_machine": "big"})  # already 0
+    assert not any(line.startswith("[selfhood") for line in t.log)
