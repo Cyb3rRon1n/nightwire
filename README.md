@@ -29,6 +29,7 @@ Sibling project to [`oracle`](https://github.com/Cyb3rRon1n/oracle) (a D&D-flavo
 - **Character-consistent image generation.** A portrait generated at character approval becomes a reference image for later scene generation, so a character looks like themselves across turns instead of a new face each time — on the default `flux_worker` backend. The `comfyui` backend (Docker/Linux-friendly, see below) doesn't support this yet: no IPAdapter/InstantID on the verified target instance, so it's text-prompt-only.
 - **You roll the dice, the narrator lives with them.** When an action is risky, the narrator sets up the moment and stops; you click **Roll**, watch the d10 land with your modifiers, then the narrator tells what happens — true to the result, which stays in the story so it's remembered later.
 - **Chrome has a price.** Cyberware makes you better at the thing it's for — Kama blades, a Yomi jack, a Kagerou time-dilation rig — and costs humanity. Push an implant past its limits with ⚡ Overclock right on the roll card and it costs more. As humanity falls the narrator plays the slide; you never lose control of your character, and there's always a way back.
+- **Chrome is on credit.** Miss enough installments and the street notices: a polite final notice, then Hoshikawa remote-throttles your newest implant, then Saeko Kirigaya's torite crew comes to take it back. Pay it down with Jun Arakawa's gigs, or have Old Hara unlock it off the books — for a favor.
 - **Local-first AI** — Ollama-backed (`qwen3:8b`), same stance for the TTS backend.
 
 ## World
@@ -136,6 +137,10 @@ Real captures of the live frontend running its own "Neon Noir" theme — a cyber
 <p align="center">
   <img src="docs/images/screenshots/overclock.png" alt="A Nightwire roll card for Hacking vs Hard 12 with a Roll button and two overclock buttons: Yomi jack +3 and Kagerou +2 roll twice keep higher, each costing 1d6 humanity" width="480"><br>
   <sub>⚡ Overclock on the roll card: spend humanity for a better shot at the moment of risk</sub>
+</p>
+<p align="center">
+  <img src="docs/images/screenshots/debt.png" alt="The Nightwire character sheet showing installments owed, a repo clock of six pips, Kagerou tagged Throttled and Repo crew coming, and torite notices in the log" width="480"><br>
+  <sub>Chrome debt: the repo clock, a throttled implant and Saeko's crew on the way</sub>
 </p>
 <p align="center">
   <img src="docs/images/screenshots/scene.jpg" alt="Nightwire generated scene art of a flooded underpass lit by a flickering vending machine" width="480"><br>
