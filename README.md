@@ -59,6 +59,8 @@ Image generation additionally needs a backend running — the default (`IMAGE_BA
 
 The narrator itself is also swappable: the default (`NARRATOR_BACKEND=ollama`) is local Ollama; set `NARRATOR_BACKEND=anthropic` (needs `ANTHROPIC_API_KEY`; optionally `NARRATOR_ANTHROPIC_MODEL` to override the default model) or `NARRATOR_BACKEND=openai_compat` (needs `NARRATOR_OPENAI_COMPAT_BASE_URL` and `NARRATOR_OPENAI_COMPAT_MODEL`, e.g. for OpenRouter or a local vLLM/llama.cpp-server; optionally `NARRATOR_OPENAI_COMPAT_API_KEY` if the endpoint requires one) for a hosted alternative — same `NarratorResponse` schema either way, so behavior is directly comparable across backends.
 
+With Ollama, set `NIGHTWIRE_THINK=off` to turn off qwen3's hidden thinking step: in live testing it cut the median turn from about 75 s to about 32 s with the same state accuracy (`on` forces it on; unset leaves Ollama's default). After each narration a small referee call decides state changes the narrator used to miss (human moments, repossession, gig pay), and the engine sets roll difficulty from the narrator's stakes.
+
 ### Run as a Docker stack
 
 ```bash
