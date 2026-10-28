@@ -13,7 +13,7 @@ from narrator.tools import RequestRoll, execute_tool, roll_check
 from narrator.tts_backend import TTSBackend
 from narrator.voice_assignment import assign_voice
 from narrator.world import kuroshio, select_cards
-from ruleset.cyberware import CHROME
+from ruleset.cyberware import CHROME, humanity_tier
 from ruleset.difficulty import Difficulty
 
 
@@ -110,6 +110,21 @@ _SCENE_FIELD_MAX_CHARS = 120
 _SCENE_MAX_OBJECTIVES = 5
 
 
+_CREW_ENTRY_MAX_CHARS = 200
+
+
+def _crew_line(session: Session) -> str:
+    entries = []
+    for c in session.characters.values():
+        if not c.chrome and c.humanity == 100:
+            continue
+        entry = f"{c.name}: humanity {c.humanity} ({humanity_tier(c.humanity)})"
+        if c.chrome:
+            entry += ", chrome: " + ", ".join(CHROME[i].name for i in c.chrome)
+        entries.append(entry[:_CREW_ENTRY_MAX_CHARS])
+    return "Crew: " + "; ".join(entries) if entries else ""
+
+
 def _scene_line(session: Session) -> str:
     parts = []
     if session.location:
@@ -154,6 +169,12 @@ def _build_messages(session: Session, action_text: str, num_ctx: int) -> list[di
     scene = _scene_line(session)
     if scene:
         parts.append(scene)
+    crew = _crew_line(session)
+    if crew:
+        parts.append(crew)
+    if session.pending_world_events:
+        parts.append("World event: " + " ".join(session.pending_world_events))
+        session.pending_world_events.clear()  # shown once
     world_budget = int(num_ctx * _WORLD_BUDGET_FRACTION * _CHARS_PER_TOKEN_ESTIMATE)
     cards = select_cards(kuroshio(), session, action_text, world_budget)
     if cards:

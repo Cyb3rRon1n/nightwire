@@ -48,3 +48,10 @@ def test_system_prompt_steers_difficulty_toward_moderate():
     from server.__main__ import build_system_prompt
 
     assert "Most risks are Moderate; Hard is for real danger; Extreme is rare." in build_system_prompt()
+
+
+def test_system_prompt_has_chrome_guidance():
+    from server.__main__ import build_system_prompt
+
+    prompt = build_system_prompt()
+    assert "offer_chrome" in prompt and "humanity_delta" in prompt and "Gone too far" in prompt

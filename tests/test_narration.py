@@ -1106,3 +1106,35 @@ def test_overclock_not_usable_on_this_roll_is_refused_and_roll_stays_pending():
     with pytest.raises(ValueError, match="overclock"):
         resolve_roll(session, "p1", overclock="yomi_jack")
     assert "p1" in session.pending_rolls
+
+
+def test_crew_line_and_world_event_sit_before_the_action_and_events_clear():
+    from server.narration import _build_messages
+
+    session = _session_with_character()
+    session.characters["p1"].humanity = 62
+    session.characters["p1"].chrome = ["kagerou", "hawkeye_optics"]
+    session.pending_world_events.append("Rook is slipping.")
+
+    content = _build_messages(session, "I wait.", num_ctx=8192)[0]["content"]
+
+    assert "Crew: Rook: humanity 62 (Frayed), chrome: Kagerou, Hawkeye optics" in content
+    assert "World event: Rook is slipping." in content
+    assert content.index("World event:") < content.index("Player action: I wait.")
+    assert session.pending_world_events == []
+
+
+def test_no_crew_line_for_unchromed_full_humanity():
+    from server.narration import _build_messages
+
+    session = _session_with_character()
+    assert "Crew:" not in _build_messages(session, "I wait.", num_ctx=8192)[0]["content"]
+
+
+def test_crew_entry_is_capped():
+    from server.narration import _crew_line
+
+    session = _session_with_character()
+    session.characters["p1"].name = "R" * 300
+    session.characters["p1"].humanity = 50
+    assert len(_crew_line(session)) <= len("Crew: ") + 200
