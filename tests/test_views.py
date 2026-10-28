@@ -44,6 +44,11 @@ def test_viewer_sees_their_own_full_sheet():
         "installments_owed": 0,
         "slipping_warned": False,
         "gone_too_far": False,
+        "repo_clock": 0,
+        "repo_actions": 0,
+        "repo_strikes": 0,
+        "throttled": None,
+        "pending_repo": None,
     }
 
 

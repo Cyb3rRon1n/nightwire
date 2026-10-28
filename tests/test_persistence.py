@@ -287,3 +287,22 @@ def test_load_defaults_chrome_fields_when_missing_from_an_older_file(tmp_path):
 
     assert loaded.pending_chrome_offers == {} and loaded.pending_world_events == []
     assert loaded.characters["p1"].humanity == 100 and loaded.characters["p1"].chrome == []
+
+
+def test_debt_fields_round_trip_and_default_for_old_files(tmp_path):
+    store = JSONFileSessionStore(tmp_path)
+    session = Session(session_id="s1")
+    session.characters["p1"] = CharacterSheet(
+        player_id="p1", name="Rook", role="solo", lifepath="streetkid",
+        repo_clock=3, repo_actions=4, repo_strikes=2, throttled="kagerou", pending_repo="kagerou",
+    )
+    store.save(session)
+    r = store.load("s1").characters["p1"]
+    assert (r.repo_clock, r.repo_actions, r.repo_strikes, r.throttled, r.pending_repo) == (3, 4, 2, "kagerou", "kagerou")
+    path = tmp_path / "s1.json"
+    data = json.loads(path.read_text())
+    for k in ("repo_clock", "repo_actions", "repo_strikes", "throttled", "pending_repo"):
+        del data["characters"]["p1"][k]
+    path.write_text(json.dumps(data))
+    r = store.load("s1").characters["p1"]
+    assert (r.repo_clock, r.repo_actions, r.repo_strikes, r.throttled, r.pending_repo) == (0, 0, 0, None, None)

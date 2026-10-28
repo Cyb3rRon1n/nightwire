@@ -23,3 +23,9 @@ class CharacterSheet:
     installments_owed: int = 0
     slipping_warned: bool = False
     gone_too_far: bool = False
+    # Phase 17b debt loop
+    repo_clock: int = 0
+    repo_actions: int = 0
+    repo_strikes: int = 0
+    throttled: str | None = None
+    pending_repo: str | None = None

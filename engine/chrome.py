@@ -50,7 +50,12 @@ def remove_chrome(character: CharacterSheet, chrome_id: str) -> list[str]:
         raise ValueError(f"{chrome_id!r} is not installed")
     chrome = CHROME[chrome_id]
     character.chrome.remove(chrome_id)
-    _apply_stats(character, chrome, -1)
+    if character.throttled != chrome_id:
+        _apply_stats(character, chrome, -1)
+    if character.throttled == chrome_id:
+        character.throttled = None
+    if character.pending_repo == chrome_id:
+        character.pending_repo = None
     return change_humanity(character, chrome.humanity_cost // 2)
 
 
@@ -61,7 +66,7 @@ def usable_overclocks(character: CharacterSheet, skill: str) -> list[dict]:
     usable = []
     for chrome_id in character.chrome:
         oc = CHROME[chrome_id].overclock
-        if oc is None or (oc.skill is not None and oc.skill != skill):
+        if chrome_id == character.throttled or oc is None or (oc.skill is not None and oc.skill != skill):
             continue
         text = f"+{oc.bonus + bonus_tier}" + (", roll twice keep higher" if oc.second_die else "")
         usable.append({"id": chrome_id, "name": CHROME[chrome_id].name, "bonus_text": text})

@@ -349,3 +349,11 @@ def test_humanity_delta_is_bounded_and_applies():
     session.characters["p1"] = CharacterSheet(player_id="p1", name="Rook", role="solo", lifepath="streetkid", humanity=50)
     execute_tool(session, "apply_character_update", {"player_id": "p1", "humanity_delta": 5})
     assert session.characters["p1"].humanity == 55
+
+
+def test_roll_check_ignores_throttled_chrome(monkeypatch):
+    from engine.character import CharacterSheet
+    from narrator.tools import roll_check
+    rook = CharacterSheet(player_id="p1", name="Rook", role="solo", lifepath="streetkid",
+                          skills={"melee": 1}, chrome=["kama_blades"], throttled="kama_blades")
+    assert roll_check(rook, "reflexes", "melee", "moderate")["skill_mod"] == 1

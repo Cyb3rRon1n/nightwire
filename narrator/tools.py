@@ -88,7 +88,7 @@ class RememberNPC(BaseModel):
 
 def roll_check(character, attribute: str, skill: str, difficulty: str, overclock_id: str | None = None) -> dict:
     attribute_mod = modifier(character.attributes.get(attribute, 10))
-    skill_mod = character.skills.get(skill, 0) + chrome_roll_bonus(character.chrome, skill)
+    skill_mod = character.skills.get(skill, 0) + chrome_roll_bonus([c for c in character.chrome if c != character.throttled], skill)
     if skill in SOCIAL_SKILLS:
         skill_mod += social_penalty(character.humanity)
     dc = Difficulty[difficulty.upper()].value
