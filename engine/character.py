@@ -17,3 +17,9 @@ class CharacterSheet:
     skills: dict[str, int] = field(default_factory=dict)
     unspent_skill_points: int = 0
     unspent_attribute_points: int = 0
+    # Phase 17a chrome + humanity
+    humanity: int = 100
+    chrome: list[str] = field(default_factory=list)
+    installments_owed: int = 0
+    slipping_warned: bool = False
+    gone_too_far: bool = False

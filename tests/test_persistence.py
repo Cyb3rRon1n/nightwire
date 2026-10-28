@@ -251,3 +251,39 @@ def test_load_defaults_pending_rolls_when_missing_from_an_older_file(tmp_path):
     path.write_text(json.dumps(data))
 
     assert store.load("s1").pending_rolls == {}
+
+
+def test_chrome_fields_round_trip(tmp_path):
+    store = JSONFileSessionStore(tmp_path)
+    session = Session(session_id="s1")
+    session.characters["p1"] = CharacterSheet(
+        player_id="p1", name="Rook", role="solo", lifepath="streetkid",
+        humanity=55, chrome=["kagerou"], installments_owed=5,
+    )
+    session.pending_chrome_offers = {"p1": "kagerou"}
+    session.pending_world_events = ["x"]
+
+    store.save(session)
+    loaded = store.load("s1")
+
+    rook = loaded.characters["p1"]
+    assert (rook.humanity, rook.chrome, rook.installments_owed) == (55, ["kagerou"], 5)
+    assert loaded.pending_chrome_offers == {"p1": "kagerou"}
+    assert loaded.pending_world_events == ["x"]
+
+
+def test_load_defaults_chrome_fields_when_missing_from_an_older_file(tmp_path):
+    store = JSONFileSessionStore(tmp_path)
+    session = Session(session_id="s1")
+    session.characters["p1"] = CharacterSheet(player_id="p1", name="Rook", role="solo", lifepath="streetkid")
+    store.save(session)
+    path = tmp_path / "s1.json"
+    data = json.loads(path.read_text())
+    del data["pending_chrome_offers"], data["pending_world_events"]
+    del data["characters"]["p1"]["humanity"], data["characters"]["p1"]["chrome"]
+    path.write_text(json.dumps(data))
+
+    loaded = store.load("s1")
+
+    assert loaded.pending_chrome_offers == {} and loaded.pending_world_events == []
+    assert loaded.characters["p1"].humanity == 100 and loaded.characters["p1"].chrome == []

@@ -39,6 +39,11 @@ def test_viewer_sees_their_own_full_sheet():
         "skills": {},
         "unspent_skill_points": 0,
         "unspent_attribute_points": 0,
+        "humanity": 100,
+        "chrome": [],
+        "installments_owed": 0,
+        "slipping_warned": False,
+        "gone_too_far": False,
     }
 
 

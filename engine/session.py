@@ -24,3 +24,7 @@ class Session:
     # Rolls the narrator requested that the player hasn't rolled yet
     # (two-step rolls, Phase 16): player_id -> RequestRoll args + dc + name.
     pending_rolls: dict[str, dict] = field(default_factory=dict)
+    # Phase 17a: a chrome-ya's standing offer per player, and engine events
+    # (e.g. the confrontation scene) the next prompt build shows once.
+    pending_chrome_offers: dict[str, str] = field(default_factory=dict)
+    pending_world_events: list[str] = field(default_factory=list)
