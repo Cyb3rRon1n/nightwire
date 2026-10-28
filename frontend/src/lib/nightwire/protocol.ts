@@ -16,6 +16,11 @@ export interface CharacterSheet {
   humanity: number
   chrome: string[]
   installments_owed: number
+  repo_clock: number
+  repo_actions: number
+  repo_strikes: number
+  throttled: string | null
+  pending_repo: string | null
   slipping_warned: boolean
   gone_too_far: boolean
 }
