@@ -5,6 +5,7 @@ import httpx
 import ollama
 
 from engine.chrome import change_humanity, usable_overclocks
+from engine.debt import tick_debt
 from engine.persistence import JSONFileSessionStore
 from engine.session import Session
 from narrator.client import NarratorClient
@@ -233,6 +234,11 @@ async def handle_action(
         raise ValueError("action text too long")
     if player_id in session.pending_rolls:
         raise ValueError("roll first")
+    character = session.characters.get(player_id)
+    if character is not None:
+        for event in tick_debt(character):
+            session.pending_world_events.append(event)
+            session.log.append(f"[torite: {event}]")
     await _run_turn(
         session, narrator_client, store, image_backend, tts_backend, player_id,
         prompt_text=action_text, actor_line=f"{player_id}: {action_text}", allow_roll=True,

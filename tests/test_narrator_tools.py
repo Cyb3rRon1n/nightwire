@@ -357,3 +357,75 @@ def test_roll_check_ignores_throttled_chrome(monkeypatch):
     rook = CharacterSheet(player_id="p1", name="Rook", role="solo", lifepath="streetkid",
                           skills={"melee": 1}, chrome=["kama_blades"], throttled="kama_blades")
     assert roll_check(rook, "reflexes", "melee", "moderate")["skill_mod"] == 1
+
+
+def _owing_session(**overrides) -> Session:
+    from engine.chrome import install_chrome
+    session = _session_with_character(attributes={"body": 14, "reflexes": 14, "tech": 14, "cool": 14, "intellect": 14, "presence": 14}, **overrides)
+    install_chrome(session.characters["p1"], "kagerou")
+    return session
+
+
+def _update(session, **kw):
+    return execute_tool(session, "apply_character_update", {"player_id": "p1", **kw})
+
+
+def test_installments_paid_is_bounded_to_one():
+    from pydantic import ValidationError
+    from narrator.tools import ApplyCharacterUpdate
+    with pytest.raises(ValidationError):
+        ApplyCharacterUpdate(player_id="p1", installments_paid=2)
+
+
+def test_installments_paid_reduces_debt_and_resets_clock():
+    session = _owing_session()
+    c = session.characters["p1"]
+    owed = c.installments_owed
+    c.repo_clock, c.repo_actions = 3, 4
+    _update(session, installments_paid=1)
+    assert c.installments_owed == owed - 1
+    assert (c.repo_clock, c.repo_actions) == (0, 0)
+
+
+def test_repossess_without_pending_repo_raises():
+    session = _owing_session()
+    with pytest.raises(ValueError, match="no repo pending"):
+        _update(session, repossess=True)
+
+
+def test_repossess_with_pending_repo_removes_chrome_and_logs():
+    session = _owing_session()
+    c = session.characters["p1"]
+    c.pending_repo = "kagerou"
+    _update(session, repossess=True)
+    assert "kagerou" not in c.chrome
+    assert any("[torite: Saeko's crew took Rook's Kagerou]" in line for line in session.log)
+
+
+def test_unthrottle_without_throttle_raises():
+    session = _owing_session()
+    with pytest.raises(ValueError, match="nothing is throttled"):
+        _update(session, unthrottle=True)
+
+
+def test_bad_repossess_changes_nothing():
+    session = _owing_session()
+    c = session.characters["p1"]
+    with pytest.raises(ValueError):
+        _update(session, health_delta=-3, repossess=True)
+    assert c.health == 7
+
+
+def test_unthrottle_restores_stats_and_adds_objective_once():
+    from engine.chrome import _apply_stats
+    from ruleset.cyberware import CHROME
+    session = _owing_session()
+    c = session.characters["p1"]
+    before = dict(c.attributes)
+    for _ in range(2):
+        c.throttled = "kagerou"
+        _apply_stats(c, CHROME["kagerou"], -1)
+        _update(session, unthrottle=True)
+        assert c.throttled is None
+        assert c.attributes == before
+    assert session.active_objectives.count("Owe Old Hara a favor") == 1
