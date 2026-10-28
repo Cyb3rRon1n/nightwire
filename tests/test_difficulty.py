@@ -28,7 +28,17 @@ def test_stakes_map_to_difficulty():
 def test_third_high_in_window_is_downgraded():
     recent = ["high", "normal", "extreme", "normal", "low", "normal"]
     assert difficulty_for("high", recent) == ("normal", Difficulty.MODERATE)
-    assert difficulty_for("extreme", recent) == ("high", Difficulty.HARD)
+    assert difficulty_for("extreme", recent) == ("normal", Difficulty.MODERATE)
+
+
+def test_twelve_extremes_in_a_row_are_at_most_half_hard_or_above():
+    recent: list[str] = []
+    hard = 0
+    for _ in range(12):
+        effective, dc = difficulty_for("extreme", recent)
+        recent = (recent + [effective])[-6:]
+        hard += dc >= Difficulty.HARD
+    assert hard <= 6
 
 
 def test_only_last_six_count():
