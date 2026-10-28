@@ -1,5 +1,6 @@
 from dataclasses import asdict
 
+from engine.chrome import usable_overclocks
 from engine.session import Session
 from engine.turns import current_turn, is_players_turn
 
@@ -25,6 +26,10 @@ def build_view(session: Session, viewer_id: str) -> dict:
         "location": session.location,
         "scene_mood": session.scene_mood,
         "active_objectives": session.active_objectives,
-        "pending_rolls": session.pending_rolls,
+        "pending_rolls": {
+            pid: {**pending, "overclocks": usable_overclocks(session.characters[pid], pending["skill"])
+                  if pid in session.characters and "skill" in pending else []}
+            for pid, pending in session.pending_rolls.items()
+        },
         "characters": characters,
     }

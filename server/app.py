@@ -57,7 +57,7 @@ def create_app(
                     if message.get("type") == "action":
                         await handle_action(session, narrator_client, store, image_backend, tts_backend, player_id, message)
                     elif message.get("type") == "roll":
-                        rolled = resolve_roll(session, player_id)
+                        rolled = resolve_roll(session, player_id, overclock=message.get("overclock"))
                         # Show the die landing now; the resolution narration (slow) follows.
                         store.save(session)
                         await manager.broadcast(session_id, session)
