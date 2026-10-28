@@ -1221,3 +1221,34 @@ async def test_handle_action_ticks_debt_and_surfaces_the_notice(tmp_path):
     assert c.repo_strikes == 1
     assert any("[torite: Hoshikawa sends Rook a polite final notice" in line for line in session.log)
     assert "World event: Hoshikawa sends Rook" in sent_messages[0][-1]["content"]
+
+
+def test_crew_line_shows_debt_state():
+    from server.narration import _crew_line
+
+    session = _session_with_character()
+    c = session.characters["p1"]
+    c.chrome = ["kagerou"]
+    c.installments_owed = 3
+    c.repo_clock = 4
+    c.throttled = "kagerou"
+    c.pending_repo = "kagerou"
+    assert "owes 3, repo clock 4/6, throttled: Kagerou, repo crew coming for: Kagerou" in _crew_line(session)
+
+
+def test_crew_line_includes_debtor_without_chrome_or_humanity_loss():
+    from server.narration import _crew_line
+
+    session = _session_with_character()
+    session.characters["p1"].installments_owed = 2
+    assert "owes 2" in _crew_line(session)
+
+
+def test_saeko_card_selected_from_pending_world_event():
+    from server.narration import _build_messages
+
+    session = _session_with_character()
+    session.pending_world_events = ["Saeko Kirigaya's torite crew comes for Rook's Kagerou."]
+    content = _build_messages(session, "I wait.", num_ctx=8192)[0]["content"]
+    assert "World notes:" in content.split("World event:")[1]
+    assert content.count("Saeko Kirigaya") >= 2

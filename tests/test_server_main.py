@@ -55,3 +55,11 @@ def test_system_prompt_has_chrome_guidance():
 
     prompt = build_system_prompt()
     assert "offer_chrome" in prompt and "humanity_delta" in prompt and "Gone too far" in prompt
+
+
+def test_system_prompt_has_debt_guidance():
+    from server.__main__ import build_system_prompt
+
+    prompt = build_system_prompt()
+    for word in ("Jun Arakawa", "installments_paid", "repossess", "unthrottle"):
+        assert word in prompt
