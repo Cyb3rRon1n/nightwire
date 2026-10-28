@@ -7,6 +7,8 @@ import type { CharacterSheet, RedactedCharacter, RollResult, StateView } from "@
 import { portraitFor } from "@/lib/nightwire/portrait";
 import { mediaUrl } from "@/lib/nightwire/media";
 import { PendingRollCard, RollResultCard } from "./RollCard";
+import { ChromeOfferCard } from "./ChromeOfferCard";
+import { CHROME } from "./chrome";
 import { CharacterSheetOverlay } from "./CharacterSheetOverlay";
 import { SkillPicker, STARTING_SKILL_POINTS } from "./SkillPicker";
 import { AttributePicker, attributeBudgetRemaining, startingAttributes } from "./AttributePicker";
@@ -203,6 +205,7 @@ export default function NightwirePage() {
   const [composerMode, setComposerMode] = useState<ComposerMode>("do");
   const [composerText, setComposerText] = useState("");
   const [sending, setSending] = useState(false);
+  const [startingChrome, setStartingChrome] = useState("");
   const [rolling, setRolling] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [approvingPortrait, setApprovingPortrait] = useState(false);
@@ -249,7 +252,7 @@ export default function NightwirePage() {
   function handleJoin() {
     send({
       type: "join",
-      character: { player_id: playerId, name, role, lifepath, skills, attributes },
+      character: { player_id: playerId, name, role, lifepath, skills, attributes, ...(startingChrome ? { starting_chrome: startingChrome } : {}) },
     });
   }
 
@@ -392,6 +395,14 @@ export default function NightwirePage() {
                   setSkills((s) => ({ ...s, [name]: Math.max(0, (s[name] ?? 0) - 1) }))
                 }
               />
+              <select className="nw-field" aria-label="Starting chrome" value={startingChrome} onChange={(e) => setStartingChrome(e.target.value)}>
+                <option value="">No starting chrome</option>
+                {CHROME.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {`${c.name} — ${c.effect} · −${c.humanity} humanity · ${c.installments} installments`}
+                  </option>
+                ))}
+              </select>
               <button
                 type="button"
                 onClick={handleJoin}
@@ -528,14 +539,21 @@ export default function NightwirePage() {
                     </p>
                   );
                 })}
+                {view.pending_chrome_offers?.[playerId] && (
+                  <ChromeOfferCard
+                    chromeId={view.pending_chrome_offers[playerId]}
+                    onAccept={() => send({ type: "accept_chrome" })}
+                    onDecline={() => send({ type: "decline_chrome" })}
+                  />
+                )}
                 {Object.values(view.pending_rolls ?? {}).map((roll) => (
                   <PendingRollCard
                     key={roll.player_id}
                     roll={roll}
                     isMine={roll.player_id === playerId}
-                    onRoll={() => {
+                    onRoll={(overclock) => {
                       setRolling(true);
-                      send({ type: "roll" });
+                      send({ type: "roll", ...(overclock ? { overclock } : {}) });
                     }}
                     rolling={rolling}
                   />
@@ -625,6 +643,7 @@ export default function NightwirePage() {
                   onClose={() => setSheetOpen(false)}
                   onAllocateSkill={(skill) => send({ type: "allocate_skill_points", skill, amount: 1 })}
                   onAllocateAttribute={(attribute) => send({ type: "allocate_attribute_points", attribute, amount: 1 })}
+                  onRemoveChrome={(item) => send({ type: "remove_chrome", item })}
                 />
               )}
             </>

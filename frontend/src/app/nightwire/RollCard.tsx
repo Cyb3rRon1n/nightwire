@@ -12,7 +12,7 @@ const OUTCOME = {
 } as const;
 
 export function PendingRollCard({ roll, isMine, onRoll, rolling }: {
-  roll: PendingRoll; isMine: boolean; onRoll: () => void; rolling: boolean;
+  roll: PendingRoll; isMine: boolean; onRoll: (overclock?: string) => void; rolling: boolean;
 }) {
   return (
     <div className="nw-roll-card" role="group" aria-label={`Roll for ${roll.name}`}>
@@ -21,9 +21,16 @@ export function PendingRollCard({ roll, isMine, onRoll, rolling }: {
         {label(roll.skill)} ({label(roll.attribute)}) · {label(roll.difficulty)} {roll.dc}
       </p>
       {isMine ? (
-        <button type="button" className="nw-btn-primary mt-2" onClick={onRoll} disabled={rolling}>
-          {rolling ? "Rolling…" : "Roll"}
-        </button>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button type="button" className="nw-btn-primary" onClick={() => onRoll()} disabled={rolling}>
+            {rolling ? "Rolling…" : "Roll"}
+          </button>
+          {(roll.overclocks ?? []).map((o) => (
+            <button key={o.id} type="button" className="nw-btn-ghost" onClick={() => onRoll(o.id)} disabled={rolling}>
+              ⚡ Overclock ({o.name}) · {o.bonus_text} · −1d6 humanity
+            </button>
+          ))}
+        </div>
       ) : (
         <p className="nw-text-faint mt-2 text-xs">Waiting for {roll.name} to roll…</p>
       )}
@@ -38,7 +45,7 @@ export function RollResultCard({ roll, animate }: { roll: RollResult; animate: b
     const t = setTimeout(() => setLanded(true), 700);
     return () => clearTimeout(t);
   }, [animate]);
-  const total = roll.die_result + roll.attribute_mod + roll.skill_mod;
+  const total = roll.die_result + roll.attribute_mod + roll.skill_mod + (roll.overclock_bonus ?? 0);
   const natural = roll.die_result === 10 || roll.die_result === 1;
   const outcome = OUTCOME[roll.outcome] ?? OUTCOME.failure;
   return (
@@ -51,9 +58,10 @@ export function RollResultCard({ roll, animate }: { roll: RollResult; animate: b
         {landed && (
           <>
             <span className="text-sm">
-              {roll.die_result} {sign(roll.attribute_mod)} {label(roll.attribute)} {sign(roll.skill_mod)} {label(roll.skill)} = {total} vs {roll.dc}
+              {roll.second_die !== undefined && `⚡ ${roll.first_die} / ${roll.second_die} → `}{roll.die_result} {sign(roll.attribute_mod)} {label(roll.attribute)} {sign(roll.skill_mod)} {label(roll.skill)}{roll.overclock_bonus ? ` ${sign(roll.overclock_bonus)} ⚡` : ""} = {total} vs {roll.dc}
             </span>
             <span role="status" className={`nw-roll-badge ${outcome.cls}`}>{outcome.text}{natural ? ` · natural ${roll.die_result}` : ""}</span>
+            {roll.humanity_loss ? <span className="nw-text-muted text-xs">−{roll.humanity_loss} humanity</span> : null}
           </>
         )}
       </div>

@@ -213,3 +213,6 @@
 .nw-roll-natural { animation: nw-flash 0.6s ease-out 2; }
 @keyframes nw-flash { 50% { box-shadow: 0 0 0 3px var(--nw-accent, #e0245e); } }
 @media (prefers-reduced-motion: reduce) { .nw-d10-tumble, .nw-roll-natural { animation: none; } }
+
+.nw-humanity-bar { height: 0.5rem; border-radius: 9999px; background: var(--nw-border, #333); overflow: hidden; }
+.nw-humanity-fill { height: 100%; background: var(--nw-accent, #4ade80); }
