@@ -13,3 +13,24 @@ def test_difficulty_is_usable_as_a_plain_int():
     # as a real int, not just a named constant.
     assert Difficulty.MODERATE + 1 == 10
     assert Difficulty.HARD > Difficulty.EASY
+
+
+from ruleset.difficulty import Difficulty, difficulty_for
+
+
+def test_stakes_map_to_difficulty():
+    assert difficulty_for("low", []) == ("low", Difficulty.EASY)
+    assert difficulty_for("normal", []) == ("normal", Difficulty.MODERATE)
+    assert difficulty_for("high", []) == ("high", Difficulty.HARD)
+    assert difficulty_for("extreme", []) == ("extreme", Difficulty.EXTREME)
+
+
+def test_third_high_in_window_is_downgraded():
+    recent = ["high", "normal", "extreme", "normal", "low", "normal"]
+    assert difficulty_for("high", recent) == ("normal", Difficulty.MODERATE)
+    assert difficulty_for("extreme", recent) == ("high", Difficulty.HARD)
+
+
+def test_only_last_six_count():
+    recent = ["high", "high", "normal", "normal", "normal", "normal", "normal", "normal"]
+    assert difficulty_for("high", recent) == ("high", Difficulty.HARD)

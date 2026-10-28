@@ -28,3 +28,5 @@ class Session:
     # (e.g. the confrontation scene) the next prompt build shows once.
     pending_chrome_offers: dict[str, str] = field(default_factory=dict)
     pending_world_events: list[str] = field(default_factory=list)
+    # Phase 18: effective stakes of recent rolls, for the "high" cap.
+    recent_stakes: list[str] = field(default_factory=list)

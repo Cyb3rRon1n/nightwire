@@ -10,3 +10,23 @@ class Difficulty(IntEnum):
     MODERATE = 9
     HARD = 12
     EXTREME = 15
+
+
+STAKES: dict[str, Difficulty] = {
+    "low": Difficulty.EASY,
+    "normal": Difficulty.MODERATE,
+    "high": Difficulty.HARD,
+    "extreme": Difficulty.EXTREME,
+}
+_CAP_WINDOW = 6
+_CAP_HIGH = 2
+_DOWNGRADE = {"high": "normal", "extreme": "high"}
+
+
+def difficulty_for(stakes: str, recent: list[str]) -> tuple[str, Difficulty]:
+    # Phase 18: the model rates stakes; the engine caps how often they run hot,
+    # because qwen3:8b picked Hard on 13/13 risky rolls whatever the prompt said.
+    window = recent[-_CAP_WINDOW:]
+    if stakes in _DOWNGRADE and sum(s in ("high", "extreme") for s in window) >= _CAP_HIGH:
+        stakes = _DOWNGRADE[stakes]
+    return stakes, STAKES[stakes]

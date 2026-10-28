@@ -56,14 +56,14 @@ async def test_respond_returns_a_tool_call():
                 "tool": "request_roll",
                 "tool_args": {
                     "player_id": "p1", "attribute": "reflexes", "skill": "athletics",
-                    "difficulty": "hard", "reason": "leap across a gap",
+                    "stakes": "high", "reason": "leap across a gap",
                 },
             },
         }),
     )
     response = await client.respond([{"role": "user", "content": "I try to jump the gap."}])
     assert response.tool == "request_roll"
-    assert response.tool_args["difficulty"] == "hard"
+    assert response.tool_args["stakes"] == "high"
 
 
 @pytest.mark.asyncio

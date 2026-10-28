@@ -17,7 +17,7 @@ from narrator.voice_assignment import assign_voice
 from narrator.world import kuroshio, select_cards
 from ruleset.attributes import Attribute
 from ruleset.cyberware import CHROME, humanity_tier, selfhood_tier
-from ruleset.difficulty import Difficulty
+from ruleset.difficulty import difficulty_for
 from ruleset.skills import SKILLS
 
 
@@ -231,7 +231,10 @@ def _hold_roll(session: Session, player_id: str, tool_args: dict) -> None:
         session.log.append(f"[tool error: {character.name} has no body]")
         return
     pending = request.model_dump()
-    pending["dc"] = Difficulty[request.difficulty.upper()].value
+    effective, difficulty = difficulty_for(request.stakes, session.recent_stakes)
+    session.recent_stakes = (session.recent_stakes + [effective])[-6:]
+    pending["difficulty"] = difficulty.name.lower()
+    pending["dc"] = difficulty.value
     pending["name"] = character.name
     session.pending_rolls[player_id] = pending
     session.log.append(f"[roll pending: {json.dumps(pending)}]")

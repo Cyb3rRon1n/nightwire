@@ -328,3 +328,17 @@ def test_tsukumogami_fields_round_trip_and_default_for_old_saves(tmp_path):
 def test_is_tsukumogami_false_for_humans():
     from engine.character import CharacterSheet, is_tsukumogami
     assert not is_tsukumogami(CharacterSheet(player_id="p1", name="Rook", role="solo", lifepath="streetkid"))
+
+
+def test_recent_stakes_round_trip_and_default(tmp_path):
+    import json
+    from engine.persistence import JSONFileSessionStore
+    from engine.session import Session
+    store = JSONFileSessionStore(tmp_path)
+    s = Session(session_id="s1", recent_stakes=["high", "normal"])
+    store.save(s)
+    assert store.load("s1").recent_stakes == ["high", "normal"]
+    data = json.loads((tmp_path / "s1.json").read_text())
+    del data["recent_stakes"]
+    (tmp_path / "s1.json").write_text(json.dumps(data))
+    assert store.load("s1").recent_stakes == []
