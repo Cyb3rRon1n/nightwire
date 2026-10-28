@@ -30,6 +30,7 @@ Sibling project to [`oracle`](https://github.com/Cyb3rRon1n/oracle) (a D&D-flavo
 - **You roll the dice, the narrator lives with them.** When an action is risky, the narrator sets up the moment and stops; you click **Roll**, watch the d10 land with your modifiers, then the narrator tells what happens — true to the result, which stays in the story so it's remembered later.
 - **Chrome has a price.** Cyberware makes you better at the thing it's for — Kama blades, a Yomi jack, a Kagerou time-dilation rig — and costs humanity. Push an implant past its limits with ⚡ Overclock right on the roll card and it costs more. As humanity falls the narrator plays the slide; you never lose control of your character, and there's always a way back.
 - **Chrome is on credit.** Miss enough installments and the street notices: a polite final notice, then Hoshikawa remote-throttles your newest implant, then Saeko Kirigaya's torite crew comes to take it back. Pay it down with Jun Arakawa's gigs, or have Old Hara unlock it off the books — for a favor.
+- **Or play the machine.** Pick the Tsukumogami origin and you're an old vending machine or train announcer that woke up, walking the street in a rented utsusemi shell. You start as barely more than an appliance and earn your selfhood through human moments. Fall behind on the lease and Saeko's crew takes the shell, leaving you talking through vending machines and station speakers until someone finds you a new body.
 - **Local-first AI** — Ollama-backed (`qwen3:8b`), same stance for the TTS backend.
 
 ## World
@@ -141,6 +142,10 @@ Real captures of the live frontend running its own "Neon Noir" theme — a cyber
 <p align="center">
   <img src="docs/images/screenshots/debt.png" alt="The Nightwire character sheet showing installments owed, a repo clock of six pips, Kagerou tagged Throttled and Repo crew coming, and torite notices in the log" width="480"><br>
   <sub>Chrome debt: the repo clock, a throttled implant and Saeko's crew on the way</sub>
+</p>
+<p align="center">
+  <img src="docs/images/screenshots/tsukumogami.png" alt="A Nightwire character sheet for Hachi, a tsukumogami: the Shell and selfhood panel shows Selfhood 18, Appliance, and a Bodiless tag reading Living in a nearby machine, with installments owed and the repo clock" width="480"><br>
+  <sub>Playing a tsukumogami: selfhood instead of humanity, and life without a shell</sub>
 </p>
 <p align="center">
   <img src="docs/images/screenshots/scene.jpg" alt="Nightwire generated scene art of a flooded underpass lit by a flickering vending machine" width="480"><br>
