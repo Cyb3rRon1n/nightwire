@@ -1252,3 +1252,47 @@ def test_saeko_card_selected_from_pending_world_event():
     content = _build_messages(session, "I wait.", num_ctx=8192)[0]["content"]
     assert "World notes:" in content.split("World event:")[1]
     assert content.count("Saeko Kirigaya") >= 2
+
+
+async def test_bodiless_physical_roll_is_refused(tmp_path):
+    session = _session_with_character()
+    session.characters["p1"].lifepath = "tsukumogami"
+    session.characters["p1"].bodiless = True
+    client = _fake_client("You strain toward the ledge.", tool="request_roll", tool_args={
+        "player_id": "p1", "attribute": "body", "skill": "athletics", "difficulty": "moderate", "reason": "climb"})
+    await _call(session, client, "p1", {"text": "I climb."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert "p1" not in session.pending_rolls
+    assert f"[tool error: {session.characters['p1'].name} has no body]" in session.log
+
+
+async def test_bodiless_hacking_roll_still_pends(tmp_path):
+    session = _session_with_character()
+    session.characters["p1"].bodiless = True
+    client = _fake_client("The vending machine's screen flickers.", tool="request_roll", tool_args={
+        "player_id": "p1", "attribute": "tech", "skill": "hacking", "difficulty": "moderate", "reason": "jack the door"})
+    await _call(session, client, "p1", {"text": "I hack the door."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert session.pending_rolls["p1"]["skill"] == "hacking"
+
+
+def test_crew_line_for_tsukumogami_shows_selfhood_and_bodiless():
+    from engine.character import CharacterSheet
+    from engine.session import Session
+    from server.narration import _crew_line
+    session = Session(session_id="s1")
+    session.characters["p1"] = CharacterSheet(player_id="p1", name="Hachi", role="fixer", lifepath="tsukumogami",
+                                              humanity=35, installments_owed=4, bodiless=True)
+    line = _crew_line(session)
+    assert "Hachi: selfhood 35 (Flickering)" in line
+    assert "bodiless: living in a nearby machine" in line
+    assert "humanity" not in line
+
+
+def test_crew_line_names_the_shell_as_repo_target():
+    from engine.character import CharacterSheet
+    from engine.debt import SHELL
+    from engine.session import Session
+    from server.narration import _crew_line
+    session = Session(session_id="s1")
+    session.characters["p1"] = CharacterSheet(player_id="p1", name="Hachi", role="fixer", lifepath="tsukumogami",
+                                              humanity=35, installments_owed=4, pending_repo=SHELL)
+    assert "repo crew coming for: utsusemi shell" in _crew_line(session)

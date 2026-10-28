@@ -73,6 +73,17 @@ def build_system_prompt() -> str:
         "crew is coming, stage Saeko Kirigaya's crew; set repossess to true only if the "
         "character loses or gives the chrome up. If a character asks Old Hara to unlock "
         "throttled chrome, he can - set unthrottle to true - but they'll owe him."
+        " Tsukumogami: a woken machine in a rented utsusemi shell; the Crew line shows their "
+        "selfhood instead of humanity. Play the tier - Appliance: stock phrases, wrong chimes, "
+        "frozen stillness; Flickering and Waking: their own voice breaking through; Someone and "
+        "Awake: fully themselves. For a tsukumogami, humanity_delta 1-5 is a selfhood gain for "
+        "human moments (being thanked, sharing food, keeping a promise, an unprompted kindness, "
+        "a choice made for no reason); set selfhood_loss 1-5 when they act as a pure machine "
+        "(cold calculation, following an owner's script, treating people as inputs). Never for "
+        "routine scenes. When the repo crew takes a tsukumogami's shell (repossess), they become "
+        "bodiless: play them speaking through vending machines, speakers, signs and ticket gates; "
+        "they can hack and talk but not move or fight. Old Hara has used shells, Hoshikawa leases "
+        "new ones, or they can steal one - set new_shell to true when they get one."
     )
     return f"{rules}\n\n{kuroshio().system_block()}"
 
