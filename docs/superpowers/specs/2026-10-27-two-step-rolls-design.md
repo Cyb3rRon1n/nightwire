@@ -1,6 +1,6 @@
 # Nightwire Two-Step Player Rolls Design: Phase 16
 
-Status: designed, not yet implemented. Brainstormed with the owner on 2026-10-27.
+Status: implemented 2026-10-27 (see ROADMAP Phase 16). Brainstormed with the owner on 2026-10-27.
 
 **Numbering.** The cyberware, humanity and debt spec (`2026-10-27-cyberware-humanity-design.md`) moves to Phase 17. The owner put this phase first because it closes the biggest immersion gap at the lowest cost.
 
@@ -61,6 +61,8 @@ Owner priority (2026-10-27): **immersion over everything**. Free typing stays th
   - The outcome text is "a clean success", "success with a complication" or "a failure".
   - A natural 10 or 1 adds " — a natural 10" or " — a natural 1".
 - It logs `[roll: {...result dict plus skill, attribute, difficulty, reason, name}]` for the UI's die display.
+
+**Amended 2026-10-27 (fix `2ccdcba`):** production splits the roll into `resolve_roll` (pop, roll, visible line + `[roll: …]`), then save + broadcast, then `narrate_roll` (the resolution turn). Players see the die land before the ~100s narration, and a narrator failure no longer loses the roll. `handle_roll` remains a convenience wrapper used by tests.
 
 **4. The resolution call.** It runs the shared turn pipeline (below) with:
 - **the input text** `"Roll result for {name}: {outcome text} on {reason}. Narrate what happens now, true to that result."`;
