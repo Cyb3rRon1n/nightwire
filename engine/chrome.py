@@ -24,6 +24,8 @@ def change_humanity(character: CharacterSheet, delta: int) -> list[str]:
 
 
 def _apply_stats(character: CharacterSheet, chrome: Chrome, sign: int) -> None:
+    # ponytail: throttle->unthrottle/pay can restore armor that was damaged below the chrome's
+    # contribution (clamp at 0 loses the exact amount); upgrade = store the actually-removed amount.
     character.armor = max(0, character.armor + sign * chrome.armor)
     character.max_health += sign * chrome.max_health
     character.health = min(character.health, character.max_health)
