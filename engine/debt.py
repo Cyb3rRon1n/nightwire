@@ -2,12 +2,18 @@
 return world-event strings; callers queue them on session.pending_world_events.
 See docs/superpowers/specs/2026-10-28-debt-and-the-street-17b-design.md."""
 
-from engine.character import CharacterSheet
-from engine.chrome import _apply_stats, remove_chrome
+from engine.character import CharacterSheet, is_tsukumogami
+from engine.chrome import SHELL_INSTALLMENTS, _apply_stats, change_humanity, remove_chrome
 from ruleset.cyberware import CHROME
 
 _ACTIONS_PER_PIP = 10
 _PIPS_PER_STRIKE = 6
+SHELL = "shell"
+_SHELL_REPO_SELFHOOD_LOSS = 5
+
+
+def repo_target_name(target: str) -> str:
+    return "utsusemi shell" if target == SHELL else CHROME[target].name
 
 
 def active_chrome(character: CharacterSheet) -> list[str]:
@@ -17,6 +23,9 @@ def active_chrome(character: CharacterSheet) -> list[str]:
 def _strike(character: CharacterSheet) -> str:
     character.repo_strikes += 1
     name = character.name
+    if not character.chrome and is_tsukumogami(character) and character.repo_strikes >= 3:
+        character.pending_repo = SHELL
+        return f"Saeko Kirigaya's torite crew comes for {name}'s utsusemi shell."
     if not character.chrome or character.repo_strikes == 1:
         return (f"Hoshikawa sends {name} a polite final notice; Saeko Kirigaya's torite crew "
                 f"has been asking about {name}.")
@@ -29,7 +38,7 @@ def _strike(character: CharacterSheet) -> str:
 
 
 def tick_debt(character: CharacterSheet) -> list[str]:
-    if character.installments_owed <= 0:
+    if character.installments_owed <= 0 or character.bodiless:
         return []
     character.repo_actions += 1
     if character.repo_actions < _ACTIONS_PER_PIP:
@@ -62,9 +71,25 @@ def pay_installment(character: CharacterSheet, amount: int) -> None:
 def repossess(character: CharacterSheet) -> str:
     if character.pending_repo is None:
         raise ValueError("no repo pending")
-    chrome_id = character.pending_repo
-    remove_chrome(character, chrome_id)  # half refund; clears throttled/pending_repo pointers
-    return chrome_id
+    target = character.pending_repo
+    if target == SHELL:
+        for chrome_id in list(character.chrome):
+            remove_chrome(character, chrome_id)
+        character.bodiless = True
+        character.pending_repo = character.throttled = None
+        if character.humanity < 80:
+            change_humanity(character, -_SHELL_REPO_SELFHOOD_LOSS)
+        return SHELL
+    remove_chrome(character, target)  # half refund; clears throttled/pending_repo pointers
+    return target
+
+
+def new_shell(character: CharacterSheet) -> None:
+    if not character.bodiless:
+        raise ValueError("not bodiless")
+    character.bodiless = False
+    character.installments_owed += SHELL_INSTALLMENTS
+    character.repo_clock = character.repo_actions = character.repo_strikes = 0
 
 
 def unthrottle(character: CharacterSheet) -> None:
