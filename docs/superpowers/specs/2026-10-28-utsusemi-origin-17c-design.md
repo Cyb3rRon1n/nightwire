@@ -42,11 +42,8 @@ Status: designed, not yet implemented. Brainstormed with the owner on 2026-10-28
 - **`change_humanity`** for a tsukumogami:
   - never fires the 17a "slipping" confrontation (a tsukumogami starts below 40);
   - the first time the value reaches **80**, sets `awake_reached` and returns the one-time event *"{name} feels it settle: they're someone now, not something."*
-- **`apply_character_update.selfhood_gain: int = Field(0, ge=0, le=5)`**:
-  - tsukumogami only; otherwise `ValueError("selfhood_gain is only for tsukumogami")` (validated before any mutation);
-  - raises the value, capped at 100; one tool call per turn already limits it to one gain per turn;
-  - logs `[selfhood: +N]`.
-- **Losses**: the existing `humanity_delta` (0–5) is a selfhood loss for a tsukumogami. ⚡ Overclock still costs 1d6.
+- **Gains** reuse the existing `apply_character_update.humanity_delta` (0–5), which is already a narrator-granted gain for human moments; for a tsukumogami it is a selfhood gain, logged `[selfhood: +N]`. One tool call per turn already limits it to one gain per turn. (Corrected 2026-10-28 while planning: the design discussion called this `selfhood_gain` and treated `humanity_delta` as a loss; `humanity_delta` is a gain.)
+- **Losses**: new `apply_character_update.selfhood_loss: int = Field(0, ge=0, le=5)`, tsukumogami only; otherwise `ValueError("selfhood_loss is only for tsukumogami")` (validated before any mutation). Logged `[selfhood: -N]`. ⚡ Overclock still costs 1d6.
 - **Chrome**: `install_chrome` charges 0 humanity for a tsukumogami; `remove_chrome` refunds 0.
 
 ### Losing the shell
@@ -73,7 +70,7 @@ Status: designed, not yet implemented. Brainstormed with the owner on 2026-10-28
 
 - **Crew line** for a tsukumogami: `selfhood {n} ({Tier})` in place of humanity, plus `bodiless: living in a nearby machine` when set, and `repo crew coming for: shell` when `pending_repo == "shell"`. The 200-character cap still applies.
 - **System-prompt block**:
-  - **Selfhood:** grant `selfhood_gain` 1–5 for human moments (being thanked, sharing food, keeping a promise, an unprompted kindness, a choice made for no reason); use `humanity_delta` for acting as a pure machine (cold calculation, following an owner's script, treating people as inputs). Never for routine scenes.
+  - **Selfhood:** for a tsukumogami, `humanity_delta` 1–5 is a selfhood gain for human moments (being thanked, sharing food, keeping a promise, an unprompted kindness, a choice made for no reason); use `selfhood_loss` 1–5 for acting as a pure machine (cold calculation, following an owner's script, treating people as inputs). Never for routine scenes.
   - **Tiers:** Appliance = stock phrases, wrong chimes, frozen stillness; Flickering and Waking = a voice breaking through; Someone and Awake = fully themselves.
   - **Bodiless:** play them speaking through vending machines, speakers, signs and ticket gates; they can hack and talk but not move or fight. Old Hara has used shells, Hoshikawa leases new ones, or they can steal one; set `new_shell: true` when they get one.
   - **Repo encounter:** reuse 17b's guidance; when the target is the shell, `repossess: true` drops them into a machine.
@@ -88,7 +85,7 @@ Status: designed, not yet implemented. Brainstormed with the owner on 2026-10-28
 
 **Unit tests:**
 - **Join**: a tsukumogami starts at 20 with +4 owed; starting chrome costs 0; a human join is unchanged.
-- **Selfhood**: `selfhood_gain` bounds, rejected for humans before any mutation, capped at 100; no slipping confrontation for a tsukumogami; the Awake event fires once at 80.
+- **Selfhood**: `humanity_delta` raises a tsukumogami's selfhood (capped at 100) and logs it; `selfhood_loss` bounds, rejected for humans before any mutation; no slipping confrontation for a tsukumogami; the Awake event fires once at 80.
 - **Chrome**: install and remove cost and refund 0 for a tsukumogami.
 - **Repo order**: the shell is queued only when no chrome is left; a human with no chrome gets only a notice.
 - **Shell repo**: strips chrome with stats reversed, sets bodiless, applies −5 (0 at 80+), clears pointers.
@@ -98,8 +95,8 @@ Status: designed, not yet implemented. Brainstormed with the owner on 2026-10-28
 - **Prompt**: the Crew line fields and the system-prompt rules.
 
 **Live** on `qwen3:8b` (GPU box, 300s):
-- human-moment turns (sharing food, being thanked): is `selfhood_gain` granted?
-- cold-machine turns: is a loss applied?
+- human-moment turns (sharing food, being thanked): is `humanity_delta` granted?
+- cold-machine turns: is `selfhood_loss` applied?
 - a forced shell repo and handover: is the bodiless scene played through machines, and is `repossess` set?
 - a bodiless physical action: is the roll refused and narrated sensibly?
 - asking Old Hara for a shell: is `new_shell` granted?
