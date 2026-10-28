@@ -26,6 +26,7 @@ def build_view(session: Session, viewer_id: str) -> dict:
         "location": session.location,
         "scene_mood": session.scene_mood,
         "active_objectives": session.active_objectives,
+        "pending_chrome_offers": session.pending_chrome_offers,
         "pending_rolls": {
             pid: {**pending, "overclocks": usable_overclocks(session.characters[pid], pending["skill"])
                   if pid in session.characters and "skill" in pending else []}

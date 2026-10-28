@@ -4,6 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from engine.chrome import change_humanity
 from engine.session import Session
 from ruleset.attributes import modifier
 from ruleset.cyberware import CHROME, SOCIAL_SKILLS, chrome_roll_bonus, overclock_tier_bonus, social_penalty
@@ -47,6 +48,22 @@ class ApplyCharacterUpdate(BaseModel):
     # single turn. A whole campaign hands out only a handful of points.
     skill_points_delta: int = Field(0, ge=0, le=3)
     attribute_points_delta: int = Field(0, ge=0, le=1)
+    # Humanity gains only (therapy, bonds, rest) - losses come from chrome,
+    # never the narrator. Bounded like the grants above.
+    humanity_delta: int = Field(0, ge=0, le=5)
+
+
+ChromeId = Literal[
+    "hawkeye_optics", "reflex_wires", "kagerou", "kama_blades", "oni_arms", "lacquer_skin",
+    "yomi_jack", "pain_editor", "silk_tongue", "kumo_hand", "neon_ink",
+]
+
+
+class OfferChrome(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    player_id: str
+    item: ChromeId
 
 
 class UpdateWorld(BaseModel):
@@ -120,6 +137,9 @@ def _execute_apply_character_update(session: Session, tool: ApplyCharacterUpdate
         if item in character.inventory:
             character.inventory.remove(item)
 
+    if tool.humanity_delta:
+        session.pending_world_events.extend(change_humanity(character, tool.humanity_delta))
+
     return {
         "player_id": tool.player_id,
         "health": character.health,
@@ -161,6 +181,13 @@ def _execute_remember_npc(session: Session, tool: RememberNPC) -> dict:
     return {"name": tool.name, "facts": list(facts)}
 
 
+def _execute_offer_chrome(session: Session, tool: OfferChrome) -> dict:
+    if tool.player_id not in session.characters:
+        raise ValueError(f"unknown player_id: {tool.player_id!r}")
+    session.pending_chrome_offers[tool.player_id] = tool.item
+    return {"offered": tool.item}
+
+
 # start_combat/end_combat are deliberately absent: real combat state only
 # ever starts via a player-sent message (server/dispatch.py -> engine/turns.py,
 # with real initiative rolls) - the narrator's own copy of these tools was a
@@ -173,6 +200,7 @@ TOOL_REGISTRY: dict[str, tuple[type[BaseModel], Callable[[Session, BaseModel], d
     "apply_character_update": (ApplyCharacterUpdate, _execute_apply_character_update),
     "update_world": (UpdateWorld, _execute_update_world),
     "remember_npc": (RememberNPC, _execute_remember_npc),
+    "offer_chrome": (OfferChrome, _execute_offer_chrome),
 }
 
 
