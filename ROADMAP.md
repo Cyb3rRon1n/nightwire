@@ -156,6 +156,25 @@ Each phase gets its own brainstorming pass (questions → approaches → design 
     - **Found live, not solved — follow-ups**: (1) **selfhood never moved**: 0/2 human-moment turns got `humanity_delta`, 0/1 cold-machine turn got `selfhood_loss` (it asked for a roll instead) — like 17a's humanity gains, the 8B model rarely volunteers meter changes; a structural nudge (e.g. a per-turn "did a human moment happen?" classifier, or engine-side triggers) is the likely fix. (2) After the refused climb the narrator still narrated the climb ("your boots on the fire escape") — the tool error isn't visible to it in the same turn. (3) The repo-handover miss repeats 17b's (roll or wrong field instead of `repossess`). (4) Every roll was again Hard.
     - **Parked at final review (rulings)**: a physical roll already pending when the shell is taken can still resolve; the bodiless gate keys on the skill, not the requested attribute (matches spec); `offer_chrome` to a bodiless character is only refused on accept.
 
+18. **Narrator reliability** (designed and implemented 2026-10-28) — spec `docs/superpowers/specs/2026-10-28-narrator-reliability-18-design.md`, plan `docs/superpowers/plans/2026-10-28-narrator-reliability-18-implementation.md`. Owner decisions: a structural fix, not more prompt text; latency budget "B" (one small referee call per turn); the model rates stakes and the engine sets difficulty; refused turns are redone once. Research: the Program-First pattern (engine decides, model narrates), the Labyrinth function-calling GM study (models roll instead of updating state), "Let Me Speak Freely?" (strict formats help classification), Ollama think/format issues.
+    - **Built**: `narrator/referee.py` — after narration (action turns that didn't open a roll, and roll resolutions) a required-field yes/no call (`human_moment`, `acted_as_machine`, `gave_up_repo_item`, `gig_paid_out`, `got_new_shell`, `hara_unlocked_chrome`, each asked only when it applies) whose answers the engine applies; the narrator lost those six fields. `judge()` on all three backends (Ollama `think=false`, temperature 0; Anthropic system prompt hoisted). `request_roll` takes `stakes`; the engine maps them to difficulty and, once 2 of the last 6 were high/extreme, maps further high/extreme to normal. A narrator request the engine refuses in-fiction (a bodiless physical roll) is decided before anything is logged and redone once with "Engine: … That does not happen". Segments spoken as a player character are dropped (`[voice filtered: …]`). `NIGHTWIRE_THINK=on|off`. Tests 461 → 494.
+    - **Verified live** (`qwen3:8b`, GPU box, 2 × 13 turns, think default vs off, 0 JSON errors, 0 referee errors):
+
+      | Case | Before | Default | Think off |
+      |---|---|---|---|
+      | Human moment → gain | 0/2 | 2/2 | 2/2 |
+      | Cold machine act → selfhood loss | 0/1 | 1/1 | 1/1 |
+      | Chrome handed to the repo crew → repossess | 0/2 | 1/1 | 1/1 |
+      | Shell handed over → repossess, bodiless | 0/1 | 1/1 | 1/1 |
+      | Gig pays out → installment paid | never | 1/1 | 1/1 |
+      | Rolls at Hard or above | 13/13 | 0/7 | 1/8 |
+      | Refused climb → redo | — | 1/1 | 1/1 |
+      | Median turn time | — | 75 s | 32 s |
+
+    - **Found live, not solved — follow-ups**: (1) the redo fires but qwen still half-ignores the engine fact: with think off it narrated gripping the rungs anyway; the model has no standing sense that a bodiless character has no hands. (2) Referee false positives: in the think-off run three plain stealth/jump turns earned a +2 "human moment"; a stricter question or a per-turn evidence quote would cut them. (3) Setup narration still sometimes states the outcome before the roll ("you move with practiced ease…"). (4) Resolutions still try to request another roll ("no new rolls during a roll resolution"). Recommendation: run with `NIGHTWIRE_THINK=off` — less than half the turn time with the same state accuracy.
+    - **Rulings at final review**: the cap maps both high and extreme to normal (the spec's extreme→high could never get under 50% Hard); only in-fiction refusals redo (an `unknown player_id` no longer turns a valid action into a failure); the referee doesn't judge roll-setup narration; the stakes cap is session-wide.
+    - **Deferred**: Phase 19 image upgrade (NoobAI-XL, owner-reviewed style rounds; spike 2026-10-28: 25–33 s per image, 7.8 GB peak on the 8 GB card).
+
 ### Candidate future phases (surfaced 2026-09-15, not yet designed)
 
 Identified while comparing against `oracle`'s own shipped feature set — each independently justified against nightwire's real gaps or its own cited touchstones (BG3, The Sprawl, CY_BORG), never "because oracle does this" per the standing rule above. Unordered past Phase 10; pick one to brainstorm next when ready.
