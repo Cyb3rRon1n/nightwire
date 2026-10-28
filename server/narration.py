@@ -328,11 +328,12 @@ def _roll_line(pending: dict, result: dict) -> str:
 
 
 def resolve_roll(session: Session, player_id: str) -> dict:
-    pending = session.pending_rolls.pop(player_id, None)
+    pending = session.pending_rolls.get(player_id)
     if pending is None:
         raise ValueError("no roll pending")
     args = {k: pending[k] for k in ("player_id", "attribute", "skill", "difficulty", "reason")}
     result = execute_tool(session, "request_roll", args)
+    session.pending_rolls.pop(player_id, None)  # only after a successful roll
     session.log.append(_roll_line(pending, result))
     rolled = {**result, **pending}
     session.log.append(f"[roll: {json.dumps(rolled)}]")

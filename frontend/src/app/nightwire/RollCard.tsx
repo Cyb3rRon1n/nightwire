@@ -40,7 +40,7 @@ export function RollResultCard({ roll, animate }: { roll: RollResult; animate: b
   }, [animate]);
   const total = roll.die_result + roll.attribute_mod + roll.skill_mod;
   const natural = roll.die_result === 10 || roll.die_result === 1;
-  const outcome = OUTCOME[roll.outcome];
+  const outcome = OUTCOME[roll.outcome] ?? OUTCOME.failure;
   return (
     <div className={`nw-roll-card ${landed && natural ? "nw-roll-natural" : ""}`}>
       <p className="nw-text-muted text-xs">{roll.name} · {label(roll.skill)} vs {label(roll.difficulty)} {roll.dc}</p>
@@ -53,7 +53,7 @@ export function RollResultCard({ roll, animate }: { roll: RollResult; animate: b
             <span className="text-sm">
               {roll.die_result} {sign(roll.attribute_mod)} {label(roll.attribute)} {sign(roll.skill_mod)} {label(roll.skill)} = {total} vs {roll.dc}
             </span>
-            <span className={`nw-roll-badge ${outcome.cls}`}>{outcome.text}{natural ? ` · natural ${roll.die_result}` : ""}</span>
+            <span role="status" className={`nw-roll-badge ${outcome.cls}`}>{outcome.text}{natural ? ` · natural ${roll.die_result}` : ""}</span>
           </>
         )}
       </div>

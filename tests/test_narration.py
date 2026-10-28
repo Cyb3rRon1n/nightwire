@@ -1063,3 +1063,17 @@ def test_resolve_roll_returns_merged_result_and_logs_lines(monkeypatch):
     assert rolled["die_result"] == 7 and rolled["outcome"] == "failure" and rolled["skill"] == "stealth"
     assert "Rook rolls Stealth (Reflexes) vs Hard: a failure (7 +2 +0 = 9 vs 16)." in session.log
     assert any(line.startswith("[roll: ") for line in session.log)
+
+
+def test_resolve_roll_keeps_pending_roll_if_execute_tool_fails():
+    import pytest
+    from server.narration import resolve_roll
+
+    session = _session_with_character()
+    _pending(session)
+    del session.characters["p1"]
+
+    with pytest.raises(ValueError):
+        resolve_roll(session, "p1")
+
+    assert "p1" in session.pending_rolls
