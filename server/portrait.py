@@ -21,6 +21,7 @@ _LIFEPATH_VISUALS: dict[str, str] = {
     "corpo": "crisp corporate-cut clothing softened by street wear, faint megacorp branding",
     "streetkid": "layered street fashion, hand-me-down cyberware, scuffed boots",
     "nomad": "weathered leather and denim, dust-scoured gear, a clan tattoo or patch",
+    "tsukumogami": "a too-still synthetic shell with seams at the joints, a faint machine glow behind the eyes",
 }
 
 

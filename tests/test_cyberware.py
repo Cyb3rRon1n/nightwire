@@ -44,3 +44,11 @@ def test_tiers_and_penalties():
 def test_chrome_roll_bonus_sums_installed_items():
     assert chrome_roll_bonus(["kama_blades", "oni_arms"], "melee") == 3
     assert chrome_roll_bonus(["kama_blades"], "stealth") == 0
+
+
+def test_selfhood_tiers_mirror_humanity_thresholds():
+    from ruleset.cyberware import selfhood_tier
+    assert [selfhood_tier(v) for v in (0, 19, 20, 39, 40, 59, 60, 79, 80, 100)] == [
+        "Appliance", "Appliance", "Flickering", "Flickering", "Waking", "Waking",
+        "Someone", "Someone", "Awake", "Awake",
+    ]

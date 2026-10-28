@@ -49,6 +49,8 @@ def test_viewer_sees_their_own_full_sheet():
         "repo_strikes": 0,
         "throttled": None,
         "pending_repo": None,
+        "bodiless": False,
+        "awake_reached": False,
     }
 
 
