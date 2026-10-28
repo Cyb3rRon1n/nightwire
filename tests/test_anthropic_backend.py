@@ -120,3 +120,14 @@ async def test_respond_sends_system_prompt_as_top_level_system_field():
     _, body, _ = fake_client.calls[0]
     assert body["system"] == "You are a cyberpunk GM."
     assert all(m["role"] != "system" for m in body["messages"])
+
+
+@pytest.mark.asyncio
+async def test_judge_forces_a_tool_with_the_given_schema():
+    schema = {"type": "object", "properties": {"gig_paid_out": {"type": "boolean"}}, "required": ["gig_paid_out"]}
+    client = _FakeAnthropicClient(_tool_use_response({"gig_paid_out": True}))
+    backend = AnthropicNarratorBackend(api_key="k", model="m", client=client)
+    assert await backend.judge([{"role": "user", "content": "x"}], schema) == {"gig_paid_out": True}
+    body = client.calls[0][1]
+    assert body["tools"][0]["input_schema"] == schema
+    assert body["temperature"] == 0

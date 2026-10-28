@@ -1,3 +1,4 @@
+import json
 import os
 from collections.abc import Awaitable, Callable
 from typing import Annotated, Literal, Protocol, Union, runtime_checkable
@@ -117,7 +118,14 @@ class NarratorBackend(Protocol):
 
     async def respond(self, messages: list[dict]) -> NarratorResponse: ...
     async def summarize(self, text: str) -> str: ...
+    async def judge(self, messages: list[dict], schema: dict) -> dict: ...
     async def unload(self) -> None: ...
+
+
+async def _noop_judge(*, model: str, messages: list[dict], format: dict) -> dict:
+    # Scripted clients (tests, UI checks) get a referee that never changes state.
+    answer = {k: ("none" if "enum" in v else False) for k, v in format.get("properties", {}).items()}
+    return {"message": {"content": json.dumps(answer)}}
 
 
 class NarratorClient:
@@ -129,14 +137,18 @@ class NarratorClient:
         generate_fn: Callable[..., Awaitable[object]] | None = None,
         summarize_fn: Callable[..., Awaitable[dict]] | None = None,
         num_ctx: int = 8192,
+        judge_fn: Callable[..., Awaitable[dict]] | None = None,
+        think: bool | None = None,
     ) -> None:
         self.model = model
         self.system_prompt = system_prompt
         self.num_ctx = num_ctx
+        self.think = think
         self._client = ollama.AsyncClient(timeout=60)
         self._chat_fn = chat_fn or self._default_chat
         self._generate_fn = generate_fn or self._client.generate
         self._summarize_fn = summarize_fn or self._default_summarize
+        self._judge_fn = judge_fn or (_noop_judge if chat_fn is not None else self._default_judge)
 
     async def _default_chat(self, *, model: str, messages: list[dict], format: dict) -> dict:
         # Live probing found start_combat firing on 2/5, then 5/5, then 5/5 of
@@ -145,12 +157,24 @@ class NarratorClient:
         # too noisy to be steered by prompt wording alone. Lower temperature
         # trades a little narrative prose variety for a lot more consistency
         # on this specific structured decision.
+        kwargs = {"think": self.think} if self.think is not None else {}
         return await self._client.chat(
             model=model,
             messages=messages,
             format=format,
             options={"temperature": 0.3, "num_ctx": self.num_ctx},
+            **kwargs,
         )
+
+    async def _default_judge(self, *, model: str, messages: list[dict], format: dict) -> dict:
+        return await self._client.chat(
+            model=model, messages=messages, format=format, think=False,
+            options={"temperature": 0, "num_predict": 80, "num_ctx": self.num_ctx},
+        )
+
+    async def judge(self, messages: list[dict], schema: dict) -> dict:
+        response = await self._judge_fn(model=self.model, messages=messages, format=schema)
+        return json.loads(response["message"]["content"])
 
     async def _default_summarize(self, *, model: str, messages: list[dict]) -> dict:
         return await self._client.chat(
@@ -194,7 +218,9 @@ def create_narrator_backend() -> NarratorBackend:
     # from every narrator/client.py user onto the hosted-backend modules.
     backend = os.environ.get("NARRATOR_BACKEND", "ollama").strip().lower()
     if backend == "ollama":
-        return NarratorClient(model=os.environ.get("NIGHTWIRE_MODEL", "qwen3:8b"))
+        think_env = os.environ.get("NIGHTWIRE_THINK", "").strip().lower()
+        think = {"on": True, "off": False}.get(think_env)
+        return NarratorClient(model=os.environ.get("NIGHTWIRE_MODEL", "qwen3:8b"), think=think)
     if backend == "anthropic":
         from narrator.anthropic_backend import AnthropicNarratorBackend
         return AnthropicNarratorBackend(

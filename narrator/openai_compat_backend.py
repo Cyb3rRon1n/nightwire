@@ -7,6 +7,8 @@ validated the same way regardless of whether the server honored the
 schema or just happened to return valid JSON. Raw httpx, no openai SDK
 dependency - matches every other backend in this project."""
 
+import json
+
 import httpx
 from pydantic import ValidationError
 
@@ -79,6 +81,17 @@ class OpenAICompatNarratorBackend:
         if not isinstance(content, str):
             raise ValueError(f"OpenAI-compat summarize response had non-string content: {content!r}")
         return content.strip()
+
+    async def judge(self, messages: list[dict], schema: dict) -> dict:
+        body = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": 0,
+            "response_format": {"type": "json_schema", "json_schema": {"name": "referee", "schema": schema}},
+        }
+        result = await self._client.post(f"{self.base_url}/chat/completions", json=body, headers=self._headers())
+        result.raise_for_status()
+        return json.loads(result.json()["choices"][0]["message"]["content"])
 
     async def unload(self) -> None:
         # No local resources to free - a hosted API has nothing resident here.
