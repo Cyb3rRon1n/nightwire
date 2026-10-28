@@ -38,13 +38,11 @@ All of it carries over from `2026-10-27-cyberware-humanity-design.md`: Cyberpunk
 
 The natural 10 and natural 1 rules are unchanged. Roll bands are unchanged: a clean success is DC+5 or more, a complication is DC to DC+4, and anything lower is a failure.
 
-With +2 total, success (including complications) is roughly:
-- Easy 90%;
-- Moderate 60%;
-- Hard 30%;
-- Extreme 10% (a natural 10 is always a clean success).
+Success (including complications), by total modifier:
+- At +2 (untrained): Easy 70%, Moderate 40%, Hard 10% (natural 10 only), Extreme 10% (natural 10 only).
+- At +4 (trained skill on the primary attribute): Easy 90%, Moderate 60%, Hard 30%, Extreme 10%.
 
-A chrome +1 or +2 moves each of those by 10–20 points.
+These DC values are unchanged (owner-approved); untrained Hard is deliberately natural-10-only. A chrome +1 or +2 moves each of those by 10–20 points.
 
 One system-prompt line goes next to the roll rule:
 
