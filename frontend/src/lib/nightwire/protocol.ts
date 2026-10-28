@@ -13,6 +13,11 @@ export interface CharacterSheet {
   skills: Record<string, number>
   unspent_skill_points: number
   unspent_attribute_points: number
+  humanity: number
+  chrome: string[]
+  installments_owed: number
+  slipping_warned: boolean
+  gone_too_far: boolean
 }
 
 export interface RedactedCharacter {
@@ -32,6 +37,7 @@ export interface PendingRoll {
   reason: string
   dc: number
   name: string
+  overclocks: { id: string; name: string; bonus_text: string }[]
 }
 
 export interface RollResult extends PendingRoll {
@@ -39,6 +45,11 @@ export interface RollResult extends PendingRoll {
   attribute_mod: number
   skill_mod: number
   outcome: 'clean_success' | 'complication' | 'failure'
+  overclock?: string
+  overclock_bonus?: number
+  first_die?: number
+  second_die?: number
+  humanity_loss?: number
 }
 
 export interface StateView {
@@ -53,6 +64,7 @@ export interface StateView {
   active_objectives: string[]
   characters: Record<string, CharacterSheet | RedactedCharacter>
   pending_rolls: Record<string, PendingRoll>
+  pending_chrome_offers: Record<string, string>
 }
 
 export interface ErrorMessage {
@@ -80,6 +92,7 @@ export interface JoinMessage {
     conditions?: string[]
     inventory?: string[]
     skills?: Record<string, number>
+    starting_chrome?: string
   }
 }
 
@@ -94,6 +107,20 @@ export interface RollInitiativeMessage {
 
 export interface RollMessage {
   type: 'roll'
+  overclock?: string
+}
+
+export interface AcceptChromeMessage {
+  type: 'accept_chrome'
+}
+
+export interface DeclineChromeMessage {
+  type: 'decline_chrome'
+}
+
+export interface RemoveChromeMessage {
+  type: 'remove_chrome'
+  item: string
 }
 
 export interface AdvanceTurnMessage {
@@ -131,3 +158,6 @@ export type ClientMessage =
   | ApproveCharacterMessage
   | AllocateSkillPointsMessage
   | AllocateAttributePointsMessage
+  | AcceptChromeMessage
+  | DeclineChromeMessage
+  | RemoveChromeMessage

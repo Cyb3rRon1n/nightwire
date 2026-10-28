@@ -3,6 +3,7 @@ import { mediaUrl } from "@/lib/nightwire/media";
 import type { CharacterSheet } from "@/lib/nightwire/protocol";
 import { SkillPicker } from "./SkillPicker";
 import { AttributePicker, ATTRIBUTE_MILESTONE_MAX } from "./AttributePicker";
+import { chromeById, humanityTier } from "./chrome";
 import "./theme.css";
 
 export function CharacterSheetOverlay({
@@ -10,11 +11,13 @@ export function CharacterSheetOverlay({
   onClose,
   onAllocateSkill,
   onAllocateAttribute,
+  onRemoveChrome,
 }: {
   character: CharacterSheet;
   onClose: () => void;
   onAllocateSkill: (skill: string) => void;
   onAllocateAttribute: (attribute: string) => void;
+  onRemoveChrome: (item: string) => void;
 }) {
   const { initials, colorClass } = portraitFor(character.role, character.name);
 
@@ -102,6 +105,41 @@ export function CharacterSheetOverlay({
             {character.conditions.length > 0 && (
               <p className="nw-text-muted">{character.conditions.join(", ")}</p>
             )}
+          </div>
+
+          <div className="nw-sheet-box nw-hud p-3 text-sm nw-text-body">
+            <p className="nw-eyebrow mb-1">Chrome &amp; humanity</p>
+            <div
+              className="nw-humanity-bar"
+              role="meter"
+              aria-label="Humanity"
+              aria-valuenow={character.humanity}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            >
+              <div className="nw-humanity-fill" style={{ width: `${character.humanity}%` }} />
+            </div>
+            <p className="mt-1">
+              Humanity {character.humanity} · {humanityTier(character.humanity)}
+            </p>
+            {character.chrome.length === 0 ? (
+              <p className="nw-text-faint">No chrome installed.</p>
+            ) : (
+              <ul className="mt-1 flex flex-col gap-1">
+                {character.chrome.map((id) => {
+                  const c = chromeById(id);
+                  return (
+                    <li key={id} className="flex items-center justify-between gap-2">
+                      <span>{c ? `${c.name} — ${c.effect}` : id}</span>
+                      <button type="button" className="nw-btn-ghost text-xs" onClick={() => onRemoveChrome(id)}>
+                        Remove
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <p className="nw-text-muted mt-1">Installments owed: {character.installments_owed}</p>
           </div>
 
           <div className="nw-sheet-box nw-hud p-3 text-sm nw-text-body">
