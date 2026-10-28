@@ -83,7 +83,9 @@ def build_system_prompt() -> str:
         "routine scenes. When the repo crew takes a tsukumogami's shell (repossess), they become "
         "bodiless: play them speaking through vending machines, speakers, signs and ticket gates; "
         "they can hack and talk but not move or fight. Old Hara has used shells, Hoshikawa leases "
-        "new ones, or they can steal one - set new_shell to true when they get one."
+        "new ones, or they can steal one - set new_shell to true when they get one. "
+        "At selfhood 0 they have gone dark: barely more than the machine they were, but the "
+        "player still decides what they do."
     )
     return f"{rules}\n\n{kuroshio().system_block()}"
 

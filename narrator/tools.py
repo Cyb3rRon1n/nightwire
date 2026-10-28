@@ -156,13 +156,13 @@ def _execute_apply_character_update(session: Session, tool: ApplyCharacterUpdate
         if item in character.inventory:
             character.inventory.remove(item)
 
+    before = character.humanity
     if tool.humanity_delta:
         session.pending_world_events.extend(change_humanity(character, tool.humanity_delta))
-        if is_tsukumogami(character):
-            session.log.append(f"[selfhood: +{tool.humanity_delta}]")
     if tool.selfhood_loss:
         session.pending_world_events.extend(change_humanity(character, -tool.selfhood_loss))
-        session.log.append(f"[selfhood: -{tool.selfhood_loss}]")
+    if is_tsukumogami(character) and character.humanity != before:
+        session.log.append(f"[selfhood: {character.humanity - before:+d}]")
 
     if tool.repossess:
         removed = repossess(character)

@@ -123,7 +123,8 @@ def _crew_line(session: Session) -> str:
         if not c.chrome and c.humanity == 100 and c.installments_owed <= 0 and not is_tsukumogami(c):
             continue
         if is_tsukumogami(c):
-            entry = f"{c.name}: selfhood {c.humanity} ({selfhood_tier(c.humanity)})"
+            tier = selfhood_tier(c.humanity) + (", gone dark" if c.gone_too_far else "")
+            entry = f"{c.name}: selfhood {c.humanity} ({tier})"
         else:
             entry = f"{c.name}: humanity {c.humanity} ({humanity_tier(c.humanity)})"
         if c.bodiless:
@@ -363,7 +364,7 @@ def _label(name: str) -> str:
     return name.replace("_", " ").capitalize()
 
 
-def _roll_line(pending: dict, result: dict) -> str:
+def _roll_line(pending: dict, result: dict, stat: str = "humanity") -> str:
     # A visible story line (not bracketed), so later turns' prompts keep it -
     # the narrator remembers how the dice actually fell.
     die, attr_mod, skill_mod = result["die_result"], result["attribute_mod"], result["skill_mod"]
@@ -371,7 +372,7 @@ def _roll_line(pending: dict, result: dict) -> str:
     total = die + attr_mod + skill_mod + bonus
     who = pending["name"]
     if "overclock" in result:
-        who += f" overclocks {CHROME[result['overclock']].name} (−{result['humanity_loss']} humanity) and"
+        who += f" overclocks {CHROME[result['overclock']].name} (−{result['humanity_loss']} {stat}) and"
     formula = f"{die} {attr_mod:+d} {skill_mod:+d}" + (f" {bonus:+d}" if bonus else "")
     line = (
         f"{who} rolls {_label(pending['skill'])} ({_label(pending['attribute'])}) "
@@ -398,7 +399,7 @@ def resolve_roll(session: Session, player_id: str, overclock: str | None = None)
         before = character.humanity
         session.pending_world_events.extend(change_humanity(character, -random.randint(1, 6)))
         result["humanity_loss"] = before - character.humanity
-    session.log.append(_roll_line(pending, result))
+    session.log.append(_roll_line(pending, result, "selfhood" if is_tsukumogami(character) else "humanity"))
     rolled = {**result, **pending}
     session.log.append(f"[roll: {json.dumps(rolled)}]")
     return rolled

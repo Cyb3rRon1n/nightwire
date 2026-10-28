@@ -11,8 +11,8 @@ const OUTCOME = {
   failure: { text: "Failure", cls: "nw-roll-failure" },
 } as const;
 
-export function PendingRollCard({ roll, isMine, onRoll, rolling }: {
-  roll: PendingRoll; isMine: boolean; onRoll: (overclock?: string) => void; rolling: boolean;
+export function PendingRollCard({ roll, isMine, isAi, onRoll, rolling }: {
+  roll: PendingRoll; isAi: boolean; isMine: boolean; onRoll: (overclock?: string) => void; rolling: boolean;
 }) {
   return (
     <div className="nw-roll-card" role="group" aria-label={`Roll for ${roll.name}`}>
@@ -27,7 +27,7 @@ export function PendingRollCard({ roll, isMine, onRoll, rolling }: {
           </button>
           {(roll.overclocks ?? []).map((o) => (
             <button key={o.id} type="button" className="nw-btn-ghost" onClick={() => onRoll(o.id)} disabled={rolling}>
-              ⚡ Overclock ({o.name}) · {o.bonus_text} · −1d6 humanity
+              ⚡ Overclock ({o.name}) · {o.bonus_text} · −1d6 {isAi ? "selfhood" : "humanity"}
             </button>
           ))}
         </div>
@@ -38,7 +38,7 @@ export function PendingRollCard({ roll, isMine, onRoll, rolling }: {
   );
 }
 
-export function RollResultCard({ roll, animate }: { roll: RollResult; animate: boolean }) {
+export function RollResultCard({ roll, animate, isAi }: { roll: RollResult; isAi: boolean; animate: boolean }) {
   const [landed, setLanded] = useState(!animate);
   useEffect(() => {
     if (!animate) return;
@@ -61,7 +61,7 @@ export function RollResultCard({ roll, animate }: { roll: RollResult; animate: b
               {roll.second_die !== undefined && `⚡ ${roll.first_die} / ${roll.second_die} → `}{roll.die_result} {sign(roll.attribute_mod)} {label(roll.attribute)} {sign(roll.skill_mod)} {label(roll.skill)}{roll.overclock_bonus ? ` ${sign(roll.overclock_bonus)} ⚡` : ""} = {total} vs {roll.dc}
             </span>
             <span role="status" className={`nw-roll-badge ${outcome.cls}`}>{outcome.text}{natural ? ` · natural ${roll.die_result}` : ""}</span>
-            {roll.humanity_loss ? <span className="nw-text-muted text-xs">−{roll.humanity_loss} humanity</span> : null}
+            {roll.humanity_loss ? <span className="nw-text-muted text-xs">−{roll.humanity_loss} {isAi ? "selfhood" : "humanity"}</span> : null}
           </>
         )}
       </div>
