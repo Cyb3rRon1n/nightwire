@@ -2,8 +2,8 @@
 
 import { chromeById } from "./chrome";
 
-export function ChromeOfferCard({ chromeId, onAccept, onDecline }: {
-  chromeId: string; onAccept: () => void; onDecline: () => void;
+export function ChromeOfferCard({ chromeId, isAi, onAccept, onDecline }: {
+  chromeId: string; isAi: boolean; onAccept: () => void; onDecline: () => void;
 }) {
   const c = chromeById(chromeId);
   return (
@@ -12,7 +12,7 @@ export function ChromeOfferCard({ chromeId, onAccept, onDecline }: {
       <p className="font-semibold">{c?.name ?? chromeId}</p>
       {c && (
         <p className="text-sm">
-          {c.effect} · −{c.humanity} humanity · {c.installments} installments
+          {c.effect} · {isAi ? "no selfhood cost" : `−${c.humanity} humanity`} · {c.installments} installments
         </p>
       )}
       <div className="mt-2 flex gap-2">

@@ -95,6 +95,9 @@ type LogEntry =
   | { kind: "meta"; text: string }
   | { kind: "narration"; text: string };
 
+const isAiOf = (view: StateView, pid: string) =>
+  (view.characters[pid] as { lifepath?: string } | undefined)?.lifepath === "tsukumogami";
+
 function classifyLine(line: string, view: StateView, playerId: string): LogEntry {
   for (const [pid, character] of Object.entries(view.characters)) {
     const prefix = `${pid}: `;
@@ -487,7 +490,7 @@ export default function NightwirePage() {
                   if (rollMatch) {
                     try {
                       const roll = JSON.parse(rollMatch[1]) as RollResult;
-                      return <RollResultCard key={i} roll={roll} animate={i === lastRollIndex} />;
+                      return <RollResultCard key={i} roll={roll} animate={i === lastRollIndex} isAi={isAiOf(view, roll.player_id)} />;
                     } catch {
                       return (
                         <p key={i} className="nw-hud text-xs nw-text-faint">
@@ -534,7 +537,7 @@ export default function NightwirePage() {
                   if (notice) {
                     return (
                       <p key={i} className="nw-hud nw-torite text-xs">
-                        {entry.text.slice(notice.length, -1)}
+                        {notice === "[selfhood: " ? `Selfhood ${entry.text.slice(notice.length, -1)}` : entry.text.slice(notice.length, -1)}
                       </p>
                     );
                   }
@@ -554,6 +557,7 @@ export default function NightwirePage() {
                 {view.pending_chrome_offers?.[playerId] && (
                   <ChromeOfferCard
                     chromeId={view.pending_chrome_offers[playerId]}
+                    isAi={isAiOf(view, playerId)}
                     onAccept={() => send({ type: "accept_chrome" })}
                     onDecline={() => send({ type: "decline_chrome" })}
                   />
@@ -563,6 +567,7 @@ export default function NightwirePage() {
                     key={roll.player_id}
                     roll={roll}
                     isMine={roll.player_id === playerId}
+                    isAi={isAiOf(view, playerId)}
                     onRoll={(overclock) => {
                       setRolling(true);
                       send({ type: "roll", ...(overclock ? { overclock } : {}) });

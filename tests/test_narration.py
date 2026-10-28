@@ -1296,3 +1296,30 @@ def test_crew_line_names_the_shell_as_repo_target():
     session.characters["p1"] = CharacterSheet(player_id="p1", name="Hachi", role="fixer", lifepath="tsukumogami",
                                               humanity=35, installments_owed=4, pending_repo=SHELL)
     assert "repo crew coming for: utsusemi shell" in _crew_line(session)
+
+
+def test_tsukumogami_overclock_roll_line_says_selfhood(monkeypatch):
+    from engine.character import CharacterSheet
+    from engine.session import Session
+    from server.narration import resolve_roll
+    session = Session(session_id="s1")
+    session.characters["p1"] = CharacterSheet(player_id="p1", name="Hachi", role="fixer", lifepath="tsukumogami",
+                                              humanity=50, chrome=["kagerou"], attributes={"reflexes": 14})
+    session.pending_rolls["p1"] = {"player_id": "p1", "name": "Hachi", "attribute": "reflexes", "skill": "stealth",
+                                   "difficulty": "hard", "dc": 12, "reason": "x"}
+    rolls = iter([4, 9, 3])
+    monkeypatch.setattr("random.randint", lambda a, b: next(rolls))
+    resolve_roll(session, "p1", overclock="kagerou")
+    assert any("(−3 selfhood)" in line and "humanity" not in line for line in session.log)
+
+
+def test_crew_line_for_tsukumogami_at_zero_is_gone_dark():
+    from engine.character import CharacterSheet
+    from engine.chrome import change_humanity
+    from engine.session import Session
+    from server.narration import _crew_line
+    session = Session(session_id="s1")
+    c = CharacterSheet(player_id="p1", name="Hachi", role="fixer", lifepath="tsukumogami", humanity=3)
+    change_humanity(c, -5)
+    session.characters["p1"] = c
+    assert "Hachi: selfhood 0 (Appliance, gone dark)" in _crew_line(session)

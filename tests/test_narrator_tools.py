@@ -518,3 +518,13 @@ def test_new_shell_wakes_them_and_logs():
     c = session.characters["p1"]
     assert not c.bodiless and c.installments_owed == 4
     assert "[utsusemi: Hachi wakes in a new shell]" in session.log
+
+
+def test_selfhood_log_records_applied_change_not_requested():
+    session = _hachi_session()
+    session.characters["p1"].humanity = 2
+    _update(session, selfhood_loss=5)
+    assert "[selfhood: -2]" in session.log
+    session.log.clear()
+    _update(session, selfhood_loss=3)  # already 0: nothing applied, no line
+    assert not any(line.startswith("[selfhood") for line in session.log)

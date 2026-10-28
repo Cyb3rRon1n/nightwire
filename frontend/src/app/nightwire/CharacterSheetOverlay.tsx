@@ -109,7 +109,7 @@ export function CharacterSheetOverlay({
           </div>
 
           <div className="nw-sheet-box nw-hud p-3 text-sm nw-text-body">
-            <p className="nw-eyebrow mb-1">{isAi ? "Shell &amp; selfhood" : "Chrome &amp; humanity"}</p>
+            <p className="nw-eyebrow mb-1">{isAi ? "Shell & selfhood" : "Chrome & humanity"}</p>
             <div
               className="nw-humanity-bar"
               role="meter"
