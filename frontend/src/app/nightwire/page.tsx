@@ -526,6 +526,13 @@ export default function NightwirePage() {
                       </div>
                     );
                   }
+                  if (entry.kind === "meta" && entry.text.startsWith("[torite: ")) {
+                    return (
+                      <p key={i} className="nw-hud nw-torite text-xs">
+                        {entry.text.slice("[torite: ".length, -1)}
+                      </p>
+                    );
+                  }
                   if (entry.kind === "meta") {
                     return (
                       <p key={i} className="nw-hud text-xs nw-text-faint">

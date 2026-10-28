@@ -216,3 +216,10 @@
 
 .nw-humanity-bar { height: 0.5rem; border-radius: 9999px; background: var(--nw-border, #333); overflow: hidden; }
 .nw-humanity-fill { height: 100%; background: var(--nw-accent, #4ade80); }
+
+.nw-torite {
+  border: 1px solid rgba(251, 146, 60, 0.6);
+  background: rgba(220, 38, 38, 0.12);
+  color: #fdba74;
+  padding: 0.25rem 0.5rem;
+}
