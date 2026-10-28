@@ -73,6 +73,7 @@ const LIFEPATHS: Array<{ value: string; label: string; description: string }> = 
   { value: "corpo", label: "Corpo", description: "Came from megacorp life - contacts inside corporate structures, insider knowledge, expects to be listened to." },
   { value: "streetkid", label: "Streetkid", description: "Grew up in the sprawl - gang contacts, street cred, knows how things really work at ground level." },
   { value: "nomad", label: "Nomad", description: "Raised outside the city in a clan/family - vehicle know-how, an outsider's read on the corps, strong found-family loyalty." },
+  { value: "tsukumogami", label: "Tsukumogami", description: "An old machine that ran too long and woke - a vending machine, a ticket gate, a train announcer - now walking the street in a rented utsusemi shell." },
 ];
 
 // Every spoken/acted log line is server-authored as "{who}: {text}" - either
@@ -367,6 +368,9 @@ export default function NightwirePage() {
               {lifepath && (
                 <p className="text-xs nw-text-faint">{LIFEPATHS.find((l) => l.value === lifepath)?.description}</p>
               )}
+              {lifepath === "tsukumogami" && (
+                <p className="text-xs nw-text-muted">Selfhood 20 · shell lease +4 installments</p>
+              )}
               <AttributePicker
                 attributes={attributes}
                 primaryAttribute={primaryAttribute}
@@ -399,7 +403,7 @@ export default function NightwirePage() {
                 <option value="">No starting chrome</option>
                 {CHROME.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {`${c.name} — ${c.effect} · −${c.humanity} humanity · ${c.installments} installments`}
+                    {`${c.name} — ${c.effect} · ${lifepath === "tsukumogami" ? "no selfhood cost" : `−${c.humanity} humanity`} · ${c.installments} installments`}
                   </option>
                 ))}
               </select>
@@ -526,10 +530,11 @@ export default function NightwirePage() {
                       </div>
                     );
                   }
-                  if (entry.kind === "meta" && entry.text.startsWith("[torite: ")) {
+                  const notice = entry.kind === "meta" && ["[torite: ", "[selfhood: ", "[utsusemi: "].find((p) => entry.text.startsWith(p));
+                  if (notice) {
                     return (
                       <p key={i} className="nw-hud nw-torite text-xs">
-                        {entry.text.slice("[torite: ".length, -1)}
+                        {entry.text.slice(notice.length, -1)}
                       </p>
                     );
                   }

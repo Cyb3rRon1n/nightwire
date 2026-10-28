@@ -20,3 +20,7 @@ export const chromeById = (id: string) => CHROME.find((c) => c.id === id);
 export function humanityTier(h: number): string {
   return h >= 70 ? "Steady" : h >= 40 ? "Frayed" : h >= 20 ? "Slipping" : h >= 1 ? "Edge" : "Gone too far";
 }
+
+export function selfhoodTier(v: number): string {
+  return v >= 80 ? "Awake" : v >= 60 ? "Someone" : v >= 40 ? "Waking" : v >= 20 ? "Flickering" : "Appliance";
+}

@@ -3,7 +3,7 @@ import { mediaUrl } from "@/lib/nightwire/media";
 import type { CharacterSheet } from "@/lib/nightwire/protocol";
 import { SkillPicker } from "./SkillPicker";
 import { AttributePicker, ATTRIBUTE_MILESTONE_MAX } from "./AttributePicker";
-import { chromeById, humanityTier } from "./chrome";
+import { chromeById, humanityTier, selfhoodTier } from "./chrome";
 import "./theme.css";
 
 export function CharacterSheetOverlay({
@@ -20,6 +20,7 @@ export function CharacterSheetOverlay({
   onRemoveChrome: (item: string) => void;
 }) {
   const { initials, colorClass } = portraitFor(character.role, character.name);
+  const isAi = character.lifepath === "tsukumogami";
 
   return (
     <div
@@ -108,11 +109,11 @@ export function CharacterSheetOverlay({
           </div>
 
           <div className="nw-sheet-box nw-hud p-3 text-sm nw-text-body">
-            <p className="nw-eyebrow mb-1">Chrome &amp; humanity</p>
+            <p className="nw-eyebrow mb-1">{isAi ? "Shell &amp; selfhood" : "Chrome &amp; humanity"}</p>
             <div
               className="nw-humanity-bar"
               role="meter"
-              aria-label="Humanity"
+              aria-label={isAi ? "Selfhood" : "Humanity"}
               aria-valuenow={character.humanity}
               aria-valuemin={0}
               aria-valuemax={100}
@@ -120,9 +121,11 @@ export function CharacterSheetOverlay({
               <div className="nw-humanity-fill" style={{ width: `${character.humanity}%` }} />
             </div>
             <p className="mt-1">
-              Humanity {character.humanity} · {humanityTier(character.humanity)}
+              {isAi ? `Selfhood ${character.humanity} · ${selfhoodTier(character.humanity)}` : `Humanity ${character.humanity} · ${humanityTier(character.humanity)}`}
             </p>
-            {character.chrome.length === 0 ? (
+            {character.bodiless ? (
+              <p className="mt-1"><strong>[Bodiless]</strong> Living in a nearby machine</p>
+            ) : character.chrome.length === 0 ? (
               <p className="nw-text-faint">No chrome installed.</p>
             ) : (
               <ul className="mt-1 flex flex-col gap-1">
@@ -137,7 +140,7 @@ export function CharacterSheetOverlay({
                       </span>
                       <button type="button" className="nw-btn-ghost text-xs" onClick={() => {
                           const name = c ? c.name : id;
-                          if (window.confirm(`Remove ${name}? You get back half its humanity cost; the installments stay owed.`)) onRemoveChrome(id);
+                          if (window.confirm(isAi ? `Remove ${name}? The installments stay owed.` : `Remove ${name}? You get back half its humanity cost; the installments stay owed.`)) onRemoveChrome(id);
                         }}
                       >
                         Remove
@@ -146,6 +149,9 @@ export function CharacterSheetOverlay({
                   );
                 })}
               </ul>
+            )}
+            {character.pending_repo === "shell" && (
+              <p className="mt-1"><strong>[Repo crew coming: shell]</strong></p>
             )}
             <p className="nw-text-muted mt-1">Installments owed: {character.installments_owed}</p>
             {character.installments_owed > 0 && (
