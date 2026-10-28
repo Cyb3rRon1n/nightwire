@@ -21,6 +21,8 @@ export interface CharacterSheet {
   repo_strikes: number
   throttled: string | null
   pending_repo: string | null
+  bodiless: boolean
+  awake_reached: boolean
   slipping_warned: boolean
   gone_too_far: boolean
 }
