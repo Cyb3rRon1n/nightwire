@@ -112,7 +112,7 @@ def handle_message(session: Session, message: dict, player_id: str) -> None:
         if character_data is None:
             raise ValueError("missing 'character' in join message")
         starting_chrome = character_data.get("starting_chrome")
-        if starting_chrome is not None and starting_chrome not in CHROME:
+        if starting_chrome is not None and (not isinstance(starting_chrome, str) or starting_chrome not in CHROME):
             raise ValueError(f"unknown chrome: {starting_chrome!r}")
         _validate_and_finalize_attributes(character_data)
         _validate_and_finalize_skills(character_data)

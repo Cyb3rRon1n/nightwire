@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from engine.chrome import change_humanity
 from engine.session import Session
 from ruleset.attributes import modifier
-from ruleset.cyberware import CHROME, SOCIAL_SKILLS, chrome_roll_bonus, overclock_tier_bonus, social_penalty
+from ruleset.cyberware import CHROME, SOCIAL_SKILLS, chrome_roll_bonus, overclock_tier_bonus, slot_capacity, social_penalty
 from ruleset.difficulty import Difficulty
 from ruleset.resolution import resolve_roll
 
@@ -184,6 +184,11 @@ def _execute_remember_npc(session: Session, tool: RememberNPC) -> dict:
 def _execute_offer_chrome(session: Session, tool: OfferChrome) -> dict:
     if tool.player_id not in session.characters:
         raise ValueError(f"unknown player_id: {tool.player_id!r}")
+    character = session.characters[tool.player_id]
+    if tool.item in character.chrome:
+        raise ValueError(f"{tool.item!r} is already installed")
+    if len(character.chrome) >= slot_capacity(character.attributes):
+        raise ValueError("no free chrome slot")
     session.pending_chrome_offers[tool.player_id] = tool.item
     return {"offered": tool.item}
 

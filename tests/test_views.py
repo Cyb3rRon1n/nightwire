@@ -129,8 +129,20 @@ def test_view_exposes_pending_rolls_to_every_viewer():
     assert build_view(session, "p2")["pending_rolls"] == expected
 
 
+def test_overclocks_on_a_pending_roll_are_only_filled_for_its_owner():
+    session = Session(session_id="s1")
+    session.characters["p1"] = _character("p1", "Rook")
+    session.characters["p2"] = _character("p2", "Vex")
+    session.characters["p1"].chrome = ["kagerou"]
+    session.pending_rolls["p1"] = {"player_id": "p1", "skill": "stealth", "dc": 12}
+    assert [o["id"] for o in build_view(session, "p1")["pending_rolls"]["p1"]["overclocks"]] == ["kagerou"]
+    assert build_view(session, "p2")["pending_rolls"]["p1"]["overclocks"] == []
+
+
 def test_view_exposes_pending_chrome_offers():
     session = Session(session_id="s1")
     session.characters["p1"] = _character("p1", "Rook")
+    session.characters["p2"] = _character("p2", "Vex")
     session.pending_chrome_offers["p1"] = "kagerou"
     assert build_view(session, "p1")["pending_chrome_offers"] == {"p1": "kagerou"}
+    assert build_view(session, "p2")["pending_chrome_offers"] == {}

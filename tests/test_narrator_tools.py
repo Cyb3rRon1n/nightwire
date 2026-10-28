@@ -287,6 +287,36 @@ def test_offer_chrome_creates_an_offer_and_installs_nothing():
     assert session.characters["p1"].chrome == []
 
 
+def test_offer_chrome_rejects_already_installed_item():
+    import pytest
+    from engine.character import CharacterSheet
+    from engine.session import Session
+    from narrator.tools import execute_tool
+
+    session = Session(session_id="s")
+    session.characters["p1"] = CharacterSheet(player_id="p1", name="Rook", role="solo", lifepath="streetkid", chrome=["kagerou"])
+    with pytest.raises(ValueError, match="already"):
+        execute_tool(session, "offer_chrome", {"player_id": "p1", "item": "kagerou"})
+    assert session.pending_chrome_offers == {}
+
+
+def test_offer_chrome_rejects_when_no_free_slot():
+    import pytest
+    from engine.character import CharacterSheet
+    from engine.session import Session
+    from narrator.tools import execute_tool
+    from ruleset.cyberware import CHROME, slot_capacity
+
+    c = CharacterSheet(player_id="p1", name="Rook", role="solo", lifepath="streetkid")
+    others = [k for k in CHROME if k != "kagerou"]
+    c.chrome = others[: slot_capacity(c.attributes)]
+    session = Session(session_id="s")
+    session.characters["p1"] = c
+    with pytest.raises(ValueError, match="slot"):
+        execute_tool(session, "offer_chrome", {"player_id": "p1", "item": "kagerou"})
+    assert session.pending_chrome_offers == {}
+
+
 def test_offer_chrome_rejects_unknown_item():
     import pytest
     from pydantic import ValidationError
