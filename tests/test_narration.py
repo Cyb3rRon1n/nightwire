@@ -1108,7 +1108,7 @@ def test_overclock_not_usable_on_this_roll_is_refused_and_roll_stays_pending():
     assert "p1" in session.pending_rolls
 
 
-def test_crew_line_and_world_event_sit_before_the_action_and_events_clear():
+def test_crew_line_and_world_event_sit_before_the_action():
     from server.narration import _build_messages
 
     session = _session_with_character()
@@ -1121,7 +1121,67 @@ def test_crew_line_and_world_event_sit_before_the_action_and_events_clear():
     assert "Crew: Rook: humanity 62 (Frayed), chrome: Kagerou, Hawkeye optics" in content
     assert "World event: Rook is slipping." in content
     assert content.index("World event:") < content.index("Player action: I wait.")
-    assert session.pending_world_events == []
+    assert session.pending_world_events == ["Rook is slipping."]  # cleared by the turn, not the prompt build
+
+
+@pytest.mark.asyncio
+async def test_world_events_clear_after_a_successful_turn_but_keep_ones_queued_mid_turn(tmp_path):
+    session = _session_with_character()
+    session.pending_world_events.append("old event")
+    client = _fake_client("ok")
+    orig = client.respond
+
+    async def respond(messages):
+        session.pending_world_events.append("mid-turn event")
+        return await orig(messages)
+
+    client.respond = respond
+    await _call(session, client, "p1", {"text": "I wait."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert session.pending_world_events == ["mid-turn event"]
+
+
+@pytest.mark.asyncio
+async def test_world_events_survive_a_failed_narrator_call(tmp_path):
+    session = _session_with_character()
+    session.pending_world_events.append("old event")
+    client = _fake_client("ok")
+
+    async def boom(messages):
+        raise ValueError("narrator down")
+
+    client.respond = boom
+    with pytest.raises(ValueError):
+        await _call(session, client, "p1", {"text": "I wait."}, tmp_path)
+    assert session.pending_world_events == ["old event"]
+
+
+def test_overclock_humanity_loss_is_the_actual_change_not_the_raw_die(monkeypatch):
+    from server.narration import resolve_roll
+
+    session = _session_with_character()
+    session.characters["p1"].chrome = ["kagerou"]
+    session.characters["p1"].humanity = 3
+    _pending(session)
+    rolls = iter([4, 9, 5])  # d10, second d10, 1d6
+    monkeypatch.setattr("random.randint", lambda a, b: next(rolls))
+
+    rolled = resolve_roll(session, "p1", overclock="kagerou")
+
+    assert rolled["humanity_loss"] == 3
+    assert session.characters["p1"].humanity == 0
+    assert any("(−3 humanity)" in line for line in session.log)
+
+
+def test_overclock_refused_while_gone_too_far_and_roll_stays_pending():
+    from server.narration import resolve_roll
+
+    session = _session_with_character()
+    session.characters["p1"].chrome = ["kagerou"]
+    session.characters["p1"].gone_too_far = True
+    _pending(session)
+    with pytest.raises(ValueError, match="overclock"):
+        resolve_roll(session, "p1", overclock="kagerou")
+    assert "p1" in session.pending_rolls
 
 
 def test_no_crew_line_for_unchromed_full_humanity():

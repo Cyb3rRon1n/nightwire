@@ -174,7 +174,6 @@ def _build_messages(session: Session, action_text: str, num_ctx: int) -> list[di
         parts.append(crew)
     if session.pending_world_events:
         parts.append("World event: " + " ".join(session.pending_world_events))
-        session.pending_world_events.clear()  # shown once
     world_budget = int(num_ctx * _WORLD_BUDGET_FRACTION * _CHARS_PER_TOKEN_ESTIMATE)
     cards = select_cards(kuroshio(), session, action_text, world_budget)
     if cards:
@@ -251,8 +250,12 @@ async def _run_turn(
     actor_line: str | None,
     allow_roll: bool,
 ) -> None:
+    # Events are shown once, but only dropped after the narrator actually
+    # responded; events queued during the turn survive to the next one.
+    shown_events = len(session.pending_world_events)
     messages = _build_messages(session, prompt_text, narrator_client.num_ctx)
     response = await narrator_client.respond(messages)
+    del session.pending_world_events[:shown_events]
 
     if actor_line is not None:
         session.log.append(actor_line)
@@ -368,13 +371,13 @@ def resolve_roll(session: Session, player_id: str, overclock: str | None = None)
     result = roll_check(character, pending["attribute"], pending["skill"], pending["difficulty"], overclock)
     session.pending_rolls.pop(player_id, None)  # only after a successful roll
     if overclock is not None:
-        result["humanity_loss"] = random.randint(1, 6)
-        session.pending_world_events.extend(change_humanity(character, -result["humanity_loss"]))
+        before = character.humanity
+        session.pending_world_events.extend(change_humanity(character, -random.randint(1, 6)))
+        result["humanity_loss"] = before - character.humanity
     session.log.append(_roll_line(pending, result))
     rolled = {**result, **pending}
     session.log.append(f"[roll: {json.dumps(rolled)}]")
     return rolled
-
 
 
 async def narrate_roll(
@@ -394,8 +397,6 @@ async def narrate_roll(
         ),
         actor_line=None, allow_roll=False,
     )
-
-
 
 
 async def handle_roll(
