@@ -10,7 +10,7 @@ from engine.debt import SHELL, active_chrome, new_shell, pay_installment, reposs
 from engine.session import Session
 from ruleset.attributes import modifier
 from ruleset.cyberware import CHROME, SOCIAL_SKILLS, chrome_roll_bonus, overclock_tier_bonus, slot_capacity, social_penalty
-from ruleset.difficulty import Difficulty
+from ruleset.difficulty import STAKES, Difficulty
 from ruleset.resolution import resolve_roll
 
 # Write-time sanity caps, not the primary context-budget mechanism (that's
@@ -31,7 +31,7 @@ class RequestRoll(BaseModel):
         "hacking", "engineering", "demolitions", "intimidation", "streetwise",
         "perception", "deduction", "persuasion", "performance",
     ]
-    difficulty: Literal["easy", "moderate", "hard", "extreme"]
+    stakes: Literal["low", "normal", "high", "extreme"]
     reason: str
 
 
@@ -120,7 +120,8 @@ def roll_check(character, attribute: str, skill: str, difficulty: str, overclock
 def _execute_request_roll(session: Session, tool: RequestRoll) -> dict:
     if tool.player_id not in session.characters:
         raise ValueError(f"unknown player_id: {tool.player_id!r}")
-    return roll_check(session.characters[tool.player_id], tool.attribute, tool.skill, tool.difficulty)
+    difficulty = STAKES[tool.stakes].name.lower()
+    return roll_check(session.characters[tool.player_id], tool.attribute, tool.skill, difficulty)
 
 
 def _execute_apply_character_update(session: Session, tool: ApplyCharacterUpdate) -> dict:

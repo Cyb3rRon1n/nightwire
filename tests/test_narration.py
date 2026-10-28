@@ -152,7 +152,7 @@ async def test_request_roll_becomes_a_pending_roll_not_a_roll(tmp_path):
         "You eye the ledge.", tool="request_roll",
         tool_args={
             "player_id": "someone-else", "attribute": "reflexes", "skill": "athletics",
-            "difficulty": "hard", "reason": "leap the gap",
+            "stakes": "high", "reason": "leap the gap",
         },
     )
 
@@ -204,7 +204,7 @@ async def test_pending_roll_is_keyed_to_the_actor_not_the_models_player_id(tmp_p
         "You eye the ledge.", tool="request_roll",
         tool_args={
             "player_id": "someone-else", "attribute": "reflexes", "skill": "athletics",
-            "difficulty": "easy", "reason": "leap",
+            "stakes": "low", "reason": "leap",
         },
     )
 
@@ -1026,7 +1026,7 @@ async def test_no_new_roll_during_a_resolution(tmp_path, monkeypatch):
     monkeypatch.setattr("narrator.tools.random.randint", lambda a, b: 7)
     client = _fake_client(
         "The guard spins.", tool="request_roll",
-        tool_args={"player_id": "p1", "attribute": "reflexes", "skill": "athletics", "difficulty": "easy", "reason": "dodge"},
+        tool_args={"player_id": "p1", "attribute": "reflexes", "skill": "athletics", "stakes": "low", "reason": "dodge"},
     )
 
     await _roll(session, client, "p1", tmp_path)
@@ -1259,7 +1259,7 @@ async def test_bodiless_physical_roll_is_refused(tmp_path):
     session.characters["p1"].lifepath = "tsukumogami"
     session.characters["p1"].bodiless = True
     client = _fake_client("You strain toward the ledge.", tool="request_roll", tool_args={
-        "player_id": "p1", "attribute": "body", "skill": "athletics", "difficulty": "moderate", "reason": "climb"})
+        "player_id": "p1", "attribute": "body", "skill": "athletics", "stakes": "normal", "reason": "climb"})
     await _call(session, client, "p1", {"text": "I climb."}, tmp_path, tts_backend=FakeTTSBackend())
     assert "p1" not in session.pending_rolls
     assert f"[tool error: {session.characters['p1'].name} has no body]" in session.log
@@ -1269,7 +1269,7 @@ async def test_bodiless_hacking_roll_still_pends(tmp_path):
     session = _session_with_character()
     session.characters["p1"].bodiless = True
     client = _fake_client("The vending machine's screen flickers.", tool="request_roll", tool_args={
-        "player_id": "p1", "attribute": "tech", "skill": "hacking", "difficulty": "moderate", "reason": "jack the door"})
+        "player_id": "p1", "attribute": "tech", "skill": "hacking", "stakes": "normal", "reason": "jack the door"})
     await _call(session, client, "p1", {"text": "I hack the door."}, tmp_path, tts_backend=FakeTTSBackend())
     assert session.pending_rolls["p1"]["skill"] == "hacking"
 
@@ -1323,3 +1323,33 @@ def test_crew_line_for_tsukumogami_at_zero_is_gone_dark():
     change_humanity(c, -5)
     session.characters["p1"] = c
     assert "Hachi: selfhood 0 (Appliance, gone dark)" in _crew_line(session)
+
+
+async def test_pending_roll_carries_stakes_difficulty_and_dc(tmp_path):
+    session = _session_with_character()
+    client = _fake_client("You eye the ledge.", tool="request_roll", tool_args={
+        "player_id": "p1", "attribute": "reflexes", "skill": "athletics", "stakes": "high", "reason": "leap"})
+    await _call(session, client, "p1", {"text": "I leap."}, tmp_path, tts_backend=FakeTTSBackend())
+    pending = session.pending_rolls["p1"]
+    assert (pending["stakes"], pending["difficulty"], pending["dc"]) == ("high", "hard", 12)
+    assert session.recent_stakes == ["high"]
+
+
+async def test_capped_high_becomes_moderate(tmp_path):
+    session = _session_with_character()
+    session.recent_stakes = ["high", "high"]
+    client = _fake_client("You eye the ledge.", tool="request_roll", tool_args={
+        "player_id": "p1", "attribute": "reflexes", "skill": "athletics", "stakes": "high", "reason": "leap"})
+    await _call(session, client, "p1", {"text": "I leap."}, tmp_path, tts_backend=FakeTTSBackend())
+    pending = session.pending_rolls["p1"]
+    assert (pending["stakes"], pending["difficulty"], pending["dc"]) == ("high", "moderate", 9)
+    assert session.recent_stakes[-1] == "normal"
+
+
+def test_old_pending_roll_with_only_difficulty_still_resolves():
+    from server.narration import resolve_roll
+    session = _session_with_character()
+    session.pending_rolls["p1"] = {"player_id": "p1", "attribute": "reflexes", "skill": "athletics",
+                                   "difficulty": "hard", "reason": "leap", "dc": 12, "name": "Rook"}
+    rolled = resolve_roll(session, "p1")
+    assert rolled["dc"] == 12

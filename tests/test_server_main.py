@@ -44,10 +44,10 @@ def test_system_prompt_tells_the_narrator_to_stop_before_the_roll_result():
     assert "never contradict it" in prompt
 
 
-def test_system_prompt_steers_difficulty_toward_moderate():
+def test_system_prompt_asks_for_stakes_not_difficulty():
     from server.__main__ import build_system_prompt
 
-    assert "Most risks are Moderate; Hard is for real danger; Extreme is rare." in build_system_prompt()
+    assert "request_roll takes stakes, not difficulty" in build_system_prompt()
 
 
 def test_system_prompt_has_chrome_guidance():

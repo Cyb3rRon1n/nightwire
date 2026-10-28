@@ -337,7 +337,7 @@ def test_roll_is_broadcast_before_the_resolution_narration(tmp_path):
         if len(calls) == 1:
             payload = {"narration": [{"speaker": "narrator", "text": "The guard watches."}], "tool_call": {
                 "tool": "request_roll",
-                "tool_args": {"player_id": "p1", "attribute": "reflexes", "skill": "stealth", "difficulty": "easy", "reason": "slip past"},
+                "tool_args": {"player_id": "p1", "attribute": "reflexes", "skill": "stealth", "stakes": "low", "reason": "slip past"},
             }}
         else:
             payload = {"narration": [{"speaker": "narrator", "text": "You slip by."}], "tool_call": {"tool": None}}
