@@ -429,3 +429,36 @@ def test_unthrottle_restores_stats_and_adds_objective_once():
         assert c.throttled is None
         assert c.attributes == before
     assert session.active_objectives.count("Owe Old Hara a favor") == 1
+
+
+def test_repossess_with_payment_in_one_update():
+    session = _owing_session()
+    c = session.characters["p1"]
+    owed = c.installments_owed
+    c.pending_repo = "kagerou"
+    _update(session, installments_paid=1, repossess=True)
+    assert "kagerou" not in c.chrome
+    assert c.installments_owed == owed - 1
+    assert any("[torite:" in line for line in session.log)
+
+
+def test_unthrottle_with_payment_in_one_update():
+    from engine.chrome import _apply_stats
+    from ruleset.cyberware import CHROME
+    session = _owing_session()
+    c = session.characters["p1"]
+    owed = c.installments_owed
+    c.throttled = "kagerou"
+    _apply_stats(c, CHROME["kagerou"], -1)
+    _update(session, installments_paid=1, unthrottle=True)
+    assert c.throttled is None
+    assert c.installments_owed == owed - 1
+    assert session.active_objectives.count("Owe Old Hara a favor") == 1
+
+
+def test_bad_unthrottle_changes_nothing():
+    session = _owing_session()
+    c = session.characters["p1"]
+    with pytest.raises(ValueError):
+        _update(session, health_delta=-3, unthrottle=True)
+    assert c.health == 7

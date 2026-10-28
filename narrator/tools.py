@@ -5,7 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from engine.chrome import change_humanity
-from engine.debt import pay_installment, repossess, unthrottle
+from engine.debt import active_chrome, pay_installment, repossess, unthrottle
 from engine.session import Session
 from ruleset.attributes import modifier
 from ruleset.cyberware import CHROME, SOCIAL_SKILLS, chrome_roll_bonus, overclock_tier_bonus, slot_capacity, social_penalty
@@ -93,7 +93,7 @@ class RememberNPC(BaseModel):
 
 def roll_check(character, attribute: str, skill: str, difficulty: str, overclock_id: str | None = None) -> dict:
     attribute_mod = modifier(character.attributes.get(attribute, 10))
-    skill_mod = character.skills.get(skill, 0) + chrome_roll_bonus([c for c in character.chrome if c != character.throttled], skill)
+    skill_mod = character.skills.get(skill, 0) + chrome_roll_bonus(active_chrome(character), skill)
     if skill in SOCIAL_SKILLS:
         skill_mod += social_penalty(character.humanity)
     dc = Difficulty[difficulty.upper()].value
@@ -151,8 +151,6 @@ def _execute_apply_character_update(session: Session, tool: ApplyCharacterUpdate
     if tool.humanity_delta:
         session.pending_world_events.extend(change_humanity(character, tool.humanity_delta))
 
-    if tool.installments_paid:
-        pay_installment(character, tool.installments_paid)
     if tool.repossess:
         removed = repossess(character)
         session.log.append(f"[torite: Saeko's crew took {character.name}'s {CHROME[removed].name}]")
@@ -160,6 +158,9 @@ def _execute_apply_character_update(session: Session, tool: ApplyCharacterUpdate
         unthrottle(character)
         if "Owe Old Hara a favor" not in session.active_objectives:
             session.active_objectives.append("Owe Old Hara a favor")
+    # Payment last: it clears throttle/pending_repo, which the two above (validated) need.
+    if tool.installments_paid:
+        pay_installment(character, tool.installments_paid)
 
     return {
         "player_id": tool.player_id,
