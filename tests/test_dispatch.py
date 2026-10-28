@@ -717,3 +717,24 @@ def test_accept_chrome_confrontation_events_go_to_pending_world_events():
     session.pending_chrome_offers["p1"] = "kagerou"
     handle_message(session, {"type": "accept_chrome"}, "p1")
     assert session.pending_world_events
+
+
+def test_tsukumogami_join_starts_at_20_selfhood_with_shell_lease():
+    session = Session(session_id="s1")
+    handle_message(session, {"type": "join", "character": {
+        "player_id": "p1", "name": "Hachi", "role": "fixer", "lifepath": "tsukumogami",
+        "starting_chrome": "hawkeye_optics"}}, "p1")
+    c = session.characters["p1"]
+    assert c.humanity == 20
+    assert c.installments_owed == 4 + 2
+    assert c.chrome == ["hawkeye_optics"]
+    assert session.pending_world_events == []
+
+
+def test_tsukumogami_rejoin_does_not_reapply_the_lease():
+    session = Session(session_id="s1")
+    msg = {"type": "join", "character": {"player_id": "p1", "name": "Hachi", "role": "fixer", "lifepath": "tsukumogami"}}
+    handle_message(session, msg, "p1")
+    session.characters["p1"].humanity = 35
+    handle_message(session, msg, "p1")
+    assert session.characters["p1"].installments_owed == 4

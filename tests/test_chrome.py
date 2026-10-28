@@ -89,3 +89,44 @@ def test_usable_overclocks_omits_throttled():
     install_chrome(rook, "kagerou")
     rook.throttled = "kagerou"
     assert usable_overclocks(rook, "hacking") == []
+
+
+def _hachi(**kw):
+    from engine.character import CharacterSheet
+    return CharacterSheet(player_id="p1", name="Hachi", role="fixer", lifepath="tsukumogami",
+                          humanity=20, attributes={"body": 10}, **kw)
+
+
+def test_tsukumogami_never_gets_the_slipping_confrontation():
+    from engine.chrome import change_humanity
+    c = _hachi()
+    assert change_humanity(c, -3) == [] and change_humanity(c, 2) == []
+    assert c.slipping_warned is False
+
+
+def test_tsukumogami_awake_event_fires_once_at_80():
+    from engine.chrome import change_humanity
+    c = _hachi()
+    c.humanity = 78
+    assert change_humanity(c, 1) == []
+    assert change_humanity(c, 1) == ["Hachi feels it settle: they're someone now, not something."]
+    assert c.awake_reached
+    change_humanity(c, -10)
+    assert change_humanity(c, 15) == []
+
+
+def test_tsukumogami_chrome_costs_and_refunds_no_selfhood():
+    from engine.chrome import install_chrome, remove_chrome
+    c = _hachi()
+    install_chrome(c, "kagerou")
+    assert c.humanity == 20 and c.installments_owed == 5
+    remove_chrome(c, "kagerou")
+    assert c.humanity == 20
+
+
+def test_bodiless_cannot_install_chrome():
+    import pytest
+    from engine.chrome import install_chrome
+    c = _hachi(bodiless=True)
+    with pytest.raises(ValueError, match="no shell to install chrome in"):
+        install_chrome(c, "neon_ink")
