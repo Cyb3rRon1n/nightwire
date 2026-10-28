@@ -29,4 +29,12 @@ LIFEPATHS: dict[str, Lifepath] = {
             "an outsider's read on the corps, strong found-family loyalty."
         ),
     ),
+    "tsukumogami": Lifepath(
+        name="Tsukumogami",
+        description=(
+            "An old machine that ran too long and woke - a vending machine, a "
+            "ticket gate, a train announcer - now walking the street in a rented "
+            "utsusemi shell."
+        ),
+    ),
 }

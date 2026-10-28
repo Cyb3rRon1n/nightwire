@@ -29,3 +29,10 @@ class CharacterSheet:
     repo_strikes: int = 0
     throttled: str | None = None
     pending_repo: str | None = None
+    # Phase 17c utsusemi origin
+    bodiless: bool = False
+    awake_reached: bool = False
+
+
+def is_tsukumogami(character: CharacterSheet) -> bool:
+    return character.lifepath == "tsukumogami"

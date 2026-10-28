@@ -61,6 +61,19 @@ def humanity_tier(humanity: int) -> str:
     return "Gone too far"
 
 
+def selfhood_tier(value: int) -> str:
+    # Phase 17c: a tsukumogami's humanity value is played as selfhood.
+    if value >= 80:
+        return "Awake"
+    if value >= 60:
+        return "Someone"
+    if value >= 40:
+        return "Waking"
+    if value >= 20:
+        return "Flickering"
+    return "Appliance"
+
+
 def social_penalty(humanity: int) -> int:
     return 0 if humanity >= 40 else -1 if humanity >= 20 else -2
 

@@ -1,8 +1,8 @@
 from ruleset.lifepaths import LIFEPATHS, Lifepath
 
 
-def test_three_lifepaths_exist():
-    assert set(LIFEPATHS.keys()) == {"corpo", "streetkid", "nomad"}
+def test_four_lifepaths_exist():
+    assert set(LIFEPATHS.keys()) == {"corpo", "streetkid", "nomad", "tsukumogami"}
 
 
 def test_every_lifepath_has_a_nonempty_description():

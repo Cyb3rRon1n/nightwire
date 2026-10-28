@@ -306,3 +306,25 @@ def test_debt_fields_round_trip_and_default_for_old_files(tmp_path):
     path.write_text(json.dumps(data))
     r = store.load("s1").characters["p1"]
     assert (r.repo_clock, r.repo_actions, r.repo_strikes, r.throttled, r.pending_repo) == (0, 0, 0, None, None)
+
+
+def test_tsukumogami_fields_round_trip_and_default_for_old_saves(tmp_path):
+    from engine.character import CharacterSheet, is_tsukumogami
+    store = JSONFileSessionStore(tmp_path)
+    s = Session(session_id="s1")
+    s.characters["p1"] = CharacterSheet(player_id="p1", name="Hachi", role="fixer", lifepath="tsukumogami",
+                                        bodiless=True, awake_reached=True)
+    store.save(s)
+    c = store.load("s1").characters["p1"]
+    assert c.bodiless and c.awake_reached and is_tsukumogami(c)
+    data = json.loads((tmp_path / "s1.json").read_text())
+    for key in ("bodiless", "awake_reached"):
+        del data["characters"]["p1"][key]
+    (tmp_path / "s1.json").write_text(json.dumps(data))
+    old = store.load("s1").characters["p1"]
+    assert old.bodiless is False and old.awake_reached is False
+
+
+def test_is_tsukumogami_false_for_humans():
+    from engine.character import CharacterSheet, is_tsukumogami
+    assert not is_tsukumogami(CharacterSheet(player_id="p1", name="Rook", role="solo", lifepath="streetkid"))
