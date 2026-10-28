@@ -1,5 +1,6 @@
 import json
 import random
+from pathlib import Path
 
 import httpx
 import ollama
@@ -11,6 +12,7 @@ from engine.persistence import JSONFileSessionStore
 from engine.session import Session
 from narrator.client import NarratorClient
 from narrator.image_backend import ImageBackend
+from narrator.referee import run_referee
 from narrator.tools import RequestRoll, execute_tool, roll_check
 from narrator.tts_backend import TTSBackend
 from narrator.voice_assignment import assign_voice
@@ -213,7 +215,7 @@ async def _maybe_compact(session: Session, narrator_client: NarratorClient) -> N
         session.log.append(f"[summary error: {e}]")
 
 
-def _hold_roll(session: Session, player_id: str, tool_args: dict) -> None:
+def _hold_roll(session: Session, player_id: str, tool_args: dict) -> str | None:
     # Two-step rolls (Phase 16): don't roll yet - the player rolls next, then
     # the narrator resolves knowing the result. Server-authoritative actor,
     # same as before: never the model's own player_id.
@@ -222,14 +224,15 @@ def _hold_roll(session: Session, player_id: str, tool_args: dict) -> None:
         request = RequestRoll(**tool_args)
     except (ValueError, TypeError) as e:
         session.log.append(f"[tool error: {e}]")
-        return
+        return str(e)
     character = session.characters.get(player_id)
     if character is None:
         session.log.append(f"[tool error: unknown player_id: {player_id!r}]")
-        return
+        return f"unknown player_id: {player_id!r}"
     if character.bodiless and SKILLS[request.skill].governing_attribute in (Attribute.BODY, Attribute.REFLEXES):
-        session.log.append(f"[tool error: {character.name} has no body]")
-        return
+        message = f"{character.name} has no body"
+        session.log.append(f"[tool error: {message}]")
+        return message
     pending = request.model_dump()
     effective, difficulty = difficulty_for(request.stakes, session.recent_stakes)
     session.recent_stakes = (session.recent_stakes + [effective])[-6:]
@@ -238,6 +241,7 @@ def _hold_roll(session: Session, player_id: str, tool_args: dict) -> None:
     pending["name"] = character.name
     session.pending_rolls[player_id] = pending
     session.log.append(f"[roll pending: {json.dumps(pending)}]")
+    return None
 
 
 async def handle_action(
@@ -267,6 +271,56 @@ async def handle_action(
     )
 
 
+def _is_player_voice(session: Session, speaker: str) -> bool:
+    s = speaker.strip().lower()
+    return any(s in (c.name.strip().lower(), c.player_id.strip().lower()) for c in session.characters.values())
+
+
+async def _log_narration(session, response, store, tts_backend) -> tuple[list[Path], str]:
+    """Logs and voices the response's segments; returns (audio files written, narration text)."""
+    audio_paths: list[Path] = []
+    texts: list[str] = []
+    for i, segment in enumerate(response.narration):
+        if segment.speaker != "narrator" and _is_player_voice(session, segment.speaker):
+            session.log.append(f"[voice filtered: {segment.speaker}]")
+            continue
+        texts.append(segment.text)
+        line = segment.text if segment.speaker == "narrator" else f"{segment.speaker}: {segment.text}"
+        session.log.append(line)
+        log_index = len(session.log)
+        voice = assign_voice(session, segment.speaker, segment.gender, tts_backend.voices)
+        try:
+            audio_bytes = await tts_backend.synthesize(segment.text, voice)
+            relative_path = f"audio/{session.session_id}/{log_index}-{i}.wav"
+            output_path = store.directory / relative_path
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_bytes(audio_bytes)
+            audio_paths.append(output_path)
+            session.log.append(f"[audio: {relative_path}]")
+        except (ValueError, TypeError, OSError) as e:
+            session.log.append(f"[audio error: {e}]")
+    return audio_paths, " ".join(texts)
+
+
+def _apply_tool(session, response, player_id, allow_roll) -> str | None:
+    """Runs the narrator's tool call; returns the refusal message if the engine refused it."""
+    if response.tool is None:
+        return None
+    tool_args = dict(response.tool_args)
+    if response.tool == "request_roll":
+        if allow_roll:
+            return _hold_roll(session, player_id, tool_args)
+        session.log.append("[tool error: no new rolls during a roll resolution]")
+        return None
+    try:
+        result = execute_tool(session, response.tool, tool_args)
+        session.log.append(f"[{response.tool}: {result}]")
+        return None
+    except (ValueError, TypeError) as e:
+        session.log.append(f"[tool error: {e}]")
+        return str(e)
+
+
 async def _run_turn(
     session: Session,
     narrator_client: NarratorClient,
@@ -280,42 +334,36 @@ async def _run_turn(
 ) -> None:
     # Events are shown once, but only dropped after the narrator actually
     # responded; events queued during the turn survive to the next one.
-    shown_events = len(session.pending_world_events)
+    shown_events = list(session.pending_world_events)
     messages = _build_messages(session, prompt_text, narrator_client.num_ctx)
     response = await narrator_client.respond(messages)
-    del session.pending_world_events[:shown_events]
+    del session.pending_world_events[:len(shown_events)]
 
+    turn_start = len(session.log)
     if actor_line is not None:
         session.log.append(actor_line)
+    audio_paths, narration_text = await _log_narration(session, response, store, tts_backend)
+    refusal = _apply_tool(session, response, player_id, allow_roll)
 
-    for i, segment in enumerate(response.narration):
-        line = segment.text if segment.speaker == "narrator" else f"{segment.speaker}: {segment.text}"
-        session.log.append(line)
-        log_index = len(session.log)
-        voice = assign_voice(session, segment.speaker, segment.gender, tts_backend.voices)
-        try:
-            audio_bytes = await tts_backend.synthesize(segment.text, voice)
-            relative_path = f"audio/{session.session_id}/{log_index}-{i}.wav"
-            output_path = store.directory / relative_path
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_bytes(audio_bytes)
-            session.log.append(f"[audio: {relative_path}]")
-        except (ValueError, TypeError, OSError) as e:
-            session.log.append(f"[audio error: {e}]")
+    if refusal is not None and allow_roll:
+        # Redo once (Phase 18): drop what was narrated and narrate again with the refusal as fact.
+        for path in audio_paths:
+            path.unlink(missing_ok=True)
+        del session.log[turn_start:]
+        session.pending_world_events[:0] = shown_events
+        retry_prompt = f"{prompt_text}\n\nEngine: {refusal}. That does not happen - narrate the attempt failing or not being possible."
+        messages = _build_messages(session, retry_prompt, narrator_client.num_ctx)
+        response = await narrator_client.respond(messages)
+        del session.pending_world_events[:len(shown_events)]
+        if actor_line is not None:
+            session.log.append(actor_line)
+        session.log.append(f"[redo: {refusal}]")
+        _, narration_text = await _log_narration(session, response, store, tts_backend)
+        _apply_tool(session, response, player_id, allow_roll)  # a second refusal is only logged
 
-    if response.tool is not None:
-        tool_args = dict(response.tool_args)
-        if response.tool == "request_roll":
-            if allow_roll:
-                _hold_roll(session, player_id, tool_args)
-            else:
-                session.log.append("[tool error: no new rolls during a roll resolution]")
-        else:
-            try:
-                result = execute_tool(session, response.tool, tool_args)
-                session.log.append(f"[{response.tool}: {result}]")
-            except (ValueError, TypeError) as e:
-                session.log.append(f"[tool error: {e}]")
+    # Referee (Phase 18): not on the setup turn that opened a roll - the outcome isn't known yet.
+    if player_id not in session.pending_rolls:
+        await run_referee(session, narrator_client, player_id, prompt_text, narration_text)
 
     generated_image = False
     # The model is told "never two turns in a row" but has no way to enforce

@@ -1353,3 +1353,118 @@ def test_old_pending_roll_with_only_difficulty_still_resolves():
                                    "difficulty": "hard", "reason": "leap", "dc": 12, "name": "Rook"}
     rolled = resolve_roll(session, "p1")
     assert rolled["dc"] == 12
+
+
+def _scripted_client(responses: list[dict], judge_answers: list[dict] | None = None, seen: list | None = None) -> NarratorClient:
+    state = {"i": 0, "j": 0}
+
+    async def chat_fn(*, model, messages, format):
+        if seen is not None:
+            seen.append(messages)
+        payload = responses[min(state["i"], len(responses) - 1)]
+        state["i"] += 1
+        return {"message": {"content": json.dumps(payload)}}
+
+    async def judge_fn(*, model, messages, format):
+        if judge_answers is None:
+            answer = {k: ("none" if "enum" in v else False) for k, v in format["properties"].items()}
+        else:
+            answer = judge_answers[state["j"]]
+            state["j"] += 1
+        return {"message": {"content": json.dumps(answer)}}
+
+    async def generate_fn(**kwargs):
+        pass
+
+    return NarratorClient(chat_fn=chat_fn, generate_fn=generate_fn, judge_fn=judge_fn)
+
+
+def _say(text, tool=None, tool_args=None, speaker="narrator"):
+    tool_call = {"tool": tool} if tool is None else {"tool": tool, "tool_args": tool_args}
+    return {"narration": [{"speaker": speaker, "text": text}], "tool_call": tool_call}
+
+
+async def test_segment_spoken_as_the_player_character_is_dropped(tmp_path):
+    session = _session_with_character()
+    client = _scripted_client([{"narration": [
+        {"speaker": "Rook", "text": "I'll take the job."},
+        {"speaker": "Mama Sato", "text": "Eat first, child."},
+    ], "tool_call": {"tool": None}}])
+    await _call(session, client, "p1", {"text": "I sit down."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert "Rook: I'll take the job." not in session.log
+    assert "Mama Sato: Eat first, child." in session.log
+    assert "[voice filtered: Rook]" in session.log
+
+
+async def test_refused_roll_redoes_the_turn_once_with_the_engine_fact(tmp_path):
+    session = _session_with_character()
+    session.characters["p1"].lifepath = "tsukumogami"
+    session.characters["p1"].bodiless = True
+    seen = []
+    climb = {"player_id": "p1", "attribute": "body", "skill": "athletics", "stakes": "normal", "reason": "climb"}
+    client = _scripted_client([
+        _say("You haul yourself up the fire escape.", "request_roll", climb),
+        _say("The vending machine's speaker crackles: you have no hands to climb with."),
+    ], seen=seen)
+    await _call(session, client, "p1", {"text": "I climb the fire escape."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert "You haul yourself up the fire escape." not in session.log
+    assert "The vending machine's speaker crackles: you have no hands to climb with." in session.log
+    assert session.log.count("p1: I climb the fire escape.") == 1
+    assert any(line.startswith("[redo: Rook has no body]") for line in session.log)
+    assert "Engine: Rook has no body. That does not happen" in seen[1][-1]["content"]
+    assert len(seen) == 2
+
+
+async def test_redo_does_not_loop(tmp_path):
+    session = _session_with_character()
+    session.characters["p1"].bodiless = True
+    climb = {"player_id": "p1", "attribute": "body", "skill": "athletics", "stakes": "normal", "reason": "climb"}
+    seen = []
+    client = _scripted_client([_say("You climb.", "request_roll", climb)], seen=seen)
+    await _call(session, client, "p1", {"text": "I climb."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert len(seen) == 2
+    assert sum(line.startswith("[redo: ") for line in session.log) == 1
+    assert "p1" not in session.pending_rolls
+
+
+async def test_redo_removes_the_discarded_audio(tmp_path):
+    session = _session_with_character()
+    session.characters["p1"].bodiless = True
+    climb = {"player_id": "p1", "attribute": "body", "skill": "athletics", "stakes": "normal", "reason": "climb"}
+    client = _scripted_client([_say("You climb.", "request_roll", climb), _say("You can't.")])
+    store = await _call(session, client, "p1", {"text": "I climb."}, tmp_path, tts_backend=FakeTTSBackend())
+    audio_lines = [l for l in session.log if l.startswith("[audio: ")]
+    assert len(audio_lines) == 1
+    files = list((store.directory / "audio" / session.session_id).glob("*.wav"))
+    assert len(files) == 1
+
+
+async def test_referee_runs_on_action_turns_and_applies(tmp_path):
+    session = _session_with_character()
+    session.characters["p1"].humanity = 50
+    client = _scripted_client([_say("Mama Sato laughs and refills your bowl.")], judge_answers=[{"human_moment": "big"}])
+    await _call(session, client, "p1", {"text": "I share a meal."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert session.characters["p1"].humanity == 54
+
+
+async def test_referee_skipped_on_turn_that_opens_a_roll(tmp_path):
+    session = _session_with_character()
+    leap = {"player_id": "p1", "attribute": "reflexes", "skill": "athletics", "stakes": "normal", "reason": "leap"}
+    client = _scripted_client([_say("You eye the ledge.", "request_roll", leap)], judge_answers=[])
+    await _call(session, client, "p1", {"text": "I leap."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert "p1" in session.pending_rolls
+    # judge_answers=[] makes any referee call fail, which run_referee would log.
+    assert not any(line.startswith("[referee error") for line in session.log)
+
+
+async def test_referee_runs_on_roll_resolution(tmp_path):
+    from server.narration import handle_roll
+    session = _session_with_character()
+    session.characters["p1"].installments_owed = 3
+    session.pending_rolls["p1"] = {"player_id": "p1", "attribute": "reflexes", "skill": "athletics", "stakes": "normal",
+                                   "difficulty": "moderate", "reason": "the job", "dc": 9, "name": "Rook"}
+    client = _scripted_client([_say("Arakawa counts out your pay.")],
+                              judge_answers=[{"human_moment": "none", "gig_paid_out": True}])
+    store = JSONFileSessionStore(tmp_path)
+    await handle_roll(session, client, store, _UnusedImageBackend(), FakeTTSBackend(), "p1")
+    assert session.characters["p1"].installments_owed == 2
