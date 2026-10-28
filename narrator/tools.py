@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from engine.chrome import change_humanity
+from engine.debt import pay_installment, repossess, unthrottle
 from engine.session import Session
 from ruleset.attributes import modifier
 from ruleset.cyberware import CHROME, SOCIAL_SKILLS, chrome_roll_bonus, overclock_tier_bonus, slot_capacity, social_penalty
@@ -51,6 +52,10 @@ class ApplyCharacterUpdate(BaseModel):
     # Humanity gains only (therapy, bonds, rest) - losses come from chrome,
     # never the narrator. Bounded like the grants above.
     humanity_delta: int = Field(0, ge=0, le=5)
+    # Phase 17b debt loop - bounded like the other narrator deltas.
+    installments_paid: int = Field(0, ge=0, le=1)
+    repossess: bool = False
+    unthrottle: bool = False
 
 
 ChromeId = Literal[
@@ -119,6 +124,12 @@ def _execute_apply_character_update(session: Session, tool: ApplyCharacterUpdate
         raise ValueError(f"unknown player_id: {tool.player_id!r}")
     character = session.characters[tool.player_id]
 
+    # Validate before any mutation so a bad call changes nothing.
+    if tool.repossess and character.pending_repo is None:
+        raise ValueError("no repo pending")
+    if tool.unthrottle and character.throttled is None:
+        raise ValueError("nothing is throttled")
+
     character.health = max(0, min(character.max_health, character.health + tool.health_delta))
     character.armor = max(0, character.armor + tool.armor_delta)
     character.unspent_skill_points = max(0, character.unspent_skill_points + tool.skill_points_delta)
@@ -139,6 +150,16 @@ def _execute_apply_character_update(session: Session, tool: ApplyCharacterUpdate
 
     if tool.humanity_delta:
         session.pending_world_events.extend(change_humanity(character, tool.humanity_delta))
+
+    if tool.installments_paid:
+        pay_installment(character, tool.installments_paid)
+    if tool.repossess:
+        removed = repossess(character)
+        session.log.append(f"[torite: Saeko's crew took {character.name}'s {CHROME[removed].name}]")
+    if tool.unthrottle:
+        unthrottle(character)
+        if "Owe Old Hara a favor" not in session.active_objectives:
+            session.active_objectives.append("Owe Old Hara a favor")
 
     return {
         "player_id": tool.player_id,

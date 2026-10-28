@@ -1198,3 +1198,26 @@ def test_crew_entry_is_capped():
     session.characters["p1"].name = "R" * 300
     session.characters["p1"].humanity = 50
     assert len(_crew_line(session)) <= len("Crew: ") + 200
+
+
+@pytest.mark.asyncio
+async def test_handle_action_ticks_debt_and_surfaces_the_notice(tmp_path):
+    session = _session_with_character()
+    c = session.characters["p1"]
+    c.chrome, c.installments_owed, c.repo_actions, c.repo_clock = ["kagerou"], 3, 9, 5
+    sent_messages = []
+
+    async def chat_fn(*, model, messages, format):
+        sent_messages.append(messages)
+        payload = {"narration": [{"speaker": "narrator", "text": "ok"}], "tool_call": {"tool": None}}
+        return {"message": {"content": json.dumps(payload)}}
+
+    async def generate_fn(**kwargs):
+        pass
+
+    client = NarratorClient(chat_fn=chat_fn, generate_fn=generate_fn)
+    await _call(session, client, "p1", {"text": "I wait."}, tmp_path, tts_backend=FakeTTSBackend())
+
+    assert c.repo_strikes == 1
+    assert any("[torite: Hoshikawa sends Rook a polite final notice" in line for line in session.log)
+    assert "World event: Hoshikawa sends Rook" in sent_messages[0][-1]["content"]
