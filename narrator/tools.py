@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from engine.session import Session
 from ruleset.attributes import modifier
+from ruleset.cyberware import CHROME, SOCIAL_SKILLS, chrome_roll_bonus, overclock_tier_bonus, social_penalty
 from ruleset.difficulty import Difficulty
 from ruleset.resolution import resolve_roll
 
@@ -68,23 +69,32 @@ class RememberNPC(BaseModel):
     fact: str = Field(..., max_length=200)
 
 
+def roll_check(character, attribute: str, skill: str, difficulty: str, overclock_id: str | None = None) -> dict:
+    attribute_mod = modifier(character.attributes.get(attribute, 10))
+    skill_mod = character.skills.get(skill, 0) + chrome_roll_bonus(character.chrome, skill)
+    if skill in SOCIAL_SKILLS:
+        skill_mod += social_penalty(character.humanity)
+    dc = Difficulty[difficulty.upper()].value
+    die = random.randint(1, 10)
+    result = {"attribute_mod": attribute_mod, "skill_mod": skill_mod, "dc": dc}
+    bonus = 0
+    if overclock_id is not None:
+        oc = CHROME[overclock_id].overclock
+        bonus = oc.bonus + overclock_tier_bonus(character.humanity)
+        result.update(overclock=overclock_id, overclock_bonus=bonus)
+        if oc.second_die:
+            second = random.randint(1, 10)
+            result.update(first_die=die, second_die=second)
+            die = max(die, second)
+    result["die_result"] = die
+    result["outcome"] = resolve_roll(die, attribute_mod, skill_mod + bonus, dc).value
+    return result
+
+
 def _execute_request_roll(session: Session, tool: RequestRoll) -> dict:
     if tool.player_id not in session.characters:
         raise ValueError(f"unknown player_id: {tool.player_id!r}")
-    character = session.characters[tool.player_id]
-    raw_score = character.attributes.get(tool.attribute, 10)
-    attribute_mod = modifier(raw_score)
-    skill_mod = character.skills.get(tool.skill, 0)
-    die_result = random.randint(1, 10)
-    dc = Difficulty[tool.difficulty.upper()].value
-    outcome = resolve_roll(die_result, attribute_mod, skill_mod, dc)
-    return {
-        "die_result": die_result,
-        "attribute_mod": attribute_mod,
-        "skill_mod": skill_mod,
-        "dc": dc,
-        "outcome": outcome.value,
-    }
+    return roll_check(session.characters[tool.player_id], tool.attribute, tool.skill, tool.difficulty)
 
 
 def _execute_apply_character_update(session: Session, tool: ApplyCharacterUpdate) -> dict:

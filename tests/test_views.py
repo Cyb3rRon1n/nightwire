@@ -124,5 +124,6 @@ def test_view_exposes_pending_rolls_to_every_viewer():
     session.characters["p2"] = _character("p2", "Vex")
     session.pending_rolls["p1"] = {"player_id": "p1", "skill": "stealth", "dc": 16}
 
-    assert build_view(session, "p1")["pending_rolls"] == {"p1": {"player_id": "p1", "skill": "stealth", "dc": 16}}
-    assert build_view(session, "p2")["pending_rolls"] == {"p1": {"player_id": "p1", "skill": "stealth", "dc": 16}}
+    expected = {"p1": {"player_id": "p1", "skill": "stealth", "dc": 16, "overclocks": []}}
+    assert build_view(session, "p1")["pending_rolls"] == expected
+    assert build_view(session, "p2")["pending_rolls"] == expected

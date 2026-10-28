@@ -244,3 +244,32 @@ def test_remember_npc_rejects_a_name_over_the_length_limit():
     session = Session(session_id="s1")
     with pytest.raises(ValueError):
         execute_tool(session, "remember_npc", {"name": "x" * 500, "fact": "a fact"})
+
+
+def test_roll_check_adds_chrome_bonus_and_social_penalty(monkeypatch):
+    from engine.character import CharacterSheet
+    from narrator.tools import roll_check
+
+    monkeypatch.setattr("narrator.tools.random.randint", lambda a, b: 5)
+    rook = CharacterSheet(player_id="p1", name="Rook", role="solo", lifepath="streetkid",
+                          attributes={"reflexes": 10}, skills={"melee": 1}, chrome=["kama_blades"], humanity=30)
+    assert roll_check(rook, "reflexes", "melee", "moderate")["skill_mod"] == 3        # 1 rank + 2 blades
+    assert roll_check(rook, "presence", "persuasion", "moderate")["skill_mod"] == -1  # Slipping penalty
+
+
+def test_roll_check_kagerou_keeps_higher_die_and_adds_bonus(monkeypatch):
+    from engine.character import CharacterSheet
+    from narrator.tools import roll_check
+
+    rook = CharacterSheet(player_id="p1", name="Rook", role="solo", lifepath="streetkid",
+                          attributes={"reflexes": 10}, chrome=["kagerou"], humanity=90)
+    dice = iter([3, 8])
+    monkeypatch.setattr("narrator.tools.random.randint", lambda a, b: next(dice))
+    result = roll_check(rook, "reflexes", "stealth", "hard", overclock_id="kagerou")
+    assert (result["first_die"], result["second_die"], result["die_result"]) == (3, 8, 8)
+    assert result["overclock"] == "kagerou" and result["overclock_bonus"] == 2
+    assert result["outcome"] == "failure"  # 8 + 0 + 0 + 2 = 10 < Hard 12
+
+    dice = iter([3, 10])
+    monkeypatch.setattr("narrator.tools.random.randint", lambda a, b: next(dice))
+    assert roll_check(rook, "reflexes", "stealth", "hard", overclock_id="kagerou")["outcome"] == "clean_success"

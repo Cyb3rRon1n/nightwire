@@ -1,16 +1,19 @@
 import json
+import random
 
 import httpx
 import ollama
 
+from engine.chrome import change_humanity, usable_overclocks
 from engine.persistence import JSONFileSessionStore
 from engine.session import Session
 from narrator.client import NarratorClient
 from narrator.image_backend import ImageBackend
-from narrator.tools import RequestRoll, execute_tool
+from narrator.tools import RequestRoll, execute_tool, roll_check
 from narrator.tts_backend import TTSBackend
 from narrator.voice_assignment import assign_voice
 from narrator.world import kuroshio, select_cards
+from ruleset.cyberware import CHROME
 from ruleset.difficulty import Difficulty
 
 
@@ -316,28 +319,41 @@ def _roll_line(pending: dict, result: dict) -> str:
     # A visible story line (not bracketed), so later turns' prompts keep it -
     # the narrator remembers how the dice actually fell.
     die, attr_mod, skill_mod = result["die_result"], result["attribute_mod"], result["skill_mod"]
-    total = die + attr_mod + skill_mod
+    bonus = result.get("overclock_bonus", 0)
+    total = die + attr_mod + skill_mod + bonus
+    who = pending["name"]
+    if "overclock" in result:
+        who += f" overclocks {CHROME[result['overclock']].name} (−{result['humanity_loss']} humanity) and"
+    formula = f"{die} {attr_mod:+d} {skill_mod:+d}" + (f" {bonus:+d}" if bonus else "")
     line = (
-        f"{pending['name']} rolls {_label(pending['skill'])} ({_label(pending['attribute'])}) "
+        f"{who} rolls {_label(pending['skill'])} ({_label(pending['attribute'])}) "
         f"vs {_label(pending['difficulty'])}: {_OUTCOME_TEXT[result['outcome']]} "
-        f"({die} {attr_mod:+d} {skill_mod:+d} = {total} vs {result['dc']})"
+        f"({formula} = {total} vs {result['dc']})"
     )
     if die in (1, 10):
         line += f" — a natural {die}"
     return line + "."
 
 
-def resolve_roll(session: Session, player_id: str) -> dict:
+def resolve_roll(session: Session, player_id: str, overclock: str | None = None) -> dict:
     pending = session.pending_rolls.get(player_id)
     if pending is None:
         raise ValueError("no roll pending")
-    args = {k: pending[k] for k in ("player_id", "attribute", "skill", "difficulty", "reason")}
-    result = execute_tool(session, "request_roll", args)
+    character = session.characters.get(player_id)
+    if character is None:
+        raise ValueError(f"unknown player_id: {player_id!r}")
+    if overclock is not None and overclock not in {o["id"] for o in usable_overclocks(character, pending["skill"])}:
+        raise ValueError(f"can't overclock {overclock!r} on this roll")
+    result = roll_check(character, pending["attribute"], pending["skill"], pending["difficulty"], overclock)
     session.pending_rolls.pop(player_id, None)  # only after a successful roll
+    if overclock is not None:
+        result["humanity_loss"] = random.randint(1, 6)
+        session.pending_world_events.extend(change_humanity(character, -result["humanity_loss"]))
     session.log.append(_roll_line(pending, result))
     rolled = {**result, **pending}
     session.log.append(f"[roll: {json.dumps(rolled)}]")
     return rolled
+
 
 
 async def narrate_roll(
@@ -359,6 +375,8 @@ async def narrate_roll(
     )
 
 
+
+
 async def handle_roll(
     session: Session,
     narrator_client: NarratorClient,
@@ -366,6 +384,7 @@ async def handle_roll(
     image_backend: ImageBackend,
     tts_backend: TTSBackend,
     player_id: str,
+    overclock: str | None = None,
 ) -> None:
-    rolled = resolve_roll(session, player_id)
+    rolled = resolve_roll(session, player_id, overclock)
     await narrate_roll(session, narrator_client, store, image_backend, tts_backend, player_id, rolled)

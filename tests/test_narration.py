@@ -1077,3 +1077,32 @@ def test_resolve_roll_keeps_pending_roll_if_execute_tool_fails():
         resolve_roll(session, "p1")
 
     assert "p1" in session.pending_rolls
+
+
+@pytest.mark.asyncio
+async def test_overclocked_roll_charges_humanity_and_names_it(tmp_path, monkeypatch):
+    from server.narration import resolve_roll
+
+    session = _session_with_character()
+    session.characters["p1"].chrome = ["kagerou"]
+    _pending(session)
+    rolls = iter([4, 9, 3])  # d10, second d10, 1d6 humanity
+    monkeypatch.setattr("random.randint", lambda a, b: next(rolls))  # both modules use the random module
+
+    rolled = resolve_roll(session, "p1", overclock="kagerou")
+
+    assert rolled["overclock"] == "kagerou" and rolled["humanity_loss"] == 3
+    assert session.characters["p1"].humanity == 97
+    assert any(line.startswith("Rook overclocks Kagerou (−3 humanity) and rolls Stealth (Reflexes) vs Hard:")
+               and "(9 +2 +0 +2 = 13 vs 12)" in line for line in session.log)
+
+
+def test_overclock_not_usable_on_this_roll_is_refused_and_roll_stays_pending():
+    from server.narration import resolve_roll
+
+    session = _session_with_character()
+    session.characters["p1"].chrome = ["yomi_jack"]
+    _pending(session)  # stealth, not hacking
+    with pytest.raises(ValueError, match="overclock"):
+        resolve_roll(session, "p1", overclock="yomi_jack")
+    assert "p1" in session.pending_rolls
