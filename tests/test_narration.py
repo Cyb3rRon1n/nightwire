@@ -161,7 +161,7 @@ async def test_request_roll_becomes_a_pending_roll_not_a_roll(tmp_path):
     pending = session.pending_rolls["p1"]
     assert pending["player_id"] == "p1"
     assert pending["skill"] == "athletics" and pending["difficulty"] == "hard"
-    assert pending["dc"] == 16 and pending["name"] == "Rook"
+    assert pending["dc"] == 12 and pending["name"] == "Rook"
     assert "You eye the ledge." in session.log
     pending_line = next(line for line in session.log if line.startswith("[roll pending: "))
     assert json.loads(pending_line[len("[roll pending: "):-1])["skill"] == "athletics"
@@ -976,7 +976,7 @@ async def test_roll_resolves_logs_visible_line_and_clears_pending(tmp_path, monk
     await _roll(session, _fake_client("The guard never turns."), "p1", tmp_path)
 
     assert "p1" not in session.pending_rolls
-    assert "Rook rolls Stealth (Reflexes) vs Hard: a failure (7 +2 +0 = 9 vs 16)." in session.log
+    assert "Rook rolls Stealth (Reflexes) vs Hard: a failure (7 +2 +0 = 9 vs 12)." in session.log
     roll_line = next(line for line in session.log if line.startswith("[roll: "))
     data = json.loads(roll_line[len("[roll: "):-1])
     assert data["die_result"] == 7 and data["outcome"] == "failure" and data["skill"] == "stealth"
@@ -989,12 +989,12 @@ async def test_natural_ten_and_one_are_called_out(tmp_path, monkeypatch):
     _pending(session)
     monkeypatch.setattr("narrator.tools.random.randint", lambda a, b: 10)
     await _roll(session, _fake_client("ok"), "p1", tmp_path)
-    assert any(line.endswith("vs 16) — a natural 10.") and "a clean success" in line for line in session.log)
+    assert any(line.endswith("vs 12) — a natural 10.") and "a clean success" in line for line in session.log)
 
     _pending(session)
     monkeypatch.setattr("narrator.tools.random.randint", lambda a, b: 1)
     await _roll(session, _fake_client("ok"), "p1", tmp_path)
-    assert any(line.endswith("vs 16) — a natural 1.") and "a failure" in line for line in session.log)
+    assert any(line.endswith("vs 12) — a natural 1.") and "a failure" in line for line in session.log)
 
 
 @pytest.mark.asyncio
@@ -1061,7 +1061,7 @@ def test_resolve_roll_returns_merged_result_and_logs_lines(monkeypatch):
 
     assert "p1" not in session.pending_rolls
     assert rolled["die_result"] == 7 and rolled["outcome"] == "failure" and rolled["skill"] == "stealth"
-    assert "Rook rolls Stealth (Reflexes) vs Hard: a failure (7 +2 +0 = 9 vs 16)." in session.log
+    assert "Rook rolls Stealth (Reflexes) vs Hard: a failure (7 +2 +0 = 9 vs 12)." in session.log
     assert any(line.startswith("[roll: ") for line in session.log)
 
 

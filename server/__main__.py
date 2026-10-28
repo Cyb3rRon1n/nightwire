@@ -57,6 +57,7 @@ def build_system_prompt() -> str:
         "guard turning toward the curtain, the creak of a floorboard, then request_roll "
         "(stealth, hard). Don't narrate whether they made it. When you're given a roll "
         "result, narrate what happens true to that result; never contradict it."
+        " Most risks are Moderate; Hard is for real danger; Extreme is rare."
     )
     return f"{rules}\n\n{kuroshio().system_block()}"
 

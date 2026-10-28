@@ -60,7 +60,7 @@ def test_request_roll_rolls_a_real_die_and_resolves_the_outcome():
         "player_id": "p1", "attribute": "reflexes", "skill": "stealth", "difficulty": "easy", "reason": "climbing a wall",
     })
     assert 1 <= result["die_result"] <= 10
-    assert result["dc"] == 8
+    assert result["dc"] == 6
     assert result["outcome"] in ("clean_success", "complication", "failure")
 
 
