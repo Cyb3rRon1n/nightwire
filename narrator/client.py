@@ -5,7 +5,7 @@ from typing import Annotated, Literal, Protocol, Union, runtime_checkable
 import ollama
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from narrator.tools import ApplyCharacterUpdate, RememberNPC, RequestRoll, UpdateWorld
+from narrator.tools import ApplyCharacterUpdate, OfferChrome, RememberNPC, RequestRoll, UpdateWorld
 
 
 _SUMMARY_SYSTEM_PROMPT = (
@@ -51,8 +51,14 @@ class _RememberNPCCall(BaseModel):
     tool_args: RememberNPC
 
 
+class _OfferChromeCall(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    tool: Literal["offer_chrome"]
+    tool_args: OfferChrome
+
+
 ToolCall = Annotated[
-    Union[_NoTool, _RequestRollCall, _ApplyCharacterUpdateCall, _UpdateWorldCall, _RememberNPCCall],
+    Union[_NoTool, _RequestRollCall, _ApplyCharacterUpdateCall, _UpdateWorldCall, _RememberNPCCall, _OfferChromeCall],
     Field(discriminator="tool"),
 ]
 

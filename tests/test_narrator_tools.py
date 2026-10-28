@@ -273,3 +273,49 @@ def test_roll_check_kagerou_keeps_higher_die_and_adds_bonus(monkeypatch):
     dice = iter([3, 10])
     monkeypatch.setattr("narrator.tools.random.randint", lambda a, b: next(dice))
     assert roll_check(rook, "reflexes", "stealth", "hard", overclock_id="kagerou")["outcome"] == "clean_success"
+
+
+def test_offer_chrome_creates_an_offer_and_installs_nothing():
+    from engine.character import CharacterSheet
+    from engine.session import Session
+    from narrator.tools import execute_tool
+
+    session = Session(session_id="s")
+    session.characters["p1"] = CharacterSheet(player_id="p1", name="Rook", role="solo", lifepath="streetkid")
+    execute_tool(session, "offer_chrome", {"player_id": "p1", "item": "kagerou"})
+    assert session.pending_chrome_offers == {"p1": "kagerou"}
+    assert session.characters["p1"].chrome == []
+
+
+def test_offer_chrome_rejects_unknown_item():
+    import pytest
+    from pydantic import ValidationError
+    from engine.session import Session
+    from narrator.tools import execute_tool
+
+    with pytest.raises((ValueError, TypeError, ValidationError)):
+        execute_tool(Session(session_id="s"), "offer_chrome", {"player_id": "p1", "item": "nope"})
+
+
+def test_chrome_id_literal_matches_catalog():
+    from narrator.tools import ChromeId
+    from ruleset.cyberware import CHROME
+
+    assert set(ChromeId.__args__) == set(CHROME)
+
+
+def test_humanity_delta_is_bounded_and_applies():
+    import pytest
+    from pydantic import ValidationError
+    from engine.character import CharacterSheet
+    from engine.session import Session
+    from narrator.tools import ApplyCharacterUpdate, execute_tool
+
+    with pytest.raises(ValidationError):
+        ApplyCharacterUpdate(player_id="p1", humanity_delta=6)
+    with pytest.raises(ValidationError):
+        ApplyCharacterUpdate(player_id="p1", humanity_delta=-1)
+    session = Session(session_id="s")
+    session.characters["p1"] = CharacterSheet(player_id="p1", name="Rook", role="solo", lifepath="streetkid", humanity=50)
+    execute_tool(session, "apply_character_update", {"player_id": "p1", "humanity_delta": 5})
+    assert session.characters["p1"].humanity == 55

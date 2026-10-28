@@ -285,3 +285,16 @@ async def test_respond_returns_a_remember_npc_tool_call():
     response = await client.respond([{"role": "user", "content": "I shake Jax's hand."}])
     assert response.tool == "remember_npc"
     assert response.tool_args == {"name": "Jax", "fact": "offered the party a job"}
+
+
+@pytest.mark.asyncio
+async def test_respond_returns_an_offer_chrome_tool_call():
+    client = NarratorClient(
+        chat_fn=_fake_chat_returning({
+            "narration": [{"speaker": "narrator", "text": "The ripperdoc grins."}],
+            "tool_call": {"tool": "offer_chrome", "tool_args": {"player_id": "p1", "item": "neon_ink"}},
+        }),
+    )
+    response = await client.respond([{"role": "user", "content": "I visit the ripperdoc."}])
+    assert response.tool == "offer_chrome"
+    assert response.tool_args == {"player_id": "p1", "item": "neon_ink"}

@@ -127,3 +127,10 @@ def test_view_exposes_pending_rolls_to_every_viewer():
     expected = {"p1": {"player_id": "p1", "skill": "stealth", "dc": 16, "overclocks": []}}
     assert build_view(session, "p1")["pending_rolls"] == expected
     assert build_view(session, "p2")["pending_rolls"] == expected
+
+
+def test_view_exposes_pending_chrome_offers():
+    session = Session(session_id="s1")
+    session.characters["p1"] = _character("p1", "Rook")
+    session.pending_chrome_offers["p1"] = "kagerou"
+    assert build_view(session, "p1")["pending_chrome_offers"] == {"p1": "kagerou"}

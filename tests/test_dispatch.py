@@ -613,3 +613,84 @@ def test_allocate_attribute_points_for_unjoined_player_raises_value_error():
     session = Session(session_id="s1")
     with pytest.raises(ValueError, match="unknown player_id"):
         handle_message(session, {"type": "allocate_attribute_points", "attribute": "tech", "amount": 1}, "ghost")
+
+
+def _chrome_session(humanity=100):
+    session = Session(session_id="s1")
+    handle_message(session, {"type": "join", "character": {
+        "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"}}, "p1")
+    session.characters["p1"].humanity = humanity
+    return session
+
+
+def test_join_with_starting_chrome_installs_it():
+    session = Session(session_id="s1")
+    handle_message(session, {"type": "join", "character": {
+        "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+        "starting_chrome": "hawkeye_optics"}}, "p1")
+    c = session.characters["p1"]
+    assert c.chrome == ["hawkeye_optics"]
+    assert c.humanity == 97
+    assert c.installments_owed == 2
+
+
+def test_join_with_unknown_starting_chrome_raises():
+    session = Session(session_id="s1")
+    with pytest.raises(ValueError):
+        handle_message(session, {"type": "join", "character": {
+            "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+            "starting_chrome": "nope"}}, "p1")
+    assert "p1" not in session.characters
+
+
+def test_join_ignores_client_sent_chrome_state():
+    session = Session(session_id="s1")
+    handle_message(session, {"type": "join", "character": {
+        "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid",
+        "humanity": 5, "chrome": ["kagerou"], "installments_owed": 9}}, "p1")
+    c = session.characters["p1"]
+    assert (c.humanity, c.chrome, c.installments_owed) == (100, [], 0)
+
+
+def test_accept_chrome_installs_clears_offer_and_logs():
+    session = _chrome_session()
+    session.pending_chrome_offers["p1"] = "kagerou"
+    handle_message(session, {"type": "accept_chrome"}, "p1")
+    assert "kagerou" in session.characters["p1"].chrome
+    assert session.pending_chrome_offers == {}
+    assert "[chrome installed: Rook — Kagerou]" in session.log
+
+
+def test_accept_chrome_without_offer_raises():
+    with pytest.raises(ValueError, match="no chrome offer"):
+        handle_message(_chrome_session(), {"type": "accept_chrome"}, "p1")
+
+
+def test_decline_chrome_clears_offer():
+    session = _chrome_session()
+    session.pending_chrome_offers["p1"] = "kagerou"
+    handle_message(session, {"type": "decline_chrome"}, "p1")
+    assert session.pending_chrome_offers == {}
+    with pytest.raises(ValueError, match="no chrome offer"):
+        handle_message(session, {"type": "decline_chrome"}, "p1")
+
+
+def test_remove_chrome_removes_and_logs():
+    session = _chrome_session()
+    session.pending_chrome_offers["p1"] = "hawkeye_optics"
+    handle_message(session, {"type": "accept_chrome"}, "p1")
+    handle_message(session, {"type": "remove_chrome", "item": "hawkeye_optics"}, "p1")
+    assert session.characters["p1"].chrome == []
+    assert "[chrome removed: Rook — Hawkeye optics]" in session.log
+
+
+def test_remove_chrome_not_installed_raises():
+    with pytest.raises(ValueError):
+        handle_message(_chrome_session(), {"type": "remove_chrome", "item": "kagerou"}, "p1")
+
+
+def test_accept_chrome_confrontation_events_go_to_pending_world_events():
+    session = _chrome_session(humanity=45)
+    session.pending_chrome_offers["p1"] = "kagerou"
+    handle_message(session, {"type": "accept_chrome"}, "p1")
+    assert session.pending_world_events

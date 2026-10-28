@@ -1,7 +1,9 @@
 from engine.character import CharacterSheet
+from engine.chrome import install_chrome, remove_chrome
 from engine.session import Session
 from engine.turns import advance_turn, end_combat, join, roll_initiative
 from ruleset.attributes import Attribute
+from ruleset.cyberware import CHROME
 from ruleset.roles import ROLES
 from ruleset.skills import SKILLS, STARTING_SKILL_POINTS, skill_cap
 
@@ -109,10 +111,19 @@ def handle_message(session: Session, message: dict, player_id: str) -> None:
         character_data = message.get("character")
         if character_data is None:
             raise ValueError("missing 'character' in join message")
+        starting_chrome = character_data.get("starting_chrome")
+        if starting_chrome is not None and starting_chrome not in CHROME:
+            raise ValueError(f"unknown chrome: {starting_chrome!r}")
         _validate_and_finalize_attributes(character_data)
         _validate_and_finalize_skills(character_data)
         safe_data = {k: v for k, v in character_data.items() if k in _JOIN_CHARACTER_FIELDS}
+        is_new = character_data.get("player_id") not in session.characters
         join(session, CharacterSheet(**safe_data))
+        # Reconnects must not re-install; only a fresh sheet gets starting chrome.
+        if starting_chrome and is_new:
+            session.pending_world_events.extend(
+                install_chrome(session.characters[character_data["player_id"]], starting_chrome)
+            )
 
     elif message_type == "roll_initiative":
         if player_id not in session.characters:
@@ -163,6 +174,29 @@ def handle_message(session: Session, message: dict, player_id: str) -> None:
             )
         character.attributes[attribute_name] = new_score
         character.unspent_attribute_points -= amount
+
+    elif message_type == "accept_chrome":
+        if player_id not in session.characters:
+            raise ValueError(f"unknown player_id: {player_id!r}")
+        character = session.characters[player_id]
+        offer = session.pending_chrome_offers.get(player_id)
+        if offer is None:
+            raise ValueError("no chrome offer pending")
+        session.pending_world_events.extend(install_chrome(character, offer))
+        session.pending_chrome_offers.pop(player_id)
+        session.log.append(f"[chrome installed: {character.name} — {CHROME[offer].name}]")
+
+    elif message_type == "decline_chrome":
+        if session.pending_chrome_offers.pop(player_id, None) is None:
+            raise ValueError("no chrome offer pending")
+
+    elif message_type == "remove_chrome":
+        if player_id not in session.characters:
+            raise ValueError(f"unknown player_id: {player_id!r}")
+        character = session.characters[player_id]
+        item = message.get("item")
+        session.pending_world_events.extend(remove_chrome(character, item))
+        session.log.append(f"[chrome removed: {character.name} — {CHROME[item].name}]")
 
     elif message_type == "advance_turn":
         advance_turn(session)
