@@ -58,6 +58,15 @@ def build_system_prompt() -> str:
         "(stealth, hard). Don't narrate whether they made it. When you're given a roll "
         "result, narrate what happens true to that result; never contradict it."
         " Most risks are Moderate; Hard is for real danger; Extreme is rare."
+        " Chrome and humanity: characters' humanity tier is in the Crew line. Play it - Frayed: "
+        "small dissonance; Slipping: cold, quick to violence, Yomi static in the ears; Edge: "
+        "episodes - rage, faces from Yomi, lost time; Gone too far: episodes every scene, but the "
+        "player always decides what their character does. A World event line is something that "
+        "just happened - narrate it. When a player asks a chrome-ya what's on offer, call "
+        "offer_chrome with one catalog item; never offer in routine scenes or combat, and never "
+        "say the chrome is installed - the player accepts or declines. For therapy or a real "
+        "human moment (a friend, a meal, choosing restraint), you may set "
+        "apply_character_update's humanity_delta to 1-5; never for routine scenes."
     )
     return f"{rules}\n\n{kuroshio().system_block()}"
 
