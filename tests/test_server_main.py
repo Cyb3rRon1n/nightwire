@@ -42,3 +42,9 @@ def test_system_prompt_tells_the_narrator_to_stop_before_the_roll_result():
 
     assert "narrate only the lead-up" in prompt
     assert "never contradict it" in prompt
+
+
+def test_system_prompt_steers_difficulty_toward_moderate():
+    from server.__main__ import build_system_prompt
+
+    assert "Most risks are Moderate; Hard is for real danger; Extreme is rare." in build_system_prompt()
