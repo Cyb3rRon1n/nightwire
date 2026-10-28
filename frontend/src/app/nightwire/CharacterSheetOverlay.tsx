@@ -130,7 +130,11 @@ export function CharacterSheetOverlay({
                   const c = chromeById(id);
                   return (
                     <li key={id} className="flex items-center justify-between gap-2">
-                      <span>{c ? `${c.name} — ${c.effect}` : id}</span>
+                      <span>
+                        {c ? `${c.name} — ${c.effect}` : id}
+                        {character.throttled === id && <strong className="ml-1">[Throttled]</strong>}
+                        {character.pending_repo === id && <strong className="ml-1">[Repo crew coming]</strong>}
+                      </span>
                       <button type="button" className="nw-btn-ghost text-xs" onClick={() => {
                           const name = c ? c.name : id;
                           if (window.confirm(`Remove ${name}? You get back half its humanity cost; the installments stay owed.`)) onRemoveChrome(id);
@@ -144,6 +148,11 @@ export function CharacterSheetOverlay({
               </ul>
             )}
             <p className="nw-text-muted mt-1">Installments owed: {character.installments_owed}</p>
+            {character.installments_owed > 0 && (
+              <p className="mt-1" role="img" aria-label={`Repo clock ${character.repo_clock} of 6`}>
+                {Array.from({ length: 6 }, (_, i) => (i < character.repo_clock ? "●" : "○")).join(" ")}
+              </p>
+            )}
           </div>
 
           <div className="nw-sheet-box nw-hud p-3 text-sm nw-text-body">
