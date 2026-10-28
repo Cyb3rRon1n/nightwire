@@ -74,3 +74,18 @@ def test_usable_overclocks_by_skill_and_lock():
     assert [o["id"] for o in usable_overclocks(rook, "hacking")] == ["kagerou", "yomi_jack"]
     rook.gone_too_far = True
     assert usable_overclocks(rook, "hacking") == []
+
+
+def test_remove_clears_matching_throttle_and_pending_repo():
+    rook = _rook()
+    install_chrome(rook, "kagerou")
+    rook.throttled = rook.pending_repo = "kagerou"
+    remove_chrome(rook, "kagerou")
+    assert rook.throttled is None and rook.pending_repo is None
+
+
+def test_usable_overclocks_omits_throttled():
+    rook = _rook()
+    install_chrome(rook, "kagerou")
+    rook.throttled = "kagerou"
+    assert usable_overclocks(rook, "hacking") == []
