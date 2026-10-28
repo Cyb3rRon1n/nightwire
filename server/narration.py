@@ -4,8 +4,9 @@ import random
 import httpx
 import ollama
 
+from engine.character import is_tsukumogami
 from engine.chrome import change_humanity, usable_overclocks
-from engine.debt import tick_debt
+from engine.debt import repo_target_name, tick_debt
 from engine.persistence import JSONFileSessionStore
 from engine.session import Session
 from narrator.client import NarratorClient
@@ -14,8 +15,10 @@ from narrator.tools import RequestRoll, execute_tool, roll_check
 from narrator.tts_backend import TTSBackend
 from narrator.voice_assignment import assign_voice
 from narrator.world import kuroshio, select_cards
-from ruleset.cyberware import CHROME, humanity_tier
+from ruleset.attributes import Attribute
+from ruleset.cyberware import CHROME, humanity_tier, selfhood_tier
 from ruleset.difficulty import Difficulty
+from ruleset.skills import SKILLS
 
 
 # Verbatim recent narrative gets this fraction of num_ctx (in estimated
@@ -117,9 +120,14 @@ _CREW_ENTRY_MAX_CHARS = 200
 def _crew_line(session: Session) -> str:
     entries = []
     for c in session.characters.values():
-        if not c.chrome and c.humanity == 100 and c.installments_owed <= 0:
+        if not c.chrome and c.humanity == 100 and c.installments_owed <= 0 and not is_tsukumogami(c):
             continue
-        entry = f"{c.name}: humanity {c.humanity} ({humanity_tier(c.humanity)})"
+        if is_tsukumogami(c):
+            entry = f"{c.name}: selfhood {c.humanity} ({selfhood_tier(c.humanity)})"
+        else:
+            entry = f"{c.name}: humanity {c.humanity} ({humanity_tier(c.humanity)})"
+        if c.bodiless:
+            entry += ", bodiless: living in a nearby machine"
         if c.chrome:
             entry += ", chrome: " + ", ".join(CHROME[i].name for i in c.chrome)
         if c.installments_owed > 0:
@@ -127,7 +135,7 @@ def _crew_line(session: Session) -> str:
         if c.throttled:
             entry += f", throttled: {CHROME[c.throttled].name}"
         if c.pending_repo:
-            entry += f", repo crew coming for: {CHROME[c.pending_repo].name}"
+            entry += f", repo crew coming for: {repo_target_name(c.pending_repo)}"
         entries.append(entry[:_CREW_ENTRY_MAX_CHARS])
     return "Crew: " + "; ".join(entries) if entries else ""
 
@@ -217,6 +225,9 @@ def _hold_roll(session: Session, player_id: str, tool_args: dict) -> None:
     character = session.characters.get(player_id)
     if character is None:
         session.log.append(f"[tool error: unknown player_id: {player_id!r}]")
+        return
+    if character.bodiless and SKILLS[request.skill].governing_attribute in (Attribute.BODY, Attribute.REFLEXES):
+        session.log.append(f"[tool error: {character.name} has no body]")
         return
     pending = request.model_dump()
     pending["dc"] = Difficulty[request.difficulty.upper()].value

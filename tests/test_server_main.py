@@ -63,3 +63,10 @@ def test_system_prompt_has_debt_guidance():
     prompt = build_system_prompt()
     for word in ("Jun Arakawa", "installments_paid", "repossess", "unthrottle"):
         assert word in prompt
+
+
+def test_system_prompt_has_tsukumogami_rules():
+    from server.__main__ import build_system_prompt
+    prompt = build_system_prompt()
+    for phrase in ("selfhood_loss", "new_shell", "bodiless", "Appliance"):
+        assert phrase in prompt

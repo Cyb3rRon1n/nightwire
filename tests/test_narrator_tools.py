@@ -462,3 +462,59 @@ def test_bad_unthrottle_changes_nothing():
     with pytest.raises(ValueError):
         _update(session, health_delta=-3, unthrottle=True)
     assert c.health == 7
+
+
+def _hachi_session(**kw):
+    return _session_with_character(name="Hachi", lifepath="tsukumogami", humanity=30, **kw)
+
+
+def test_selfhood_loss_is_bounded():
+    from pydantic import ValidationError
+    from narrator.tools import ApplyCharacterUpdate
+    with pytest.raises(ValidationError):
+        ApplyCharacterUpdate(player_id="p1", selfhood_loss=6)
+
+
+def test_selfhood_loss_rejected_for_humans_before_any_mutation():
+    session = _session_with_character()
+    with pytest.raises(ValueError, match="selfhood_loss is only for tsukumogami"):
+        _update(session, health_delta=-3, selfhood_loss=2)
+    assert session.characters["p1"].health == 7
+
+
+def test_selfhood_gain_and_loss_are_logged():
+    session = _hachi_session()
+    _update(session, humanity_delta=3)
+    _update(session, selfhood_loss=2)
+    assert session.characters["p1"].humanity == 31
+    assert "[selfhood: +3]" in session.log and "[selfhood: -2]" in session.log
+
+
+def test_human_humanity_gain_logs_no_selfhood_line():
+    session = _session_with_character(humanity=50)
+    _update(session, humanity_delta=3)
+    assert not any(line.startswith("[selfhood") for line in session.log)
+
+
+def test_shell_repossess_logs_the_drop():
+    from engine.debt import SHELL
+    session = _hachi_session()
+    session.characters["p1"].pending_repo = SHELL
+    _update(session, repossess=True)
+    assert session.characters["p1"].bodiless
+    assert "[torite: Saeko's crew took Hachi's shell - Hachi drops into the nearest machine]" in session.log
+
+
+def test_new_shell_requires_bodiless_before_any_mutation():
+    session = _hachi_session()
+    with pytest.raises(ValueError, match="not bodiless"):
+        _update(session, health_delta=-3, new_shell=True)
+    assert session.characters["p1"].health == 7
+
+
+def test_new_shell_wakes_them_and_logs():
+    session = _hachi_session(bodiless=True)
+    _update(session, new_shell=True)
+    c = session.characters["p1"]
+    assert not c.bodiless and c.installments_owed == 4
+    assert "[utsusemi: Hachi wakes in a new shell]" in session.log
