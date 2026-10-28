@@ -2,13 +2,17 @@
 Functions return world-event strings; callers queue them on
 session.pending_world_events for the next prompt."""
 
-from engine.character import CharacterSheet
+from engine.character import CharacterSheet, is_tsukumogami
 from ruleset.cyberware import CHROME, Chrome, overclock_tier_bonus, slot_capacity
 
 _CONFRONTATION = (
     "{name} is slipping - someone close to them has noticed what the chrome is doing "
     "and confronts them about it."
 )
+SHELL_INSTALLMENTS = 4
+STARTING_SELFHOOD = 20
+
+_AWAKE = "{name} feels it settle: they're someone now, not something."
 
 
 def change_humanity(character: CharacterSheet, delta: int) -> list[str]:
@@ -17,6 +21,12 @@ def change_humanity(character: CharacterSheet, delta: int) -> list[str]:
         character.gone_too_far = True
     elif character.humanity > 20:
         character.gone_too_far = False
+    if is_tsukumogami(character):
+        # Selfhood climbs; the 17a slipping confrontation is for humans.
+        if character.humanity >= 80 and not character.awake_reached:
+            character.awake_reached = True
+            return [_AWAKE.format(name=character.name)]
+        return []
     if character.humanity < 40 and not character.slipping_warned:
         character.slipping_warned = True
         return [_CONFRONTATION.format(name=character.name)]
@@ -39,12 +49,15 @@ def install_chrome(character: CharacterSheet, chrome_id: str) -> list[str]:
         raise ValueError(f"{chrome.name} is already installed")
     if len(character.chrome) >= slot_capacity(character.attributes):
         raise ValueError("no free chrome slot")
+    if character.bodiless:
+        raise ValueError("no shell to install chrome in")
     if character.gone_too_far:
         raise ValueError("humanity too low for new chrome")
     character.chrome.append(chrome_id)
     _apply_stats(character, chrome, +1)
     character.installments_owed += chrome.installments
-    return change_humanity(character, -chrome.humanity_cost)
+    cost = 0 if is_tsukumogami(character) else chrome.humanity_cost
+    return change_humanity(character, -cost)
 
 
 def remove_chrome(character: CharacterSheet, chrome_id: str) -> list[str]:
@@ -58,7 +71,8 @@ def remove_chrome(character: CharacterSheet, chrome_id: str) -> list[str]:
         character.throttled = None
     if character.pending_repo == chrome_id:
         character.pending_repo = None
-    return change_humanity(character, chrome.humanity_cost // 2)
+    refund = 0 if is_tsukumogami(character) else chrome.humanity_cost // 2
+    return change_humanity(character, refund)
 
 
 def usable_overclocks(character: CharacterSheet, skill: str) -> list[dict]:

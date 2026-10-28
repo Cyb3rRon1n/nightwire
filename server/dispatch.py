@@ -1,5 +1,5 @@
-from engine.character import CharacterSheet
-from engine.chrome import install_chrome, remove_chrome
+from engine.character import CharacterSheet, is_tsukumogami
+from engine.chrome import SHELL_INSTALLMENTS, STARTING_SELFHOOD, install_chrome, remove_chrome
 from engine.session import Session
 from engine.turns import advance_turn, end_combat, join, roll_initiative
 from ruleset.attributes import Attribute
@@ -119,11 +119,13 @@ def handle_message(session: Session, message: dict, player_id: str) -> None:
         safe_data = {k: v for k, v in character_data.items() if k in _JOIN_CHARACTER_FIELDS}
         is_new = character_data.get("player_id") not in session.characters
         join(session, CharacterSheet(**safe_data))
+        new_character = session.characters[character_data["player_id"]]
+        if is_new and is_tsukumogami(new_character):
+            new_character.humanity = STARTING_SELFHOOD
+            new_character.installments_owed += SHELL_INSTALLMENTS
         # Reconnects must not re-install; only a fresh sheet gets starting chrome.
         if starting_chrome and is_new:
-            session.pending_world_events.extend(
-                install_chrome(session.characters[character_data["player_id"]], starting_chrome)
-            )
+            session.pending_world_events.extend(install_chrome(new_character, starting_chrome))
 
     elif message_type == "roll_initiative":
         if player_id not in session.characters:
