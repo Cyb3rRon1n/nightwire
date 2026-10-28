@@ -94,6 +94,22 @@ class AnthropicNarratorBackend:
             raise ValueError("Anthropic response had no text block")
         return text_block["text"].strip()
 
+    async def judge(self, messages: list[dict], schema: dict) -> dict:
+        body = {
+            "model": self.model,
+            "max_tokens": 200,
+            "temperature": 0,
+            "messages": messages,
+            "tools": [{"name": "referee", "description": "Answer every referee question.", "input_schema": schema}],
+            "tool_choice": {"type": "tool", "name": "referee"},
+        }
+        result = await self._client.post(_API_URL, json=body, headers=self._headers())
+        result.raise_for_status()
+        tool_use = next((b for b in result.json().get("content", []) if b.get("type") == "tool_use"), None)
+        if tool_use is None:
+            raise ValueError("Anthropic referee response had no tool_use block")
+        return tool_use["input"]
+
     async def unload(self) -> None:
         # No local resources to free - a hosted API has nothing resident here.
         pass

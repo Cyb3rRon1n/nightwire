@@ -139,3 +139,15 @@ async def test_respond_prepends_system_prompt_as_a_message():
 
     _, body, _ = fake_client.calls[0]
     assert body["messages"][0] == {"role": "system", "content": "You are a cyberpunk GM."}
+
+
+@pytest.mark.asyncio
+async def test_judge_uses_json_schema_response_format():
+    import json
+    schema = {"type": "object", "properties": {"gig_paid_out": {"type": "boolean"}}, "required": ["gig_paid_out"]}
+    client = _FakeOpenAIClient(_chat_response(json.dumps({"gig_paid_out": False})))
+    backend = OpenAICompatNarratorBackend(base_url="http://x", model="m", client=client)
+    assert await backend.judge([{"role": "user", "content": "x"}], schema) == {"gig_paid_out": False}
+    body = client.calls[0][1]
+    assert body["response_format"]["json_schema"]["schema"] == schema
+    assert body["temperature"] == 0

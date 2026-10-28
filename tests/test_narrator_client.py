@@ -298,3 +298,65 @@ async def test_respond_returns_an_offer_chrome_tool_call():
     response = await client.respond([{"role": "user", "content": "I visit the ripperdoc."}])
     assert response.tool == "offer_chrome"
     assert response.tool_args == {"player_id": "p1", "item": "neon_ink"}
+
+
+import json as _json
+
+_SCHEMA = {"type": "object", "properties": {
+    "human_moment": {"type": "string", "enum": ["none", "small", "big"]},
+    "gig_paid_out": {"type": "boolean"}}, "required": ["human_moment", "gig_paid_out"], "additionalProperties": False}
+
+
+async def test_judge_passes_schema_and_returns_parsed_json():
+    calls = []
+    async def judge_fn(*, model, messages, format):
+        calls.append(format)
+        return {"message": {"content": _json.dumps({"human_moment": "big", "gig_paid_out": True})}}
+    async def chat_fn(**kw): raise AssertionError("not used")
+    client = NarratorClient(chat_fn=chat_fn, judge_fn=judge_fn)
+    assert await client.judge([{"role": "user", "content": "x"}], _SCHEMA) == {"human_moment": "big", "gig_paid_out": True}
+    assert calls == [_SCHEMA]
+
+
+async def test_scripted_client_without_judge_fn_gets_a_noop_judge():
+    async def chat_fn(**kw): raise AssertionError("not used")
+    client = NarratorClient(chat_fn=chat_fn)
+    assert await client.judge([], _SCHEMA) == {"human_moment": "none", "gig_paid_out": False}
+
+
+async def test_default_judge_sends_think_false_and_zero_temperature():
+    client = NarratorClient()
+    seen = {}
+    class _Fake:
+        async def chat(self, **kw):
+            seen.update(kw)
+            return {"message": {"content": "{}"}}
+    client._client = _Fake()
+    await client.judge([], {"type": "object", "properties": {}, "required": []})
+    assert seen["think"] is False
+    assert seen["options"]["temperature"] == 0 and seen["options"]["num_predict"] == 80
+
+
+async def test_think_option_reaches_narrator_chat_only_when_set():
+    seen = []
+    class _Fake:
+        async def chat(self, **kw):
+            seen.append(kw)
+            return {"message": {"content": _json.dumps({"narration": [{"speaker": "narrator", "text": "x"}], "tool_call": {"tool": None}})}}
+    for think, expected_present in ((None, False), (False, True)):
+        client = NarratorClient(think=think)
+        client._client = _Fake()
+        await client.respond([{"role": "user", "content": "x"}])
+        assert ("think" in seen[-1]) is expected_present
+    assert seen[-1]["think"] is False
+
+
+def test_create_narrator_backend_reads_nightwire_think(monkeypatch):
+    from narrator.client import create_narrator_backend
+    monkeypatch.setenv("NARRATOR_BACKEND", "ollama")
+    monkeypatch.setenv("NIGHTWIRE_THINK", "off")
+    assert create_narrator_backend().think is False
+    monkeypatch.setenv("NIGHTWIRE_THINK", "on")
+    assert create_narrator_backend().think is True
+    monkeypatch.delenv("NIGHTWIRE_THINK")
+    assert create_narrator_backend().think is None
