@@ -84,3 +84,9 @@ def test_load_design_rejects_invalid_file(tmp_path):
     path.write_text('name = "X"\nkind = "vehicle"\nsource = "npc:X"\ntags = "a"\n')
     with pytest.raises(ValueError, match="kind"):
         load_design(path)
+
+
+def test_control_chars_round_trip(tmp_path):
+    d = _char(notes=["line1\nline2\ttab\r\x01end"])
+    save_design(d, tmp_path / "m.toml")
+    assert load_design(tmp_path / "m.toml").notes == d.notes
