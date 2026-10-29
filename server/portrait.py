@@ -1,4 +1,6 @@
 import base64
+
+import httpx
 from pathlib import Path
 
 from engine.character import CharacterSheet
@@ -87,6 +89,7 @@ async def handle_approve_character(
     image_backend: ImageBackend,
     player_id: str,
     message: dict,
+    tts_backend=None,
 ) -> None:
     if player_id not in session.characters:
         raise ValueError(f"no joined character for player_id {player_id!r}")
@@ -97,7 +100,16 @@ async def handle_approve_character(
     negative = None
     if getattr(image_backend, "wants_tags", False):
         description, negative, _source = await resolve(narrator_client, "portrait", description, character)
-    await narrator_client.unload()
+    # Best-effort VRAM headroom (NoobAI peaks near 8 GB): same as narration's image block.
+    try:
+        await narrator_client.unload()
+    except (ValueError, TypeError, OSError, httpx.HTTPError, RuntimeError):
+        pass
+    if tts_backend is not None:
+        try:
+            await tts_backend.unload()
+        except (ValueError, TypeError, OSError, httpx.HTTPError, RuntimeError):
+            pass
     if negative is None:
         image_bytes = await image_backend.generate_portrait(description, reference_photos=reference_photos)
     else:

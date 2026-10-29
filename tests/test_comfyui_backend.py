@@ -208,3 +208,9 @@ def test_sd15_profile_is_unchanged_and_does_not_want_tags():
 def test_noobai_sizes():
     from narrator import comfyui_backend as cb
     assert cb._NOOBAI_PORTRAIT_SIZE == (832, 1216) and cb._NOOBAI_SCENE_SIZE == (1216, 832)
+
+
+def test_noobai_default_negative_is_the_tag_negative():
+    from narrator.image_prompt import NEGATIVE
+    texts = {n["inputs"]["text"] for n in _noob()._build_workflow("P", 1, 832, 1216, "x").values() if n["class_type"] == "CLIPTextEncode"}
+    assert texts == {"P", NEGATIVE}

@@ -36,6 +36,9 @@ class _UnusedTTSBackend:
     async def synthesize(self, text, voice):
         raise AssertionError("tts backend should not be called by this test")
 
+    async def unload(self):
+        pass
+
 
 class FakeTTSBackend:
     voices = [VoiceOption(id="af_heart", gender="female")]

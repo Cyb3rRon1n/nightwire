@@ -4,6 +4,8 @@ from collections.abc import Awaitable, Callable
 
 import httpx
 
+from narrator.image_prompt import NEGATIVE
+
 _NEGATIVE_PROMPT = "blurry, deformed, extra limbs, bad anatomy, watermark, text, low quality"
 _STEPS = 20
 _CFG = 7.0
@@ -92,7 +94,7 @@ class ComfyUIBackend:
         wf["10"] = {"class_type": "CLIPSetLastLayer", "inputs": {"clip": clip, "stop_at_clip_layer": -2}}
         wf["5"] = {"class_type": "EmptyLatentImage", "inputs": {"width": width, "height": height, "batch_size": 1}}
         wf["6"] = {"class_type": "CLIPTextEncode", "inputs": {"text": prompt, "clip": ["10", 0]}}
-        wf["7"] = {"class_type": "CLIPTextEncode", "inputs": {"text": negative or _NEGATIVE_PROMPT, "clip": ["10", 0]}}
+        wf["7"] = {"class_type": "CLIPTextEncode", "inputs": {"text": negative or NEGATIVE, "clip": ["10", 0]}}
         wf["3"] = {"class_type": "KSampler", "inputs": {
             "seed": seed, "steps": _NOOBAI_STEPS, "cfg": self.cfg, "sampler_name": self.sampler,
             "scheduler": self.scheduler, "denoise": 1.0, "model": ["22", 0],
