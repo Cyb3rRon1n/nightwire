@@ -13,6 +13,13 @@ BASE_SIZE = (1216, 832)
 SHEET_SIZE = (3648, 2496)
 SHEET_STYLE = ("anime coloring, cel shading, thick outlines, official art, flat lighting, simple background, "
                "white background")
+CHARACTER_SHEET_STYLE = ("anime coloring, cel shading, thick outlines, official art, simple background, grey background, "
+                         "dark background, neon rim light, pink neon rim light, cyan backlight")
+CHARACTER_MATURE = ("mature, adult, serious, sharp features, gritty, dark atmosphere, cyberpunk, techwear, "
+                    "neon accents, tattoo, scar, piercing, dark makeup")
+CHARACTER_QUALITY = QUALITY.replace("safe", "sensitive")  # suggestive allowed, explicit not
+CHARACTER_NEGATIVE_EXTRA = ("nude, nipples, pussy, penis, sex, explicit, loli, shota, child, petite, flat chest, young, "
+                            "teenage, aged down, chibi, kawaii, moe, cute, big eyes, deformed")
 SHEET_NEGATIVE_EXTRA = "scenery, background clutter, inconsistent outfit, different clothes, different hairstyle"
 CHARACTER_SHEETS = ("turnaround", "expressions", "colorguide")
 LOCATION_SHEETS = ("establishing", "alternate", "moodkeys", "props")
@@ -42,8 +49,8 @@ def _join(*parts: str) -> str:
     return ", ".join(p for p in parts if p)
 
 
-def _character_negative(d: Design) -> str:
-    return _join(NEGATIVE.replace(", text,", ","), SHEET_NEGATIVE_EXTRA, d.negative)
+def _character_negative(d: Design, mature: bool = True) -> str:
+    return _join(NEGATIVE.replace(", text,", ","), SHEET_NEGATIVE_EXTRA, CHARACTER_NEGATIVE_EXTRA if mature else "", d.negative)
 
 
 def _location_negative(d: Design) -> str:
@@ -68,12 +75,12 @@ def sheet_prompt(d: Design, sheet: str, mood: str | None = None) -> tuple[str, s
         if sheet not in CHARACTER_SHEETS:
             raise ValueError(f"{sheet!r} is not a character sheet")
         extra = _signature_focus(d) if sheet == "colorguide" else ""
-        pos = _join(QUALITY, SHEET_STYLE, _SHEET_TAGS[sheet], extra, subject_for(d), d.tags)
+        pos = _join(CHARACTER_QUALITY, CHARACTER_SHEET_STYLE, CHARACTER_MATURE, _SHEET_TAGS[sheet], extra, subject_for(d), d.tags)
         return pos, _character_negative(d)
     if sheet not in LOCATION_SHEETS:
         raise ValueError(f"{sheet!r} is not a location sheet")
     if sheet == "props":
-        return _join(QUALITY, SHEET_STYLE, _PROPS_TAGS, ", ".join(d.props)), _character_negative(d)
+        return _join(QUALITY, SHEET_STYLE, _PROPS_TAGS, ", ".join(d.props)), _character_negative(d, mature=False)
     content = d.alt_tags if sheet == "alternate" else d.tags
     style = STYLE
     if sheet == "moodkeys":
