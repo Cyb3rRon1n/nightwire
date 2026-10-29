@@ -1,7 +1,7 @@
 name = "Ikebe Low"
 kind = "location"
 source = "district:Ikebe Low"
-tags = "narrow alley, old wooden buildings, elevated expressway, concrete pillars, noren, paper lantern, izakaya, small shrine, power lines, utility pole, hanging cables, warm light, dim, night, rain, puddle"
+tags = "narrow alley, old wooden buildings, elevated expressway, concrete pillars, noren, paper lantern, izakaya, small shrine, power lines, utility pole, hanging cables, warm light, dim, rope, cable, night, rain, puddle"
 negative = ""
 alt_tags = "alley shrine, small shrine, fox statue, rope, paper lantern, darkness, power outage, candlelight, night"
 props = ["paper lantern", "noren curtain", "alley shrine", "utility pole", "vending machine"]

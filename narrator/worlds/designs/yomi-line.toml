@@ -1,7 +1,7 @@
 name = "Yomi Line"
 kind = "location"
 source = "district:Yomi Line"
-tags = "subway station, abandoned, platform, ticket gate, ticket machine, station sign, train, fluorescent lights, flickering light, dust, blue glow, floating lights, ghostly, dark, dim"
+tags = "subway station, abandoned, platform, ticket gate, ticket machine, station sign, train, fluorescent lights, flickering light, dust, blue glow, empty train, tiled wall, glowing sign, dark, dim"
 negative = ""
 alt_tags = "train interior, empty seats, hanging straps, window, flickering light, indoors, dark, blue glow"
 props = ["ticket machine", "station sign", "platform speaker", "paper lantern", "ticket gate"]
