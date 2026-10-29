@@ -214,3 +214,10 @@ def test_noobai_default_negative_is_the_tag_negative():
     from narrator.image_prompt import NEGATIVE
     texts = {n["inputs"]["text"] for n in _noob()._build_workflow("P", 1, 832, 1216, "x").values() if n["class_type"] == "CLIPTextEncode"}
     assert texts == {"P", NEGATIVE}
+
+
+async def test_run_workflow_submits_any_graph_and_returns_image_bytes():
+    client = _FakeComfyClient(image_bytes=b"design-png")
+    backend = ComfyUIBackend(base_url="http://x", client=client, sleep_fn=_no_sleep)
+    out = await backend.run_workflow({"9": {"class_type": "SaveImage", "inputs": {}}})
+    assert out == b"design-png"

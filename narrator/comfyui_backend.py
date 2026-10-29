@@ -134,7 +134,10 @@ class ComfyUIBackend:
                         negative: str | None = None) -> bytes:
         seed = uuid.uuid4().int & 0xFFFFFFFF
         workflow = self._build_workflow(prompt, seed, width, height, filename_prefix, negative)
+        return await self.run_workflow(workflow)
 
+    async def run_workflow(self, workflow: dict) -> bytes:
+        """Submit any ComfyUI workflow, wait for it, return the first output image's bytes."""
         submit = await self._client.post("/prompt", json={"prompt": workflow})
         submit.raise_for_status()
         prompt_id = submit.json()["prompt_id"]
