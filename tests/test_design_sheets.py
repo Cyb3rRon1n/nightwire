@@ -4,7 +4,7 @@ import pytest
 from PIL import Image
 
 from narrator.design_sheets import (
-    BASE_SIZE, MOOD_SUFFIXES, SHEET_NEGATIVE_EXTRA, SHEET_STYLE, candidate_prompt, candidate_workflow,
+    BASE_SIZE, CHARACTER_MATURE, CHARACTER_SHEET_STYLE, MOOD_SUFFIXES, SHEET_NEGATIVE_EXTRA, SHEET_STYLE, candidate_prompt, candidate_workflow,
     extract_palette, join_strip, sheet_prompt, sheet_workflow, subject_for,
 )
 from narrator.designs import Design
@@ -39,15 +39,21 @@ def test_subjects():
 
 def test_character_candidate_is_a_turnaround_preview():
     pos, neg = candidate_prompt(_char())
-    assert pos.startswith(QUALITY + ", " + SHEET_STYLE + ", character sheet, reference sheet, turnaround")
+    assert pos.startswith(QUALITY.replace("safe", "sensitive") + ", " + CHARACTER_SHEET_STYLE + ", " + CHARACTER_MATURE
+                          + ", character sheet, reference sheet, turnaround")
+    assert "safe" not in pos.split(", ") and "sensitive" in pos.split(", ")
+    assert SHEET_STYLE not in pos
     assert pos.endswith(", 1girl, black hair, short hair, yellow eyes, black bomber jacket, mechanical left arm, human right hand")
     assert ", text," not in neg and SHEET_NEGATIVE_EXTRA in neg and neg.endswith("two mechanical arms")
+    assert "nude" in neg and "loli" in neg
 
 
 def test_location_candidate_uses_the_game_style():
     pos, neg = candidate_prompt(_loc())
     assert pos == ", ".join([QUALITY, STYLE, "scenery, no humans", "izakaya, paper lanterns, noren"])
     assert neg == NEGATIVE
+    est, _ = sheet_prompt(_loc(), "establishing")
+    assert "safe" in est.split(", ") and "sensitive" not in est
 
 
 def test_colorguide_focuses_the_signature_chrome():
@@ -65,7 +71,8 @@ def test_location_sheets():
     assert "indoors, counter, bar stools" in alt and "izakaya, paper lanterns" not in alt
     mood, _ = sheet_prompt(_loc(), "moodkeys", mood=MOOD_SUFFIXES[1])
     assert mood.endswith("rain, wet street")
-    props, _ = sheet_prompt(_loc(), "props")
+    props, props_neg = sheet_prompt(_loc(), "props")
+    assert "nude" not in props_neg
     assert SHEET_STYLE in props and "still life, no humans, object focus, multiple views, white background" in props
     assert "paper lanterns, ramen bowl, sake bottle" in props
 
