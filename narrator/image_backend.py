@@ -10,8 +10,12 @@ from narrator.comfyui_backend import ComfyUIBackend
 
 
 class ImageBackend(Protocol):
-    async def generate_portrait(self, description: str, reference_photos: list[str] | None = None) -> bytes: ...
-    async def generate_scene(self, prompt: str, reference_paths: list[str]) -> bytes: ...
+    wants_tags: bool
+
+    async def generate_portrait(
+        self, description: str, reference_photos: list[str] | None = None, negative: str | None = None
+    ) -> bytes: ...
+    async def generate_scene(self, prompt: str, reference_paths: list[str], negative: str | None = None) -> bytes: ...
 
 
 # ultra-fast-image-gen's own worker (frontend/image_server/optimized_image_server.py)
@@ -24,6 +28,8 @@ class FluxWorkerBackend:
     7869 by default) - the real API, read directly from
     frontend/image_server/optimized_image_server.py, not assumed from docs.
     """
+
+    wants_tags = False
 
     def __init__(
         self,
@@ -84,10 +90,12 @@ class FluxWorkerBackend:
         result = await self._http_fn(payload)
         return (self.output_dir / f"{result['id']}.png").read_bytes()
 
-    async def generate_portrait(self, description: str, reference_photos: list[str] | None = None) -> bytes:
+    async def generate_portrait(
+        self, description: str, reference_photos: list[str] | None = None, negative: str | None = None
+    ) -> bytes:
         return await self._generate(description, aspect="portrait", reference_photos=reference_photos)
 
-    async def generate_scene(self, prompt: str, reference_paths: list[str]) -> bytes:
+    async def generate_scene(self, prompt: str, reference_paths: list[str], negative: str | None = None) -> bytes:
         return await self._generate(prompt, aspect="square", reference_paths=reference_paths)
 
 
@@ -102,8 +110,17 @@ def create_image_backend() -> ImageBackend:
             output_dir=os.environ.get("IMAGE_OUTPUT_DIR", "frontend/public/generated"),
         )
     if backend == "comfyui":
+        profile = os.environ.get("COMFYUI_PROFILE", "noobai").strip().lower()
+        default_lora = "Smooth_Booster_v3.safetensors" if profile == "noobai" else ""
+        cfg = os.environ.get("COMFYUI_CFG")
         return ComfyUIBackend(
             base_url=os.environ.get("COMFYUI_URL", "http://192.168.10.19:8188"),
-            checkpoint=os.environ.get("COMFYUI_CHECKPOINT", "v1-5-pruned-emaonly-fp16.safetensors"),
+            checkpoint=os.environ.get("COMFYUI_CHECKPOINT") or None,
+            profile=profile,
+            lora=os.environ.get("COMFYUI_LORA", default_lora),
+            lora_strength=float(os.environ.get("COMFYUI_LORA_STRENGTH", "0.6")),
+            sampler=os.environ.get("COMFYUI_SAMPLER") or None,
+            scheduler=os.environ.get("COMFYUI_SCHEDULER") or None,
+            cfg=float(cfg) if cfg else None,
         )
     raise ValueError(f"Unknown IMAGE_BACKEND {backend!r}. Valid backends: 'flux_worker', 'comfyui'.")

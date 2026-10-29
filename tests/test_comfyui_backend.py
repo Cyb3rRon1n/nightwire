@@ -164,3 +164,47 @@ async def test_generate_portrait_raises_runtime_error_when_outputs_have_no_image
 
     with pytest.raises(RuntimeError, match="abc123"):
         await backend.generate_portrait("a fixer")
+
+
+def _noob(**kw):
+    return ComfyUIBackend(base_url="http://x", profile="noobai", lora="Smooth_Booster_v3.safetensors", **kw)
+
+
+def _by_type(wf):
+    return {n["class_type"]: n for n in wf.values()}
+
+
+def test_noobai_profile_builds_the_locked_graph():
+    b = _noob()
+    assert b.wants_tags is True and b.checkpoint == "NoobAI-XL-Vpred-v1.0.safetensors"
+    wf = b._build_workflow("POS", 7, 832, 1216, "nightwire_portrait", negative="NEG")
+    t = _by_type(wf)
+    assert t["ModelSamplingDiscrete"]["inputs"]["sampling"] == "v_prediction"
+    assert t["ModelSamplingDiscrete"]["inputs"]["zsnr"] is True
+    assert t["RescaleCFG"]["inputs"]["multiplier"] == 0.6
+    assert t["LoraLoader"]["inputs"]["lora_name"] == "Smooth_Booster_v3.safetensors"
+    assert t["LoraLoader"]["inputs"]["strength_model"] == 0.6 == t["LoraLoader"]["inputs"]["strength_clip"]
+    assert t["CLIPSetLastLayer"]["inputs"]["stop_at_clip_layer"] == -2
+    k = t["KSampler"]["inputs"]
+    assert (k["sampler_name"], k["scheduler"], k["steps"], k["cfg"]) == ("euler", "normal", 28, 4.5)
+    assert t["VAEDecodeTiled"]["inputs"]["tile_size"] == 512
+    assert (t["EmptyLatentImage"]["inputs"]["width"], t["EmptyLatentImage"]["inputs"]["height"]) == (832, 1216)
+    texts = sorted(n["inputs"]["text"] for n in wf.values() if n["class_type"] == "CLIPTextEncode")
+    assert texts == ["NEG", "POS"]
+
+
+def test_noobai_without_lora_skips_the_loader():
+    b = ComfyUIBackend(base_url="http://x", profile="noobai", lora="")
+    assert "LoraLoader" not in _by_type(b._build_workflow("P", 1, 832, 1216, "x"))
+
+
+def test_sd15_profile_is_unchanged_and_does_not_want_tags():
+    b = ComfyUIBackend(base_url="http://x")
+    assert b.wants_tags is False and b.checkpoint == "v1-5-pruned-emaonly-fp16.safetensors"
+    t = _by_type(b._build_workflow("P", 1, 512, 768, "x"))
+    assert "ModelSamplingDiscrete" not in t and "VAEDecode" in t
+
+
+def test_noobai_sizes():
+    from narrator import comfyui_backend as cb
+    assert cb._NOOBAI_PORTRAIT_SIZE == (832, 1216) and cb._NOOBAI_SCENE_SIZE == (1216, 832)
