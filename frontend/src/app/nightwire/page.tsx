@@ -201,6 +201,7 @@ export default function NightwirePage() {
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [lifepath, setLifepath] = useState("");
+  const [presentation, setPresentation] = useState<"" | "feminine" | "masculine" | "androgynous">("");
   const [skills, setSkills] = useState<Record<string, number>>({});
   const [attributes, setAttributes] = useState<Record<string, number>>({});
   const primaryAttribute = ROLES.find((r) => r.value === role)?.primaryAttribute ?? null;
@@ -256,7 +257,7 @@ export default function NightwirePage() {
   function handleJoin() {
     send({
       type: "join",
-      character: { player_id: playerId, name, role, lifepath, skills, attributes, ...(startingChrome ? { starting_chrome: startingChrome } : {}) },
+      character: { player_id: playerId, name, role, lifepath, skills, attributes, ...(startingChrome ? { starting_chrome: startingChrome } : {}), ...(presentation ? { presentation } : {}) },
     });
   }
 
@@ -374,6 +375,12 @@ export default function NightwirePage() {
               {lifepath === "tsukumogami" && (
                 <p className="text-xs nw-text-muted">Selfhood 20 · shell lease +4 installments</p>
               )}
+              <select className="nw-field" aria-label="Presentation" value={presentation} onChange={(e) => setPresentation(e.target.value as typeof presentation)}>
+                <option value="">Presentation (optional)</option>
+                <option value="feminine">Feminine</option>
+                <option value="masculine">Masculine</option>
+                <option value="androgynous">Androgynous</option>
+              </select>
               <AttributePicker
                 attributes={attributes}
                 primaryAttribute={primaryAttribute}

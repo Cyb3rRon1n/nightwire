@@ -342,3 +342,15 @@ def test_recent_stakes_round_trip_and_default(tmp_path):
     del data["recent_stakes"]
     (tmp_path / "s1.json").write_text(json.dumps(data))
     assert store.load("s1").recent_stakes == []
+
+
+def test_presentation_round_trips_and_defaults(tmp_path):
+    store = JSONFileSessionStore(tmp_path)
+    s = Session(session_id="s1")
+    s.characters["p1"] = CharacterSheet(player_id="p1", name="Rook", role="solo", lifepath="streetkid", presentation="masculine")
+    store.save(s)
+    assert store.load("s1").characters["p1"].presentation == "masculine"
+    data = json.loads((tmp_path / "s1.json").read_text())
+    del data["characters"]["p1"]["presentation"]
+    (tmp_path / "s1.json").write_text(json.dumps(data))
+    assert store.load("s1").characters["p1"].presentation is None

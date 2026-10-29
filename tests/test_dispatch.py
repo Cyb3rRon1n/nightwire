@@ -16,7 +16,7 @@ def test_join_allowlist_covers_every_client_settable_charactersheet_field():
         "portrait_path", "unspent_attribute_points",
         "humanity", "chrome", "installments_owed", "slipping_warned", "gone_too_far",
         "repo_clock", "repo_actions", "repo_strikes", "throttled", "pending_repo",
-        "bodiless", "awake_reached", "presentation",
+        "bodiless", "awake_reached",
     }
     all_fields = {f.name for f in fields(CharacterSheet)}
     assert _JOIN_CHARACTER_FIELDS | server_owned == all_fields
@@ -738,3 +738,25 @@ def test_tsukumogami_rejoin_does_not_reapply_the_lease():
     session.characters["p1"].humanity = 35
     handle_message(session, msg, "p1")
     assert session.characters["p1"].installments_owed == 4
+
+
+def test_join_accepts_and_stores_presentation():
+    session = Session(session_id="s1")
+    handle_message(session, {"type": "join", "character": {
+        "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid", "presentation": "feminine"}}, "p1")
+    assert session.characters["p1"].presentation == "feminine"
+
+
+def test_join_without_presentation_is_none():
+    session = Session(session_id="s1")
+    handle_message(session, {"type": "join", "character": {
+        "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"}}, "p1")
+    assert session.characters["p1"].presentation is None
+
+
+@pytest.mark.parametrize("bad", ["robot", 5, ["feminine"]])
+def test_join_rejects_unknown_presentation(bad):
+    session = Session(session_id="s1")
+    with pytest.raises(ValueError, match="presentation must be"):
+        handle_message(session, {"type": "join", "character": {
+            "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid", "presentation": bad}}, "p1")
