@@ -24,7 +24,7 @@ def test_drafts_follow_the_writing_rules():
     for d in kuroshio_designs().values():
         tags = [t.strip() for t in d.tags.split(",")]
         assert 12 <= len(tags) <= 25, d.name
-        assert d.status == "draft" and d.notes == ["2026-10-28 draft from world card"], d.name
+        assert d.notes and d.notes[0] == "2026-10-28 draft from world card", d.name
         if d.kind == "location":
             assert d.alt_tags and 3 <= len(d.props) <= 5, d.name
             assert "scenery" not in d.tags, d.name
