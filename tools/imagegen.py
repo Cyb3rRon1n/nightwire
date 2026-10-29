@@ -30,6 +30,7 @@ SIZES = {
     "ultrawide": (3440, 1440, 1536, 640, True),
     "phone": (1080, 2340, 640, 1536, True),
     "square": (2048, 2048, 1024, 1024, True),
+    "portrait": (832, 1216, 832, 1216, False),
 }
 CHARACTER_NEGATIVE = ("nude, nipples, pussy, penis, sex, explicit, loli, shota, child, petite, flat chest, young, "
                       "teenage, aged down, chibi, kawaii, moe, cute, deformed")
@@ -38,6 +39,10 @@ CHARACTER_NEGATIVE = ("nude, nipples, pussy, penis, sex, explicit, loli, shota, 
 def build(prompt: str, kind: str, raw: bool, negative: str, size: str, seed: int) -> dict:
     if raw:
         pos, neg = prompt, negative or NEGATIVE
+    elif kind == "portrait":
+        q = QUALITY.replace("safe", "sensitive")
+        pos = ", ".join([q, "solo, upper body, portrait, looking at viewer", STYLE, CHARACTER_MATURE, prompt])
+        neg = ", ".join(x for x in (NEGATIVE, CHARACTER_NEGATIVE, "full body, feet, shoes, boots, legs, lower body", negative) if x)
     elif kind == "character":
         q = QUALITY.replace("safe", "sensitive")
         pos = ", ".join([q, CHARACTER_SHEET_STYLE, CHARACTER_MATURE, prompt])
@@ -59,8 +64,8 @@ def build(prompt: str, kind: str, raw: bool, negative: str, size: str, seed: int
 async def main(argv: list[str]) -> int:
     p = argparse.ArgumentParser(prog="python -m tools.imagegen")
     p.add_argument("prompt")
-    p.add_argument("--kind", choices=("scene", "character", "plain"), default="scene",
-                   help="scene: game style, no people; character: mature character style; plain: game style, no subject")
+    p.add_argument("--kind", choices=("scene", "portrait", "character", "plain"), default="scene",
+                   help="scene: game style, no people; portrait: in-world bust portrait; character: mature character sheet style; plain: game style, no subject")
     p.add_argument("--size", choices=sorted(SIZES), default="base")
     p.add_argument("--negative", default="")
     p.add_argument("--raw", action="store_true", help="send the prompt exactly, no style or quality tags")
