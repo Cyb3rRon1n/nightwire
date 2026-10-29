@@ -10,6 +10,7 @@ export interface CharacterSheet {
   conditions: string[]
   inventory: string[]
   portrait_path: string | null
+  presentation: 'feminine' | 'masculine' | 'androgynous' | null
   skills: Record<string, number>
   unspent_skill_points: number
   unspent_attribute_points: number
@@ -100,6 +101,7 @@ export interface JoinMessage {
     inventory?: string[]
     skills?: Record<string, number>
     starting_chrome?: string
+    presentation?: 'feminine' | 'masculine' | 'androgynous'
   }
 }
 

@@ -24,8 +24,10 @@ ATTRIBUTE_MILESTONE_MAX = 16
 # unspent_attribute_points: 999 or health: 9999 straight through
 # CharacterSheet(**character_data).
 _JOIN_CHARACTER_FIELDS = frozenset(
-    {"player_id", "name", "role", "lifepath", "attributes", "skills", "unspent_skill_points"}
+    {"player_id", "name", "role", "lifepath", "attributes", "skills", "unspent_skill_points", "presentation"}
 )
+
+_PRESENTATIONS = frozenset({"feminine", "masculine", "androgynous"})
 
 
 def _starting_attributes(role: str) -> dict[str, int]:
@@ -114,6 +116,9 @@ def handle_message(session: Session, message: dict, player_id: str) -> None:
         starting_chrome = character_data.get("starting_chrome")
         if starting_chrome is not None and (not isinstance(starting_chrome, str) or starting_chrome not in CHROME):
             raise ValueError(f"unknown chrome: {starting_chrome!r}")
+        presentation = character_data.get("presentation")
+        if presentation is not None and (not isinstance(presentation, str) or presentation not in _PRESENTATIONS):
+            raise ValueError("presentation must be feminine, masculine or androgynous")
         _validate_and_finalize_attributes(character_data)
         _validate_and_finalize_skills(character_data)
         safe_data = {k: v for k, v in character_data.items() if k in _JOIN_CHARACTER_FIELDS}
