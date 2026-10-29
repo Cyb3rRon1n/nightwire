@@ -1,9 +1,10 @@
 name = "Hachi"
 kind = "character"
 source = "npc:Hachi"
-tags = "android, robot joints, doll joints, light blue hair, bob cut, blank eyes, cheerful smile, slender, porcelain skin, led trim, station attendant uniform, pillbox hat, teal uniform vest, neckerchief, white gloves, name tag, headset"
+presentation = "feminine"
+tags = "android, robot joints, light blue hair, blank eyes, mature female, voluptuous, large breasts, wide hips, thick thighs, porcelain skin, tight station attendant uniform, cropped jacket, midriff, pencil skirt, thighhighs, led trim"
 negative = ""
 status = "candidates"
 seed = 0
 palette = []
-notes = ["2026-10-28 draft from world card", "2026-10-28 round 1: 4 candidates", "2026-10-29 art direction: mature cyberpunk pass", "2026-10-29 round 2: 4 candidates"]
+notes = ["2026-10-28 draft from world card", "2026-10-28 round 1: 4 candidates", "2026-10-29 art direction: mature cyberpunk pass", "2026-10-29 round 2: 4 candidates", "2026-10-29 owner note: females more sexy, voluptuous (no nudity, adult)"]
