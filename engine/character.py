@@ -32,6 +32,8 @@ class CharacterSheet:
     # Phase 17c utsusemi origin
     bodiless: bool = False
     awake_reached: bool = False
+    # Phase 19a: optional, drives the portrait subject tag (1girl / 1boy / 1other).
+    presentation: str | None = None
 
 
 def is_tsukumogami(character: CharacterSheet) -> bool:

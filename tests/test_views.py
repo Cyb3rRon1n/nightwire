@@ -51,6 +51,7 @@ def test_viewer_sees_their_own_full_sheet():
         "pending_repo": None,
         "bodiless": False,
         "awake_reached": False,
+        "presentation": None,
     }
 
 
