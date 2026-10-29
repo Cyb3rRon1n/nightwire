@@ -63,7 +63,8 @@ def create_app(
                         await manager.broadcast(session_id, session)
                         await narrate_roll(session, narrator_client, store, image_backend, tts_backend, player_id, rolled)
                     elif message.get("type") == "approve_character":
-                        await handle_approve_character(session, store, narrator_client, image_backend, player_id, message)
+                        await handle_approve_character(session, store, narrator_client, image_backend, player_id, message,
+                                                       tts_backend=tts_backend)
                     else:
                         handle_message(session, message, player_id)
                 except Exception as e:

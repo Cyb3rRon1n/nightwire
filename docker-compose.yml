@@ -21,7 +21,9 @@ name: nightwire
 #   IMAGE_BACKEND=comfyui talks to a real ComfyUI instance over plain HTTP —
 #     no MLX/Apple-Silicon dependency, no shared-volume issue. Set
 #     COMFYUI_URL to a reachable ComfyUI instance and it works directly from
-#     this container.
+#     this container. COMFYUI_PROFILE=noobai (default) | sd15; noobai needs
+#     NoobAI-XL-Vpred-v1.0.safetensors + Smooth_Booster_v3.safetensors (LoRA)
+#     on the ComfyUI host. COMFYUI_LORA=none disables the LoRA.
 #
 # TTS (Kokoro) is real and containerizable — enable with --profile voice.
 
@@ -38,7 +40,13 @@ services:
       FLUX_WORKER_URL: ${FLUX_WORKER_URL:-}
       IMAGE_BACKEND: ${IMAGE_BACKEND:-flux_worker}
       COMFYUI_URL: ${COMFYUI_URL:-http://192.168.10.19:8188}
-      COMFYUI_CHECKPOINT: ${COMFYUI_CHECKPOINT:-v1-5-pruned-emaonly-fp16.safetensors}
+      COMFYUI_CHECKPOINT: ${COMFYUI_CHECKPOINT:-}
+      COMFYUI_PROFILE: ${COMFYUI_PROFILE:-}
+      COMFYUI_LORA: ${COMFYUI_LORA:-}
+      COMFYUI_LORA_STRENGTH: ${COMFYUI_LORA_STRENGTH:-}
+      COMFYUI_SAMPLER: ${COMFYUI_SAMPLER:-}
+      COMFYUI_SCHEDULER: ${COMFYUI_SCHEDULER:-}
+      COMFYUI_CFG: ${COMFYUI_CFG:-}
       KOKORO_URL: ${KOKORO_URL:-http://kokoro:8880}
       NARRATOR_BACKEND: ${NARRATOR_BACKEND:-ollama}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}

@@ -110,15 +110,19 @@ def create_image_backend() -> ImageBackend:
             output_dir=os.environ.get("IMAGE_OUTPUT_DIR", "frontend/public/generated"),
         )
     if backend == "comfyui":
-        profile = os.environ.get("COMFYUI_PROFILE", "noobai").strip().lower()
+        profile = (os.environ.get("COMFYUI_PROFILE") or "noobai").strip().lower()
         default_lora = "Smooth_Booster_v3.safetensors" if profile == "noobai" else ""
+        # unset/empty -> profile default; "none" -> explicitly disabled
+        lora = os.environ.get("COMFYUI_LORA", "").strip() or default_lora
+        if lora.lower() == "none":
+            lora = ""
         cfg = os.environ.get("COMFYUI_CFG")
         return ComfyUIBackend(
             base_url=os.environ.get("COMFYUI_URL", "http://192.168.10.19:8188"),
             checkpoint=os.environ.get("COMFYUI_CHECKPOINT") or None,
             profile=profile,
-            lora=os.environ.get("COMFYUI_LORA", default_lora),
-            lora_strength=float(os.environ.get("COMFYUI_LORA_STRENGTH", "0.6")),
+            lora=lora,
+            lora_strength=float(os.environ.get("COMFYUI_LORA_STRENGTH") or "0.6"),
             sampler=os.environ.get("COMFYUI_SAMPLER") or None,
             scheduler=os.environ.get("COMFYUI_SCHEDULER") or None,
             cfg=float(cfg) if cfg else None,

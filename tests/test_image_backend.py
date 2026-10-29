@@ -164,3 +164,24 @@ def test_flux_worker_does_not_want_tags(monkeypatch):
     from narrator.image_backend import create_image_backend
     monkeypatch.setenv("IMAGE_BACKEND", "flux_worker")
     assert create_image_backend().wants_tags is False
+
+
+@pytest.mark.parametrize("value,expected", [(None, "Smooth_Booster_v3.safetensors"), ("", "Smooth_Booster_v3.safetensors"),
+                                            ("none", None), ("NONE", None), ("my.safetensors", "my.safetensors")])
+def test_comfyui_lora_env(monkeypatch, value, expected):
+    monkeypatch.setenv("IMAGE_BACKEND", "comfyui")
+    monkeypatch.delenv("COMFYUI_PROFILE", raising=False)
+    if value is None:
+        monkeypatch.delenv("COMFYUI_LORA", raising=False)
+    else:
+        monkeypatch.setenv("COMFYUI_LORA", value)
+    assert create_image_backend().lora == expected
+
+
+def test_comfyui_empty_compose_passthrough_uses_defaults(monkeypatch):
+    monkeypatch.setenv("IMAGE_BACKEND", "comfyui")
+    for k in ("COMFYUI_PROFILE", "COMFYUI_CHECKPOINT", "COMFYUI_LORA", "COMFYUI_LORA_STRENGTH",
+              "COMFYUI_SAMPLER", "COMFYUI_SCHEDULER", "COMFYUI_CFG"):
+        monkeypatch.setenv(k, "")
+    b = create_image_backend()
+    assert b.wants_tags and b.lora_strength == 0.6 and b.checkpoint == "NoobAI-XL-Vpred-v1.0.safetensors"

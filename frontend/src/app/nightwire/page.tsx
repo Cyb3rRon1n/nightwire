@@ -540,6 +540,7 @@ export default function NightwirePage() {
                       </div>
                     );
                   }
+                  if (entry.kind === "meta" && entry.text.startsWith("[image prompt")) return null; // server-log tuning line
                   const notice = entry.kind === "meta" && ["[torite: ", "[selfhood: ", "[utsusemi: "].find((p) => entry.text.startsWith(p));
                   if (notice) {
                     return (

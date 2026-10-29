@@ -99,11 +99,53 @@ async def test_tag_backend_portrait_uses_presentation_subject(tmp_path):
             raise AssertionError
     class _Client:
         async def judge(self, messages, schema):
+            seen["tagged"] = True
             return {"tags": ["bomber jacket", "short hair", "cyberarm", "neon", "rain", "smirk"]}
         async def unload(self):
+            assert seen.get("tagged")
             seen["unloaded_after_prompt"] = "prompt" not in seen
     session = Session(session_id="s1")
     session.characters["p1"] = CharacterSheet(player_id="p1", name="Rook", role="solo", lifepath="streetkid", presentation="masculine")
     await handle_approve_character(session, JSONFileSessionStore(tmp_path), _Client(), _Img(), "p1", {})
     assert seen["prompt"].startswith("masterpiece") and ", 1boy, solo" in seen["prompt"] and "cyberarm" in seen["prompt"]
     assert seen["negative"] and seen["unloaded_after_prompt"] is True
+
+
+async def _portrait_with_tts(tmp_path, tts):
+    from engine.character import CharacterSheet
+    from engine.persistence import JSONFileSessionStore
+    from engine.session import Session
+    from server.portrait import handle_approve_character
+    order = []
+    class _Img:
+        wants_tags = True
+        async def generate_portrait(self, description, reference_photos=None, negative=None):
+            order.append("generate")
+            return b"png"
+    class _Client:
+        async def judge(self, messages, schema):
+            order.append("tag")
+            return {"tags": ["a", "b", "c", "d", "e", "f"]}
+        async def unload(self):
+            order.append("narrator_unload")
+    session = Session(session_id="s1")
+    session.characters["p1"] = CharacterSheet(player_id="p1", name="Rook", role="solo", lifepath="streetkid", presentation="masculine")
+    await handle_approve_character(session, JSONFileSessionStore(tmp_path), _Client(), _Img(), "p1", {},
+                                   tts_backend=tts(order))
+    return order
+
+
+async def test_portrait_unloads_tts_after_tagging_before_generate(tmp_path):
+    class _Tts:
+        def __init__(self, order): self.order = order
+        async def unload(self): self.order.append("tts_unload")
+    order = await _portrait_with_tts(tmp_path, _Tts)
+    assert order == ["tag", "narrator_unload", "tts_unload", "generate"]
+
+
+async def test_portrait_survives_failing_tts_unload(tmp_path):
+    class _Tts:
+        def __init__(self, order): pass
+        async def unload(self): raise RuntimeError("boom")
+    order = await _portrait_with_tts(tmp_path, _Tts)
+    assert order[-1] == "generate"
