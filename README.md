@@ -89,6 +89,15 @@ containerized web frontend without more plumbing. `IMAGE_BACKEND=comfyui`
 has no such limitation — it's a plain HTTP client, so it works directly
 from the Docker stack. Set `COMFYUI_URL` to a reachable ComfyUI instance.
 
+**The ComfyUI art style (Phase 19a).** `COMFYUI_PROFILE=noobai` (the default) renders Nightwire's anime cyberpunk look: NoobAI-XL v-pred with the Smooth Booster detail LoRA, flat cel shading and neon rim light, at 1216×832 for scenes and 832×1216 for portraits (about 30 s each on an 8 GB RTX 2080). Before each image a short tag-writer call turns the narrator's description into Danbooru-style tags; the engine decides the subject (scenery, or the character's presentation), and falls back to the narrator's own words if tagging fails. Put these on the ComfyUI host:
+
+| File | Folder | Source |
+|---|---|---|
+| `NoobAI-XL-Vpred-v1.0.safetensors` | `models/checkpoints/` | [Laxhar/noobai-XL-Vpred-1.0](https://huggingface.co/Laxhar/noobai-XL-Vpred-1.0) |
+| `Smooth_Booster_v3.safetensors` | `models/loras/` | [LyliaEngine/Smooth_Booster_v3](https://huggingface.co/LyliaEngine/Smooth_Booster_v3) |
+
+Settings: `COMFYUI_CHECKPOINT`, `COMFYUI_LORA` (`none` turns the LoRA off), `COMFYUI_LORA_STRENGTH` (0.6), `COMFYUI_SAMPLER` / `COMFYUI_SCHEDULER` / `COMFYUI_CFG` (euler, normal, 4.5; `dpmpp_2m_sde`, `beta`, 5.0 is the other approved look). `COMFYUI_PROFILE=sd15` keeps the old Stable Diffusion 1.5 graph for hosts without these files. **Licence:** NoobAI-XL is released under the fair-ai-public-license-1.0-sd, which forbids commercial use, including of the images it generates. That is fine for a hobby or open-source game; don't sell Nightwire's generated art, or Nightwire with this model, without changing the model.
+
 ### Homepage dashboard tile
 
 Co-located Vulcan install with Homepage enabled? Add a click-through tile:
