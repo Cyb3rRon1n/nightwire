@@ -124,3 +124,15 @@ def test_extract_palette():
     buf = io.BytesIO(); img.save(buf, "PNG")
     palette = extract_palette(buf.getvalue(), n=2)
     assert palette[0] == "#ffcc00" and palette[1] == "#111111"
+
+
+def test_moodkeys_night_tag_only_for_the_night_mood():
+    for mood in MOOD_SUFFIXES:
+        pos, _ = sheet_prompt(_loc(), "moodkeys", mood=mood)
+        assert ("night" in pos.split(", ")) == (mood == "night, neon lights"), mood
+        assert pos.endswith(mood)
+
+
+def test_establishing_keeps_the_night_tag():
+    pos, _ = sheet_prompt(_loc(), "establishing")
+    assert "night" in pos.split(", ")
