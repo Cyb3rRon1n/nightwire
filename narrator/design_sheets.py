@@ -77,7 +77,11 @@ def sheet_prompt(d: Design, sheet: str, mood: str | None = None) -> tuple[str, s
     if sheet == "props":
         return _join(QUALITY, SHEET_STYLE, _PROPS_TAGS, ", ".join(d.props)), _character_negative(d)
     content = d.alt_tags if sheet == "alternate" else d.tags
-    pos = _join(QUALITY, STYLE, subject_for(d), content, mood if sheet == "moodkeys" else "")
+    style = STYLE
+    if sheet == "moodkeys":
+        # STYLE's standalone "night" tag would override the mood suffix (dawn, rain...); the mood supplies its own time of day
+        style = ", ".join(t for t in STYLE.split(", ") if t != "night")
+    pos = _join(QUALITY, style, subject_for(d), content, mood if sheet == "moodkeys" else "")
     return pos, _location_negative(d)
 
 
