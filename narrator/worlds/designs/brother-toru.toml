@@ -1,0 +1,10 @@
+name = "Brother Tōru"
+kind = "character"
+source = "npc:Brother Tōru"
+presentation = "masculine"
+tags = "shaved head, closed eyes, gentle smile, middle-aged, tall, slender, grey robe, hooded robe, wide sleeves, rope belt, prayer beads, cables around neck, holding lantern, paper lantern, glowing"
+negative = ""
+status = "draft"
+seed = 0
+palette = []
+notes = ["2026-10-28 draft from world card"]

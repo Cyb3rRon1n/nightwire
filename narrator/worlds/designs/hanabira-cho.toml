@@ -1,0 +1,11 @@
+name = "Hanabira-chō"
+kind = "location"
+source = "district:Hanabira-chō"
+tags = "entertainment district, pachinko parlor, host club, love hotel, capsule hotel, yakitori stand, giant screen, idol poster, neon sign, pink neon, cyan neon, steam, night, rain, wet street"
+negative = ""
+alt_tags = "interior, pachinko hall, pachinko machines, rows of machines, bright lights, carpet, indoors"
+props = ["pachinko machine", "idol poster", "neon sign", "yakitori grill", "capsule hotel pod"]
+status = "draft"
+seed = 0
+palette = []
+notes = ["2026-10-28 draft from world card"]

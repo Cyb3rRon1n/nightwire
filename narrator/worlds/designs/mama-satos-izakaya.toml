@@ -1,0 +1,11 @@
+name = "Mama Sato's izakaya"
+kind = "location"
+source = "place:Mama Sato's izakaya"
+tags = "izakaya, storefront, wooden building, noren, red lantern, sliding door, handwritten menu, kanji sign, warm light, steam, alley, expressway pillar, night, rain, wet street"
+negative = ""
+alt_tags = "interior, wooden counter, bar stool, sake bottles, shelves, hanging lanterns, ramen bowl, warm lighting, steam, indoors"
+props = ["paper lanterns", "ramen bowl", "sake bottles", "wooden counter", "noren curtain"]
+status = "draft"
+seed = 0
+palette = []
+notes = ["2026-10-28 draft from world card"]

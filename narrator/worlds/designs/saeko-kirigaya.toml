@@ -1,0 +1,10 @@
+name = "Saeko Kirigaya"
+kind = "character"
+source = "npc:Saeko Kirigaya"
+presentation = "feminine"
+tags = "long hair, black hair, low ponytail, bangs, half-closed eyes, mole under eye, polite smile, tall, slender, long coat, black trench coat, high collar, black gloves, red armband, boots, glowing red padlock, mechanical right arm, human left hand"
+negative = "two mechanical arms"
+status = "draft"
+seed = 0
+palette = []
+notes = ["2026-10-28 draft from world card"]

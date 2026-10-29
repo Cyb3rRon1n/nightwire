@@ -1,0 +1,10 @@
+name = "Captain Ide"
+kind = "character"
+source = "npc:Captain Ide"
+presentation = "masculine"
+tags = "short hair, black hair, grey temples, mustache, rectangular eyewear, stern, middle-aged, broad shoulders, tall, police uniform, peaked cap, epaulettes, necktie, white gloves, navy blue uniform, yellow armband, holding tablet computer"
+negative = ""
+status = "draft"
+seed = 0
+palette = []
+notes = ["2026-10-28 draft from world card"]

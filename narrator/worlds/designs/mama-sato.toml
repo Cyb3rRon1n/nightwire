@@ -1,0 +1,10 @@
+name = "Mama Sato"
+kind = "character"
+source = "npc:Mama Sato"
+presentation = "feminine"
+tags = "grey hair, hair bun, hair stick, brown eyes, laugh lines, wrinkled skin, warm smile, mature female, short, plump, indigo kimono, white apron, rolled sleeves, tenugui, holding ladle, geta"
+negative = ""
+status = "draft"
+seed = 0
+palette = []
+notes = ["2026-10-28 draft from world card"]

@@ -1,0 +1,9 @@
+name = "Hachi"
+kind = "character"
+source = "npc:Hachi"
+tags = "android, robot joints, pale blue hair, bob cut, blank eyes, cheerful smile, smooth skin, slender, visible seams, pillbox hat, teal uniform vest, neckerchief, white gloves, name tag, headset microphone"
+negative = ""
+status = "draft"
+seed = 0
+palette = []
+notes = ["2026-10-28 draft from world card"]

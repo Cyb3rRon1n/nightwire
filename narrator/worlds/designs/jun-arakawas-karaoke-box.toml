@@ -1,0 +1,11 @@
+name = "Jun Arakawa's karaoke box"
+kind = "location"
+source = "place:Jun Arakawa's karaoke box"
+tags = "karaoke box, building exterior, neon sign, glass door, pink neon, stairs, signboard, narrow alley, poster, night, rain, wet street, colorful lights"
+negative = ""
+alt_tags = "interior, small room, sofa, karaoke machine, microphone, television, disco ball, table, colorful lights, indoors"
+props = ["karaoke machine", "microphone", "ledger book", "disco ball", "drink glass"]
+status = "draft"
+seed = 0
+palette = []
+notes = ["2026-10-28 draft from world card"]
