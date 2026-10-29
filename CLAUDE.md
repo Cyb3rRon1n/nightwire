@@ -22,3 +22,7 @@ This project uses the `superpowers` skill set for design and implementation:
 - Executing a plan → `superpowers:subagent-driven-development` (the pattern used for both Phase 1 and Phase 2a so far — fresh subagent per task, review after each, one final whole-branch review, fix real findings before merging)
 
 Every phase so far has an implementation plan at `docs/superpowers/plans/` and a design spec at `docs/superpowers/specs/` — read both before touching a phase's code.
+
+## Generating images
+
+See `docs/image-generation-guide.md` (how to use ComfyUI, `tools.imagegen`, presets, GPU etiquette) and `docs/art-direction.md` (the approved look and content rules).
