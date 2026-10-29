@@ -134,3 +134,33 @@ def test_create_image_backend_rejects_unknown_value(monkeypatch):
 
     with pytest.raises(ValueError, match="not-a-real-backend"):
         create_image_backend()
+
+
+def test_create_image_backend_comfyui_defaults_to_noobai(monkeypatch):
+    from narrator.image_backend import create_image_backend
+    monkeypatch.setenv("IMAGE_BACKEND", "comfyui")
+    for k in ("COMFYUI_PROFILE", "COMFYUI_CHECKPOINT", "COMFYUI_LORA", "COMFYUI_LORA_STRENGTH",
+              "COMFYUI_SAMPLER", "COMFYUI_SCHEDULER", "COMFYUI_CFG"):
+        monkeypatch.delenv(k, raising=False)
+    b = create_image_backend()
+    assert b.wants_tags and b.checkpoint == "NoobAI-XL-Vpred-v1.0.safetensors"
+    assert b.lora == "Smooth_Booster_v3.safetensors" and b.lora_strength == 0.6
+    monkeypatch.setenv("COMFYUI_PROFILE", "sd15")
+    b = create_image_backend()
+    assert not b.wants_tags and b.checkpoint == "v1-5-pruned-emaonly-fp16.safetensors"
+
+
+def test_create_image_backend_reads_sampler_overrides(monkeypatch):
+    from narrator.image_backend import create_image_backend
+    monkeypatch.setenv("IMAGE_BACKEND", "comfyui")
+    monkeypatch.setenv("COMFYUI_SAMPLER", "dpmpp_2m_sde")
+    monkeypatch.setenv("COMFYUI_SCHEDULER", "beta")
+    monkeypatch.setenv("COMFYUI_CFG", "5.0")
+    b = create_image_backend()
+    assert (b.sampler, b.scheduler, b.cfg) == ("dpmpp_2m_sde", "beta", 5.0)
+
+
+def test_flux_worker_does_not_want_tags(monkeypatch):
+    from narrator.image_backend import create_image_backend
+    monkeypatch.setenv("IMAGE_BACKEND", "flux_worker")
+    assert create_image_backend().wants_tags is False
