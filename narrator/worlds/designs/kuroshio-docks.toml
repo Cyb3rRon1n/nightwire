@@ -1,0 +1,11 @@
+name = "Kuroshio Docks"
+kind = "location"
+source = "district:Kuroshio Docks"
+tags = "harbor, shipping container, container stack, gantry crane, pier, black water, rusty ship, floodlight, fog, night, overcast, industrial, wet ground"
+negative = ""
+alt_tags = "between containers, narrow passage, from below, looking up, cranes overhead, floodlight, fog, night"
+props = ["shipping container", "gantry crane", "mooring bollard", "floodlight", "chain"]
+status = "draft"
+seed = 0
+palette = []
+notes = ["2026-10-28 draft from world card"]

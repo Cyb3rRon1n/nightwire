@@ -1,0 +1,11 @@
+name = "The Loop"
+kind = "location"
+source = "district:The Loop"
+tags = "elevated highway, expressway, ring road, off-ramp, arcade building, neon sign, guardrail, light trails, motion blur, city lights, night, rain, wet road, glowing signs"
+negative = ""
+alt_tags = "arcade interior, arcade cabinets, claw machine, neon lights, indoors, carpet, dark"
+props = ["arcade cabinet", "light trail", "traffic drone", "guardrail", "parked motorcycle"]
+status = "draft"
+seed = 0
+palette = []
+notes = ["2026-10-28 draft from world card"]

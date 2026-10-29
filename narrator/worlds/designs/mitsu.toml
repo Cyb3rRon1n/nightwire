@@ -1,0 +1,10 @@
+name = "Mitsu"
+kind = "character"
+source = "npc:Mitsu"
+presentation = "feminine"
+tags = "pink hair, twintails, hair ribbon, blue eyes, star-shaped pupils, bright smile, young woman, slender, idol, frilled dress, pink and white dress, off shoulder, thighhighs, headset, wrist cuffs, glowing chrome throat implant"
+negative = ""
+status = "draft"
+seed = 0
+palette = []
+notes = ["2026-10-28 draft from world card"]

@@ -1,0 +1,10 @@
+name = "Kenji Moro"
+kind = "character"
+source = "npc:Kenji Moro"
+presentation = "masculine"
+tags = "blonde hair, pompadour, spiked hair, fang, grin, teenage boy, lean, hachimaki, yellow long coat, open coat, lightning bolt print, kanji print, sarashi, fingerless gloves, goggles around neck, boots, glowing blue left eye, mechanical left eye"
+negative = "two mechanical eyes, glowing right eye"
+status = "draft"
+seed = 0
+palette = []
+notes = ["2026-10-28 draft from world card"]

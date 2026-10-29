@@ -1,0 +1,11 @@
+name = "Yomi Line"
+kind = "location"
+source = "district:Yomi Line"
+tags = "subway station, abandoned, platform, ticket gate, ticket machine, station sign, train, fluorescent lights, flickering light, dust, blue glow, floating lights, ghostly, dark, dim"
+negative = ""
+alt_tags = "train interior, empty seats, hanging straps, window, flickering light, indoors, dark, blue glow"
+props = ["ticket machine", "station sign", "platform speaker", "paper lantern", "ticket gate"]
+status = "draft"
+seed = 0
+palette = []
+notes = ["2026-10-28 draft from world card"]

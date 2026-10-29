@@ -1,0 +1,11 @@
+name = "Old Hara's clinic"
+kind = "location"
+source = "place:Old Hara's clinic"
+tags = "back alley, clinic entrance, noren, hand-painted sign, wooden door, dim lamp, pale light, curtain, hanging cables, cluttered, night, rain, puddle"
+negative = ""
+alt_tags = "interior, operating table, surgical lamp, tool tray, shelves, jars, cluttered, dim, indoors"
+props = ["operating table", "surgical lamp", "tool tray", "magnifying lamp", "jar of spare parts"]
+status = "draft"
+seed = 0
+palette = []
+notes = ["2026-10-28 draft from world card"]

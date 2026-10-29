@@ -1,0 +1,10 @@
+name = "Hoshikawa Rei"
+kind = "character"
+source = "npc:Hoshikawa Rei"
+presentation = "feminine"
+tags = "long hair, white hair, hime cut, purple eyes, half-closed eyes, bored, smirk, young woman, slim, oversized jacket, holographic jacket, off shoulder, pleated skirt, thighhighs, platform footwear, earrings, choker, holding umbrella"
+negative = ""
+status = "draft"
+seed = 0
+palette = []
+notes = ["2026-10-28 draft from world card"]

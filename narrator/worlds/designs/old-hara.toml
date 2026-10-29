@@ -1,0 +1,10 @@
+name = "Old Hara"
+kind = "character"
+source = "npc:Old Hara"
+presentation = "masculine"
+tags = "old man, bald, white eyebrows, bushy eyebrows, deep-set eyes, tired eyes, wrinkled skin, thin, hunched over, surgical mask around neck, green scrubs, surgical apron, rubber gloves, screwdriver in pocket, mechanical monocle"
+negative = ""
+status = "draft"
+seed = 0
+palette = []
+notes = ["2026-10-28 draft from world card"]
