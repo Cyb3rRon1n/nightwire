@@ -27,7 +27,7 @@ def test_unknown_role_and_lifepath_fall_back_to_plain_description():
 
     prompt = _build_portrait_prompt(character)
 
-    assert prompt == "Zeta, a Spacer Diplomat — moody neon lighting, rain-slicked cyberpunk city backdrop, highly detailed digital painting"
+    assert prompt == "Zeta, a Spacer Diplomat — moody neon lighting, rain-slicked cyberpunk city backdrop"
 
 
 def test_no_reference_photos_returns_empty_list():
@@ -76,3 +76,34 @@ def test_oversized_reference_photo_is_rejected():
     url = _data_url(oversized)
     with pytest.raises(ValueError, match="exceeds"):
         _validate_reference_photos([url])
+
+
+def test_portrait_prompt_has_no_digital_painting_phrase():
+    from engine.character import CharacterSheet
+    from server.portrait import _build_portrait_prompt
+    assert "digital painting" not in _build_portrait_prompt(CharacterSheet(player_id="p", name="Rook", role="solo", lifepath="streetkid"))
+
+
+async def test_tag_backend_portrait_uses_presentation_subject(tmp_path):
+    from engine.character import CharacterSheet
+    from engine.persistence import JSONFileSessionStore
+    from engine.session import Session
+    from server.portrait import handle_approve_character
+    seen = {}
+    class _Img:
+        wants_tags = True
+        async def generate_portrait(self, description, reference_photos=None, negative=None):
+            seen["prompt"], seen["negative"] = description, negative
+            return b"png"
+        async def generate_scene(self, prompt, reference_paths, negative=None):
+            raise AssertionError
+    class _Client:
+        async def judge(self, messages, schema):
+            return {"tags": ["bomber jacket", "short hair", "cyberarm", "neon", "rain", "smirk"]}
+        async def unload(self):
+            seen["unloaded_after_prompt"] = "prompt" not in seen
+    session = Session(session_id="s1")
+    session.characters["p1"] = CharacterSheet(player_id="p1", name="Rook", role="solo", lifepath="streetkid", presentation="masculine")
+    await handle_approve_character(session, JSONFileSessionStore(tmp_path), _Client(), _Img(), "p1", {})
+    assert seen["prompt"].startswith("masterpiece") and ", 1boy, solo" in seen["prompt"] and "cyberarm" in seen["prompt"]
+    assert seen["negative"] and seen["unloaded_after_prompt"] is True

@@ -1523,3 +1523,58 @@ async def test_referee_runs_on_roll_resolution(tmp_path):
     store = JSONFileSessionStore(tmp_path)
     await handle_roll(session, client, store, _UnusedImageBackend(), FakeTTSBackend(), "p1")
     assert session.characters["p1"].installments_owed == 2
+
+
+class _TagImageBackend:
+    wants_tags = True
+
+    def __init__(self, events):
+        self.events, self.calls = events, []
+
+    async def generate_portrait(self, description, reference_photos=None, negative=None):
+        raise AssertionError("not used")
+
+    async def generate_scene(self, prompt, reference_paths, negative=None):
+        self.events.append("generate")
+        self.calls.append((prompt, negative))
+        return b"img"
+
+
+async def test_scene_image_is_tagged_before_the_narrator_unloads(tmp_path):
+    from narrator.image_prompt import NEGATIVE
+    events = []
+    session = _session_with_character()
+    client = _scripted_client([{"narration": [{"speaker": "narrator", "text": "You step into the alley."}],
+                                "tool_call": {"tool": None}, "image_request": {"prompt": "a rainy neon alley"}}])
+    async def judge_fn(*, model, messages, format):
+        events.append("judge:" + ("tags" if "tags" in format.get("properties", {}) else "referee"))
+        if "tags" in format.get("properties", {}):
+            return {"message": {"content": json.dumps({"tags": ["alley", "rain", "neon signs", "puddles", "steam", "wires"]})}}
+        return {"message": {"content": json.dumps({k: ("none" if "enum" in v else False) for k, v in format["properties"].items()})}}
+    client._judge_fn = judge_fn
+    original_unload = client.unload
+    async def unload():
+        events.append("unload")
+        await original_unload()
+    client.unload = unload
+    image = _TagImageBackend(events)
+    await _call(session, client, "p1", {"text": "I walk in."}, tmp_path, image_backend=image, tts_backend=FakeTTSBackend())
+    assert events.index("judge:tags") < events.index("unload") < events.index("generate")
+    prompt, negative = image.calls[0]
+    assert "scenery, no humans" in prompt and "puddles" in prompt and negative == NEGATIVE
+    assert any(l.startswith("[image prompt (tags): ") for l in session.log)
+
+
+async def test_non_tag_backend_keeps_the_old_scene_path(tmp_path):
+    calls = []
+    class _Plain:
+        async def generate_portrait(self, description, reference_photos=None):
+            raise AssertionError
+        async def generate_scene(self, prompt, reference_paths):
+            calls.append(prompt)
+            return b"img"
+    session = _session_with_character()
+    client = _scripted_client([{"narration": [{"speaker": "narrator", "text": "x"}], "tool_call": {"tool": None},
+                                "image_request": {"prompt": "a rainy neon alley"}}])
+    await _call(session, client, "p1", {"text": "I walk in."}, tmp_path, image_backend=_Plain(), tts_backend=FakeTTSBackend())
+    assert calls == ["a rainy neon alley"]
