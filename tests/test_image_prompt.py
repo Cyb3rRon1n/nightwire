@@ -2,7 +2,7 @@ import pytest
 
 from engine.character import CharacterSheet
 from narrator.image_prompt import (
-    NEGATIVE, QUALITY, STYLE, build_prompt, clean_tags, resolve, subject_tags,
+    NEGATIVE, PORTRAIT_NEGATIVE, QUALITY, STYLE, build_prompt, clean_tags, resolve, subject_tags,
 )
 
 
@@ -17,12 +17,12 @@ def test_scene_subject():
 @pytest.mark.parametrize("presentation,first", [("feminine", "1girl"), ("masculine", "1boy"),
                                                 ("androgynous", "1other"), (None, "1other")])
 def test_portrait_subject_follows_presentation(presentation, first):
-    assert subject_tags("portrait", _pc(presentation=presentation)) == [first, "solo", "upper body", "looking at viewer"]
+    assert subject_tags("portrait", _pc(presentation=presentation)) == [first, "solo", "upper body", "portrait", "looking at viewer"]
 
 
 def test_tsukumogami_portrait_overrides_presentation():
     c = _pc(lifepath="tsukumogami", presentation="feminine")
-    assert subject_tags("portrait", c) == ["1other", "solo", "upper body", "android", "robot joints"]
+    assert subject_tags("portrait", c) == ["1other", "solo", "upper body", "portrait", "android", "robot joints"]
 
 
 def test_clean_tags_drops_round_four_junk_and_owned_tags():
@@ -71,3 +71,23 @@ async def test_resolve_portrait_uses_character_subject():
     client = _Client({"tags": ["bomber jacket", "short hair", "cyberarm", "neon", "rain"]})
     pos, _, _ = await resolve(client, "portrait", "Rook, a streetkid solo", _pc(presentation="masculine"))
     assert pos.startswith(QUALITY + ", 1boy, solo")
+
+
+async def test_resolve_portrait_drops_lower_body_tags():
+    client = _Client({"tags": ["scuffed boots", "layered street fashion", "cyberware", "neon", "rain",
+                               "smirk", "full body"]})
+    pos, neg, _ = await resolve(client, "portrait", "Rook, a streetkid solo", _pc(presentation="masculine"))
+    assert "boots" not in pos and "full body" not in pos
+    assert "layered street fashion" in pos and "cyberware" in pos and "smirk" in pos
+    assert neg == PORTRAIT_NEGATIVE
+
+
+async def test_resolve_scene_keeps_lower_body_tags():
+    client = _Client({"tags": ["scuffed boots", "full body", "neon", "rain", "alley"]})
+    pos, neg, _ = await resolve(client, "scene", "a rainy alley")
+    assert "scuffed boots" in pos and "full body" in pos and neg == NEGATIVE
+
+
+def test_portrait_negative_bans_lower_body():
+    assert PORTRAIT_NEGATIVE.startswith(NEGATIVE)
+    assert "full body" in PORTRAIT_NEGATIVE and "boots" in PORTRAIT_NEGATIVE
