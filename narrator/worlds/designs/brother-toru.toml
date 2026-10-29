@@ -6,5 +6,5 @@ tags = "shaved head, serene, calm, gentle smile, middle-aged, tall, slender, gau
 negative = ""
 status = "approved"
 seed = 2806524837
-palette = []
+palette = ["#141414", "#0a090d", "#1c161c", "#463b4d", "#121115", "#141413"]
 notes = ["2026-10-28 draft from world card", "2026-10-28 round 1: 4 candidates", "2026-10-29 art direction: mature cyberpunk pass", "2026-10-29 round 2: 4 candidates", "2026-10-29 approved r2 #3 (seed 2806524837)"]
