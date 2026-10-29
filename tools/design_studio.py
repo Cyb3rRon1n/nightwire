@@ -94,21 +94,20 @@ async def cmd_candidates(designs: dict[str, Design], slugs: list[str], args, bac
 
 
 async def _candidates_one(slug: str, args, backend) -> None:
-    if True:
-        d = load_design(args.designs_dir / f"{slug}.toml")  # pick up hand edits made mid-batch
-        slug_dir = args.design_dir / slug
-        (slug_dir / "candidates").mkdir(parents=True, exist_ok=True)
-        r = next_round(slug_dir)
-        pos, neg = candidate_prompt(d)
-        for n in range(1, CANDIDATES_PER_ROUND + 1):
-            seed = random.randint(1, 2**32 - 1)
-            png = await backend.run_workflow(candidate_workflow(pos, neg, seed))
-            (slug_dir / "candidates" / f"r{r}-c{n}-{seed}.png").write_bytes(png)
-            print(f"{slug}: round {r} candidate {n} (seed {seed})", flush=True)
-        if d.status != "approved":
-            d.status = "candidates"
-        d.notes.append(f"{_today()} round {r}: {CANDIDATES_PER_ROUND} candidates")
-        save_design(d, args.designs_dir / f"{slug}.toml")
+    d = load_design(args.designs_dir / f"{slug}.toml")  # pick up hand edits made mid-batch
+    slug_dir = args.design_dir / slug
+    (slug_dir / "candidates").mkdir(parents=True, exist_ok=True)
+    r = next_round(slug_dir)
+    pos, neg = candidate_prompt(d)
+    for n in range(1, CANDIDATES_PER_ROUND + 1):
+        seed = random.randint(1, 2**32 - 1)
+        png = await backend.run_workflow(candidate_workflow(pos, neg, seed))
+        (slug_dir / "candidates" / f"r{r}-c{n}-{seed}.png").write_bytes(png)
+        print(f"{slug}: round {r} candidate {n} (seed {seed})", flush=True)
+    if d.status != "approved":
+        d.status = "candidates"
+    d.notes.append(f"{_today()} round {r}: {CANDIDATES_PER_ROUND} candidates")
+    save_design(d, args.designs_dir / f"{slug}.toml")
 
 
 def cmd_approve(designs, slug: str, n: int, round_no: int | None, args) -> int:
@@ -149,29 +148,28 @@ async def cmd_sheets(designs, slugs: list[str], args, backend) -> int:
 
 
 async def _sheets_one(slug: str, args, backend) -> None:
-    if True:
-        d = load_design(args.designs_dir / f"{slug}.toml")  # pick up hand edits made mid-batch
-        if d.status != "approved":
-            print(f"{slug}: not approved, skipping", file=sys.stderr)
-            return
-        slug_dir = args.design_dir / slug
-        slug_dir.mkdir(parents=True, exist_ok=True)
-        sheets = CHARACTER_SHEETS if d.kind == "character" else LOCATION_SHEETS
-        for sheet in sheets:
-            if sheet == "moodkeys":
-                frames = []
-                for mood in MOOD_SUFFIXES:
-                    pos, neg = sheet_prompt(d, sheet, mood=mood)
-                    frames.append(await backend.run_workflow(sheet_workflow(pos, neg, d.seed, high_res=False)))
-                png = join_strip(frames)
-            else:
-                pos, neg = sheet_prompt(d, sheet)
-                png = await backend.run_workflow(sheet_workflow(pos, neg, d.seed))
-            (slug_dir / f"{sheet}.png").write_bytes(png)
-            print(f"{slug}: {sheet}", flush=True)
-        key = "turnaround" if d.kind == "character" else "establishing"
-        d.palette = extract_palette((slug_dir / f"{key}.png").read_bytes())
-        save_design(d, args.designs_dir / f"{slug}.toml")
+    d = load_design(args.designs_dir / f"{slug}.toml")  # pick up hand edits made mid-batch
+    if d.status != "approved":
+        print(f"{slug}: not approved, skipping", file=sys.stderr)
+        return
+    slug_dir = args.design_dir / slug
+    slug_dir.mkdir(parents=True, exist_ok=True)
+    sheets = CHARACTER_SHEETS if d.kind == "character" else LOCATION_SHEETS
+    for sheet in sheets:
+        if sheet == "moodkeys":
+            frames = []
+            for mood in MOOD_SUFFIXES:
+                pos, neg = sheet_prompt(d, sheet, mood=mood)
+                frames.append(await backend.run_workflow(sheet_workflow(pos, neg, d.seed, high_res=False)))
+            png = join_strip(frames)
+        else:
+            pos, neg = sheet_prompt(d, sheet)
+            png = await backend.run_workflow(sheet_workflow(pos, neg, d.seed))
+        (slug_dir / f"{sheet}.png").write_bytes(png)
+        print(f"{slug}: {sheet}", flush=True)
+    key = "turnaround" if d.kind == "character" else "establishing"
+    d.palette = extract_palette((slug_dir / f"{key}.png").read_bytes())
+    save_design(d, args.designs_dir / f"{slug}.toml")
 
 
 def _sheets_present(d: Design, slug_dir: Path) -> bool:
