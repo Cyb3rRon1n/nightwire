@@ -191,3 +191,32 @@ async def test_batch_reloads_design_from_disk(studio):
     await ds.main(_args(studio, "candidates", "mama-sato", "izakaya"), backend=EditingBackend())
     d = load_design(designs / "izakaya.toml")
     assert d.tags == "izakaya, edited-tag" and d.status == "candidates"
+
+
+async def test_gallery_writes_rounds_and_approve_uses_them(studio):
+    designs, data = studio
+    backend = FakeBackend()
+    await ds.main(_args(studio, "candidates", "mama-sato"), backend=backend)
+    await ds.main(_args(studio, "gallery"))
+    assert json.loads((data / "gallery" / "rounds.json").read_text()) == {"mama-sato": 1}
+    await ds.main(_args(studio, "candidates", "mama-sato"), backend=backend)  # round 2, unseen by owner
+    assert await ds.main(_args(studio, "approve", "mama-sato", "3")) == 0
+    assert "approved r1 #3" in load_design(designs / "mama-sato.toml").notes[-1]
+    assert await ds.main(_args(studio, "approve", "mama-sato", "2", "--round", "2")) == 0
+    assert "approved r2 #2" in load_design(designs / "mama-sato.toml").notes[-1]
+
+
+async def test_approve_without_rounds_json_uses_latest(studio):
+    designs, _ = studio
+    backend = FakeBackend()
+    await ds.main(_args(studio, "candidates", "mama-sato"), backend=backend)
+    await ds.main(_args(studio, "candidates", "mama-sato"), backend=backend)
+    assert await ds.main(_args(studio, "approve", "mama-sato", "1")) == 0
+    assert "approved r2 #1" in load_design(designs / "mama-sato.toml").notes[-1]
+
+
+def test_modules_import_without_pillow():
+    import subprocess, sys
+    r = subprocess.run([sys.executable, "-c", "import sys; sys.modules['PIL']=None; "
+                        "import narrator.design_sheets, tools.design_studio"], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
