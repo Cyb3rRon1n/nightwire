@@ -6,6 +6,7 @@ from engine.persistence import JSONFileSessionStore
 from engine.session import Session
 from narrator.client import NarratorClient
 from narrator.image_backend import ImageBackend
+from narrator.image_prompt import resolve
 
 # Visual (not mechanical) descriptors for portrait prompts. ROLES/LIFEPATHS
 # in ruleset/ describe game mechanics, not appearance, so this is genuinely
@@ -73,7 +74,7 @@ def _build_portrait_prompt(character: CharacterSheet) -> str:
     visual_tags = ", ".join(tag for tag in (lifepath_visual, role_visual) if tag)
 
     base = f"{character.name}, a {character.lifepath} {character.role}"
-    style = "moody neon lighting, rain-slicked cyberpunk city backdrop, highly detailed digital painting"
+    style = "moody neon lighting, rain-slicked cyberpunk city backdrop"
     if visual_tags:
         return f"{base} — {visual_tags}, {style}"
     return f"{base} — {style}"
@@ -93,8 +94,14 @@ async def handle_approve_character(
     reference_photos = _validate_reference_photos(message.get("reference_photos"))
 
     description = _build_portrait_prompt(character)
+    negative = None
+    if getattr(image_backend, "wants_tags", False):
+        description, negative, _source = await resolve(narrator_client, "portrait", description, character)
     await narrator_client.unload()
-    image_bytes = await image_backend.generate_portrait(description, reference_photos=reference_photos)
+    if negative is None:
+        image_bytes = await image_backend.generate_portrait(description, reference_photos=reference_photos)
+    else:
+        image_bytes = await image_backend.generate_portrait(description, reference_photos=reference_photos, negative=negative)
 
     relative_path = f"portraits/{session.session_id}/{player_id}.png"
     output_path = store.directory / relative_path

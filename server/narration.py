@@ -11,6 +11,7 @@ from engine.persistence import JSONFileSessionStore
 from engine.session import Session
 from narrator.client import NarratorClient
 from narrator.image_backend import ImageBackend
+from narrator.image_prompt import resolve
 from narrator.referee import run_referee
 from narrator.tools import RequestRoll, execute_tool, roll_check
 from narrator.tts_backend import TTSBackend
@@ -385,6 +386,12 @@ async def _run_turn(
         reference_paths = []
         if character is not None and character.portrait_path is not None:
             reference_paths.append(str(store.directory / character.portrait_path))
+        image_prompt, image_negative = response.image_request.prompt, None
+        if getattr(image_backend, "wants_tags", False):
+            # Phase 19a: tag while the narrator model is still loaded; unload comes next.
+            image_prompt, image_negative, source = await resolve(
+                narrator_client, "scene", response.image_request.prompt)
+            session.log.append(f"[image prompt ({source}): {image_prompt}]")
         # Best-effort VRAM headroom before generating - freeing the narrator/TTS
         # backends' own resident weights matters most on small cards, but a dead
         # TTS/narrator backend must never block the actual image generation it
@@ -398,7 +405,10 @@ async def _run_turn(
         except (ValueError, TypeError, OSError, httpx.HTTPError, RuntimeError):
             pass
         try:
-            image_bytes = await image_backend.generate_scene(response.image_request.prompt, reference_paths)
+            if image_negative is None:
+                image_bytes = await image_backend.generate_scene(image_prompt, reference_paths)
+            else:
+                image_bytes = await image_backend.generate_scene(image_prompt, reference_paths, negative=image_negative)
             relative_path = f"images/{session.session_id}/{len(session.log)}.png"
             output_path = store.directory / relative_path
             output_path.parent.mkdir(parents=True, exist_ok=True)
