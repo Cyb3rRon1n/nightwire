@@ -136,3 +136,21 @@ def test_moodkeys_night_tag_only_for_the_night_mood():
 def test_establishing_keeps_the_night_tag():
     pos, _ = sheet_prompt(_loc(), "establishing")
     assert "night" in pos.split(", ")
+
+
+def _white_sheet():
+    img = Image.new("RGB", (100, 100), (255, 255, 255))
+    img.paste((200, 30, 30), (0, 0, 20, 100))
+    img.paste((30, 30, 200), (20, 0, 30, 100))
+    buf = io.BytesIO(); img.save(buf, "PNG")
+    return buf.getvalue()
+
+
+def test_extract_palette_skips_white_background():
+    palette = extract_palette(_white_sheet(), n=2)
+    assert len(palette) == 2 and "#ffffff" not in palette
+    assert palette[0].startswith("#c8") and palette[1].startswith("#1e")
+
+
+def test_extract_palette_keeps_white_when_asked():
+    assert "#ffffff" in extract_palette(_white_sheet(), n=3, skip_background=False)

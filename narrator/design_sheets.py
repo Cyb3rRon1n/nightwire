@@ -3,8 +3,6 @@ Pure builders plus two Pillow helpers; no network here."""
 
 import io
 
-from PIL import Image
-
 from narrator.designs import Design
 from narrator.image_prompt import NEGATIVE, QUALITY, STYLE
 
@@ -129,6 +127,7 @@ def sheet_workflow(positive: str, negative: str, seed: int, high_res: bool = Tru
 
 
 def join_strip(images: list[bytes]) -> bytes:
+    from PIL import Image
     frames = [Image.open(io.BytesIO(b)).convert("RGB") for b in images]
     strip = Image.new("RGB", (sum(f.width for f in frames), max(f.height for f in frames)))
     x = 0
@@ -140,10 +139,14 @@ def join_strip(images: list[bytes]) -> bytes:
     return out.getvalue()
 
 
-def extract_palette(png: bytes, n: int = 6) -> list[str]:
+def extract_palette(png: bytes, n: int = 6, skip_background: bool = True) -> list[str]:
+    from PIL import Image
     img = Image.open(io.BytesIO(png)).convert("RGB")
     img.thumbnail((256, 256))
-    quantized = img.quantize(colors=n)
+    quantized = img.quantize(colors=n + 4)
     flat = quantized.getpalette()
     counts = sorted(quantized.getcolors(), reverse=True)
-    return ["#%02x%02x%02x" % tuple(flat[i * 3:i * 3 + 3]) for _count, i in counts[:n]]
+    colors = [(c, tuple(flat[i * 3:i * 3 + 3])) for c, i in counts]
+    if skip_background:  # sheets sit on a white background
+        colors = [(c, rgb) for c, rgb in colors if min(rgb) < 235]
+    return ["#%02x%02x%02x" % rgb for _c, rgb in colors[:n]]

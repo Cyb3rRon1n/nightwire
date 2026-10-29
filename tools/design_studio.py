@@ -9,7 +9,7 @@ character model sheets and location designs.
     python -m tools.design_studio export
 
 Runbook: when applying picks from a published gallery, pass `--round <r>` to
-`approve` (the gallery shows a specific round; the default is the latest).
+`approve` (default: the round the last gallery showed, else the latest).
 Don't run two batches at once -- they share the GPU and the design TOMLs.
 """
 
@@ -26,8 +26,6 @@ import sys
 import urllib.request
 import zipfile
 from pathlib import Path
-
-from PIL import Image
 
 from narrator.comfyui_backend import ComfyUIBackend
 from narrator.design_sheets import (
@@ -112,7 +110,13 @@ async def _candidates_one(slug: str, args, backend) -> None:
 
 def cmd_approve(designs, slug: str, n: int, round_no: int | None, args) -> int:
     d = designs[slug]
+    if round_no is None:  # approve the round the owner saw in the gallery
+        try:
+            round_no = json.loads((args.design_dir / "gallery" / "rounds.json").read_text()).get(slug)
+        except (OSError, ValueError):
+            pass
     r, cands = _latest_candidates(args.design_dir / slug, round_no)
+    print(f"{slug}: using round {r}")
     if n not in cands:
         print(f"{slug}: no candidate #{n} in round {r}", file=sys.stderr)
         return 1
@@ -168,7 +172,7 @@ async def _sheets_one(slug: str, args, backend) -> None:
         (slug_dir / f"{sheet}.png").write_bytes(png)
         print(f"{slug}: {sheet}", flush=True)
     key = "turnaround" if d.kind == "character" else "establishing"
-    d.palette = extract_palette((slug_dir / f"{key}.png").read_bytes())
+    d.palette = extract_palette((slug_dir / f"{key}.png").read_bytes(), skip_background=d.kind == "character")
     save_design(d, args.designs_dir / f"{slug}.toml")
 
 
@@ -178,6 +182,7 @@ def _sheets_present(d: Design, slug_dir: Path) -> bool:
 
 
 def _web_copy(src: Path, dest: Path) -> None:
+    from PIL import Image
     im = Image.open(src).convert("RGB")
     im.thumbnail((1100, 1100))
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -187,9 +192,12 @@ def _web_copy(src: Path, dest: Path) -> None:
 def cmd_gallery(designs, args) -> int:
     out = args.design_dir / "gallery"
     sections = []
+    rounds = {}
     for slug, d in designs.items():
         slug_dir = args.design_dir / slug
         r, cands = _latest_candidates(slug_dir)
+        if cands:
+            rounds[slug] = r
         figs = []
         for n, p in sorted(cands.items()):
             rel = f"img/{slug}/r{r}-c{n}.jpg"
@@ -213,6 +221,7 @@ def cmd_gallery(designs, args) -> int:
             + "".join(sections))
     out.mkdir(parents=True, exist_ok=True)
     (out / "index.html").write_text(page)
+    (out / "rounds.json").write_text(json.dumps(rounds))
     print(out / "index.html")
     return 0
 
