@@ -23,7 +23,7 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 
 [tool.setuptools.packages.find]
-include = ["ruleset", "engine", "server", "narrator"]
+include = ["ruleset", "engine", "server", "narrator", "tools"]
 
 [tool.setuptools.package-data]
 narrator = ["worlds/*.toml", "worlds/designs/*.toml"]
