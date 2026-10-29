@@ -17,3 +17,9 @@ def test_kinds():
     assert "sensitive" in char["6"]["inputs"]["text"] and "nude" in char["7"]["inputs"]["text"]
     raw = build("just this", "scene", True, "", "base", 1)
     assert raw["6"]["inputs"]["text"] == "just this"
+
+
+def test_portrait_kind_is_a_bust_in_world():
+    wf = build("1girl, black hair", "portrait", False, "", "portrait", 1)
+    assert "upper body, portrait" in wf["6"]["inputs"]["text"] and "full body" in wf["7"]["inputs"]["text"]
+    assert (wf["5"]["inputs"]["width"], wf["5"]["inputs"]["height"]) == (832, 1216)
