@@ -26,4 +26,4 @@ asyncio_mode = "auto"
 include = ["ruleset", "engine", "server", "narrator"]
 
 [tool.setuptools.package-data]
-narrator = ["worlds/*.toml"]
+narrator = ["worlds/*.toml", "worlds/designs/*.toml"]

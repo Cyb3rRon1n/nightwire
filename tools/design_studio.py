@@ -7,6 +7,10 @@ character model sheets and location designs.
     python -m tools.design_studio sheets mama-sato | --approved-missing
     python -m tools.design_studio gallery
     python -m tools.design_studio export
+
+Runbook: when applying picks from a published gallery, pass `--round <r>` to
+`approve` (the gallery shows a specific round; the default is the latest).
+Don't run two batches at once -- they share the GPU and the design TOMLs.
 """
 
 import argparse
@@ -30,7 +34,7 @@ from narrator.design_sheets import (
     CHARACTER_SHEETS, LOCATION_SHEETS, MOOD_SUFFIXES, candidate_prompt, candidate_workflow,
     extract_palette, join_strip, sheet_prompt, sheet_workflow,
 )
-from narrator.designs import DESIGNS_DIR, Design, load_designs, save_design
+from narrator.designs import DESIGNS_DIR, Design, load_design, load_designs, save_design
 
 _CANDIDATE = re.compile(r"^r(\d+)-c(\d+)-(\d+)\.png$")
 CANDIDATES_PER_ROUND = 4
@@ -60,8 +64,16 @@ def _gpu_etiquette(comfyui_url: str, before: bool) -> None:
     try:
         if before:
             host = os.environ.get("OLLAMA_HOST", "http://192.168.10.19:11434").rstrip("/")
-            body = {"model": os.environ.get("NIGHTWIRE_MODEL", "qwen3:8b"), "keep_alive": 0}
-            urllib.request.urlopen(urllib.request.Request(f"{host}/api/generate", data=json.dumps(body).encode()), timeout=30)
+            if "://" not in host:
+                host = f"http://{host}"
+            try:
+                r = urllib.request.urlopen(urllib.request.Request(f"{host}/api/ps"), timeout=10)
+                models = [m["name"] for m in json.loads(r.read()).get("models", [])]
+            except Exception:
+                models = [os.environ.get("NIGHTWIRE_MODEL", "qwen3:8b")]
+            for model in models:
+                body = {"model": model, "keep_alive": 0}
+                urllib.request.urlopen(urllib.request.Request(f"{host}/api/generate", data=json.dumps(body).encode()), timeout=30)
         else:
             body = {"unload_models": True, "free_memory": True}
             urllib.request.urlopen(urllib.request.Request(f"{comfyui_url.rstrip('/')}/free", data=json.dumps(body).encode(),
@@ -71,8 +83,19 @@ def _gpu_etiquette(comfyui_url: str, before: bool) -> None:
 
 
 async def cmd_candidates(designs: dict[str, Design], slugs: list[str], args, backend) -> int:
+    failed = 0
     for slug in slugs:
-        d = designs[slug]
+        try:
+            await _candidates_one(slug, args, backend)
+        except Exception as e:
+            failed += 1
+            print(f"{slug}: FAILED: {e}", file=sys.stderr)
+    return 1 if failed else 0
+
+
+async def _candidates_one(slug: str, args, backend) -> None:
+    if True:
+        d = load_design(args.designs_dir / f"{slug}.toml")  # pick up hand edits made mid-batch
         slug_dir = args.design_dir / slug
         (slug_dir / "candidates").mkdir(parents=True, exist_ok=True)
         r = next_round(slug_dir)
@@ -86,7 +109,6 @@ async def cmd_candidates(designs: dict[str, Design], slugs: list[str], args, bac
             d.status = "candidates"
         d.notes.append(f"{_today()} round {r}: {CANDIDATES_PER_ROUND} candidates")
         save_design(d, args.designs_dir / f"{slug}.toml")
-    return 0
 
 
 def cmd_approve(designs, slug: str, n: int, round_no: int | None, args) -> int:
@@ -97,6 +119,10 @@ def cmd_approve(designs, slug: str, n: int, round_no: int | None, args) -> int:
         return 1
     d.seed = int(_CANDIDATE.match(cands[n].name).group(3))
     d.status = "approved"
+    d.palette = []
+    sheets = CHARACTER_SHEETS if d.kind == "character" else LOCATION_SHEETS
+    for sheet in sheets:  # stale sheets were rendered from the old seed
+        (args.design_dir / slug / f"{sheet}.png").unlink(missing_ok=True)
     d.notes.append(f"{_today()} approved r{r} #{n} (seed {d.seed})")
     save_design(d, args.designs_dir / f"{slug}.toml")
     return 0
@@ -104,17 +130,30 @@ def cmd_approve(designs, slug: str, n: int, round_no: int | None, args) -> int:
 
 def cmd_reroll(designs, slug: str, note: str, args) -> int:
     d = designs[slug]
+    if d.status == "approved":
+        d.status = "candidates"
     d.notes.append(f"{_today()} reroll: {note}")
     save_design(d, args.designs_dir / f"{slug}.toml")
     return 0
 
 
 async def cmd_sheets(designs, slugs: list[str], args, backend) -> int:
+    failed = 0
     for slug in slugs:
-        d = designs[slug]
+        try:
+            await _sheets_one(slug, args, backend)
+        except Exception as e:
+            failed += 1
+            print(f"{slug}: FAILED: {e}", file=sys.stderr)
+    return 1 if failed else 0
+
+
+async def _sheets_one(slug: str, args, backend) -> None:
+    if True:
+        d = load_design(args.designs_dir / f"{slug}.toml")  # pick up hand edits made mid-batch
         if d.status != "approved":
             print(f"{slug}: not approved, skipping", file=sys.stderr)
-            continue
+            return
         slug_dir = args.design_dir / slug
         slug_dir.mkdir(parents=True, exist_ok=True)
         sheets = CHARACTER_SHEETS if d.kind == "character" else LOCATION_SHEETS
@@ -133,7 +172,6 @@ async def cmd_sheets(designs, slugs: list[str], args, backend) -> int:
         key = "turnaround" if d.kind == "character" else "establishing"
         d.palette = extract_palette((slug_dir / f"{key}.png").read_bytes())
         save_design(d, args.designs_dir / f"{slug}.toml")
-    return 0
 
 
 def _sheets_present(d: Design, slug_dir: Path) -> bool:

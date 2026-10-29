@@ -63,6 +63,14 @@ def validate(d: Design) -> None:
         raise ValueError(f"{d.name}: an approved design needs a seed")
 
 
+_CONTROL_ESCAPES = {"\n": "\\n", "\r": "\\r", "\t": "\\t", "\b": "\\b", "\f": "\\f"}
+
+
+def _escape_control(m: re.Match) -> str:
+    c = m.group(0)
+    return _CONTROL_ESCAPES.get(c, f"\\u{ord(c):04x}")
+
+
 def _toml_value(value) -> str:
     if isinstance(value, bool):
         return "true" if value else "false"
@@ -71,6 +79,7 @@ def _toml_value(value) -> str:
     if isinstance(value, list):
         return "[" + ", ".join(_toml_value(v) for v in value) + "]"
     escaped = str(value).replace("\\", "\\\\").replace('"', '\\"')
+    escaped = re.sub(r"[\x00-\x1f\x7f]", _escape_control, escaped)
     return f'"{escaped}"'
 
 
