@@ -7,5 +7,5 @@ alt_tags = "interior, wooden counter, bar stool, sake bottles, shelves, hanging 
 props = ["paper lanterns", "ramen bowl", "sake bottles", "wooden counter", "noren curtain"]
 status = "approved"
 seed = 2476284898
-palette = []
+palette = ["#111926", "#cb7172", "#250e1b", "#020b15", "#02070c", "#57192f"]
 notes = ["2026-10-28 draft from world card", "2026-10-29 round 1: 4 candidates", "2026-10-29 approved r1 #3 (seed 2476284898)"]

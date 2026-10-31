@@ -7,5 +7,5 @@ alt_tags = "interior, pachinko hall, pachinko machines, rows of machines, bright
 props = ["pachinko machine", "idol poster", "neon sign", "yakitori grill", "capsule hotel pod"]
 status = "approved"
 seed = 858697752
-palette = []
+palette = ["#142b7b", "#520e53", "#b988d1", "#040416", "#1a0b39", "#892e8e"]
 notes = ["2026-10-28 draft from world card", "2026-10-28 round 1: 4 candidates", "2026-10-29 approved r1 #4 (seed 858697752)"]

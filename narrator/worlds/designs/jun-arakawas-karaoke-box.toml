@@ -7,5 +7,5 @@ alt_tags = "interior, small room, sofa, karaoke machine, microphone, television,
 props = ["karaoke machine", "microphone", "ledger book", "disco ball", "drink glass"]
 status = "approved"
 seed = 1673617090
-palette = []
+palette = ["#04040f", "#040a28", "#0b0722", "#94a5ca", "#0e1b5d", "#3b3ea1"]
 notes = ["2026-10-28 draft from world card", "2026-10-28 round 1: 4 candidates", "2026-10-29 approved r1 #3 (seed 1673617090)"]

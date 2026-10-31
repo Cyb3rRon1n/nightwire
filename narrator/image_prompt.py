@@ -69,6 +69,19 @@ async def tagify(client, text: str) -> list[str]:
     return clean_tags(answer.get("tags", []) if isinstance(answer, dict) else [])
 
 
+def character_design(character) -> tuple[list[str], str]:
+    """Tags and negative of a character's approved design sheet, so a render matches the sheet."""
+    name = getattr(character, "name", None)
+    if not name:
+        return [], ""
+    from narrator.designs import load_designs, slugify
+
+    design = load_designs().get(slugify(name))
+    if design is None or design.status != "approved":
+        return [], ""
+    return [t.strip() for t in design.tags.split(",") if t.strip()], design.negative.strip()
+
+
 async def resolve(client, kind: str, text: str, character=None) -> tuple[str, str, str]:
     subject = subject_tags(kind, character)
     try:
@@ -78,6 +91,12 @@ async def resolve(client, kind: str, text: str, character=None) -> tuple[str, st
     negative = PORTRAIT_NEGATIVE if kind == "portrait" else NEGATIVE
     if kind == "portrait":  # framing is bust-up: content tags below the chest would pull it to full body
         tags = [t for t in tags if not _below_chest(t)]
+        # Scenes are background-only by design, so only a portrait takes the sheet's identity tags.
+        identity, identity_negative = character_design(character)
+        identity = [t for t in identity if not _below_chest(t)]
+        if identity:
+            subject = list(dict.fromkeys(subject + identity))
+            negative = ", ".join(x for x in (negative, identity_negative) if x)
     if len(tags) >= _MIN_TAGS:
         return build_prompt(subject, tags), negative, "tags"
     return build_prompt(subject, text), negative, "sentence"

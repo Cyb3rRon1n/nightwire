@@ -1,0 +1,10 @@
+name = "Ayame Tsuda"
+kind = "character"
+source = "new:Ayame Tsuda"
+presentation = "feminine"
+tags = "long hair, red hair, slicked back, sharp eyes, mature female, tall, slender, narrow waist, large breasts, long legs, beautiful face, fixer, tailored suit, waistcoat, silk shirt, cigarette, gold rings, high heels, scar through eyebrow, confident smirk"
+negative = "wide hips, thick thighs, plump, chubby, gigantic breasts, huge breasts, curvy, cute, kawaii, big eyes, child"
+status = "candidates"
+seed = 0
+palette = []
+notes = ["2026-10-29 draft: fixer, sharp suit, deals in favours", "2026-10-29 round 1: 4 candidates"]

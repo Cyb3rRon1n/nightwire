@@ -2,7 +2,8 @@ import pytest
 
 from engine.character import CharacterSheet
 from narrator.image_prompt import (
-    NEGATIVE, PORTRAIT_NEGATIVE, QUALITY, STYLE, build_prompt, clean_tags, resolve, subject_tags,
+    NEGATIVE, PORTRAIT_NEGATIVE, QUALITY, STYLE, build_prompt, character_design, clean_tags, resolve,
+    subject_tags,
 )
 
 
@@ -91,3 +92,32 @@ async def test_resolve_scene_keeps_lower_body_tags():
 def test_portrait_negative_bans_lower_body():
     assert PORTRAIT_NEGATIVE.startswith(NEGATIVE)
     assert "full body" in PORTRAIT_NEGATIVE and "boots" in PORTRAIT_NEGATIVE
+
+
+def test_character_design_finds_the_approved_sheet():
+    tags, negative = character_design(_pc(name="Hachi"))
+    assert "android" in tags and "wide hips" in negative
+
+
+@pytest.mark.parametrize("name", ["Nobody At All", ""])
+def test_character_design_is_empty_without_an_approved_sheet(name):
+    assert character_design(_pc(name=name)) == ([], "")
+
+
+async def test_resolve_portrait_takes_the_design_sheet():
+    client = _Client({"tags": ["bomber jacket", "short hair", "neon", "rain", "smirk"]})
+    pos, neg, _ = await resolve(client, "portrait", "she looks tired", _pc(name="Hachi"))
+    assert "android" in pos and "robot joints" in pos
+    assert "wide hips" in neg
+
+
+async def test_resolve_scene_never_takes_the_design_sheet():
+    client = _Client({"tags": ["rain", "alley", "neon", "puddle", "steam"]})
+    pos, neg, _ = await resolve(client, "scene", "an empty alley", _pc(name="Hachi"))
+    assert "android" not in pos and "no humans" in pos and "wide hips" not in neg
+
+
+async def test_resolve_portrait_drops_the_sheets_lower_body_tags():
+    client = _Client({"tags": ["bomber jacket", "short hair", "neon", "rain", "smirk"]})
+    pos, _, _ = await resolve(client, "portrait", "she looks tired", _pc(name="Saeko Kirigaya"))
+    assert "long legs" not in pos

@@ -1,0 +1,10 @@
+name = "Goro Bessho"
+kind = "character"
+source = "new:Goro Bessho"
+presentation = "masculine"
+tags = "short hair, buzz cut, grey hair, stubble, mature male, broad shoulders, muscular, tall, rugged face, techie, welding goggles on forehead, oil-stained jumpsuit, tool belt, grease on forearms, mechanical left arm, prosthetic leg, gruff expression"
+negative = "two mechanical arms, child, teen, young, slim, skinny, feminine, bishounen, pretty boy, smooth skin"
+status = "candidates"
+seed = 0
+palette = []
+notes = ["2026-10-29 draft: techie, junkyard veteran, prosthetic leg", "2026-10-29 round 1: 4 candidates"]

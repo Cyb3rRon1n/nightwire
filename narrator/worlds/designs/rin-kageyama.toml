@@ -1,0 +1,10 @@
+name = "Rin Kageyama"
+kind = "character"
+source = "new:Rin Kageyama"
+presentation = "feminine"
+tags = "short hair, undercut, black hair, shaved side, sharp eyes, mature female, lean, wiry, small breasts, long legs, pale skin, beautiful face, netrunner, neural port, oversized hoodie, techwear, fingerless gloves, cyberdeck, smirk"
+negative = "wide hips, thick thighs, plump, chubby, gigantic breasts, huge breasts, curvy, cute, kawaii, big eyes, child"
+status = "approved"
+seed = 3654015602
+palette = ["#1c1b1c", "#1c1b1b", "#372e4e", "#211e27", "#665d8a", "#110f19"]
+notes = ["2026-10-29 draft: netrunner, lean and tired, wired-in", "2026-10-29 round 2: 4 candidates", "2026-10-31 approved r1 #1 (seed 3654015602)"]

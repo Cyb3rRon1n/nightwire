@@ -7,5 +7,5 @@ alt_tags = "study, desk, holographic display, window, night, dim, indoors, minim
 props = ["bonsai", "low lacquer table", "ledger", "folding screen", "tea set"]
 status = "approved"
 seed = 2078426142
-palette = []
+palette = ["#130417", "#08030d", "#090413", "#420f4a", "#190c35", "#240522"]
 notes = ["2026-10-28 draft from world card", "2026-10-28 round 1: 4 candidates", "2026-10-29 approved r1 #1 (seed 2078426142)"]

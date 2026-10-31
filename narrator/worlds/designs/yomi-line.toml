@@ -7,5 +7,5 @@ alt_tags = "train interior, empty seats, hanging straps, window, flickering ligh
 props = ["ticket machine", "station sign", "platform speaker", "paper lantern", "ticket gate"]
 status = "approved"
 seed = 961273524
-palette = []
+palette = ["#030304", "#1c4287", "#020716", "#04050c", "#011e44", "#041c40"]
 notes = ["2026-10-28 draft from world card", "2026-10-29 round 1: 4 candidates", "2026-10-29 approved r1 #2 (seed 961273524)"]

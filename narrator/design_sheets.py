@@ -90,42 +90,50 @@ def sheet_prompt(d: Design, sheet: str, mood: str | None = None) -> tuple[str, s
     return pos, _location_negative(d)
 
 
-def _base(positive: str, negative: str, seed: int) -> dict:
-    return {
-        "4": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": CHECKPOINT}},
-        "20": {"class_type": "LoraLoader", "inputs": {"model": ["4", 0], "clip": ["4", 1], "lora_name": LORA,
-               "strength_model": 0.6, "strength_clip": 0.6}},
-        "21": {"class_type": "ModelSamplingDiscrete", "inputs": {"model": ["20", 0], "sampling": "v_prediction", "zsnr": True}},
-        "22": {"class_type": "RescaleCFG", "inputs": {"model": ["21", 0], "multiplier": 0.6}},
-        "10": {"class_type": "CLIPSetLastLayer", "inputs": {"clip": ["20", 1], "stop_at_clip_layer": -2}},
-        "6": {"class_type": "CLIPTextEncode", "inputs": {"text": positive, "clip": ["10", 0]}},
-        "7": {"class_type": "CLIPTextEncode", "inputs": {"text": negative, "clip": ["10", 0]}},
-        "5": {"class_type": "EmptyLatentImage", "inputs": {"width": BASE_SIZE[0], "height": BASE_SIZE[1], "batch_size": 1}},
-        "3": {"class_type": "KSampler", "inputs": {"seed": seed, "steps": 28, "cfg": 4.5, "sampler_name": "euler",
-              "scheduler": "normal", "denoise": 1.0, "model": ["22", 0], "positive": ["6", 0],
-              "negative": ["7", 0], "latent_image": ["5", 0]}},
-        "8": {"class_type": "VAEDecodeTiled", "inputs": {"samples": ["3", 0], "vae": ["4", 2], "tile_size": 512,
-              "overlap": 64, "temporal_size": 64, "temporal_overlap": 8}},
-    }
+def _base(positive: str, negative: str, seed: int, *, checkpoint: str = CHECKPOINT, lora: str | None = LORA,
+          lora_strength: float = 0.6, steps: int = 28, cfg: float = 4.5, sampler: str = "euler",
+          scheduler: str = "normal", vpred: bool = True, clip_skip: int = -2) -> dict:
+    wf = {"4": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": checkpoint}}}
+    model, clip = ["4", 0], ["4", 1]
+    if lora and lora != "none":
+        wf["20"] = {"class_type": "LoraLoader", "inputs": {"model": model, "clip": clip, "lora_name": lora,
+                    "strength_model": lora_strength, "strength_clip": lora_strength}}
+        model, clip = ["20", 0], ["20", 1]
+    if vpred:
+        wf["21"] = {"class_type": "ModelSamplingDiscrete", "inputs": {"model": model, "sampling": "v_prediction", "zsnr": True}}
+        wf["22"] = {"class_type": "RescaleCFG", "inputs": {"model": ["21", 0], "multiplier": 0.6}}
+        model = ["22", 0]
+    wf["10"] = {"class_type": "CLIPSetLastLayer", "inputs": {"clip": clip, "stop_at_clip_layer": clip_skip}}
+    wf["6"] = {"class_type": "CLIPTextEncode", "inputs": {"text": positive, "clip": ["10", 0]}}
+    wf["7"] = {"class_type": "CLIPTextEncode", "inputs": {"text": negative, "clip": ["10", 0]}}
+    wf["5"] = {"class_type": "EmptyLatentImage", "inputs": {"width": BASE_SIZE[0], "height": BASE_SIZE[1], "batch_size": 1}}
+    wf["3"] = {"class_type": "KSampler", "inputs": {"seed": seed, "steps": steps, "cfg": cfg, "sampler_name": sampler,
+          "scheduler": scheduler, "denoise": 1.0, "model": model, "positive": ["6", 0],
+          "negative": ["7", 0], "latent_image": ["5", 0]}}
+    wf["8"] = {"class_type": "VAEDecodeTiled", "inputs": {"samples": ["3", 0], "vae": ["4", 2], "tile_size": 512,
+          "overlap": 64, "temporal_size": 64, "temporal_overlap": 8}}
+    return wf
 
 
-def candidate_workflow(positive: str, negative: str, seed: int) -> dict:
-    wf = _base(positive, negative, seed)
+def candidate_workflow(positive: str, negative: str, seed: int, **options) -> dict:
+    wf = _base(positive, negative, seed, **options)
     wf["9"] = {"class_type": "SaveImage", "inputs": {"filename_prefix": "nightwire_design", "images": ["8", 0]}}
     return wf
 
 
-def sheet_workflow(positive: str, negative: str, seed: int, high_res: bool = True) -> dict:
+def sheet_workflow(positive: str, negative: str, seed: int, high_res: bool = True, **options) -> dict:
     if not high_res:
-        return candidate_workflow(positive, negative, seed)
-    wf = _base(positive, negative, seed)
+        return candidate_workflow(positive, negative, seed, **options)
+    wf = _base(positive, negative, seed, **options)
     tiled = {"tile_size": 512, "overlap": 64, "temporal_size": 64, "temporal_overlap": 8}
     wf["30"] = {"class_type": "UpscaleModelLoader", "inputs": {"model_name": UPSCALER}}
     wf["31"] = {"class_type": "ImageUpscaleWithModel", "inputs": {"upscale_model": ["30", 0], "image": ["8", 0]}}
     wf["32"] = {"class_type": "ImageScaleBy", "inputs": {"image": ["31", 0], "upscale_method": "lanczos", "scale_by": 0.75}}
     wf["33"] = {"class_type": "VAEEncodeTiled", "inputs": {"pixels": ["32", 0], "vae": ["4", 2], **tiled}}
-    wf["34"] = {"class_type": "KSampler", "inputs": {"seed": seed, "steps": 20, "cfg": 4.5, "sampler_name": "euler",
-                "scheduler": "normal", "denoise": 0.35, "model": ["22", 0], "positive": ["6", 0],
+    wf["34"] = {"class_type": "KSampler", "inputs": {"seed": seed, "steps": 20,
+                "cfg": options.get("cfg", 4.5), "sampler_name": options.get("sampler", "euler"),
+                "scheduler": options.get("scheduler", "normal"), "denoise": 0.35,
+                "model": wf["3"]["inputs"]["model"], "positive": ["6", 0],
                 "negative": ["7", 0], "latent_image": ["33", 0]}}
     wf["35"] = {"class_type": "VAEDecodeTiled", "inputs": {"samples": ["34", 0], "vae": ["4", 2], **tiled}}
     wf["40"] = {"class_type": "ImageUpscaleWithModel", "inputs": {"upscale_model": ["30", 0], "image": ["35", 0]}}

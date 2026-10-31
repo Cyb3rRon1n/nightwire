@@ -11,13 +11,34 @@ from tools.imagegen import build
 
 EXAMPLES = {
     "scene": "rainy neon alley, izakaya, paper lanterns, wet street, steam",
+    "scene day": "monorail platform at dawn, empty platform, condensation on glass, city skyline, lens flare",
+    "subject": "1girl, mature female, slender, long black hair, leather jacket, standing, rooftop, neon signs, rain",
+    "crowd": "pachinko hall, packed, rows of machines, bright lights, smoke, neon",
     "portrait": "1girl, mature female, slender, beautiful face, idol, black hair, long hair, leather jacket, choker, smirk",
-    "character": "1girl, mature female, slender, narrow waist, long legs, beautiful face, idol, black hair, leather bodysuit, "
-                 "character sheet, turnaround, multiple views, front view, from side, from behind, full body",
+    "character": "mature female, slender, narrow waist, long legs, beautiful face, idol, black hair, "
+                 "leather bodysuit, led trim, standing",
     "plain": "rooftop bar, neon signs, city skyline, rain",
 }
-SIZES = {"scene": ("base", "1080p", "4k", "ultrawide", "phone"), "portrait": ("portrait",),
-         "character": ("base", "4k"), "plain": ("base", "1080p", "4k", "ultrawide", "phone")}
+PAINTERLY_PROMPT = ("masterpiece, best quality, painterly, oil painting, dramatic lighting, "
+                    "ancient stone bridge over a misty gorge, autumn forest, distant mountains, golden hour, "
+                    "volumetric light, ruins, moss, epic fantasy landscape, no humans")
+PAINTERLY_NEGATIVE = ("anime, cel shading, flat color, neon, cyberpunk, text, watermark, low quality, blurry, "
+                      "worst quality, signature, logo")
+# Non v-pred checkpoint + a painterly style LoRA - the out-of-Nightwire look, verified live 2026-10-29.
+PAINTERLY = {"checkpoint": "NoobAI-XL-v1.0.safetensors", "lora": "wlop.safetensors", "lora_strength": 0.7,
+             "vpred": False, "sampler": "dpmpp_2m", "scheduler": "karras", "cfg": 6.0, "steps": 30}
+WIDE = ("base", "1080p", "4k", "ultrawide", "phone")
+PRESETS = {
+    "scene": {"kind": "scene", "prompt": EXAMPLES["scene"], "sizes": WIDE},
+    "scene day": {"kind": "scene", "prompt": EXAMPLES["scene day"], "sizes": WIDE, "options": {"day": True}},
+    "subject": {"kind": "subject", "prompt": EXAMPLES["subject"], "sizes": ("base", "1080p", "4k", "phone")},
+    "crowd": {"kind": "crowd", "prompt": EXAMPLES["crowd"], "sizes": ("base", "1080p", "4k")},
+    "portrait": {"kind": "portrait", "prompt": EXAMPLES["portrait"], "sizes": ("portrait",)},
+    "character": {"kind": "character", "prompt": EXAMPLES["character"], "sizes": ("base", "4k")},
+    "plain": {"kind": "plain", "prompt": EXAMPLES["plain"], "sizes": WIDE},
+    "painterly": {"kind": "plain", "prompt": PAINTERLY_PROMPT, "sizes": ("base", "1080p", "4k"), "raw": True,
+                  "negative": PAINTERLY_NEGATIVE, "options": PAINTERLY},
+}
 TITLES = {"6": "Positive prompt (edit me)", "7": "Negative prompt", "3": "Sampler (seed here)", "5": "Image size",
           "41": "Final wallpaper size", "9": "Save image"}
 
@@ -77,11 +98,12 @@ def main():
     a = p.parse_args()
     info = json.loads(urllib.request.urlopen(a.comfyui_url.rstrip("/") + "/object_info", timeout=60).read())
     a.out.mkdir(parents=True, exist_ok=True)
-    for kind, sizes in SIZES.items():
-        for size in sizes:
-            api = build(EXAMPLES[kind], kind, False, "", size, 424242)
-            (a.out / f"Nightwire - {kind.title()} - {size}.json").write_text(json.dumps(to_editor(api, info), indent=1))
-            print(kind, size)
+    for name, preset in PRESETS.items():
+        for size in preset["sizes"]:
+            api = build(preset["prompt"], preset["kind"], preset.get("raw", False), preset.get("negative", ""),
+                        size, 424242, **preset.get("options", {}))
+            (a.out / f"Nightwire - {name.title()} - {size}.json").write_text(json.dumps(to_editor(api, info), indent=1))
+            print(name, size)
 
 
 if __name__ == "__main__":

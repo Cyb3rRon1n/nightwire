@@ -7,5 +7,5 @@ alt_tags = "interior, operating table, surgical lamp, tool tray, shelves, jars, 
 props = ["operating table", "surgical lamp", "tool tray", "magnifying lamp", "jar"]
 status = "approved"
 seed = 3737104941
-palette = []
+palette = ["#1b244b", "#020914", "#030406", "#011226", "#040508", "#5275a0"]
 notes = ["2026-10-28 draft from world card", "2026-10-29 round 1: 4 candidates", "2026-10-29 approved r1 #1 (seed 3737104941)"]

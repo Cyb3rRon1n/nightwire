@@ -7,5 +7,5 @@ alt_tags = "from below, elevated highway, off-ramp, neon lights, rain"
 props = ["arcade cabinet", "light trail", "traffic drone", "guardrail", "parked motorcycle"]
 status = "approved"
 seed = 4066105342
-palette = []
+palette = ["#03040e", "#042156", "#324d96", "#030b27", "#06091d", "#5d2376"]
 notes = ["2026-10-28 draft from world card", "2026-10-29 round 1: 4 candidates", "2026-10-29 approved r1 #4 (seed 4066105342)"]
