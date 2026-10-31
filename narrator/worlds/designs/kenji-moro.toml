@@ -6,5 +6,5 @@ tags = "black hair, undercut, fang, grin, adult, muscular male, abs, sleeveless 
 negative = "two mechanical eyes, glowing right eye"
 status = "approved"
 seed = 1590859674
-palette = []
+palette = ["#545350", "#535351", "#545451", "#1a1b30", "#060409", "#948597"]
 notes = ["2026-10-28 draft from world card", "2026-10-28 round 1: 4 candidates", "2026-10-29 art direction: mature cyberpunk pass", "2026-10-29 round 2: 4 candidates", "2026-10-29 approved r2 #1 (seed 1590859674)"]

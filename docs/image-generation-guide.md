@@ -22,6 +22,9 @@ This guide is for people and for coding agents such as opencode and Claude Code.
    | Character – base / 4k | full-body character model sheet, dark backdrop |
    | Scene – base, 1080p, 4k, ultrawide, phone | locations with no people, including wallpapers |
    | Plain – same sizes | game style with no subject forced |
+   | Scene Day – same sizes | locations in daylight |
+   | Subject / Crowd – base, 1080p, 4k (and phone for Subject) | in-world scene with one adult character, or a crowd seen from behind |
+   | Painterly – base, 1080p, 4k | out-of-Nightwire oil-painting landscapes (non v-pred NoobAI + `wlop` LoRA) |
 
 2. Edit the box titled **"Positive prompt (edit me)"**. Keep the quality and style tags at the front, and replace the example description at the end.
 3. Leave **"Negative prompt"** alone unless you mean to change the rules.
@@ -34,11 +37,19 @@ To regenerate the presets after a style change, run `python -m tools.comfy_prese
 Run it from the `nightwire` repo with its venv (`.venv/bin/python`, or `uv run`):
 
 ```
-python -m tools.imagegen "<tags or description>" --kind scene|portrait|character|plain --size base|1080p|1440p|4k|ultrawide|phone|square|portrait [--seed N] [--count N] [--negative "..."] [--raw]
+python -m tools.imagegen "<tags or description>" --kind scene|subject|crowd|portrait|character|plain --size base|1080p|1440p|4k|ultrawide|phone|square|portrait [--seed N] [--count N] [--negative "..."] [--raw]
+python -m tools.imagegen --design hachi --size 4k          # an approved design's tags, negative and seed
 ```
+
+- **Other switches:**
+  - `--day` gives the daylight look;
+  - `--subject 1girl|1boy|1other` sets the subject (adult tags follow it);
+  - `--sheet-style` gives a portrait on the model-sheet backdrop;
+  - `--checkpoint`, `--lora`, `--steps`, `--cfg`, `--sampler`, `--scheduler` and `--no-vpred` experiment outside the locked look.
 
 - **`--kind`:**
   - `scene` adds the game style and "scenery, no humans";
+  - `subject` gives an in-world scene with one adult character, and `crowd` a crowd seen from behind;
   - `portrait` gives a bust portrait with the mature character look;
   - `character` gives a full-body sheet style;
   - `plain` adds the game style only.

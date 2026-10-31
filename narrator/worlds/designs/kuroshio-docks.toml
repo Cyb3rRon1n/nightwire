@@ -7,5 +7,5 @@ alt_tags = "between containers, narrow passage, from below, looking up, cranes o
 props = ["shipping container", "gantry crane", "mooring bollard", "floodlight", "chain"]
 status = "approved"
 seed = 1103826661
-palette = []
+palette = ["#084665", "#020308", "#030710", "#010c18", "#02263c", "#1b597b"]
 notes = ["2026-10-28 draft from world card", "2026-10-29 round 1: 4 candidates", "2026-10-29 approved r1 #2 (seed 1103826661)"]

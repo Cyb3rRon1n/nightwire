@@ -33,3 +33,4 @@ dist/
 /frontend-vite-scaffold-backup/
 __pycache__/
 design-data/
+.omo/

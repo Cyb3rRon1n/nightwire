@@ -6,5 +6,5 @@ tags = "slicked back hair, black hair, goatee, brown eyes, sharp eyes, grin, lea
 negative = ""
 status = "approved"
 seed = 1553498808
-palette = []
+palette = ["#3e3e3d", "#030304", "#3e3d3c", "#0b0a12", "#3e3e3c", "#3d3e3d"]
 notes = ["2026-10-28 draft from world card", "2026-10-28 round 1: 4 candidates", "2026-10-29 art direction: mature cyberpunk pass", "2026-10-29 round 2: 4 candidates", "2026-10-29 approved r2 #2 (seed 1553498808)"]
