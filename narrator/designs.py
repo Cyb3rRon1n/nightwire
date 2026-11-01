@@ -124,4 +124,4 @@ def load_designs(directory: Path = DESIGNS_DIR) -> dict[str, Design]:
 @functools.cache
 def kuroshio_designs() -> dict[str, Design]:
     """The designs drafted from the Kuroshio world card (original NPCs, districts, places), not later additions."""
-    return {k: d for k, d in load_designs(DESIGNS_DIR).items() if not d.source.startswith("new:")}
+    return {k: d for k, d in load_designs(DESIGNS_DIR).items() if not d.source.startswith(("new:", "creator:"))}

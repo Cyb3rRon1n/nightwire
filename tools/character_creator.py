@@ -5,6 +5,9 @@ Standard library only, so it runs in a bare python container. No photos: see the
 Every character is a folder under <root>/characters/<private token>. One worker renders one image at a
 time, and only when ComfyUI's queue is empty, so the owner's batches aren't starved or interleaved.
 See docs/superpowers/specs/2026-11-01-character-creator-design.md.
+
+    python -m tools.character_creator --root <state dir> [--comfy URL] [--ollama URL] [--port 8768]
+    python -m tools.character_creator export <id> --state <dir> --designs-dir narrator/worlds/designs --design-dir design-data
 """
 
 import argparse
@@ -28,6 +31,7 @@ from pathlib import Path
 from narrator.design_sheets import (
     EXPRESSION_SIZE, EXPRESSIONS, candidate_prompt, candidate_workflow, expression_prompts, sheet_prompt, sheet_workflow,
 )
+from narrator.designs import save_design, validate
 from tools.character_answers import QUESTIONS, clean_answers, clean_text, to_design
 from tools.design_picks import write_json_atomic
 from tools.image_studio import MAX_SEED, BadRequest, Busy, Comfy
@@ -404,6 +408,36 @@ def run_worker(creator: Creator, stop: threading.Event, interval: float = 2) -> 
             print(f"character creator worker: {e}", file=sys.stderr, flush=True)
 
 
+def export(root: Path, cid: str, designs_dir: Path, design_dir: Path) -> Path:
+    """An NPC or AI character becomes a normal approved design in the repo, with its picked image where the studio looks."""
+    creator = Creator(root, comfy=None)
+    record = creator.get(cid)
+    if record["kind"] == "player":
+        raise BadRequest("player characters aren't stored in the repo, so they can't be exported")
+    if not record["picked"]:
+        raise BadRequest("pick a candidate before exporting")
+    design = to_design(record["answers"], record["kind"], record["seed"])
+    design.status = "approved"
+    a = record["answers"]
+    place = ", ".join(x for x in (a.get("world_role"), f"home: {a['home']}" if a.get("home") else None) if x)
+    if place:   # "draft:" is what Image Studio shows as the character's role
+        design.notes.append(f"{dt.date.today().isoformat()} draft: {place}")
+    design.notes.append(f"{dt.date.today().isoformat()} from the character creator ({record['kind']})")
+    validate(design)
+    slug = design.slug
+    if not slug:
+        raise BadRequest("this name has no letters a file name can use: edit the name first")
+    path = Path(designs_dir) / f"{slug}.toml"
+    folder = Path(design_dir) / slug
+    if path.exists() or folder.exists():
+        raise BadRequest(f"{slug} already exists: rename this character first")
+    image = folder / "candidates" / f"r1-c1-{design.seed}.png"
+    image.parent.mkdir(parents=True)
+    shutil.copyfile(creator.image_path(cid, record["picked"]), image)
+    save_design(design, path)
+    return path
+
+
 def owner_token(root: Path) -> str:
     """Created once, readable only by the service. It's never logged or shown: the owner reads the file."""
     root = Path(root)
@@ -565,14 +599,32 @@ def make_server(host: str, port: int, creator: Creator, owner: str) -> Threading
     return ThreadingHTTPServer((host, port), Handler)
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
+def export_main(argv: list[str]) -> None:
+    parser = argparse.ArgumentParser(prog="tools.character_creator export")
+    parser.add_argument("id")
+    parser.add_argument("--state", type=Path, required=True)
+    parser.add_argument("--designs-dir", type=Path, required=True)
+    parser.add_argument("--design-dir", type=Path, required=True)
+    args = parser.parse_args(argv)
+    try:
+        print(export(args.state, args.id, args.designs_dir, args.design_dir))
+    except BadRequest as e:
+        raise SystemExit(str(e)) from None
+    except KeyError:
+        raise SystemExit("no character with that id") from None
+
+
+def main(argv: list[str] | None = None) -> None:
+    argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["export"]:
+        return export_main(argv[1:])
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--comfy", default="http://127.0.0.1:8188")
     parser.add_argument("--ollama", default="http://127.0.0.1:11434")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8768)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     creator = Creator(args.root, Comfy(args.comfy, args.ollama))
     server = make_server(args.host, args.port, creator, owner_token(args.root))
     threading.Thread(target=run_worker, args=(creator, threading.Event()), daemon=True).start()

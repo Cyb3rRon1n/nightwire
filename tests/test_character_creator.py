@@ -5,9 +5,12 @@ import urllib.error
 
 import pytest
 
+from narrator import designs as design_records
 from narrator.design_sheets import EXPRESSION_SIZE
+from narrator.designs import load_designs
 from tools import character_creator as cc
-from tools.image_studio import BadRequest, Busy, Comfy
+from tools import design_studio
+from tools.image_studio import BadRequest, Busy, Comfy, Studio
 
 GOOD = {"name": "Vex", "presentation": "feminine", "hair": "silver hair", "signature": "katana"}
 
@@ -565,3 +568,104 @@ def test_comfy_upload_posts_multipart_to_comfyui():
     parts = {p.get_param("name", header="content-disposition"): p for p in seen["msg"].get_payload()}
     assert parts["subfolder"].get_payload() == "character_creator" and parts["overwrite"].get_payload() == "true"
     assert parts["image"].get_filename() == "a.png" and parts["image"].get_payload(decode=True) == b"\x89PNG\r\n\x00"
+
+
+def picked_npc(creator, comfy, **answers):
+    cid = creator.create("npc", {**GOOD, "world_role": "ramen cook", "home": "Dock Nine", **answers}, by_owner=True)["id"]
+    creator.generate(cid)
+    render(creator, comfy)
+    creator.pick(cid, 1, 2)
+    return cid
+
+
+def run_export(creator, cid, tmp_path):
+    designs, data = tmp_path / "designs", tmp_path / "design-data"
+    designs.mkdir(exist_ok=True)
+    return cc.export(creator.root, cid, designs, data), designs, data
+
+
+@pytest.mark.parametrize("kind", ["npc", "ai"])
+def test_export_writes_an_approved_design_and_its_image(creator, comfy, tmp_path, kind):
+    cid = creator.create(kind, {**GOOD, "world_role": "ramen cook", "home": "Dock Nine"}, by_owner=True)["id"]
+    creator.generate(cid)
+    render(creator, comfy)
+    record = creator.pick(cid, 1, 2)
+    path, designs, data = run_export(creator, cid, tmp_path)
+    assert path == designs / "vex.toml"
+    d = load_designs(designs)["vex"]
+    assert d.status == "approved" and d.seed == record["seed"] and d.source == f"creator:{kind}" and d.kind == "character"
+    assert d.required == ["silver hair"] and d.held == ["katana"] and d.presentation == "feminine"
+    assert any("ramen cook" in n and "Dock Nine" in n for n in d.notes)
+    copied = data / "vex" / "candidates" / f"r1-c1-{d.seed}.png"
+    assert copied.read_bytes() == creator.image_path(cid, record["picked"]).read_bytes()
+    # What `gallery` and `sheets --approved-missing` look for.
+    assert design_studio._latest_candidates(data / "vex")[1] == {1: copied}
+    assert not design_studio._sheets_present(d, data / "vex")
+
+
+def test_export_note_is_the_one_image_studio_shows_as_the_role(creator, comfy, tmp_path):
+    cid = picked_npc(creator, comfy)
+    _, designs, _ = run_export(creator, cid, tmp_path)
+    role = Studio(tmp_path / "jobs.json", comfy, designs=lambda: load_designs(designs)).options()["characters"][0]["role"]
+    assert role.startswith("ramen cook")
+
+
+def test_export_refuses_players_characters_without_a_pick_and_existing_slugs(creator, comfy, tmp_path):
+    player = with_round(creator, comfy)
+    creator.pick(player, 1, 1)
+    with pytest.raises(BadRequest, match="player"):
+        run_export(creator, player, tmp_path)
+    unpicked = creator.create("npc", GOOD, by_owner=True)["id"]
+    with pytest.raises(BadRequest, match="pick"):
+        run_export(creator, unpicked, tmp_path)
+    assert not list((tmp_path / "designs").iterdir()) and not (tmp_path / "design-data").exists()
+    first = picked_npc(creator, comfy)
+    run_export(creator, first, tmp_path)
+    before = (tmp_path / "designs" / "vex.toml").read_text()
+    second = picked_npc(creator, comfy, hair="green hair")
+    with pytest.raises(BadRequest, match="vex"):
+        run_export(creator, second, tmp_path)
+    assert (tmp_path / "designs" / "vex.toml").read_text() == before
+
+
+def test_export_refuses_an_image_folder_with_no_design_yet(creator, comfy, tmp_path):
+    cid = picked_npc(creator, comfy)
+    (tmp_path / "design-data" / "vex").mkdir(parents=True)
+    with pytest.raises(BadRequest, match="vex"):
+        run_export(creator, cid, tmp_path)
+    assert not (tmp_path / "designs" / "vex.toml").exists()
+
+
+def test_export_refuses_a_name_with_no_usable_slug(creator, comfy, tmp_path):
+    cid = picked_npc(creator, comfy, name="夜")
+    with pytest.raises(BadRequest, match="name"):
+        run_export(creator, cid, tmp_path)
+
+
+def test_export_unknown_character_is_a_keyerror(creator, tmp_path):
+    with pytest.raises(KeyError):
+        run_export(creator, "x" * 32, tmp_path)
+
+
+def test_exported_characters_dont_count_as_world_card_designs(creator, comfy, tmp_path, monkeypatch):
+    cid = picked_npc(creator, comfy)
+    _, designs, _ = run_export(creator, cid, tmp_path)
+    monkeypatch.setattr(design_records, "DESIGNS_DIR", designs)
+    design_records.kuroshio_designs.cache_clear()
+    try:
+        assert design_records.kuroshio_designs() == {}
+    finally:
+        monkeypatch.undo()
+        design_records.kuroshio_designs.cache_clear()
+
+
+def test_export_command_line(creator, comfy, tmp_path, capsys):
+    cid = picked_npc(creator, comfy)
+    args = ["export", cid, "--state", str(creator.root), "--designs-dir", str(tmp_path / "d"), "--design-dir", str(tmp_path / "data")]
+    (tmp_path / "d").mkdir()
+    cc.main(args)
+    assert "vex.toml" in capsys.readouterr().out and (tmp_path / "d" / "vex.toml").exists()
+    with pytest.raises(SystemExit, match="vex"):
+        cc.main(args)
+    with pytest.raises(SystemExit, match="no character"):
+        cc.main(["export", "x" * 32, *args[2:]])
