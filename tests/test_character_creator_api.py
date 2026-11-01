@@ -21,6 +21,12 @@ OWNER = "o" * 32
 NOT_FOUND = (404, {"error": "not found"})
 
 
+@pytest.fixture(autouse=True)
+def no_quiet_wait(monkeypatch):
+    monkeypatch.setattr(cc, "QUIET_CHECKS", 1)
+    monkeypatch.setattr(cc, "QUIET_SECONDS", 0)
+
+
 @pytest.fixture
 def api(tmp_path):
     comfy = FakeComfy()
@@ -289,6 +295,30 @@ def test_owner_token_is_private_and_stable(tmp_path):
     path = tmp_path / "state" / "owner.token"
     assert len(token) == 32 and stat.S_IMODE(path.stat().st_mode) == 0o600
     assert cc.owner_token(tmp_path / "state") == token
+
+
+def test_empty_owner_token_file_fails_at_startup_instead_of_failing_open(tmp_path):
+    for content in ("", "  \n"):
+        (tmp_path / "owner.token").write_text(content)
+        with pytest.raises(ValueError, match="owner.token"):
+            cc.owner_token(tmp_path)
+
+
+def test_owner_token_creation_leaves_no_temp_file_and_never_a_partial_token(tmp_path):
+    token = cc.owner_token(tmp_path)
+    assert (tmp_path / "owner.token").read_text().strip() == token
+    assert [p.name for p in tmp_path.iterdir()] == ["owner.token"]
+
+
+def test_server_refuses_to_start_with_an_empty_token(tmp_path):
+    with pytest.raises(ValueError):
+        cc.make_server("127.0.0.1", 0, cc.Creator(tmp_path, FakeComfy()), "")
+
+
+def test_an_empty_token_in_the_path_is_a_plain_404(api):
+    url, _, _ = api
+    assert call(f"{url}/owner//characters") == NOT_FOUND
+    assert call(f"{url}/owner//characters", "POST", {"kind": "npc", "answers": GOOD}) == NOT_FOUND
 
 
 def test_service_starts_on_the_standard_library_alone_with_the_worker_running(tmp_path):

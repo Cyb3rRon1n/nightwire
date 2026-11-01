@@ -46,6 +46,9 @@ CANDIDATES_PER_ROUND = 4
 MAX_WAITING = 12
 MAX_DECLINE_NOTE = 500
 ACTIVE = ("waiting", "rendering")
+# The owner's batches leave about a second between images. Waiting this long for an empty queue keeps us out of those gaps.
+QUIET_CHECKS = 3
+QUIET_SECONDS = 6
 SHEETS = ("turnaround", "colorguide", "expressions")
 
 
@@ -447,13 +450,20 @@ def owner_token(root: Path) -> str:
     root = Path(root)
     root.mkdir(parents=True, exist_ok=True)
     path = root / "owner.token"
+    # Written in full first and then linked into place, so a crash can't leave an empty file for a later start to trust.
+    fd, tmp = tempfile.mkstemp(dir=root, suffix=".tmp")   # mode 0o600
     try:
-        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    except FileExistsError:
-        return path.read_text().strip()
-    token = secrets.token_urlsafe(24)
-    with os.fdopen(fd, "w") as f:
-        f.write(token + "\n")
+        with os.fdopen(fd, "w") as f:
+            f.write(secrets.token_urlsafe(24) + "\n")
+        try:
+            os.link(tmp, path)
+        except FileExistsError:
+            pass
+    finally:
+        os.unlink(tmp)
+    token = path.read_text().strip()
+    if not token:
+        raise ValueError(f"{path} is empty: delete it to have a new owner link made")
     return token
 
 
@@ -479,6 +489,9 @@ def options() -> dict:
 
 
 def make_server(host: str, port: int, creator: Creator, owner: str) -> ThreadingHTTPServer:
+    if not owner:
+        raise ValueError("the owner token is empty")
+
     class Handler(BaseHTTPRequestHandler):
         def _send(self, status: int, payload) -> None:
             self._bytes(status, json.dumps(payload).encode(), "application/json", "no-store")
@@ -516,7 +529,7 @@ def make_server(host: str, port: int, creator: Creator, owner: str) -> Threading
             parts = path[len(PREFIX) + 1:].split("/")
             if parts[0] != "owner":
                 return False, parts
-            if len(parts) < 3 or not hmac.compare_digest(parts[1].encode(), owner.encode()):
+            if len(parts) < 3 or not parts[1] or not owner or not hmac.compare_digest(parts[1].encode(), owner.encode()):
                 return None
             return True, parts[2:]
 
