@@ -15,12 +15,13 @@ SHEET_STYLE = ("anime coloring, cel shading, thick outlines, official art, flat 
                "white background")
 CHARACTER_SHEET_STYLE = ("anime coloring, cel shading, thick outlines, official art, simple background, grey background, "
                          "dark background, neon rim light, pink neon rim light, cyan backlight")
-CHARACTER_MATURE = ("mature, adult, serious, sharp features, gritty, dark atmosphere, cyberpunk, techwear, "
-                    "neon accents, tattoo, scar, piercing, dark makeup")
+# Tattoos, scars and the like belong in each character's own tags: listed here they appeared on everyone.
+CHARACTER_MATURE = "mature, adult, serious, sharp features, gritty, dark atmosphere, cyberpunk, techwear, neon accents"
 CHARACTER_QUALITY = QUALITY.replace("safe", "sensitive")  # suggestive allowed, explicit not
 CHARACTER_NEGATIVE_EXTRA = ("nude, nipples, pussy, penis, sex, explicit, loli, shota, child, petite, flat chest, young, "
                             "teenage, aged down, chibi, kawaii, moe, cute, big eyes, deformed")
-SHEET_NEGATIVE_EXTRA = "scenery, background clutter, inconsistent outfit, different clothes, different hairstyle"
+SHEET_NEGATIVE_EXTRA = ("scenery, background clutter, inconsistent outfit, different clothes, different hairstyle, "
+                        "floating object, mismatched footwear, extra arms, extra legs")
 CHARACTER_SHEETS = ("turnaround", "expressions", "colorguide")
 LOCATION_SHEETS = ("establishing", "alternate", "moodkeys", "props")
 MOOD_SUFFIXES = ("night, neon lights", "rain, wet street", "dawn, sunrise, soft light")
@@ -39,10 +40,13 @@ EXPRESSION_SIZE = (1024, 1024)
 _BELOW_FRAME_WORDS = ("heels", "fishnet", "garter", "hakama", "slit", "belt", "holster", "knee", "hip",
                       "breasts", "waist", "tall", "slender", "toned", "lean", "wiry", "muscular", "abs", "shoulders",
                       "gaunt", "cleavage", "neckline", "midriff", "backless", "gloves", "rings", "bracelet", "sleeve")
+# Coloured rim light floods a close-up's whole face, so these panels are lit plainly to show true skin and features.
+_EXPRESSION_STYLE = "anime coloring, cel shading, thick outlines, official art, simple background, dark grey background, rim light, bright face, front lighting, natural skin, neon accents"
 _EXPRESSION_WORDS = ("smile", "smirk", "grin", "scowl", "expression", "stern", "serene", "calm")
 _EXPRESSION_NEGATIVE = ("multiple views, character sheet, expression chart, turnaround, split screen, full body, "
                         "child face, baby face, round face, youthful face, cowboy shot, breast focus, cleavage, hand up, hands, hand on own face, hand on own chin, fingers, "
-                        "holding, cigarette, smoking, floating object, extra hands, sharp teeth, vampire, monster")
+                        "holding, cigarette, smoking, floating object, extra hands, sharp teeth, vampire, monster, "
+                        "pink skin, red skin, blue skin, purple skin, colored skin, monochrome, red theme, pink theme, neon lights, backlighting")
 _PROPS_TAGS = "still life, no humans, object focus, multiple views, white background"
 _SIGNATURE_WORDS = ("mechanical", "cyber", "prosthetic", "robot", "chrome", "implant", "weapon", "sword", "gun")
 _PRESENTATION = {"feminine": "1girl", "masculine": "1boy", "androgynous": "1other"}
@@ -86,7 +90,8 @@ def sheet_prompt(d: Design, sheet: str, mood: str | None = None) -> tuple[str, s
         if sheet not in CHARACTER_SHEETS:
             raise ValueError(f"{sheet!r} is not a character sheet")
         extra = _signature_focus(d) if sheet == "colorguide" else ""
-        pos = _join(CHARACTER_QUALITY, CHARACTER_SHEET_STYLE, CHARACTER_MATURE, _SHEET_TAGS[sheet], extra, subject_for(d), d.tags)
+        pos = _join(CHARACTER_QUALITY, CHARACTER_SHEET_STYLE, CHARACTER_MATURE, _SHEET_TAGS[sheet], extra, subject_for(d), ", ".join(d.required),
+                    ", ".join(t for t in (x.strip() for x in d.tags.split(",")) if t not in d.required))
         return pos, _character_negative(d)
     if sheet not in LOCATION_SHEETS:
         raise ValueError(f"{sheet!r} is not a location sheet")
@@ -110,7 +115,7 @@ def expression_prompts(d: Design) -> list[tuple[str, str, str]]:
             and not any(w in t for w in (*_BELOW_FRAME_WORDS, *_EXPRESSION_WORDS))]
     fang = any(w in tags for w in ("fang", "fangs"))
     negative = _join(_character_negative(d), _EXPRESSION_NEGATIVE, "" if fang else "fang, fangs", ", ".join(held))
-    return [(label, _join(CHARACTER_QUALITY, CHARACTER_SHEET_STYLE, "mature, adult, mature face, defined jawline, solo, portrait, close-up, face focus, looking at viewer",
+    return [(label, _join(CHARACTER_QUALITY, _EXPRESSION_STYLE, "mature, adult, mature face, defined jawline, solo, portrait, close-up, face focus, looking at viewer",
                           subject_for(d), mood, ", ".join(d.required), ", ".join(face)), negative) for label, mood in EXPRESSIONS]
 
 

@@ -77,3 +77,18 @@ def test_corrupt_store_fails_loudly_instead_of_wiping_picks(api):
     assert call(url)[0] == 500
     assert call(f"{url}/mei-lan", "PUT", {"action": "skip"})[0] == 500
     assert data.read_text() == "{broken"
+
+
+def test_reviews_are_separate_from_picks_and_validated(api):
+    url, data = api
+    reviews = url.replace("/picks", "/reviews")
+    assert call(reviews) == (200, {})
+    assert call(f"{reviews}/nobody", "PUT", {"verdict": "ok", "v": "1"})[0] == 400
+    assert call(f"{reviews}/mei-lan", "PUT", {"verdict": "ok"})[0] == 400
+    assert call(f"{reviews}/mei-lan", "PUT", {"verdict": "fix", "note": " ", "v": "1"})[0] == 400
+    assert call(f"{reviews}/mei-lan", "PUT", {"verdict": "ok", "v": "1"}, ctype="text/plain")[0] == 415
+    status, saved = call(f"{reviews}/mei-lan", "PUT", {"verdict": "fix", "note": "wrong eyes", "v": "1"})
+    assert status == 200 and saved["mei-lan"]["note"] == "wrong eyes"
+    assert call(url) == (200, {}) and json.loads(data.with_name("reviews.json").read_text())["mei-lan"]["v"] == "1"
+    assert call(f"{reviews}/mei-lan", "DELETE") == (200, {})
+

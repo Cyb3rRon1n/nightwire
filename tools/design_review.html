@@ -1,0 +1,63 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sheet Review</title>
+<style>/*STYLE*/
+.grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
+figure a{display:block;background:#000;cursor:zoom-in}
+.flags{margin:10px 0 0;padding-left:20px;color:#ffb37a}
+button.ok.on{background:#7dff9a;border-color:#7dff9a;color:#0d0b14}
+button.fix.on{background:#ffb37a;border-color:#ffb37a;color:#0d0b14}
+section.done{opacity:.72}
+</style>
+<body>
+<div id="bar" role="status">Loading…</div>
+<h1>Sheet Review</h1>
+<p class="lede"><a href="/">← AI Lab</a> · <a href="../">All designs</a> · Compare each sheet with the approved design. Sheets the checker flagged come first. Tap an image for full size. Your answers save as you go.</p>
+<!--CARDS-->
+<script>
+(() => {
+  const API = "../api/reviews";
+  const bar = document.getElementById("bar");
+  const cards = [...document.querySelectorAll("section[data-slug]")];
+  let reviews = {}, problem = "";
+
+  const current = c => { const r = reviews[c.dataset.slug]; return r && r.v === c.dataset.v ? r : null; };
+
+  function render() {
+    for (const c of cards) {
+      const r = current(c);
+      c.classList.toggle("done", !!r);
+      c.querySelector(".ok").classList.toggle("on", r?.verdict === "ok");
+      c.querySelector(".fix").classList.toggle("on", r?.verdict === "fix");
+      c.querySelector(".ok").setAttribute("aria-pressed", String(r?.verdict === "ok"));
+      c.querySelector(".fix").setAttribute("aria-pressed", String(r?.verdict === "fix"));
+      if (r?.verdict === "fix" && document.activeElement !== c.querySelector("input")) c.querySelector("input").value = r.note;
+    }
+    const left = cards.filter(c => !current(c)).length;
+    bar.textContent = problem || (left ? `${left} of ${cards.length} sheets still to review` : `All ${cards.length} sheets reviewed`);
+    bar.classList.toggle("err", !!problem);
+  }
+
+  async function save(card, body) {
+    const status = card.querySelector(".ctl .state");
+    try {
+      const r = await fetch(`${API}/${card.dataset.slug}`, {method: "PUT", cache: "no-store", headers: {"Content-Type": "application/json"}, body: JSON.stringify({...body, v: card.dataset.v})});
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || `error ${r.status}`);
+      reviews = data; problem = ""; status.textContent = "Saved";
+    } catch (e) { status.textContent = `Not saved: ${e.message}`; }
+    render();
+  }
+
+  for (const c of cards) {
+    const input = c.querySelector("input"), status = c.querySelector(".ctl .state");
+    c.querySelector(".ok").onclick = () => save(c, {verdict: "ok"});
+    c.querySelector(".fix").onclick = () => {
+      if (!input.value.trim()) { status.textContent = "Say what needs fixing first"; input.focus(); return; }
+      save(c, {verdict: "fix", note: input.value});
+    };
+  }
+  fetch(API, {cache: "no-store"}).then(r => { if (!r.ok) throw 0; return r.json(); })
+    .then(d => { reviews = d; }).catch(() => { problem = "Couldn't load saved answers. Reload to try again."; }).finally(render);
+})();
+</script>
+</body></html>

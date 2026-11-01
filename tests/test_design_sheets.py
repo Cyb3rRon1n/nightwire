@@ -192,3 +192,11 @@ def test_extract_palette_skips_white_background():
 
 def test_extract_palette_keeps_white_when_asked():
     assert "#ffffff" in extract_palette(_white_sheet(), n=3, skip_background=False)
+
+
+def test_sheets_carry_the_record_and_no_generic_marks():
+    d = Design(name="A", kind="character", source="x", tags="red hair, suit", required=["purple eyes", "red hair"])
+    pos, neg = sheet_prompt(d, "turnaround")
+    assert pos.count("red hair") == 1 and "purple eyes" in pos
+    assert "tattoo" not in pos and "piercing" not in pos and "floating object" in neg
+

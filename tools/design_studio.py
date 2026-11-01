@@ -261,6 +261,64 @@ def _gallery_section(slug: str, d: Design, r: int, figs: list[str], pick: bool) 
             f'<p class="tags">{html.escape(d.tags)}</p><ul>{notes}</ul></details></section>')
 
 
+def _approved_candidate(d: Design, slug_dir: Path) -> tuple[int, int, Path] | None:
+    won = [m for note in d.notes for m in re.findall(r"approved r(\d+) #(\d+)", note)]
+    if not won:
+        return None
+    r, n = map(int, won[-1])
+    return r, n, _latest_candidates(slug_dir, r)[1].get(n)
+
+
+def _review_page(designs, args, out: Path) -> dict[str, str]:
+    """review/index.html: the approved art beside each sheet's old and new version, with the checker's flags.
+    Returns {slug: sheet version}, so the dashboard can count what's still unreviewed."""
+    report_path = args.design_dir / "qa" / "report.json"
+    report = json.loads(report_path.read_text()) if report_path.exists() else {}
+    cards, versions = [], {}
+    for slug, d in sorted(designs.items()):
+        slug_dir = args.design_dir / slug
+        sheet = slug_dir / "expressions.png"
+        if d.kind != "character" or d.status != "approved" or not sheet.exists():
+            continue
+        name = html.escape(d.name)
+        figures = []
+        won = _approved_candidate(d, slug_dir)
+        if won and won[2]:
+            figures.append(("Approved design", f"r{won[0]}-c{won[1]}.jpg", won[2]))
+        for s, title in (("expressions", "Expressions"), ("turnaround", "Turnaround"), ("colorguide", "Colour guide")):
+            if (slug_dir / f"{s}-old.png").exists():
+                figures.append((f"{title}: before", f"{s}-old.jpg", slug_dir / f"{s}-old.png"))
+            if (slug_dir / f"{s}.png").exists():
+                figures.append((f"{title}: now", f"{s}.jpg", slug_dir / f"{s}.png"))
+        figs = []
+        for label, rel, src in figures:
+            _web_copy(src, out / "img" / slug / rel)
+            figs.append(f'<figure><a href="../img/{slug}/{rel}" target="_blank" rel="noopener"><img src="../img/{slug}/{rel}" '
+                        f'alt="{name}: {label}" loading="lazy"></a><figcaption>{label}</figcaption></figure>')
+        entry = report.get(slug)
+        flags = entry["flags"] if entry else []
+        if entry is None:
+            check = '<p class="state">Not checked yet.</p>'
+        elif flags:
+            check = '<ul class="flags">' + "".join(f"<li>{html.escape(f)}</li>" for f in flags) + "</ul>"
+        else:
+            check = '<p class="state">The automatic check found nothing. It can miss small details, so still look.</p>'
+        unchecked = entry["unchecked"] if entry else []
+        if unchecked:
+            check += f'<p class="state">Too small or specific to check: {html.escape(", ".join(unchecked))}</p>'
+        versions[slug] = str(max((slug_dir / f"{s}.png").stat().st_mtime_ns for s in CHARACTER_SHEETS if (slug_dir / f"{s}.png").exists()))
+        cards.append((not flags, f'<section data-slug="{html.escape(slug)}" data-v="{versions[slug]}"><h3>{name}</h3>'
+                      f'<div class="grid">{"".join(figs)}</div>{check}<div class="ctl">'
+                      '<button type="button" class="ok">Looks right</button><input type="text" maxlength="500" '
+                      f'aria-label="What needs fixing on {name}" placeholder="What needs fixing?">'
+                      '<button type="button" class="fix">Needs a fix</button><span class="state" role="status"></span></div></section>'))
+    body = "".join(c for _, c in sorted(cards, key=lambda c: c[0]))
+    template = Path(__file__).with_name("design_review.html").read_text()
+    (out / "review").mkdir(parents=True, exist_ok=True)
+    (out / "review" / "index.html").write_text(template.replace("/*STYLE*/", GALLERY_STYLE).replace("<!--CARDS-->", body))
+    return versions
+
+
 def cmd_gallery(designs, args) -> int:
     out = args.design_dir / "gallery"
     groups: dict[str, list[str]] = {"candidates": [], "approved": [], "other": []}
@@ -290,7 +348,7 @@ def cmd_gallery(designs, args) -> int:
         group = "candidates" if pick else "approved" if d.status == "approved" else "other"
         groups[group].append(_gallery_section(slug, d, r, figs, pick))
     body = '<div id="bar" role="status">Loading picks…</div><h1>Kuroshio Design Studio</h1>'
-    body += '<p class="lede"><a href="/">← AI Lab</a> · Tap an image to see it full size. Pick one for each character, or ask for a reroll with a note. Picks save as you go.</p>'
+    body += '<p class="lede"><a href="/">← AI Lab</a> · <a href="review/">Review sheets</a> · Tap an image to see it full size. Pick one for each character, or ask for a reroll with a note. Picks save as you go.</p>'
     if groups["candidates"]:
         body += f'<h2 class="group">Needs your pick ({len(groups["candidates"])})</h2>' + "".join(groups["candidates"])
     if groups["other"]:
@@ -306,7 +364,8 @@ def cmd_gallery(designs, args) -> int:
     (out / "index.html").write_text(page)
     (out / "rounds.json").write_text(json.dumps(rounds))
     needs_pick = sorted(s for s, d in designs.items() if d.status == "candidates" and s in rounds)
-    (out / "status.json").write_text(json.dumps({"needs_pick": {s: rounds[s] for s in needs_pick}}))  # dashboard badge
+    review = _review_page(designs, args, out)
+    (out / "status.json").write_text(json.dumps({"needs_pick": {s: rounds[s] for s in needs_pick}, "review": review}))  # dashboard badges
     print(out / "index.html")
     return 0
 

@@ -109,7 +109,18 @@ async def test_gallery_and_export(studio):
     assert 'data-slug="izakaya" data-name="Izakaya" data-round="1" data-pick' in html
     assert 'data-slug="mama-sato" data-name="Mama Sato" data-round="1" data-pick' not in html
     assert "window.claude" not in html and 'const API = "api/picks"' in html
-    assert json.loads((data / "gallery" / "status.json").read_text()) == {"needs_pick": {"izakaya": 1}}
+    status = json.loads((data / "gallery" / "status.json").read_text())
+    assert status["needs_pick"] == {"izakaya": 1} and list(status["review"]) == ["mama-sato"]
+    review = (data / "gallery" / "review" / "index.html").read_text()
+    assert 'data-slug="mama-sato"' in review and 'data-slug="izakaya"' not in review
+    assert "Approved design" in review and "Turnaround: now" in review and "before" not in review and "Not checked yet" in review
+    # The old sheet and the checker's flags appear once they exist, flagged characters first.
+    (data / "mama-sato" / "expressions-old.png").write_bytes((data / "mama-sato" / "expressions.png").read_bytes())
+    (data / "qa").mkdir()
+    (data / "qa" / "report.json").write_text(json.dumps({"mama-sato": {"flags": ["cigarette: shows in 2 of 6 panels"], "unchecked": ["x"]}}))
+    await ds.main(_args(studio, "gallery"))
+    review = (data / "gallery" / "review" / "index.html").read_text()
+    assert "Expressions: before" in review and "cigarette: shows in 2 of 6 panels" in review and "Too small or specific to check: x" in review
     assert await ds.main(_args(studio, "export")) == 0
     zips = list((data / "exports").glob("nightwire-designs-*.zip"))
     names = zipfile.ZipFile(zips[0]).namelist()
