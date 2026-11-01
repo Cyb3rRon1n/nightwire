@@ -301,6 +301,31 @@ def test_notes_are_screened_like_answers(creator, comfy, note):
         creator.vary(cid, 1, 1, "subtle", note=note)
 
 
+def test_fifty_plus_renders_with_the_safe_rating_everywhere(creator, comfy):
+    cid = with_round(creator, comfy, age="50+")
+    creator.pick(cid, 1, 1)
+    creator.lock(cid)
+    render(creator, comfy)
+    assert len(comfy.submitted) == 4 + 8
+    for wf in comfy.submitted:
+        assert "sensitive" not in text(wf) and "safe" in text(wf) and "seductive" in text(wf, "7")
+    draft = creator.create("player", GOOD, by_owner=False)["id"]
+    with pytest.raises(BadRequest, match="50"):
+        creator.update_answers(draft, {**GOOD, "age": "50+", "outfit": "lingerie"})
+
+
+def test_fifty_plus_note_is_refused_when_it_asks_for_revealing_tags(creator, comfy):
+    cid = with_round(creator, comfy, age="50+")
+    for call in (lambda: creator.generate(cid, note="lingerie"), lambda: creator.vary(cid, 1, 1, "subtle", note="lingerie")):
+        with pytest.raises(BadRequest, match="50"):
+            call()
+
+
+def test_under_fifty_keeps_the_normal_rating(creator, comfy):
+    with_round(creator, comfy)
+    assert "sensitive" in text(comfy.submitted[0])
+
+
 def test_reroll_note_reaches_the_prompt_cleaned(creator, comfy):
     cid = with_round(creator, comfy)
     creator.generate(cid, note="(red scarf:1.5)")

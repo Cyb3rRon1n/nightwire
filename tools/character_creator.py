@@ -32,7 +32,7 @@ from narrator.design_sheets import (
     EXPRESSION_SIZE, EXPRESSIONS, candidate_prompt, candidate_workflow, expression_prompts, sheet_prompt, sheet_workflow,
 )
 from narrator.designs import save_design, validate
-from tools.character_answers import QUESTIONS, clean_answers, clean_text, to_design
+from tools.character_answers import QUESTIONS, clean_answers, clean_note, rated, to_design
 from tools.design_picks import write_json_atomic
 from tools.image_studio import MAX_SEED, BadRequest, Busy, Comfy
 
@@ -179,6 +179,7 @@ class Creator:
 
     def _candidates(self, record: dict, round_no: int, note: str, prepare=lambda wf: wf) -> list[dict]:
         pos, neg = candidate_prompt(to_design(record["answers"], record["kind"], record["seed"]))
+        pos = rated(pos, record["answers"])
         if note:
             pos = f"{pos}, {note}"
         items = []
@@ -189,20 +190,20 @@ class Creator:
         return items
 
     def generate(self, cid: str, note: str = "") -> dict:
-        note = clean_text(note or "", "the note", 200)
         with self._mutex:
             record = self._load(cid)
+            note = clean_note(note, record["answers"])
             self._can_render(record)
             round_no = self._next_round(record)
             self._enqueue(record, "candidates", round_no, self._candidates(record, round_no, note), note)
             return self.get(cid)
 
     def vary(self, cid: str, round_no, n, strength, note: str = "") -> dict:
-        note = clean_text(note or "", "the note", 200)
         if not isinstance(strength, str) or strength not in DENOISE:
             raise BadRequest("strength must be subtle or strong")
         with self._mutex:
             record = self._load(cid)
+            note = clean_note(note, record["answers"])
             self._can_render(record)
             source = self._image(record, round_no, n)
             next_round = self._next_round(record)
@@ -249,11 +250,12 @@ class Creator:
         if sheet == "expressions":
             items = []
             for i, (_label, pos, neg) in enumerate(expression_prompts(design), 1):
-                wf = candidate_workflow(pos, neg, seed)
+                wf = candidate_workflow(rated(pos, record["answers"]), neg, seed)
                 wf["5"]["inputs"].update(width=EXPRESSION_SIZE[0], height=EXPRESSION_SIZE[1])
                 items.append((f"expression-{i}.png", wf))
         else:
-            items = [(f"{sheet}.png", sheet_workflow(*sheet_prompt(design, sheet), seed))]
+            pos, neg = sheet_prompt(design, sheet)
+            items = [(f"{sheet}.png", sheet_workflow(rated(pos, record["answers"]), neg, seed))]
         return [{"name": name, "workflow": _private(wf), "comfy_id": None, "done": False} for name, wf in items]
 
     def lock(self, cid: str) -> dict:

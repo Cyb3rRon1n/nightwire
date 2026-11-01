@@ -5,6 +5,7 @@ from narrator.designs import validate
 from ruleset.lifepaths import LIFEPATHS
 from ruleset.roles import ROLES
 from tools import character_answers as ca
+from tools import image_studio as st
 
 
 def good(**k):
@@ -132,11 +133,14 @@ def test_blank_optional_answers_are_dropped():
     assert ca.clean_answers(good(hair="   ", age="", role=None)) == good()
 
 
-@pytest.mark.parametrize("age, tag", [("20s", "young adult"), ("30s", "mature"), ("40s", "middle-aged"), ("50+", "old")])
-def test_age_tags_stay_adult(age, tag):
-    tags = [t.strip() for t in ca.to_design(ca.clean_answers(good(age=age)), "player", 1).tags.split(",")]
-    assert tag in tags and "young" not in tags
-    assert len(tags) == len(set(tags)) and tags[:2] == ["mature", "adult"]
+@pytest.mark.parametrize("age", ["20s", "30s", "40s", "50+"])
+def test_age_tags_stay_adult_and_dont_fight_the_negatives(age):
+    d = ca.to_design(ca.clean_answers(good(age=age)), "player", 1)
+    tags = [t.strip() for t in d.tags.split(",")]
+    positive, negative = sheet_prompt(d, "turnaround")
+    fixed_negative = {t.strip() for t in negative.split(",")}
+    assert len(tags) > 2 and tags[:2] == ["mature", "adult"] and len(tags) == len(set(tags))
+    assert not (set(tags) & fixed_negative) and "young" not in d.tags and "old" not in tags
 
 
 @pytest.mark.parametrize("lifepath, tag", [("corpo", "corporate attire"), ("streetkid", "street fashion"),
@@ -186,6 +190,108 @@ def test_the_design_is_a_valid_character_with_a_source_naming_the_kind(kind):
     d = ca.to_design(ca.clean_answers(good()), kind, 7)
     validate(d)
     assert d.kind == "character" and d.source == f"creator:{kind}" and d.name == "Vex"
+
+
+MUST_REFUSE = ["young_woman", "petite_body", "12yo_girl", "17-year-old", "17 y.o.", "sixteen years old", "aged 12", "childlike",
+               "preteen", "teenaged", "lolis", "lolicon", "shotacon", "high school student", "school uniform", "flat chest",
+               "aged down", "chibi", "baby face", "unclothed", "no clothes", "without clothing", "see-through", "exposed breasts",
+               "fellatio", "testicles", "bondage", "questionable", "rating:questionable", "n.u.d.e",
+               "nu\u200bde", "\uff4e\uff55\uff44\uff45", "nud\u0435",
+               "n-u-d-e", "n_u_d_e", "n u d e", "seventeen-year-old", "age: 15", "9 years of age", "17 y/o", "(young:1.3) woman"]
+PROMPT_FIELDS = ["hair", "eyes", "skin", "build", "face_extras", "outfit", "colours", "marks", "chrome", "signature", "extra"]
+
+
+@pytest.mark.parametrize("text", MUST_REFUSE)
+def test_common_forms_are_refused_in_tag_fields(text):
+    with pytest.raises(ca.BadAnswers):
+        ca.clean_answers(good(outfit=text))
+
+
+@pytest.mark.parametrize("field", [*PROMPT_FIELDS, "personality", "world_role", "home"])
+def test_every_tag_field_is_screened_the_same_way(field):
+    for text in ("young_woman", "\uff4e\uff55\uff44\uff45", "nud\u0435"):
+        with pytest.raises(ca.BadAnswers):
+            ca.clean_answers(good(**{field: text}))
+
+
+@pytest.mark.parametrize("text", ["nude", "young_woman", "12yo_girl", "n.u.d.e", "nu\u200bde", "\uff4e\uff55\uff44\uff45", "lolicon"])
+@pytest.mark.parametrize("field", ["name", "backstory"])
+def test_name_and_backstory_are_screened_too(field, text):
+    with pytest.raises(ca.BadAnswers):
+        ca.clean_answers(good(**{field: text}))
+
+
+def test_notes_are_screened_the_same_way():
+    for text in MUST_REFUSE:
+        with pytest.raises(ca.BadAnswers):
+            ca.clean_text(text, "the note")
+
+
+@pytest.mark.parametrize("text", ["35 years old", "aged 35", "age 40", "18 years old", "thirty-five years old", "twenty one years old",
+                                  "old leather coat", "scar from 5 years ago", "5 year veteran", "exposed wiring", "baby blue jacket",
+                                  "mid-length hair", "red-eyed", "St. Mark's cross", "corporate attire", "no sleeves"])
+def test_ordinary_text_and_adult_ages_are_not_refused(text):
+    assert ca.clean_answers(good(outfit=text))["outfit"]
+
+
+@pytest.mark.parametrize("field, value", [("name", "\u591c\u6708"), ("name", "Ren\u00e9e"), ("backstory", "fled \u6771\u4eac at night")])
+def test_name_and_backstory_can_use_any_letters(field, value):
+    assert ca.clean_answers(good(**{field: value}))[field] == value
+
+
+def test_tag_fields_refuse_other_alphabets_with_a_reason():
+    for value in ("\u591c\u6708", "caf\u00e9 apron", "n\u0338ude"):
+        with pytest.raises(ca.BadAnswers, match="English"):
+            ca.clean_answers(good(outfit=value))
+
+
+def test_tag_fields_are_stored_normalised_but_names_keep_their_hyphens():
+    got = ca.clean_answers(good(name="Mei-Lan", hair="silver_hair, mid-length", outfit="\uff54\uff52\uff45\uff4e\uff43\uff48 co\u200bat"))
+    assert got["name"] == "Mei-Lan" and got["hair"] == "silver hair, mid length" and got["outfit"] == "trench coat"
+
+
+@pytest.mark.parametrize("text, kept", [("embedding:easynegative, red coat", "red coat"), ("EMBEDDING:bad_thing", ""),
+                                        ("(embedding:x:1.2), red coat", "red coat"), ("embed\u200bding:x red coat", "red coat")])
+def test_embedding_syntax_is_stripped(text, kept):
+    assert ca.clean_answers(good(outfit=text)).get("outfit", "") == kept
+
+
+def test_fixed_negative_has_questionable_and_the_sexual_terms():
+    d = ca.to_design(ca.clean_answers(good()), "player", 1)
+    for word in ("questionable", "fellatio", "testicles", "bondage", "unclothed", "exposed breasts"):
+        assert word in d.negative
+        assert word in sheet_prompt(d, "turnaround")[1] and word in expression_prompts(d)[0][2]
+
+
+def test_shared_image_studio_list_is_left_alone():
+    assert st.refused_terms("young woman") == [] and st.refused_terms("school uniform") == []
+
+
+def test_fifty_plus_is_never_sexualised():
+    answers = ca.clean_answers(good(age="50+"))
+    d = ca.to_design(answers, "player", 1)
+    for word in ("cleavage", "revealing clothes", "lingerie", "swimsuit", "suggestive", "seductive"):
+        assert word in d.negative
+    positive = sheet_prompt(d, "turnaround")[0]
+    assert "sensitive" in positive and "sensitive" not in ca.rated(positive, answers) and ", safe" in ca.rated(positive, answers)
+    assert ca.rated(positive, ca.clean_answers(good(age="40s"))) == positive
+    assert "cleavage" not in ca.to_design(ca.clean_answers(good(age="40s")), "player", 1).negative
+
+
+@pytest.mark.parametrize("field", ["outfit", "extra", "build", "signature"])
+@pytest.mark.parametrize("word", ["lingerie", "cleavage", "bikini", "revealing dress", "large breasts", "sexy"])
+def test_fifty_plus_cant_ask_for_revealing_tags(field, word):
+    with pytest.raises(ca.BadAnswers, match="50"):
+        ca.clean_answers(good(age="50+", **{field: word}))
+    assert ca.clean_answers(good(age="40s", **{field: word}))[field]
+
+
+def test_fifty_plus_notes_are_held_to_the_same_rule():
+    answers = ca.clean_answers(good(age="50+"))
+    with pytest.raises(ca.BadAnswers, match="50"):
+        ca.clean_note("lingerie", answers)
+    assert ca.clean_note("(red scarf:1.2)", answers) == "red scarf"
+    assert ca.clean_note("lingerie", ca.clean_answers(good())) == "lingerie"
 
 
 def test_adult_negatives_are_applied():
