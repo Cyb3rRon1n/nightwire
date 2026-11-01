@@ -353,7 +353,9 @@ def test_lock_needs_a_pick_then_queues_all_sheets(creator, comfy):
     assert "1girl" in text(sheets[2]) and "close-up" in text(sheets[2])
     for wf in sheets[2:]:
         assert (wf["5"]["inputs"]["width"], wf["5"]["inputs"]["height"]) == EXPRESSION_SIZE
-        assert "katana" in text(wf, "7") and "katana" not in text(wf)
+        assert "katana" not in text(wf, "7") and "katana" not in text(wf)   # can't float, can't negate
+    assert "katana" in text(sheets[0]) and "katana" in text(sheets[1])
+    assert all("katana" not in text(wf, "7") for wf in sheets)
     assert {wf["3"]["inputs"]["seed"] for wf in sheets} == {seed}   # the picked look, as in approve then sheets
     got = creator.get(cid)
     assert got["sheets"] == {"turnaround": "turnaround.png", "colorguide": "colorguide.png",
@@ -594,7 +596,8 @@ def test_export_writes_an_approved_design_and_its_image(creator, comfy, tmp_path
     assert path == designs / "vex.toml"
     d = load_designs(designs)["vex"]
     assert d.status == "approved" and d.seed == record["seed"] and d.source == f"creator:{kind}" and d.kind == "character"
-    assert d.required == ["silver hair"] and d.held == ["katana"] and d.presentation == "feminine"
+    assert d.required == ["silver hair"] and d.held == [] and "katana" in d.tags and d.presentation == "feminine"
+    assert any("katana" in n and "held" in n for n in d.notes)   # the studio's close-ups don't know it's a signature item
     assert any("ramen cook" in n and "Dock Nine" in n for n in d.notes)
     copied = data / "vex" / "candidates" / f"r1-c1-{d.seed}.png"
     assert copied.read_bytes() == creator.image_path(cid, record["picked"]).read_bytes()

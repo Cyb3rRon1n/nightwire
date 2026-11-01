@@ -42,6 +42,10 @@ def test_every_api_path_is_used(page, path):
     assert path in page
 
 
+def test_page_offers_never_as_a_choice_list(page):
+    assert '"multi"' in page and 'type: "checkbox"' in page
+
+
 def test_page_keeps_the_shared_rules(page):
     for rule in ("#07060d", "#ff4fa3", "#3fd5ff", ":focus-visible", 'name="viewport"', 'content="no-referrer"', "visibilitychange"):
         assert rule in page

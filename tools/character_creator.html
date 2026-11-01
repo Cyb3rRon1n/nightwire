@@ -126,7 +126,8 @@ function say(node, text, isError) {
 function answerList(answers) {
   const list = el("dl");
   for (const q of options.questions) {
-    if (answers[q.id]) list.append(el("dt", {text: q.label}), el("dd", {text: answers[q.id]}));
+    const value = answers[q.id];
+    if (value && value.length) list.append(el("dt", {text: q.label}), el("dd", {text: Array.isArray(value) ? value.join(", ") : value}));
   }
   return list;
 }
@@ -141,6 +142,19 @@ function showForm({kind, answers, intro, submitLabel, onSubmit}) {
 
   function field(q) {
     const id = `q-${q.id}`;
+    if (q.kind === "multi") {
+      const chosen = new Set(values[q.id] || []);
+      return el("fieldset", {class: "field", style: "border:0;padding:0"},
+        el("legend", {class: "label", text: q.label}),
+        el("div", {class: "choices"}, ...q.choices.map((c, i) => {
+          const box = el("input", {type: "checkbox", id: `${id}-${i}`, checked: chosen.has(c)});
+          box.addEventListener("change", () => {
+            if (box.checked) chosen.add(c); else chosen.delete(c);
+            values[q.id] = [...chosen];
+          });
+          return el("label", {for: box.id}, box, el("span", {text: c}));
+        })));
+    }
     let input;
     if (q.kind === "choice") {
       input = el("select", {id, required: q.required},

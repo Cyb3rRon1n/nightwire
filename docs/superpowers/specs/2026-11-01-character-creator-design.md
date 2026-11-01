@@ -55,14 +55,14 @@ The form has four steps with a progress indicator: Basics, Look, Nightwire detai
 - **Basics:** character name; presentation (feminine, masculine, androgynous); apparent age (20s, 30s, 40s, 50+); role and lifepath from the game's lists; optional personality words.
 - **Look:** hair colour and style; eye colour; skin tone; build and height; facial hair or makeup; what to keep from the photo, if there is one.
 - **Nightwire details:** outfit style and main colours; tattoos, scars and piercings, with placement; chrome or implants, with side; a "never without" signature item. Tattoos, scars, piercings and chrome default to none.
-- **Final touches:** must never include; anything else; one line of backstory.
+- **Final touches:** must never include, as a multi-choice list and not free text (glasses, facial hair, tattoos, scars, piercings, chrome, makeup, jewellery, hats, hoods, masks); anything else; one line of backstory.
 
 Lifepath also adds a style tag to the outfit. Role and backstory are saved for the game and don't go into the image prompt. Personality words only set the default expression.
 
 ## From answers to prompt
 
 - Choices map to fixed tags. Free text goes in as tags after cleaning: length limit, weight syntax such as `(x:1.4)` removed, and `refused_terms` from Image Studio applied.
-- Hair, eyes, facial features, tattoos, scars and chrome go in `required`. Signature items go in `held`. "Never include" goes in `negative`.
+- Hair, eyes, facial features, tattoos, scars and chrome go in `required`. Signature items are tags on body views only, and stay out of `held`, because `held` reaches the expression negative. Only the "never include" choices go in `negative`, since free text there could negate clothes or the adult tags.
 - The person is always written as an adult using the existing adult tags and negatives.
 - No language model writes the tags. It would have to share the GPU, and players see the result and can reword it.
 

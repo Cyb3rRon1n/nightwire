@@ -13,6 +13,8 @@ _PRESENTATIONS = ["feminine", "masculine", "androgynous"]
 _AGES = {"20s": "young adult", "30s": "mature", "40s": "middle-aged", "50+": "old"}  # never "young" alone: it's a negative
 _LIFEPATH_TAGS = {"corpo": "corporate attire", "streetkid": "street fashion", "nomad": "nomad gear", "tsukumogami": "android"}
 _NOTE_MAX = 200
+# Everything a player can put in a negative prompt: free text there could negate clothes or the adult tags.
+NEVER_CHOICES = ["glasses", "facial hair", "tattoos", "scars", "piercings", "chrome", "makeup", "jewellery", "hats", "hoods", "masks"]
 
 
 def _q(qid, label, step, kind="text", **extra):
@@ -38,16 +40,13 @@ QUESTIONS: list[dict] = [
     _q("marks", "Tattoos, scars and piercings, with placement", "nightwire", hint="Optional. Leave blank for none."),
     _q("chrome", "Chrome or implants, with side", "nightwire", hint="Optional. Leave blank for none."),
     _q("signature", "Never without (a signature item)", "nightwire"),
-    _q("never", "Must never include", "final"),
+    _q("never", "Must never include", "final", kind="multi", choices=NEVER_CHOICES),
     _q("extra", "Anything else", "final", max=_NOTE_MAX),
     _q("backstory", "One line of backstory", "final", max=_NOTE_MAX),
 ]
-_BY_ID = {q["id"]: q for q in QUESTIONS}
 
 # refused_terms drops digits and knows "young girl" but not "young", which is a negative on every render anyway.
 _NOT_ADULT = re.compile(r"\b(young|younger|youthful|petite|1?\d\s*(?:yo|y/?o|years?[ -]?old))\b", re.I)
-# In "never" these would go in the negative prompt and ask for the opposite of the adult, clothed rule.
-_NEVER_CANCELS = re.compile(r"\b(adult|adults|mature|old|older|aged|clothes|clothed|clothing|dressed)\b", re.I)
 _WEIGHT = re.compile(r"\(([^():]*)(?::[\d.]+)?\)")
 
 
@@ -70,7 +69,7 @@ def clean_text(value, label: str, limit: int = 120) -> str:
     return text
 
 
-def clean_answers(raw) -> dict[str, str]:
+def clean_answers(raw) -> dict[str, str | list[str]]:
     if not isinstance(raw, dict):
         raise BadAnswers("expected an object")
     answers = {}
@@ -79,14 +78,16 @@ def clean_answers(raw) -> dict[str, str]:
         if q["kind"] == "text" and value not in (None, ""):
             label = q["label"].lower()
             answers[q["id"]] = clean_text(value, label, q.get("max", 120))
-            if q["id"] == "never" and (bad := sorted({m.group(0).lower() for m in _NEVER_CANCELS.finditer(answers["never"])})):
-                raise BadAnswers(f"{label} can't list: {', '.join(bad)}. Everyone here stays an adult and clothed.")
     for q in QUESTIONS:
         value = raw.get(q["id"])
         if q["kind"] == "choice" and value not in (None, ""):
             if value not in q["choices"]:
                 raise BadAnswers(f"{q['label'].lower()} must be one of: {', '.join(q['choices'])}")
             answers[q["id"]] = value
+        if q["kind"] == "multi" and value not in (None, "", []):
+            if not isinstance(value, list) or any(v not in q["choices"] for v in value):
+                raise BadAnswers(f"{q['label'].lower()} must be chosen from: {', '.join(q['choices'])}")
+            answers[q["id"]] = [c for c in q["choices"] if c in value]
     for q in QUESTIONS:
         if q["required"] and not answers.get(q["id"]):
             raise BadAnswers(f"{q['label'].lower()} is required")
@@ -97,18 +98,21 @@ def _split(*values: str) -> list[str]:
     return [part.strip() for v in values for part in v.split(",") if part.strip()]
 
 
-def to_design(answers: dict, kind: str, seed: int) -> Design:
-    """`kind` is the creator's player, npc or ai. Every one of them is a "character" Design, so the sheets work unchanged."""
+def to_design(answers: dict, kind: str, seed: int, close_up: bool = False) -> Design:
+    """`kind` is the creator's player, npc or ai. Every one of them is a "character" Design, so the sheets work unchanged.
+
+    No player text goes in `negative` or `held`: `held` reaches the expression negative, so the signature item is only ever
+    a tag, and `close_up` leaves it out for the expression panels so it can't float beside a head."""
     def a(qid: str) -> str:
         return answers.get(qid, "")
 
-    held = _split(a("signature"))
-    # A held item stays in the tags as well, as in the cast's records: `held` only keeps it out of close-ups.
+    never = answers.get("never")
     tags = dict.fromkeys(_split("mature, adult", _AGES.get(a("age"), ""), a("skin"), a("build"), a("outfit"), a("colours"),
-                                _LIFEPATH_TAGS.get(a("lifepath"), ""), a("signature"), a("extra")))
+                                _LIFEPATH_TAGS.get(a("lifepath"), ""), "" if close_up else a("signature"), a("extra")))
     return Design(
         name=answers["name"], kind="character", source=f"creator:{kind}", tags=", ".join(tags),
-        presentation=answers["presentation"], negative=a("never"),
+        presentation=answers["presentation"],
+        negative=", ".join(c for c in NEVER_CHOICES if isinstance(never, list) and c in never),
         required=_split(a("hair"), a("eyes"), a("face_extras"), a("marks"), a("chrome")),
-        held=held, seed=seed, notes=[f"personality: {a('personality')}"] if a("personality") else [],
+        seed=seed, notes=[f"personality: {a('personality')}"] if a("personality") else [],
     )

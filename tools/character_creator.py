@@ -245,7 +245,7 @@ class Creator:
             return self._save(record)
 
     def _sheet_items(self, record: dict, sheet: str, seed: int) -> list[dict]:
-        design = to_design(record["answers"], record["kind"], seed)
+        design = to_design(record["answers"], record["kind"], seed, close_up=sheet == "expressions")
         if sheet == "expressions":
             items = []
             for i, (_label, pos, neg) in enumerate(expression_prompts(design), 1):
@@ -423,6 +423,8 @@ def export(root: Path, cid: str, designs_dir: Path, design_dir: Path) -> Path:
     if place:   # "draft:" is what Image Studio shows as the character's role
         design.notes.append(f"{dt.date.today().isoformat()} draft: {place}")
     design.notes.append(f"{dt.date.today().isoformat()} from the character creator ({record['kind']})")
+    if a.get("signature"):
+        design.notes.append(f"signature item, in the tags and not in held: {a['signature']}. Move it to held by hand if it floats on close-ups.")
     validate(design)
     slug = design.slug
     if not slug:

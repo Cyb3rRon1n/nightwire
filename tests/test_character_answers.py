@@ -35,11 +35,11 @@ def test_unknown_fields_are_dropped_and_length_capped():
 
 def test_design_fields_go_where_the_sheets_expect():
     d = ca.to_design(ca.clean_answers(good(hair="silver hair", eyes="red eyes", marks="scar on left cheek",
-                                           chrome="mechanical right arm", signature="katana", never="glasses",
+                                           chrome="mechanical right arm", signature="katana", never=["glasses"],
                                            outfit="trench coat", lifepath="corpo", backstory="ignored words")),
                      "player", 42)
     assert d.required == ["silver hair", "red eyes", "scar on left cheek", "mechanical right arm"]
-    assert d.held == ["katana"] and "glasses" in d.negative and d.seed == 42 and d.presentation == "feminine"
+    assert d.held == [] and "katana" in d.tags and "glasses" in d.negative and d.seed == 42 and d.presentation == "feminine"
     assert "trench coat" in d.tags and "corporate" in d.tags and "ignored" not in d.tags
     assert "adult" in d.tags
 
@@ -65,7 +65,7 @@ def test_refusals_see_through_the_cleaning_and_name_the_field(sneaky, words):
     assert "outfit" in str(e.value).lower()
 
 
-@pytest.mark.parametrize("field", ["name", "personality", "backstory", "extra", "world_role", "home", "never"])
+@pytest.mark.parametrize("field", ["name", "personality", "backstory", "extra", "world_role", "home"])
 def test_words_that_never_reach_the_prompt_are_still_screened(field):
     with pytest.raises(ca.BadAnswers, match="nude"):
         ca.clean_answers(good(**{field: "nude"}))
@@ -78,12 +78,42 @@ def test_free_text_cant_ask_for_someone_underage(text):
         ca.clean_answers(good(extra=text))
 
 
-@pytest.mark.parametrize("text", ["adult", "mature face, old", "clothes", "any clothing"])
-def test_never_cant_cancel_the_adult_or_clothed_rule(text):
-    # A negative prompt of "adult" or "clothes" asks for exactly what art direction forbids.
+NEVER_CHOICES = ["glasses", "facial hair", "tattoos", "scars", "piercings", "chrome", "makeup", "jewellery", "hats", "hoods", "masks"]
+
+
+def test_never_is_a_multi_choice_of_harmless_things():
+    q = question("never")
+    assert q["kind"] == "multi" and q["choices"] == NEVER_CHOICES
+    got = ca.clean_answers(good(never=["masks", "glasses", "masks"]))["never"]
+    assert got == ["glasses", "masks"]
+    assert "never" not in ca.clean_answers(good(never=[]))
+
+
+# A negative prompt of any of these asks for what art direction forbids, and no blocklist can list every garment.
+@pytest.mark.parametrize("word", ["shirt", "pants", "jacket", "underwear", "bra", "skirt", "dress", "coat", "techwear", "attire",
+                                  "garments", "fully covered", "woman", "grown-up", "wrinkles", "elderly", "mature_female",
+                                  "adult_woman", "clothed_female", "\uff41\uff44\uff55\uff4c\uff54", "adult", "clothes"])
+def test_never_refuses_anything_off_the_list(word):
+    for value in (word, [word], ["glasses", word]):
+        with pytest.raises(ca.BadAnswers, match="must never"):
+            ca.clean_answers(good(never=value))
+
+
+@pytest.mark.parametrize("value", ["glasses", {"a": 1}, 5, [["glasses"]], [None]])
+def test_never_must_be_a_list_of_choices(value):
     with pytest.raises(ca.BadAnswers, match="must never"):
-        ca.clean_answers(good(never=text))
-    assert ca.clean_answers(good(outfit="mature style, old coat, clothes"))["outfit"]
+        ca.clean_answers(good(never=value))
+
+
+def test_only_the_choice_list_reaches_a_designs_negative_or_held():
+    answers = ca.clean_answers(good(never=["hats"], signature="clothes, adult, mature", outfit="trench coat"))
+    d = ca.to_design(answers, "player", 1)
+    assert d.held == []
+    assert "hats" in d.negative and "clothes" not in d.negative and "adult" not in d.negative and "mature" not in d.negative
+    # Even a record that somehow holds free text can't get it into the negative.
+    assert "clothes" not in ca.to_design({**answers, "never": "clothes"}, "player", 1).negative
+    assert "clothes" not in ca.to_design({**answers, "never": ["clothes"]}, "player", 1).negative
+    assert "clothes" not in expression_prompts(d)[0][2].replace("different clothes", "")
 
 
 @pytest.mark.parametrize("raw", [["not", "an", "object"], "text", None])
@@ -138,10 +168,17 @@ def test_facial_features_are_required_so_they_survive_close_ups():
     assert all("short beard" in pos for _, pos, _ in expression_prompts(d))
 
 
-def test_signature_item_shows_on_body_views_but_not_in_close_ups():
-    d = ca.to_design(ca.clean_answers(good(signature="katana")), "player", 1)
-    assert "katana" in sheet_prompt(d, "turnaround")[0]
-    assert all("katana" not in pos and "katana" in neg for _, pos, neg in expression_prompts(d))
+def test_signature_item_shows_on_body_views_and_is_left_out_of_close_ups():
+    answers = ca.clean_answers(good(signature="katana"))
+    d = ca.to_design(answers, "player", 1)
+    assert "katana" in sheet_prompt(d, "turnaround")[0] and "katana" in sheet_prompt(d, "colorguide")[0]
+    close = ca.to_design(answers, "player", 1, close_up=True)
+    assert all("katana" not in pos and "katana" not in neg for _, pos, neg in expression_prompts(close))
+
+
+def test_close_up_keeps_an_outfit_tag_that_matches_the_signature():
+    close = ca.to_design(ca.clean_answers(good(signature="red scarf", outfit="red scarf")), "player", 1, close_up=True)
+    assert "red scarf" in close.tags
 
 
 @pytest.mark.parametrize("kind", ["player", "npc", "ai"])
