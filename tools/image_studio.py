@@ -128,7 +128,9 @@ def compose(body: dict, designs: dict, rng=random) -> list[dict]:
     parts = []
     if character:
         tags = [t.strip() for t in character.tags.split(",")]
-        parts.append(", ".join(t for t in tags if not (spec["bust"] and _below_chest(t))))
+        # The record's required details always go in; carried items stay out of close framings, where they float.
+        tags = [t for t in tags if t not in character.required and not (spec["bust"] and (_below_chest(t) or t in character.held))]
+        parts.append(", ".join([*character.required, *tags]))
     if location and shot in ("scene",):
         parts.append(location.tags)
     if action:
