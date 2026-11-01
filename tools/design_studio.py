@@ -8,8 +8,9 @@ character model sheets and location designs.
     python -m tools.design_studio gallery
     python -m tools.design_studio export
 
-Runbook: when applying picks from a published gallery, pass `--round <r>` to
-`approve` (default: the round the last gallery showed, else the latest).
+Runbook: the owner picks at http://192.168.10.19:8080/designs/ (see
+docs/design-studio-resume.md). `approve` defaults to the round the last gallery showed,
+else the latest; pass `--round <r>` to override.
 Don't run two batches at once -- they share the GPU and the design TOMLs.
 """
 
@@ -189,36 +190,108 @@ def _web_copy(src: Path, dest: Path) -> None:
     im.save(dest, "JPEG", quality=84)
 
 
+GALLERY_STYLE = """
+:root{color-scheme:dark;--bg:#0d0b14;--panel:#16121f;--text:#e9e4f2;--dim:#a79fb8;--line:#3de8ff55;--pink:#ff3d9a;--pick:#ffe14d}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif;margin:0 auto;padding:0 24px 48px;max-width:1500px}
+a{color:#3de8ff}
+#bar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;min-height:52px;padding:8px 0;background:#0d0b14f2;border-bottom:1px solid var(--line);font-weight:600}
+#bar .err{color:#ff8a8a}
+h1{margin:24px 0 2px;font-size:1.7rem}
+.lede{color:var(--dim);margin:0 0 8px}
+h2.group{font-size:1.3rem;color:var(--pink);border-bottom:1px solid var(--line);margin:28px 0 0;padding-bottom:4px}
+details.group>summary{font-size:1.3rem;font-weight:700;color:var(--pink);border-bottom:1px solid var(--line);margin-top:36px;padding:6px 0;cursor:pointer}
+section{margin:22px 0 34px;scroll-margin-top:64px}
+section.decided h3::after{content:"  ✓";color:var(--pick)}
+h3{font-size:1.2rem;margin:0}
+h3 small{color:var(--dim);font-size:.8rem;font-weight:400;margin-left:6px}
+.role{color:var(--dim);margin:0 0 10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-top:10px}
+figure{margin:0;background:var(--panel);outline:3px solid transparent;outline-offset:-1px;display:flex;flex-direction:column}
+figure.picked{outline-color:var(--pick)}
+img{width:100%;height:auto;display:block}
+button.zoom{all:unset;display:block;cursor:zoom-in;aspect-ratio:3/2;background:#000}
+button.zoom:focus-visible{outline:2px solid #3de8ff;outline-offset:-2px}
+button.zoom img{height:100%;object-fit:contain}
+figcaption{padding:8px;color:var(--pick);display:flex;align-items:center;justify-content:space-between;gap:8px;flex:1}
+button,input{font:600 14px system-ui,sans-serif;min-height:40px}
+button{background:#16121f;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:0 14px;cursor:pointer}
+button:hover:not(:disabled){border-color:#3de8ff}
+button:focus-visible,input:focus-visible{outline:2px solid #3de8ff;outline-offset:1px}
+button:disabled,input:disabled{opacity:.45;cursor:default}
+button.pick{flex:1}
+button.pick[aria-pressed=true],.ctl button.on{background:var(--pick);border-color:var(--pick);color:#0d0b14}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.ctl input{flex:1 1 240px;min-width:0;max-width:520px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:0 10px;font-weight:400}
+.state{color:var(--dim);font-size:13px;overflow-wrap:anywhere}
+details.more{margin-top:8px;color:var(--dim);font-size:13px}
+details.more summary{cursor:pointer}
+.tags{font:12px/1.5 ui-monospace,monospace}
+details.more ul{margin:6px 0;padding-left:18px}
+dialog{background:var(--bg);color:var(--text);border:1px solid var(--line);padding:12px;width:min(96vw,1500px);max-height:96vh}
+dialog::backdrop{background:#000c}
+dialog[open]{display:flex;flex-direction:column;gap:10px}
+.zoom-top,.zoom-nav{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.zoom-nav{justify-content:center}
+.zoom-nav .pick{flex:0 1 220px}
+#zoom-img{flex:1;min-height:0;width:100%;max-height:calc(96vh - 130px);object-fit:contain}
+@media(max-width:600px){body{padding:0 16px 32px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}button.pick{padding:0 6px}}
+"""
+
+
+def _gallery_section(slug: str, d: Design, r: int, figs: list[str], pick: bool) -> str:
+    name = html.escape(d.name)
+    role = next((n.split("draft:", 1)[1].strip() for n in d.notes if "draft:" in n), "")
+    notes = "".join(f"<li>{html.escape(n)}</li>" for n in d.notes[-3:])
+    attrs = f'data-slug="{html.escape(slug)}" data-name="{name}" data-round="{r}"' + (" data-pick" if pick else "")
+    return (f'<section {attrs}><h3>{name} <small>{d.kind} · round {r}</small></h3>'
+            + (f'<p class="role">{html.escape(role)}</p>' if role else "")
+            + f'<div class="grid">{"".join(figs)}</div>'
+            f'<details class="more"><summary>Prompt tags and history</summary>'
+            f'<p class="tags">{html.escape(d.tags)}</p><ul>{notes}</ul></details></section>')
+
+
 def cmd_gallery(designs, args) -> int:
     out = args.design_dir / "gallery"
-    sections = []
+    groups: dict[str, list[str]] = {"candidates": [], "approved": [], "other": []}
     rounds = {}
-    for slug, d in designs.items():
+    for slug, d in sorted(designs.items()):
         slug_dir = args.design_dir / slug
         r, cands = _latest_candidates(slug_dir)
         if cands:
             rounds[slug] = r
+        pick = d.status == "candidates" and bool(cands)
+        name = html.escape(d.name)
         figs = []
         for n, p in sorted(cands.items()):
             rel = f"img/{slug}/r{r}-c{n}.jpg"
             _web_copy(p, out / rel)
-            figs.append(f'<figure><img src="{rel}" alt="{html.escape(d.name)} candidate {n}"><figcaption>#{n}</figcaption></figure>')
+            won = d.status == "approved" and any(re.search(rf"approved r{r} #{n}\b", note) for note in d.notes)
+            button = f'<button type="button" class="pick">Pick #{n}</button>' if pick else f"#{n}" + (" ✓ approved" if won else "")
+            figs.append(f'<figure data-n="{n}"><button type="button" class="zoom" aria-label="Enlarge {name} candidate {n}">'
+                        f'<img src="{rel}" alt="{name} candidate {n}" loading="lazy"></button><figcaption>{button}</figcaption></figure>')
         sheets = CHARACTER_SHEETS if d.kind == "character" else LOCATION_SHEETS
         for s in sheets:
             if (slug_dir / f"{s}.png").exists():
                 rel = f"img/{slug}/{s}.jpg"
                 _web_copy(slug_dir / f"{s}.png", out / rel)
-                figs.append(f'<figure><img src="{rel}" alt="{html.escape(d.name)} {s}"><figcaption>{s}</figcaption></figure>')
-        notes = "".join(f"<li>{html.escape(n)}</li>" for n in d.notes[-3:])
-        sections.append(
-            f'<section><h2>{html.escape(d.name)} <small>{d.kind} · {d.status} · round {r}</small></h2>'
-            f'<p class="tags">{html.escape(d.tags)}</p><div class="grid">{"".join(figs)}</div><ul>{notes}</ul></section>')
-    page = ("<!doctype html><meta charset=utf-8><title>Kuroshio Design Studio</title>"
-            "<style>body{background:#0d0b14;color:#e9e4f2;font:15px/1.5 system-ui;padding:24px}"
-            ".grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}"
-            "img{width:100%;display:block}figure{margin:0;background:#16121f}figcaption{padding:4px 8px;color:#ffe14d}"
-            ".tags{color:#9a91ad;font:12px ui-monospace,monospace}h2 small{color:#9a91ad;font-weight:400}</style>"
-            + "".join(sections))
+                figs.append(f'<figure><button type="button" class="zoom" aria-label="Enlarge {name} {s}">'
+                            f'<img src="{rel}" alt="{name} {s}" loading="lazy"></button><figcaption>{s}</figcaption></figure>')
+        group = "candidates" if pick else "approved" if d.status == "approved" else "other"
+        groups[group].append(_gallery_section(slug, d, r, figs, pick))
+    body = '<div id="bar" role="status">Loading picks…</div><h1>Kuroshio Design Studio</h1>'
+    body += '<p class="lede">Tap an image to see it full size. Pick one for each character, or ask for a reroll with a note. Picks save as you go.</p>'
+    if groups["candidates"]:
+        body += f'<h2 class="group">Needs your pick ({len(groups["candidates"])})</h2>' + "".join(groups["candidates"])
+    if groups["other"]:
+        body += f'<h2 class="group">In progress ({len(groups["other"])})</h2>' + "".join(groups["other"])
+    if groups["approved"]:
+        body += (f'<details class="group"><summary>Approved ({len(groups["approved"])})</summary>'
+                 + "".join(groups["approved"]) + "</details>")
+    picker = Path(__file__).with_name("design_picker.html").read_text()
+    page = ('<!doctype html><html lang="en"><meta charset=utf-8>'
+            '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            f"<title>Kuroshio Design Studio</title><style>{GALLERY_STYLE}</style><body>{body}{picker}</body></html>")
     out.mkdir(parents=True, exist_ok=True)
     (out / "index.html").write_text(page)
     (out / "rounds.json").write_text(json.dumps(rounds))

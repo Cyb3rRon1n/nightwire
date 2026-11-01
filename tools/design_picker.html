@@ -1,0 +1,182 @@
+<dialog id="zoom" aria-label="Full size image">
+  <div class="zoom-top"><strong id="zoom-title"></strong><button type="button" id="zoom-close">Close</button></div>
+  <img id="zoom-img" alt="">
+  <div class="zoom-nav">
+    <button type="button" id="zoom-prev" aria-label="Previous image">←</button>
+    <button type="button" id="zoom-pick" class="pick"></button>
+    <button type="button" id="zoom-next" aria-label="Next image">→</button>
+  </div>
+</dialog>
+<script>
+(() => {
+  const API = "api/picks";
+  const sections = [...document.querySelectorAll("section[data-pick]")];
+  const bar = document.getElementById("bar");
+  let picks = {}, online = false, message = "";
+
+  // A pick from an older round doesn't count: the images it chose are no longer shown.
+  const current = s => {
+    const p = picks[s.dataset.slug];
+    return p && (p.action !== "pick" || p.round === +s.dataset.round) ? p : null;
+  };
+
+  async function call(path, method, body) {
+    const r = await fetch(API + path, {
+      method, cache: "no-store",
+      headers: body ? {"Content-Type": "application/json"} : {},
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || `error ${r.status}`);
+    return data;
+  }
+
+  async function save(slug, body) {
+    try {
+      picks = await call("/" + slug, body ? "PUT" : "DELETE", body);
+      message = "";
+    } catch (e) {
+      message = `Not saved: ${e.message}`;
+    }
+    render();
+  }
+
+  const nextUndecided = () => sections.find(s => !current(s));
+
+  function render() {
+    const done = sections.filter(current).length;
+    bar.replaceChildren();
+    const text = document.createElement("span");
+    if (!online) text.textContent = "Browse only: the picks service isn't answering, so picks can't be saved.";
+    else if (!sections.length) text.textContent = "Nothing needs your pick right now.";
+    else if (done === sections.length) text.textContent = `All ${done} decided. Tell Claude to apply them.`;
+    else text.textContent = `${done} of ${sections.length} decided`;
+    bar.append(text);
+    if (online && nextUndecided()) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = "Next undecided ↓";
+      b.onclick = () => nextUndecided()?.scrollIntoView({behavior: "smooth"});
+      bar.append(b);
+    }
+    if (message) {
+      const m = document.createElement("span");
+      m.className = "err"; m.setAttribute("role", "alert"); m.textContent = message;
+      bar.append(m);
+    }
+    for (const s of sections) {
+      const p = current(s);
+      s.classList.toggle("decided", !!p);
+      s.querySelectorAll("figure[data-n]").forEach(f => {
+        const on = p?.action === "pick" && p.n === +f.dataset.n;
+        f.classList.toggle("picked", on);
+        const b = f.querySelector("button.pick");
+        b.disabled = !online;
+        b.setAttribute("aria-pressed", on);
+        b.textContent = on ? "✓ Picked" : `Pick #${f.dataset.n}`;
+      });
+      const ctl = s.querySelector(".ctl");
+      ctl.querySelector("[data-a=reroll]").classList.toggle("on", p?.action === "reroll");
+      ctl.querySelector("[data-a=skip]").classList.toggle("on", p?.action === "skip");
+      ctl.querySelectorAll("button,input").forEach(el => { el.disabled = !online; });
+      ctl.querySelector(".state").textContent = !p ? "Not decided" :
+        p.action === "pick" ? `Picked #${p.n}` : p.action === "reroll" ? `Reroll: ${p.note}` : "Skipped";
+    }
+    syncZoomPick();
+  }
+
+  const togglePick = (s, n) => {
+    const p = current(s);
+    const on = p?.action === "pick" && p.n === n;
+    return save(s.dataset.slug, on ? null : {action: "pick", n, round: +s.dataset.round});
+  };
+
+  for (const s of sections) {
+    s.querySelectorAll("figure[data-n]").forEach(f => {
+      f.querySelector("button.pick").onclick = () => togglePick(s, +f.dataset.n);
+    });
+    const ctl = document.createElement("div");
+    ctl.className = "ctl";
+    const input = document.createElement("input");
+    input.placeholder = "Reroll note, e.g. older, shorter hair";
+    input.maxLength = 500;
+    input.setAttribute("aria-label", `Reroll note for ${s.dataset.name}`);
+    const reroll = document.createElement("button");
+    reroll.type = "button"; reroll.dataset.a = "reroll"; reroll.textContent = "Reroll";
+    reroll.onclick = () => {
+      const note = input.value.trim();
+      if (note) return save(s.dataset.slug, {action: "reroll", note});
+      if (current(s)?.action === "reroll") return save(s.dataset.slug, null);
+      input.focus();
+      message = "Add a note so the reroll knows what to change.";
+      render();
+    };
+    const skip = document.createElement("button");
+    skip.type = "button"; skip.dataset.a = "skip"; skip.textContent = "Skip";
+    skip.onclick = () => save(s.dataset.slug, current(s)?.action === "skip" ? null : {action: "skip"});
+    const state = document.createElement("span");
+    state.className = "state"; state.setAttribute("aria-live", "polite");
+    ctl.append(input, reroll, skip, state);
+    s.querySelector(".grid").after(ctl);
+  }
+
+  // Full-size view. <dialog> supplies Esc, focus trapping and the backdrop.
+  const zoom = document.getElementById("zoom");
+  const zoomImg = document.getElementById("zoom-img");
+  const zoomPick = document.getElementById("zoom-pick");
+  let open = null;   // {figures, i, section}
+
+  function showZoom() {
+    const f = open.figures[open.i], img = f.querySelector("img");
+    zoomImg.src = img.src; zoomImg.alt = img.alt;
+    document.getElementById("zoom-title").textContent = img.alt;
+    const single = open.figures.length < 2;
+    document.getElementById("zoom-prev").hidden = single;
+    document.getElementById("zoom-next").hidden = single;
+    syncZoomPick();
+  }
+  function syncZoomPick() {
+    if (!open) return;
+    const f = open.figures[open.i];
+    const canPick = open.section.hasAttribute("data-pick") && f.dataset.n;
+    zoomPick.hidden = !canPick;
+    if (!canPick) return;
+    const on = f.classList.contains("picked");
+    zoomPick.disabled = !online;
+    zoomPick.setAttribute("aria-pressed", on);
+    zoomPick.textContent = on ? "✓ Picked" : `Pick #${f.dataset.n}`;
+  }
+  const step = d => { open.i = (open.i + d + open.figures.length) % open.figures.length; showZoom(); };
+  document.querySelectorAll("button.zoom").forEach(b => {
+    b.onclick = () => {
+      const section = b.closest("section"), figures = [...section.querySelectorAll("figure")];
+      open = {section, figures, i: figures.indexOf(b.closest("figure"))};
+      showZoom();
+      zoom.showModal();
+    };
+  });
+  zoomPick.onclick = () => togglePick(open.section, +open.figures[open.i].dataset.n);
+  document.getElementById("zoom-prev").onclick = () => step(-1);
+  document.getElementById("zoom-next").onclick = () => step(1);
+  document.getElementById("zoom-close").onclick = () => zoom.close();
+  zoom.addEventListener("click", e => { if (e.target === zoom) zoom.close(); });
+  zoom.addEventListener("close", () => { open = null; zoomImg.removeAttribute("src"); });
+  zoom.addEventListener("keydown", e => {
+    if (e.key === "ArrowLeft") step(-1);
+    if (e.key === "ArrowRight") step(1);
+  });
+
+  async function load() {
+    try {
+      picks = await call("", "GET");
+      online = true;
+    } catch {
+      online = false;
+    }
+    render();
+  }
+  // Picks made on another device show up when you come back to this one.
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+  load();
+})();
+</script>
