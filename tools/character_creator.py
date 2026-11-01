@@ -7,7 +7,9 @@ time, and only when ComfyUI's queue is empty, so the owner's batches aren't star
 See docs/superpowers/specs/2026-11-01-character-creator-design.md.
 """
 
+import argparse
 import datetime as dt
+import hmac
 import json
 import os
 import random
@@ -18,16 +20,20 @@ import sys
 import tempfile
 import threading
 import urllib.error
+import urllib.parse
 import uuid
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from narrator.design_sheets import (
-    EXPRESSION_SIZE, candidate_prompt, candidate_workflow, expression_prompts, sheet_prompt, sheet_workflow,
+    EXPRESSION_SIZE, EXPRESSIONS, candidate_prompt, candidate_workflow, expression_prompts, sheet_prompt, sheet_workflow,
 )
-from tools.character_answers import clean_answers, clean_text, to_design
+from tools.character_answers import QUESTIONS, clean_answers, clean_text, to_design
 from tools.design_picks import write_json_atomic
-from tools.image_studio import MAX_SEED, BadRequest, Busy
+from tools.image_studio import MAX_SEED, BadRequest, Busy, Comfy
 
+PREFIX = "/create/api"
+MAX_BODY = 16 * 1024
 KINDS = ("player", "npc", "ai")
 TOKEN = re.compile(r"^[A-Za-z0-9_-]{32}$")
 NAME = re.compile(r"^(r\d+-c\d+-\d+|turnaround|colorguide|expression-\d)\.png$")
@@ -396,3 +402,182 @@ def run_worker(creator: Creator, stop: threading.Event, interval: float = 2) -> 
             creator.tick()
         except Exception as e:   # the worker outlives anything: the next tick tries again
             print(f"character creator worker: {e}", file=sys.stderr, flush=True)
+
+
+def owner_token(root: Path) -> str:
+    """Created once, readable only by the service. It's never logged or shown: the owner reads the file."""
+    root = Path(root)
+    root.mkdir(parents=True, exist_ok=True)
+    path = root / "owner.token"
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        return path.read_text().strip()
+    token = secrets.token_urlsafe(24)
+    with os.fdopen(fd, "w") as f:
+        f.write(token + "\n")
+    return token
+
+
+PUBLIC_ACTIONS = {
+    "generate": lambda c, cid, b: c.generate(cid, b.get("note", "")),
+    "vary": lambda c, cid, b: c.vary(cid, b.get("round"), b.get("n"), b.get("strength"), b.get("note", "")),
+    "pick": lambda c, cid, b: c.pick(cid, b.get("round"), b.get("n")),
+    "favourite": lambda c, cid, b: c.favourite(cid, b.get("round"), b.get("n")),
+    "lock": lambda c, cid, b: c.lock(cid),
+    "sheet": lambda c, cid, b: c.redo_sheet(cid, b.get("sheet")),
+    "retry": lambda c, cid, b: c.retry(cid),
+}
+OWNER_ACTIONS = {
+    **PUBLIC_ACTIONS,
+    "accept": lambda c, cid, b: c.accept(cid),
+    "decline": lambda c, cid, b: c.decline(cid, b.get("note", "")),
+}
+
+
+def options() -> dict:
+    return {"questions": QUESTIONS, "strengths": list(DENOISE), "sheets": list(SHEETS), "expressions": [e[0] for e in EXPRESSIONS],
+            "candidates": CANDIDATES_PER_ROUND}
+
+
+def make_server(host: str, port: int, creator: Creator, owner: str) -> ThreadingHTTPServer:
+    class Handler(BaseHTTPRequestHandler):
+        def _send(self, status: int, payload) -> None:
+            self._bytes(status, json.dumps(payload).encode(), "application/json", "no-store")
+
+        def _bytes(self, status: int, raw: bytes, ctype: str, cache: str) -> None:
+            self.send_response(status)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Cache-Control", cache)
+            self.send_header("Content-Length", str(len(raw)))
+            self.end_headers()
+            self.wfile.write(raw)
+
+        def _not_found(self) -> None:
+            self._send(404, {"error": "not found"})
+
+        def _guarded(self, fn) -> None:
+            try:
+                fn()
+            except KeyError:
+                self._not_found()
+            except Busy as e:
+                self._send(429, {"error": str(e)})
+            except BadRequest as e:
+                self._send(400, {"error": str(e)})
+            except OSError:   # the disk: requests don't touch ComfyUI, and paths in the message hold tokens
+                self._send(502, {"error": "the character store didn't answer"})
+            except ValueError:
+                self._send(500, {"error": "the character's data is unreadable"})
+
+        def _route(self) -> tuple[bool, list[str]] | None:
+            """(is the owner, path parts), or None for a path that doesn't exist, which a wrong owner token also is."""
+            path = self.path.split("?", 1)[0]
+            if not path.startswith(PREFIX + "/"):
+                return None
+            parts = path[len(PREFIX) + 1:].split("/")
+            if parts[0] != "owner":
+                return False, parts
+            if len(parts) < 3 or not hmac.compare_digest(parts[1].encode(), owner.encode()):
+                return None
+            return True, parts[2:]
+
+        def do_GET(self):
+            match self._route():
+                case (_, ["options"]):
+                    self._send(200, options())
+                case (True, ["characters"]):
+                    self._guarded(lambda: self._send(200, {"characters": creator.list_all()}))
+                case (_, ["characters", cid]):
+                    self._guarded(lambda: self._send(200, creator.get(cid)))
+                case (_, ["characters", cid, "image", name]):
+                    self._guarded(lambda: self._bytes(200, creator.image_path(cid, name).read_bytes(), "image/png", "private"))
+                case _:
+                    self._not_found()
+
+        def _write(self, method: str) -> None:
+            route = self._route()
+            if route is None:
+                return self._not_found()
+            is_owner, parts = route
+            actions = OWNER_ACTIONS if is_owner else PUBLIC_ACTIONS
+            cid, status = None, 200
+            match (method, parts):
+                case ("POST", ["characters"]):
+                    status = 201
+
+                    def run(b):
+                        return creator.create(b.get("kind"), b.get("answers"), by_owner=is_owner)
+                case ("POST", ["characters", cid, action]) if action in actions:
+                    def run(b):
+                        return actions[action](creator, cid, b)
+                case ("PUT", ["characters", cid, "answers"]):
+                    def run(b):
+                        return creator.update_answers(cid, b)
+                case ("DELETE", ["characters", cid]):
+                    def run(b):
+                        creator.delete(cid)
+                        return {}
+                case _:
+                    return self._not_found()
+            self.close_connection = True   # any refused body stays unread
+            # Requiring JSON and a matching Origin stops other websites writing through a player's browser.
+            if self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json":
+                return self._send(415, {"error": "expected JSON"})
+            origin = self.headers.get("Origin")
+            if origin is not None and urllib.parse.urlsplit(origin).netloc != self.headers.get("Host"):
+                return self._send(403, {"error": "wrong origin"})
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+            except ValueError:
+                return self._send(400, {"error": "bad length"})
+            if not 0 <= length <= MAX_BODY:
+                return self._send(413, {"error": "too large"})
+            try:
+                raw = self.rfile.read(length)
+                body = json.loads(raw) if raw else {}
+            except ValueError:
+                return self._send(400, {"error": "bad JSON"})
+            if not isinstance(body, dict):
+                return self._send(400, {"error": "expected an object"})
+
+            def respond():
+                # A character link reads its own record, but NPCs and AI characters only change on the owner route,
+                # so whoever suggested one can't re-roll it after it's accepted.
+                if cid is not None and not is_owner and creator.get(cid)["kind"] != "player":
+                    return self._send(403, {"error": "only the owner can change this character"})
+                self._send(status, run(body))
+
+            self._guarded(respond)
+
+        def do_POST(self):
+            self._write("POST")
+
+        def do_PUT(self):
+            self._write("PUT")
+
+        def do_DELETE(self):
+            self._write("DELETE")
+
+        def log_message(self, *args):
+            pass   # paths hold the private links
+
+    return ThreadingHTTPServer((host, port), Handler)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", type=Path, required=True)
+    parser.add_argument("--comfy", default="http://127.0.0.1:8188")
+    parser.add_argument("--ollama", default="http://127.0.0.1:11434")
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=8768)
+    args = parser.parse_args()
+    creator = Creator(args.root, Comfy(args.comfy, args.ollama))
+    server = make_server(args.host, args.port, creator, owner_token(args.root))
+    threading.Thread(target=run_worker, args=(creator, threading.Event()), daemon=True).start()
+    server.serve_forever()
+
+
+if __name__ == "__main__":
+    main()
