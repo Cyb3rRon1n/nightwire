@@ -84,6 +84,8 @@ let timer = null;
 let varying = null;   // name of the image whose "Like this one, but..." panel is open
 let confirming = null;   // "lock" or "delete" while the page is asking
 let declining = null;
+let removing = null;   // a damaged entry the owner page is asking about
+let editing = false;   // the Edit form is up, so nothing may draw over it
 const typed = {reroll: "", vary: "", strength: "subtle", decline: ""};   // survives a redraw
 
 // Every value goes in through textContent or a property, so nothing a player typed can become markup.
@@ -135,7 +137,7 @@ function answerList(answers) {
 
 /* ---------- The form ---------- */
 
-function showForm({kind, answers, intro, submitLabel, onSubmit}) {
+function showForm({kind, answers, intro, submitLabel, onSubmit, onCancel}) {
   const values = {...answers};
   const worldly = kind === "npc" || kind === "ai";
   const questions = options.questions.filter(q => !q.world_only || worldly);
@@ -184,7 +186,7 @@ function showForm({kind, answers, intro, submitLabel, onSubmit}) {
       el("h2", {text: stepName, style: "margin-top:0"}),
       step === 0 ? el("p", {class: "dim small", text: "Only name and presentation are required. For describing, short phrases separated by commas work best."}) : null,
       ...questions.filter(q => q.step === stepId).map(field),
-      el("div", {class: "row"}, back, next),
+      el("div", {class: "row"}, back, next, onCancel ? el("button", {type: "button", text: "Cancel", onclick: onCancel}) : null),
       message);
     form.addEventListener("submit", async e => {
       e.preventDefault();
@@ -367,14 +369,19 @@ function toolbar(record) {
         el("button", {class: "go", text: "Yes, lock in", onclick: () => { confirming = null; act(() => api("POST", `${path}/lock`)); }}),
         el("button", {text: "Not yet", onclick: () => { confirming = null; draw(); }}))));
   }
-  parts.push(el("div", {class: "row"}, el("button", {class: "danger", text: "Delete character", onclick: () => { confirming = "delete"; draw(); }})));
+  parts.push(...deleteControls(record));
+  return el("div", {class: "panel"}, ...parts);
+}
+
+function deleteControls(record) {
+  const parts = [el("div", {class: "row"}, el("button", {class: "danger", text: "Delete character", onclick: () => { confirming = "delete"; draw(); }}))];
   if (confirming === "delete") {
     parts.push(el("div", {class: "status err", role: "group", "aria-label": "Confirm delete"},
       el("p", {style: "margin:0", text: DELETE_WORDING}),
       el("div", {class: "row"},
         el("button", {class: "danger", text: "Yes, delete it", onclick: async () => {
           try {
-            await api("DELETE", path);
+            await api("DELETE", `/characters/${record.id}`);
             location.assign(owner ? `${pages}/` : "/create/");
           } catch (error) {
             say(document.getElementById("message"), error.message, true);
@@ -382,19 +389,31 @@ function toolbar(record) {
         }}),
         el("button", {text: "Keep it", onclick: () => { confirming = null; draw(); }}))));
   }
-  return el("div", {class: "panel"}, ...parts);
+  return parts;
+}
+
+function leaveForm() {
+  editing = false;
+  return refresh(true);
 }
 
 function editAnswers(record) {
   stopPolling();
-  shownKey = "";
+  editing = true;
   showForm({
     kind: record.kind, answers: record.answers, intro: [el("p", {text: "Change what you like. Earlier rounds stay available."})],
-    submitLabel: "Save and draw new candidates",
+    submitLabel: "Save and draw new candidates", onCancel: leaveForm,
     onSubmit: async values => {
       current = await api("PUT", `/characters/${record.id}/answers`, values);
-      await api("POST", `/characters/${record.id}/generate`);
-      await refresh(true);
+      let problem = null;
+      try {
+        await api("POST", `/characters/${record.id}/generate`);
+      } catch (error) {
+        problem = error;
+      }
+      await leaveForm();
+      // A refusal of the answers stays on the form, but these are saved now, so it would mislead to stay there.
+      if (problem) say(document.getElementById("message"), `Your answers are saved, but new candidates couldn't start: ${problem.message}`, true);
     },
   });
 }
@@ -427,7 +446,8 @@ function reviewPanel(record) {
             el("button", {text: "Edit answers", onclick: () => editSuggestion(record)})),
           el("div", {class: "field", style: "margin-top:12px"}, el("label", {for: noteId, text: "Note for the player"}),
             el("input", {type: "text", id: noteId, maxLength: 500, value: typed.decline, oninput: e => { typed.decline = e.target.value; }})),
-          el("button", {class: "danger", text: "Decline", onclick: () => act(() => api("POST", `${path}/decline`, {note: typed.decline}))})) : null));
+          el("button", {class: "danger", text: "Decline", onclick: () => act(() => api("POST", `${path}/decline`, {note: typed.decline}))})) : null,
+        ...deleteControls(record)));
   }
   const parts = [toolbar(record)];
   if (record.status === "locked") parts.push(sheetsPanel(record));
@@ -448,12 +468,12 @@ function reviewPanel(record) {
 
 function editSuggestion(record) {
   stopPolling();
-  shownKey = "";
+  editing = true;
   showForm({
-    kind: record.kind, answers: record.answers, intro: [], submitLabel: "Save",
+    kind: record.kind, answers: record.answers, intro: [], submitLabel: "Save", onCancel: leaveForm,
     onSubmit: async values => {
       current = await api("PUT", `/characters/${record.id}/answers`, values);
-      await refresh(true);
+      await leaveForm();
     },
   });
 }
@@ -465,7 +485,7 @@ function draw() {
   const readOnly = !canChange(record);
   const notice = owner ? el("p", {class: "dim small"}, el("a", {href: `${pages}/`, text: "Back to all characters"}))
     : readOnly ? null : el("p", {class: "status", text: "Bookmark this page. It's your private link to this character, and there's no other way back without asking the owner. Don't share it: anyone with the link can change the character."});
-  app.replaceChildren(...[notice, queueLine(record), el("p", {class: "msg", id: "message", role: "alert", tabIndex: -1}),
+  app.replaceChildren(...[notice, readOnly ? null : queueLine(record), el("p", {class: "msg", id: "message", role: "alert", tabIndex: -1}),
     readOnly ? suggestionPanel(record) : reviewPanel(record)].filter(Boolean));
 }
 
@@ -476,12 +496,15 @@ function stopPolling() {
 
 function schedule() {
   stopPolling();
-  if (current && isActive(current) && !document.hidden) timer = setTimeout(() => refresh(false), 3000);
+  if (current && isActive(current) && !document.hidden && !editing) timer = setTimeout(() => refresh(false), 3000);
 }
 
 async function refresh(forceDraw) {
+  if (editing) return;
   try {
-    current = await api("GET", `/characters/${current.id}`);
+    const fetched = await api("GET", `/characters/${current.id}`);
+    if (editing) return;   // the form opened while this was on its way
+    current = fetched;
   } catch (error) {
     const message = document.getElementById("message");
     if (message) say(message, error.message, true);
@@ -502,7 +525,7 @@ async function refresh(forceDraw) {
 // Pauses while the tab is hidden, and looks again as soon as it's back.
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) stopPolling();
-  else if (current && shownKey && timer === null && isActive(current)) refresh(false);
+  else if (current && !editing && timer === null && isActive(current)) refresh(false);
 });
 
 async function showCharacter(id) {
@@ -534,6 +557,25 @@ async function showOwner() {
   }
   const message = el("p", {class: "msg", role: "alert"});
   const pending = list.filter(c => c.status === "suggested");
+  const damaged = list.filter(c => c.damaged);
+  const healthy = list.filter(c => !c.damaged);
+  const damagedEntry = c => el("li", {},
+    el("span", {text: `Damaged: this entry can't be read (${c.id.slice(0, 6)}...) `}),
+    removing === c.id
+      ? el("div", {class: "status err", role: "group", "aria-label": "Confirm delete"},
+          el("p", {style: "margin:0", text: DELETE_WORDING}),
+          el("div", {class: "row"},
+            el("button", {class: "danger", text: "Yes, delete it", onclick: async () => {
+              try {
+                await api("DELETE", `/characters/${c.id}`);
+                removing = null;
+                await showOwner();
+              } catch (error) {
+                say(message, error.message, true);
+              }
+            }}),
+            el("button", {text: "Keep it", onclick: () => { removing = null; showOwner(); }})))
+      : el("button", {class: "danger", text: "Delete", onclick: () => { removing = c.id; showOwner(); }}));
   const review = c => {
     const path = `/characters/${c.id}`;
     const open = declining === c.id;
@@ -568,8 +610,9 @@ async function showOwner() {
     message,
     el("h2", {text: `Suggestions waiting for review (${pending.length})`}),
     ...(pending.length ? pending.map(review) : [el("p", {class: "dim", text: "Nothing waiting."})]),
-    el("h2", {text: `All characters (${list.length})`}),
-    el("ul", {class: "people"}, ...list.map(c => el("li", {},
+    ...(damaged.length ? [el("h2", {text: `Damaged entries (${damaged.length})`}), el("ul", {class: "people"}, ...damaged.map(damagedEntry))] : []),
+    el("h2", {text: `All characters (${healthy.length})`}),
+    el("ul", {class: "people"}, ...healthy.map(c => el("li", {},
       el("a", {href: `${pages}/c/${c.id}`, text: c.answers.name}),
       el("span", {class: "dim small", text: ` ${c.kind}, ${c.status} `}),
       el("a", {class: "small", href: `/create/c/${c.id}`, text: "their private link"})))));

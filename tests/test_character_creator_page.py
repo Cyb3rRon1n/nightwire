@@ -56,6 +56,10 @@ def test_task_6_keeps_private_links_out_of_nginx_logs():
     assert step.count("access_log off;") == 2
 
 
+def test_page_marks_damaged_entries_with_a_delete(page):
+    assert "c.damaged" in page and "Damaged" in page
+
+
 def test_page_warns_before_lock_in(page):
     assert "lock_warning" in page
 

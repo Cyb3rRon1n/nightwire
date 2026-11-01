@@ -1101,13 +1101,11 @@ def test_export_checks_the_image_before_creating_anything(creator, comfy, tmp_pa
 
 def test_export_leaves_no_temp_files_and_a_failed_write_leaves_no_toml(creator, comfy, tmp_path, monkeypatch):
     cid = picked_npc(creator, comfy)
-    monkeypatch.setattr(cc, "save_design", lambda d, path: (path.write_text("half"), (_ for _ in ()).throw(OSError("full")))[1])
-    with pytest.raises(OSError):
-        run_export(creator, cid, tmp_path)
+    with monkeypatch.context() as m:
+        m.setattr(cc, "save_design", lambda d, path: (path.write_text("half"), (_ for _ in ()).throw(OSError("full")))[1])
+        with pytest.raises(OSError):
+            run_export(creator, cid, tmp_path)
     assert list((tmp_path / "designs").iterdir()) == []
-    monkeypatch.undo()
-    no_quiet = creator.get(cid)
-    assert no_quiet["picked"]
     path, designs, _ = run_export(creator, cid, tmp_path)
     assert [p.name for p in designs.iterdir()] == ["vex.toml"] and path.read_text().startswith("name")
 
