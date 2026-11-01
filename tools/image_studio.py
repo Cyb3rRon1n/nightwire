@@ -41,6 +41,7 @@ MAX_PENDING = 12   # keeps a stuck tab or double-click from filling the GPU's wh
 KEEP_JOBS = 200    # gallery records only; the PNGs stay in ComfyUI's output folder
 MAX_SEED = 2**32 - 1
 PENDING = ("queued", "rendering")
+UPLOAD_SUBFOLDER = "character_creator"
 
 SHOTS = {
     "scene": {"label": "In a scene", "kind": "subject", "size": "base", "bust": False},
@@ -186,6 +187,19 @@ class Comfy:
                                         "type": image.get("type", "output")})
         with urllib.request.urlopen(f"{self.comfy}/view?{query}", timeout=60) as r:
             return r.read()
+
+    def upload(self, name: str, data: bytes) -> str:
+        """Puts an image in ComfyUI's input folder and returns the name LoadImage wants."""
+        boundary = uuid.uuid4().hex
+        fields = "".join(f'--{boundary}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'
+                         for k, v in (("subfolder", UPLOAD_SUBFOLDER), ("overwrite", "true")))
+        body = (f'{fields}--{boundary}\r\nContent-Disposition: form-data; name="image"; filename="{name}"\r\n'
+                f"Content-Type: image/png\r\n\r\n").encode() + data + f"\r\n--{boundary}--\r\n".encode()
+        req = urllib.request.Request(f"{self.comfy}/upload/image", data=body,
+                                     headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            r.read()
+        return f"{UPLOAD_SUBFOLDER}/{name}"
 
     def free_ollama(self) -> None:
         for model in self._json(f"{self.ollama}/api/ps").get("models", []):

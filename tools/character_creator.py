@@ -1,0 +1,398 @@
+"""Character creator backend: players describe a character, see four candidates, redo until happy and
+lock it in. The owner makes NPCs and AI characters the same way and approves players' suggestions.
+Standard library only, so it runs in a bare python container. No photos: see the spec's build order.
+
+Every character is a folder under <root>/characters/<private token>. One worker renders one image at a
+time, and only when ComfyUI's queue is empty, so the owner's batches aren't starved or interleaved.
+See docs/superpowers/specs/2026-11-01-character-creator-design.md.
+"""
+
+import datetime as dt
+import json
+import os
+import random
+import re
+import secrets
+import shutil
+import sys
+import tempfile
+import threading
+import urllib.error
+import uuid
+from pathlib import Path
+
+from narrator.design_sheets import (
+    EXPRESSION_SIZE, candidate_prompt, candidate_workflow, expression_prompts, sheet_prompt, sheet_workflow,
+)
+from tools.character_answers import clean_answers, clean_text, to_design
+from tools.design_picks import write_json_atomic
+from tools.image_studio import MAX_SEED, BadRequest, Busy
+
+KINDS = ("player", "npc", "ai")
+TOKEN = re.compile(r"^[A-Za-z0-9_-]{32}$")
+NAME = re.compile(r"^(r\d+-c\d+-\d+|turnaround|colorguide|expression-\d)\.png$")
+DENOISE = {"subtle": 0.35, "strong": 0.6}  # starting values; tune on real renders in Task 6
+CANDIDATES_PER_ROUND = 4
+MAX_WAITING = 12
+MAX_DECLINE_NOTE = 500
+ACTIVE = ("waiting", "rendering")
+SHEETS = ("turnaround", "colorguide", "expressions")
+
+
+def vary_workflow(wf: dict, image: str, denoise: float) -> dict:
+    wf = dict(wf)
+    wf["40"] = {"class_type": "LoadImage", "inputs": {"image": image}}
+    wf["41"] = {"class_type": "VAEEncode", "inputs": {"pixels": ["40", 0], "vae": ["4", 2]}}
+    wf["3"] = {**wf["3"], "inputs": {**wf["3"]["inputs"], "latent_image": ["41", 0], "denoise": denoise}}
+    wf.pop("5")
+    return wf
+
+
+def _private(wf: dict) -> dict:
+    wf["9"]["inputs"]["filename_prefix"] = "character_creator/c"   # ComfyUI's folder is wider open than a private link
+    return wf
+
+
+def _write_bytes_atomic(path: Path, data: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+    with os.fdopen(fd, "wb") as f:
+        f.write(data)
+    os.replace(tmp, path)
+
+
+class Creator:
+    # ponytail: one lock also covers ComfyUI calls in tick(), so a slow ComfyUI delays API replies by up to its
+    # timeouts; give the worker its own lock if that's ever felt.
+    def __init__(self, root: Path, comfy, rng=random, now=None):
+        self.root, self.comfy, self.rng = Path(root), comfy, rng
+        self.now = now or (lambda: dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"))
+        self._mutex = threading.RLock()
+        self.queue_file = self.root / "queue.json"
+
+    def _dir(self, cid: str) -> Path:
+        if not isinstance(cid, str) or not TOKEN.fullmatch(cid):
+            raise KeyError(cid)
+        return self.root / "characters" / cid
+
+    def _load(self, cid: str) -> dict:
+        try:
+            # Unreadable data raises instead of reading as empty, so it can't be overwritten.
+            return json.loads((self._dir(cid) / "character.json").read_text())
+        except FileNotFoundError:
+            raise KeyError(cid) from None
+
+    def _save(self, record: dict) -> dict:
+        record["updated"] = self.now()
+        write_json_atomic(self._dir(record["id"]) / "character.json", record)
+        return self._view(record, self._jobs())
+
+    def _jobs(self) -> list[dict]:
+        return json.loads(self.queue_file.read_text()) if self.queue_file.exists() else []
+
+    def _write_jobs(self, jobs: list[dict]) -> None:
+        write_json_atomic(self.queue_file, jobs)
+
+    def _file(self, cid: str, name: str) -> Path:
+        return self._dir(cid) / ("candidates" if name.startswith("r") else "sheets") / name
+
+    @staticmethod
+    def _view(record: dict, jobs: list[dict]) -> dict:
+        active = [j for j in jobs if j["status"] in ACTIVE]
+        job = next((j for j in jobs if j["character"] == record["id"]), None)
+        queue = None
+        if job:
+            queue = {"position": active.index(job) + 1 if job in active else None, "label": job["label"], "error": job["error"]}
+        return {**record, "queue": queue}
+
+    def create(self, kind, answers, by_owner: bool) -> dict:
+        if kind not in KINDS:
+            raise BadRequest(f"kind must be one of: {', '.join(KINDS)}")
+        answers = clean_answers(answers)
+        with self._mutex:
+            now = self.now()
+            cid = secrets.token_urlsafe(24)
+            return self._save({
+                "id": cid, "kind": kind, "status": "draft" if kind == "player" or by_owner else "suggested",
+                "by_owner": by_owner, "answers": answers, "note": "", "seed": self.rng.randint(1, MAX_SEED),
+                "rounds": [], "favourites": [], "picked": None,
+                "sheets": {"turnaround": None, "colorguide": None, "expressions": []}, "created": now, "updated": now})
+
+    def get(self, cid: str) -> dict:
+        with self._mutex:
+            return self._view(self._load(cid), self._jobs())
+
+    def list_all(self) -> list[dict]:
+        with self._mutex:
+            jobs = self._jobs()
+            folder = self.root / "characters"
+            found = [self._view(self._load(p.name), jobs) for p in folder.iterdir() if TOKEN.fullmatch(p.name)] if folder.exists() else []
+        return sorted(found, key=lambda r: (r["answers"]["name"].lower(), r["id"]))
+
+    def update_answers(self, cid: str, answers) -> dict:
+        with self._mutex:
+            record = self._load(cid)
+            if record["status"] in ("locked", "declined"):
+                raise BadRequest(f"this character is {record['status']}, so its answers can't change")
+            record["answers"] = clean_answers(answers)
+            return self._save(record)
+
+    @staticmethod
+    def _can_render(record: dict) -> None:
+        reasons = {"suggested": "this suggestion is waiting for review", "declined": "this suggestion was declined",
+                   "locked": "this character is locked in"}
+        if record["status"] in reasons:
+            raise BadRequest(reasons[record["status"]])
+
+    @staticmethod
+    def _image(record: dict, round_no, n) -> str:
+        images = next((r["images"] for r in record["rounds"] if r["n"] == round_no and type(round_no) is int), [])
+        if type(n) is not int or not 1 <= n <= len(images):
+            raise BadRequest("no such image")
+        return images[n - 1]
+
+    @staticmethod
+    def _next_round(record: dict) -> int:
+        return max((r["n"] for r in record["rounds"]), default=0) + 1
+
+    def _enqueue(self, record: dict, label: str, round_no: int | None, items: list[dict], note: str = "", source=None) -> None:
+        jobs = self._jobs()
+        cid = record["id"]
+        active = [j for j in jobs if j["status"] in ACTIVE]
+        if any(j["character"] == cid for j in active):
+            raise Busy("this character already has a batch in line; let it finish first")
+        if len(active) >= MAX_WAITING:
+            raise Busy(f"{MAX_WAITING} batches are already waiting; please try again in a few minutes")
+        jobs = [j for j in jobs if j["character"] != cid]   # what's left of it is a failed batch this replaces
+        self._write_jobs(jobs + [{"id": uuid.uuid4().hex, "character": cid, "label": label, "round": round_no, "status": "waiting",
+                                  "items": items, "error": "", "note": note, "from": source}])
+
+    def _candidates(self, record: dict, round_no: int, note: str, prepare=lambda wf: wf) -> list[dict]:
+        pos, neg = candidate_prompt(to_design(record["answers"], record["kind"], record["seed"]))
+        if note:
+            pos = f"{pos}, {note}"
+        items = []
+        for c in range(1, CANDIDATES_PER_ROUND + 1):
+            seed = self.rng.randint(1, MAX_SEED)
+            items.append({"name": f"r{round_no}-c{c}-{seed}.png", "workflow": prepare(_private(candidate_workflow(pos, neg, seed))),
+                          "comfy_id": None, "done": False})
+        return items
+
+    def generate(self, cid: str, note: str = "") -> dict:
+        note = clean_text(note or "", "the note", 200)
+        with self._mutex:
+            record = self._load(cid)
+            self._can_render(record)
+            round_no = self._next_round(record)
+            self._enqueue(record, "candidates", round_no, self._candidates(record, round_no, note), note)
+            return self.get(cid)
+
+    def vary(self, cid: str, round_no, n, strength, note: str = "") -> dict:
+        note = clean_text(note or "", "the note", 200)
+        if not isinstance(strength, str) or strength not in DENOISE:
+            raise BadRequest("strength must be subtle or strong")
+        with self._mutex:
+            record = self._load(cid)
+            self._can_render(record)
+            source = self._image(record, round_no, n)
+            next_round = self._next_round(record)
+            # The source is uploaded when the render starts, so a ComfyUI that's down only means waiting.
+            items = self._candidates(record, next_round, note, lambda wf: vary_workflow(wf, "", DENOISE[strength]))
+            for item in items:
+                item["source"] = source
+            self._enqueue(record, "variations", next_round, items, note, source)
+            return self.get(cid)
+
+    def retry(self, cid: str) -> dict:
+        with self._mutex:
+            self._load(cid)
+            jobs = self._jobs()
+            job = next((j for j in jobs if j["character"] == cid and j["status"] == "failed"), None)
+            if job is None:
+                raise BadRequest("there's no failed batch to retry")
+            if sum(j["status"] in ACTIVE for j in jobs) >= MAX_WAITING:
+                raise Busy(f"{MAX_WAITING} batches are already waiting; please try again in a few minutes")
+            job.update(status="waiting", error="")
+            self._write_jobs(jobs)
+            return self.get(cid)
+
+    def pick(self, cid: str, round_no, n) -> dict:
+        with self._mutex:
+            record = self._load(cid)
+            self._can_render(record)
+            record["picked"] = self._image(record, round_no, n)
+            record["seed"] = int(record["picked"].rsplit("-", 1)[1].removesuffix(".png"))   # sheets render from the picked look
+            return self._save(record)
+
+    def favourite(self, cid: str, round_no, n) -> dict:
+        with self._mutex:
+            record = self._load(cid)
+            name = self._image(record, round_no, n)
+            if name in record["favourites"]:
+                record["favourites"].remove(name)
+            else:
+                record["favourites"].append(name)
+            return self._save(record)
+
+    def _sheet_items(self, record: dict, sheet: str, seed: int) -> list[dict]:
+        design = to_design(record["answers"], record["kind"], seed)
+        if sheet == "expressions":
+            items = []
+            for i, (_label, pos, neg) in enumerate(expression_prompts(design), 1):
+                wf = candidate_workflow(pos, neg, seed)
+                wf["5"]["inputs"].update(width=EXPRESSION_SIZE[0], height=EXPRESSION_SIZE[1])
+                items.append((f"expression-{i}.png", wf))
+        else:
+            items = [(f"{sheet}.png", sheet_workflow(*sheet_prompt(design, sheet), seed))]
+        return [{"name": name, "workflow": _private(wf), "comfy_id": None, "done": False} for name, wf in items]
+
+    def lock(self, cid: str) -> dict:
+        with self._mutex:
+            record = self._load(cid)
+            self._can_render(record)
+            if not record["picked"]:
+                raise BadRequest("pick a candidate before locking in")
+            items = [item for sheet in SHEETS for item in self._sheet_items(record, sheet, record["seed"])]
+            self._enqueue(record, "sheets", None, items)
+            record["status"] = "locked"
+            return self._save(record)
+
+    def redo_sheet(self, cid: str, sheet) -> dict:
+        if not isinstance(sheet, str) or sheet not in SHEETS:
+            raise BadRequest(f"sheet must be one of: {', '.join(SHEETS)}")
+        with self._mutex:
+            record = self._load(cid)
+            if record["status"] != "locked":
+                raise BadRequest("lock the character in before redoing a sheet")
+            # A new seed, or ComfyUI would hand back the same picture.
+            self._enqueue(record, "sheets", None, self._sheet_items(record, sheet, self.rng.randint(1, MAX_SEED)))
+            return self.get(cid)
+
+    def accept(self, cid: str) -> dict:
+        with self._mutex:
+            record = self._suggestion(cid)
+            record["status"] = "accepted"
+            return self._save(record)
+
+    def decline(self, cid: str, note) -> dict:
+        if not isinstance(note, str):
+            raise BadRequest("the note must be text")
+        with self._mutex:
+            record = self._suggestion(cid)
+            record.update(status="declined", note=note.strip()[:MAX_DECLINE_NOTE])
+            return self._save(record)
+
+    def _suggestion(self, cid: str) -> dict:
+        record = self._load(cid)
+        if record["status"] != "suggested":
+            raise BadRequest("that isn't a suggestion waiting for review")
+        return record
+
+    def delete(self, cid: str) -> None:
+        with self._mutex:
+            self._load(cid)
+            self._write_jobs([j for j in self._jobs() if j["character"] != cid])
+            shutil.rmtree(self._dir(cid))
+
+    def image_path(self, cid: str, name: str) -> Path:
+        if not NAME.fullmatch(name):
+            raise KeyError(name)
+        path = self._file(cid, name)
+        if not path.is_file():
+            raise KeyError(name)
+        return path
+
+    def _finish_batch(self, job: dict) -> None:
+        record = self._load(job["character"])
+        names = [i["name"] for i in job["items"]]
+        if job["label"] == "sheets":
+            expressions = [n for n in names if n.startswith("expression-")]
+            if expressions:
+                record["sheets"]["expressions"] = expressions
+            record["sheets"].update((n.removesuffix(".png"), n) for n in names if n not in expressions)
+        elif not any(r["n"] == job["round"] for r in record["rounds"]):   # a crash before the queue was saved repeats this step
+            record["rounds"].append({"n": job["round"], "type": "vary" if job["label"] == "variations" else "reroll",
+                                     "from": job["from"], "note": job["note"], "images": names})
+        self._save(record)
+
+    @staticmethod
+    def _fail(job: dict, error: str) -> None:
+        job.update(status="failed", error=error)
+        for item in job["items"]:
+            item["comfy_id"] = None
+
+    def _poll(self, jobs: list[dict], job: dict, item: dict) -> bool:
+        """Follow the render in progress. True if it's still going."""
+        queue = self.comfy.queue()   # read before history: a job that's left the queue is then already in history
+        in_comfy = {q[1] for q in queue["queue_running"] + queue["queue_pending"]}
+        entry = self.comfy.history(item["comfy_id"])
+        if entry and entry.get("status", {}).get("completed"):
+            images = entry.get("outputs", {}).get("9", {}).get("images", [])
+            if images:
+                _write_bytes_atomic(self._file(job["character"], item["name"]), self.comfy.image(images[0]))
+                item["done"] = True
+                if all(i["done"] for i in job["items"]):
+                    self._finish_batch(job)
+                    jobs.remove(job)
+                else:
+                    job["status"] = "waiting"
+            else:
+                self._fail(job, "ComfyUI finished without an image")
+        elif entry and entry.get("status", {}).get("status_str") == "error":
+            self._fail(job, "ComfyUI hit an error on this image")
+        elif item["comfy_id"] in in_comfy:
+            return True
+        else:   # a restart on either side: put it back in line rather than failing it
+            item["comfy_id"] = None
+            job["status"] = "waiting"
+        self._write_jobs(jobs)
+        return False
+
+    def _submit(self, jobs: list[dict], job: dict) -> None:
+        item = next(i for i in job["items"] if not i["done"])
+        try:
+            self.comfy.free_ollama()
+        except OSError:
+            pass   # best effort: a model left loaded slows the render, it doesn't stop it
+        try:
+            if item.get("source"):
+                data = self._file(job["character"], item["source"]).read_bytes()
+                # A random name: ComfyUI's input folder is shared, and it must not reveal the character's link.
+                item["workflow"]["40"]["inputs"]["image"] = self.comfy.upload(f"{uuid.uuid4().hex}.png", data)
+            item["comfy_id"] = self.comfy.submit(item["workflow"])
+            job["status"] = "rendering"
+        except FileNotFoundError:
+            self._fail(job, "The image to vary is gone")
+        except urllib.error.HTTPError as e:
+            if e.code >= 500:
+                raise
+            self._fail(job, f"ComfyUI refused this image ({e.code})")   # it would refuse forever and block everyone behind it
+        self._write_jobs(jobs)
+
+    def tick(self) -> None:
+        """One step of the worker. ComfyUI being down raises, and leaves everything in line for the next tick."""
+        with self._mutex:
+            jobs = self._jobs()
+            if not any(j["status"] in ACTIVE for j in jobs):
+                return
+            rendering = next(((j, i) for j in jobs if j["status"] == "rendering" for i in j["items"] if i["comfy_id"] and not i["done"]), None)
+            if rendering and self._poll(jobs, *rendering):
+                return
+            queue = self.comfy.queue()
+            idle = not (queue["queue_running"] or queue["queue_pending"])
+            job = next((j for j in jobs if j["status"] in ACTIVE), None)
+            if job and idle:
+                self._submit(jobs, job)
+            elif not job and idle:
+                try:
+                    self.comfy.free_comfy()   # hand the GPU back so the narrator's model can load
+                except OSError:
+                    pass
+
+
+def run_worker(creator: Creator, stop: threading.Event, interval: float = 2) -> None:
+    while not stop.wait(interval):
+        try:
+            creator.tick()
+        except Exception as e:   # the worker outlives anything: the next tick tries again
+            print(f"character creator worker: {e}", file=sys.stderr, flush=True)
