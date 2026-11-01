@@ -1,0 +1,10 @@
+name = "Daichi Tanabe"
+kind = "character"
+source = "new:Daichi Tanabe"
+presentation = "masculine"
+tags = "buzz cut, black hair, thick eyebrows, scowl, mature male, huge muscular body, broad shoulders, thick neck, irezumi tattoos, full sleeve tattoos, open shirt, gold chain, tactical pants, chrome jaw, mechanical right arm, human left arm"
+negative = "two mechanical arms, child, teen, young, bishounen, pretty boy"
+status = "candidates"
+seed = 0
+palette = []
+notes = ["2026-11-01 draft: Ikebe Low gang enforcer, irezumi and chrome jaw", "2026-10-31 round 1: 4 candidates"]

@@ -1,0 +1,10 @@
+name = "Shinji Okubo"
+kind = "character"
+source = "new:Shinji Okubo"
+presentation = "masculine"
+tags = "messy hair, dark grey hair, stubble, tired eyes, scar on cheek, mature male, 40 years old, lean, tall, police detective, long trench coat, loose necktie, holster, badge, cigarette, mechanical right eye, human left eye"
+negative = "two mechanical eyes, child, teen, young, bishounen, pretty boy"
+status = "candidates"
+seed = 0
+palette = []
+notes = ["2026-11-01 draft: jaded KPD detective, half-owned by the Hoshikawa", "2026-10-31 round 1: 4 candidates"]

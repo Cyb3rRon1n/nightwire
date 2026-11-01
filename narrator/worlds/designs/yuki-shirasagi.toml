@@ -1,0 +1,10 @@
+name = "Yuki Shirasagi"
+kind = "character"
+source = "new:Yuki Shirasagi"
+presentation = "feminine"
+tags = "short hair, bob cut, platinum blonde hair, cold expression, sharp eyes, red eyes, mature female, slender, narrow waist, large breasts, long legs, beautiful face, idol, corporate security, black armored bodysuit, high collar, white trench coat, holographic visor, katana at hip, mechanical left eye, human right eye"
+negative = "two mechanical eyes, wide hips, thick thighs, plump, chubby, gigantic breasts, huge breasts, curvy, cute, kawaii, big eyes, child"
+status = "candidates"
+seed = 0
+palette = []
+notes = ["2026-11-01 draft: Hoshikawa corp security chief, ice-cold, Tenjo Heights", "2026-10-31 round 1: 4 candidates"]
