@@ -20,6 +20,7 @@ class FakeComfy:
         self.submitted, self.others_running, self.current, self.done, self.uploads = [], False, None, {}, {}
         self.freed = self.ollama_freed = 0
         self.down = self.refuse = False
+        self.image_error = self.submit_error = None
 
     def queue(self):
         if self.down:
@@ -30,6 +31,8 @@ class FakeComfy:
     def submit(self, wf):
         if self.refuse:
             raise urllib.error.HTTPError("http://comfy/prompt", 400, "bad workflow", None, None)
+        if self.submit_error:
+            raise self.submit_error
         self.submitted.append(wf)
         self.current = f"c{len(self.submitted)}"
         return self.current
@@ -38,6 +41,8 @@ class FakeComfy:
         return self.done.get(cid)
 
     def image(self, ref):
+        if self.image_error:
+            raise self.image_error
         return b"PNG:" + ref["filename"].encode()
 
     def upload(self, name, data):
@@ -61,6 +66,13 @@ class FakeComfy:
 
     def lose(self):
         self.current = None
+
+
+@pytest.fixture(autouse=True)
+def no_quiet_wait(monkeypatch):
+    # The real wait has its own tests below. Everywhere else a tick acts at once.
+    monkeypatch.setattr(cc, "QUIET_CHECKS", 1)
+    monkeypatch.setattr(cc, "QUIET_SECONDS", 0)
 
 
 @pytest.fixture
@@ -95,6 +107,235 @@ def classes(wf):
 
 def text(wf, node="6"):
     return wf[node]["inputs"]["text"]
+
+
+def http_error(code):
+    return urllib.error.HTTPError("http://comfy/x", code, "no", None, None)
+
+
+def in_line(creator, comfy):
+    cid = creator.create("player", GOOD, by_owner=False)["id"]
+    creator.generate(cid)
+    return cid
+
+
+def test_lost_renders_count_as_attempts_and_the_third_fails_the_batch(creator, comfy):
+    cid, other = in_line(creator, comfy), in_line(creator, comfy)
+    for _ in range(3):
+        creator.tick()
+        assert comfy.current
+        comfy.lose()
+    creator.tick()
+    got = creator.get(cid)["queue"]
+    assert got["position"] is None and "3" in got["error"]
+    assert len(comfy.submitted) == 3 + 1   # three tries, then the next batch in line got its turn
+    assert creator.get(other)["queue"]["position"] == 1
+
+
+def test_retry_gives_a_failed_batch_fresh_attempts(creator, comfy):
+    cid = in_line(creator, comfy)
+    for _ in range(3):
+        creator.tick()
+        comfy.lose()
+    creator.tick()
+    assert creator.get(cid)["queue"]["error"]
+    creator.retry(cid)
+    render(creator, comfy)
+    assert len(creator.get(cid)["rounds"]) == 1
+
+
+def test_attempts_are_per_item_and_survive_a_restart(tmp_path, comfy):
+    first = cc.Creator(tmp_path, comfy)
+    cid = in_line(first, comfy)
+    for _ in range(2):
+        first.tick()
+        comfy.lose()
+    again = cc.Creator(tmp_path, comfy)
+    again.tick()
+    comfy.lose()
+    again.tick()
+    assert again.get(cid)["queue"]["error"]
+    # A batch whose items each take a few tries still finishes.
+    fresh = in_line(again, comfy)
+    for _ in range(4):
+        again.tick()
+        comfy.lose()
+        again.tick()
+        comfy.finish()
+    render(again, comfy)
+    assert len(again.get(fresh)["rounds"]) == 1
+
+
+def test_a_4xx_from_view_fails_the_batch_at_once_and_frees_the_queue(creator, comfy):
+    cid, other = in_line(creator, comfy), in_line(creator, comfy)
+    comfy.image_error = http_error(404)
+    creator.tick()
+    comfy.finish()
+    creator.tick()
+    assert "404" in creator.get(cid)["queue"]["error"]
+    comfy.image_error = None
+    creator.tick()
+    render(creator, comfy)
+    assert len(creator.get(other)["rounds"]) == 1
+    creator.retry(cid)   # still retryable: the render is simply done again
+    render(creator, comfy)
+    assert len(creator.get(cid)["rounds"]) == 1
+
+
+def test_a_500_from_view_is_retried_then_fails_the_batch(creator, comfy):
+    cid = in_line(creator, comfy)
+    creator.tick()
+    comfy.finish()
+    comfy.image_error = http_error(500)
+    with pytest.raises(OSError):
+        creator.tick()
+    assert creator.get(cid)["queue"]["error"] == ""
+    creator.tick()   # the third attempt on this item: one render, two fetches
+    assert creator.get(cid)["queue"]["error"]
+
+
+def test_a_500_from_submit_is_retried_then_fails_the_batch(creator, comfy):
+    cid, other = in_line(creator, comfy), in_line(creator, comfy)
+    comfy.submit_error = http_error(500)
+    for _ in range(2):
+        with pytest.raises(OSError):
+            creator.tick()
+    assert creator.get(cid)["queue"]["error"] == ""
+    creator.tick()
+    assert creator.get(cid)["queue"]["error"] and creator.get(other)["queue"]["position"] == 1
+
+
+@pytest.mark.parametrize("damage", ["{broken", '"not a record"', '{"id": "x"}'])
+def test_an_unreadable_record_fails_its_batch_and_the_queue_moves_on(creator, comfy, damage):
+    cid, other = in_line(creator, comfy), in_line(creator, comfy)
+    path = creator.root / "characters" / cid / "character.json"
+    for _ in range(3):
+        creator.tick()
+        comfy.finish()
+    creator.tick()
+    path.write_text(damage)
+    comfy.finish()
+    creator.tick()
+    jobs = {j["character"]: j for j in creator._jobs()}
+    assert jobs[cid]["status"] == "failed" and "record" in jobs[cid]["error"]
+    render(creator, comfy)
+    assert len(creator.get(other)["rounds"]) == 1
+    assert path.read_text() == damage   # never overwritten
+
+
+def test_retry_after_a_bad_record_finishes_without_rendering_again(creator, comfy):
+    cid = in_line(creator, comfy)
+    path = creator.root / "characters" / cid / "character.json"
+    good = path.read_text()
+    for _ in range(3):
+        creator.tick()
+        comfy.finish()
+    creator.tick()
+    path.write_text("{broken")
+    comfy.finish()
+    creator.tick()
+    path.write_text(good)
+    before = len(comfy.submitted)
+    creator.retry(cid)
+    creator.tick()
+    assert len(comfy.submitted) == before and len(creator.get(cid)["rounds"]) == 1 and creator.get(cid)["queue"] is None
+
+
+class Clock:
+    def __init__(self):
+        self.t = 0.0
+
+    def __call__(self):
+        return self.t
+
+
+@pytest.fixture
+def waiting(tmp_path, comfy, monkeypatch):
+    monkeypatch.setattr(cc, "QUIET_CHECKS", 3)
+    monkeypatch.setattr(cc, "QUIET_SECONDS", 6)
+    clock = Clock()
+    return cc.Creator(tmp_path, comfy, clock=clock), clock
+
+
+def test_the_quiet_wait_needs_three_checks_and_six_seconds(waiting, comfy):
+    creator, clock = waiting
+    in_line(creator, comfy)
+    for t in (0, 2, 4):
+        clock.t = t
+        creator.tick()
+        assert comfy.submitted == []   # three checks, but only four seconds
+    clock.t = 6
+    creator.tick()
+    assert len(comfy.submitted) == 1
+
+
+def test_the_quiet_wait_needs_three_checks_however_long_it_took(waiting, comfy):
+    creator, clock = waiting
+    in_line(creator, comfy)
+    for t, submitted in ((0, 0), (100, 0), (200, 1)):
+        clock.t = t
+        creator.tick()
+        assert len(comfy.submitted) == submitted
+
+
+def test_a_gap_in_the_owners_batch_doesnt_let_a_render_in(waiting, comfy):
+    creator, clock = waiting
+    in_line(creator, comfy)
+    for t, busy in ((0, False), (2, False), (4, True), (6, False), (8, False), (10, True), (12, False), (14, False)):
+        clock.t = t
+        comfy.others_running = busy
+        creator.tick()
+        assert comfy.submitted == [], t
+    clock.t = 18
+    creator.tick()
+    assert len(comfy.submitted) == 1
+
+
+def test_the_quiet_wait_applies_between_our_own_images(waiting, comfy):
+    creator, clock = waiting
+    in_line(creator, comfy)
+    for t in (0, 2, 4, 6):
+        clock.t = t
+        creator.tick()
+    comfy.finish()
+    for t in (8, 10, 12):
+        clock.t = t
+        creator.tick()
+        assert len(comfy.submitted) == 1
+    clock.t = 14
+    creator.tick()
+    assert len(comfy.submitted) == 2
+
+
+def test_the_gpu_is_only_handed_back_after_the_quiet_wait(waiting, comfy):
+    creator, clock = waiting
+    cid = in_line(creator, comfy)
+    for t in range(0, 200, 2):
+        clock.t = t
+        creator.tick()
+        if comfy.current:
+            comfy.finish()
+        if len(creator.get(cid)["rounds"]) == 1:
+            break
+    assert comfy.freed == 0
+    comfy.others_running = True   # the owner's next image arrives during the wait
+    for _ in range(5):
+        clock.t += 2
+        creator.tick()
+    comfy.others_running = False
+    assert comfy.freed == 0
+    for elapsed, freed in ((0, 0), (2, 0), (4, 0), (6, 1), (8, 1)):
+        clock.t += 2
+        creator.tick()
+        assert comfy.freed == freed, elapsed
+
+
+def test_free_ollama_runs_once_per_batch_not_per_image(creator, comfy):
+    cid = with_round(creator, comfy)
+    assert comfy.ollama_freed == 1 and len(comfy.submitted) == 4
+    creator.generate(cid)
+    render(creator, comfy)
+    assert comfy.ollama_freed == 2
 
 
 def test_generate_queues_four_and_tick_renders_one_at_a_time(creator, comfy):

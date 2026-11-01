@@ -22,6 +22,7 @@ import shutil
 import sys
 import tempfile
 import threading
+import time
 import urllib.error
 import urllib.parse
 import uuid
@@ -49,6 +50,7 @@ ACTIVE = ("waiting", "rendering")
 # The owner's batches leave about a second between images. Waiting this long for an empty queue keeps us out of those gaps.
 QUIET_CHECKS = 3
 QUIET_SECONDS = 6
+MAX_ATTEMPTS = 3   # per image, so one bad image can't hold up everyone behind it
 SHEETS = ("turnaround", "colorguide", "expressions")
 
 
@@ -77,8 +79,9 @@ def _write_bytes_atomic(path: Path, data: bytes) -> None:
 class Creator:
     # ponytail: one lock also covers ComfyUI calls in tick(), so a slow ComfyUI delays API replies by up to its
     # timeouts; give the worker its own lock if that's ever felt.
-    def __init__(self, root: Path, comfy, rng=random, now=None):
-        self.root, self.comfy, self.rng = Path(root), comfy, rng
+    def __init__(self, root: Path, comfy, rng=random, now=None, clock=time.monotonic):
+        self.root, self.comfy, self.rng, self.clock = Path(root), comfy, rng, clock
+        self._quiet_checks, self._quiet_since, self._gpu_owed = 0, 0.0, False
         self.now = now or (lambda: dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"))
         self._mutex = threading.RLock()
         self.queue_file = self.root / "queue.json"
@@ -227,6 +230,8 @@ class Creator:
             if sum(j["status"] in ACTIVE for j in jobs) >= MAX_WAITING:
                 raise Busy(f"{MAX_WAITING} batches are already waiting; please try again in a few minutes")
             job.update(status="waiting", error="")
+            for item in job["items"]:
+                item["attempts"] = 0
             self._write_jobs(jobs)
             return self.get(cid)
 
@@ -317,24 +322,45 @@ class Creator:
             raise KeyError(name)
         return path
 
-    def _finish_batch(self, job: dict) -> None:
-        record = self._load(job["character"])
+    def _finish_batch(self, jobs: list[dict], job: dict) -> None:
+        """All its images are saved: put them on the record, or fail the batch if the record can't take them."""
         names = [i["name"] for i in job["items"]]
-        if job["label"] == "sheets":
-            expressions = [n for n in names if n.startswith("expression-")]
-            if expressions:
-                record["sheets"]["expressions"] = expressions
-            record["sheets"].update((n.removesuffix(".png"), n) for n in names if n not in expressions)
-        elif not any(r["n"] == job["round"] for r in record["rounds"]):   # a crash before the queue was saved repeats this step
-            record["rounds"].append({"n": job["round"], "type": "vary" if job["label"] == "variations" else "reroll",
-                                     "from": job["from"], "note": job["note"], "images": names})
-        self._save(record)
+        try:
+            record = self._load(job["character"])
+            if job["label"] == "sheets":
+                expressions = [n for n in names if n.startswith("expression-")]
+                if expressions:
+                    record["sheets"]["expressions"] = expressions
+                record["sheets"].update((n.removesuffix(".png"), n) for n in names if n not in expressions)
+            elif not any(r["n"] == job["round"] for r in record["rounds"]):   # a crash before the queue was saved repeats this step
+                record["rounds"].append({"n": job["round"], "type": "vary" if job["label"] == "variations" else "reroll",
+                                         "from": job["from"], "note": job["note"], "images": names})
+            self._save(record)
+        except KeyError as e:
+            if e.args and e.args[0] == job["character"]:   # the character's gone, and its images with it
+                jobs.remove(job)
+            else:
+                self._fail(job, "This character's record is damaged")
+        except (ValueError, TypeError, AttributeError):
+            self._fail(job, "This character's record is damaged")
+        else:
+            jobs.remove(job)
 
     @staticmethod
     def _fail(job: dict, error: str) -> None:
         job.update(status="failed", error=error)
         for item in job["items"]:
             item["comfy_id"] = None
+
+    def _tried(self, jobs: list[dict], job: dict, item: dict, error: OSError) -> None:
+        """A try went wrong. A 4xx won't change, and the last attempt fails the batch; anything else raises so the worker logs it."""
+        if isinstance(error, urllib.error.HTTPError) and error.code < 500:
+            self._fail(job, f"ComfyUI refused this image ({error.code})")
+        elif item["attempts"] >= MAX_ATTEMPTS:
+            self._fail(job, f"This image failed after {MAX_ATTEMPTS} tries")
+        else:
+            self._write_jobs(jobs)
+            raise error
 
     def _poll(self, jobs: list[dict], job: dict, item: dict) -> bool:
         """Follow the render in progress. True if it's still going."""
@@ -344,19 +370,26 @@ class Creator:
         if entry and entry.get("status", {}).get("completed"):
             images = entry.get("outputs", {}).get("9", {}).get("images", [])
             if images:
-                _write_bytes_atomic(self._file(job["character"], item["name"]), self.comfy.image(images[0]))
-                item["done"] = True
-                if all(i["done"] for i in job["items"]):
-                    self._finish_batch(job)
-                    jobs.remove(job)
+                try:
+                    data = self.comfy.image(images[0])
+                except OSError as e:
+                    item["attempts"] += 1
+                    self._tried(jobs, job, item, e)
                 else:
-                    job["status"] = "waiting"
+                    _write_bytes_atomic(self._file(job["character"], item["name"]), data)
+                    item["done"] = True
+                    if all(i["done"] for i in job["items"]):
+                        self._finish_batch(jobs, job)
+                    else:
+                        job["status"] = "waiting"
             else:
                 self._fail(job, "ComfyUI finished without an image")
         elif entry and entry.get("status", {}).get("status_str") == "error":
             self._fail(job, "ComfyUI hit an error on this image")
         elif item["comfy_id"] in in_comfy:
             return True
+        elif item["attempts"] >= MAX_ATTEMPTS:
+            self._fail(job, f"ComfyUI lost this image {MAX_ATTEMPTS} times")
         else:   # a restart on either side: put it back in line rather than failing it
             item["comfy_id"] = None
             job["status"] = "waiting"
@@ -364,11 +397,17 @@ class Creator:
         return False
 
     def _submit(self, jobs: list[dict], job: dict) -> None:
-        item = next(i for i in job["items"] if not i["done"])
-        try:
-            self.comfy.free_ollama()
-        except OSError:
-            pass   # best effort: a model left loaded slows the render, it doesn't stop it
+        item = next((i for i in job["items"] if not i["done"]), None)
+        if item is None:   # a retry of a batch whose images are all saved
+            self._finish_batch(jobs, job)
+            return self._write_jobs(jobs)
+        if not job.get("ollama_freed"):
+            job["ollama_freed"] = True
+            try:
+                self.comfy.free_ollama()
+            except OSError:
+                pass   # best effort: a model left loaded slows the render, it doesn't stop it
+        item["attempts"] = item.get("attempts", 0) + 1
         try:
             if item.get("source"):
                 data = self._file(job["character"], item["source"]).read_bytes()
@@ -378,27 +417,43 @@ class Creator:
             job["status"] = "rendering"
         except FileNotFoundError:
             self._fail(job, "The image to vary is gone")
-        except urllib.error.HTTPError as e:
-            if e.code >= 500:
-                raise
-            self._fail(job, f"ComfyUI refused this image ({e.code})")   # it would refuse forever and block everyone behind it
+        except OSError as e:
+            self._tried(jobs, job, item, e)
         self._write_jobs(jobs)
+
+    def _quiet(self) -> bool:
+        """Has ComfyUI's queue stayed empty long enough? Every call is one check; anything in the queue starts it over."""
+        queue = self.comfy.queue()
+        if queue["queue_running"] or queue["queue_pending"]:
+            self._quiet_checks = 0
+            return False
+        if not self._quiet_checks:
+            self._quiet_since = self.clock()
+        self._quiet_checks += 1
+        return self._quiet_checks >= QUIET_CHECKS and self.clock() - self._quiet_since >= QUIET_SECONDS
 
     def tick(self) -> None:
         """One step of the worker. ComfyUI being down raises, and leaves everything in line for the next tick."""
         with self._mutex:
             jobs = self._jobs()
-            if not any(j["status"] in ACTIVE for j in jobs):
+            if not any(j["status"] in ACTIVE for j in jobs) and not self._gpu_owed:
+                self._quiet_checks = 0
                 return
             rendering = next(((j, i) for j in jobs if j["status"] == "rendering" for i in j["items"] if i["comfy_id"] and not i["done"]), None)
-            if rendering and self._poll(jobs, *rendering):
-                return
-            queue = self.comfy.queue()
-            idle = not (queue["queue_running"] or queue["queue_pending"])
+            if rendering:
+                self._gpu_owed = True
+                if self._poll(jobs, *rendering):
+                    return
             job = next((j for j in jobs if j["status"] in ACTIVE), None)
-            if job and idle:
+            if job:
+                self._gpu_owed = True
+            if not self._quiet():
+                return
+            self._quiet_checks = 0
+            if job:
                 self._submit(jobs, job)
-            elif not job and idle:
+            else:
+                self._gpu_owed = False
                 try:
                     self.comfy.free_comfy()   # hand the GPU back so the narrator's model can load
                 except OSError:
