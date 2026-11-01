@@ -4,7 +4,7 @@ import pytest
 from PIL import Image
 
 from narrator.design_sheets import (
-    BASE_SIZE, CHARACTER_MATURE, CHARACTER_SHEET_STYLE, MOOD_SUFFIXES, SHEET_NEGATIVE_EXTRA, SHEET_STYLE, candidate_prompt, candidate_workflow,
+    EXPRESSIONS, expression_grid, expression_prompts, BASE_SIZE, CHARACTER_MATURE, CHARACTER_SHEET_STYLE, MOOD_SUFFIXES, SHEET_NEGATIVE_EXTRA, SHEET_STYLE, candidate_prompt, candidate_workflow,
     extract_palette, join_strip, sheet_prompt, sheet_workflow, subject_for,
 )
 from narrator.designs import Design
@@ -61,9 +61,40 @@ def test_colorguide_focuses_the_signature_chrome():
     assert "color guide" in pos and "mechanical left arm focus" in pos
 
 
-def test_expressions_sheet_tags():
-    pos, _ = sheet_prompt(_char(), "expressions")
-    assert "expressions, expression chart, multiple views, portrait, upper body" in pos
+def _ayame():
+    return Design("Ayame", "character", "new:x", "red hair, confident smirk, scar through eyebrow, silk shirt, cigarette, high heels",
+                  presentation="feminine", held=["cigarette"], required=["purple eyes"], negative="plump")
+
+
+def test_expression_panels_show_only_the_face_and_one_mood():
+    panels = expression_prompts(_ayame())
+    assert [p[0] for p in panels] == [e[0] for e in EXPRESSIONS]
+    for label, pos, neg in panels:
+        assert "red hair" in pos and "scar through eyebrow" in pos and "silk shirt" in pos
+        assert "cigarette" not in pos and "high heels" not in pos and "confident smirk" not in pos
+        assert "multiple views" not in pos and "tattoo" not in pos
+        assert all(w in neg for w in ("cigarette", "holding", "floating object", "fangs", "plump", "nude", "child"))
+    assert "angry" in panels[2][1] and "smirk" in panels[5][1]
+    assert panels[0][1].index("purple eyes") < panels[0][1].index("red hair") and "face focus" in panels[0][1]
+
+
+def test_expression_panels_keep_a_fang_that_is_canon():
+    d = Design("Kenji", "character", "x", "black hair, fang, grin", presentation="masculine")
+    pos, neg = expression_prompts(d)[0][1:]
+    assert "fang" in pos and "fang," not in neg and "fangs" not in neg
+
+
+def test_expression_grid_has_a_fixed_layout():
+    from PIL import Image
+    panels = [(str(i), _png_bytes()) for i in range(6)]
+    assert Image.open(io.BytesIO(expression_grid(panels))).size == (3 * 64, 2 * 48)
+
+
+def _png_bytes():
+    from PIL import Image
+    out = io.BytesIO()
+    Image.new("RGB", (64, 48), "red").save(out, "PNG")
+    return out.getvalue()
 
 
 def test_location_sheets():

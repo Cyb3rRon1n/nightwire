@@ -12,7 +12,23 @@ This guide is for people and for coding agents such as opencode and Claude Code.
   - `2x-AnimeSharpV2_RPLKSR_Soft.pth` (upscaler).
 - **The look and its rules:** `docs/art-direction.md`. Read it before writing prompts for Nightwire content.
 
-## Option A: the web UI (people)
+## The easy way: Image Studio (people)
+
+Open **http://192.168.10.19:8080/studio/** (LAN or Tailscale; there's no login). Pick an approved character, a shot and a location, describe what's happening, then press Generate. Results show live progress and can be reused with the same seed or a new one.
+
+It runs on `tools/image_studio.py` and enforces the content rules in `docs/art-direction.md` on the server: approved designs only, no raw prompts or custom negatives, and descriptions asking for nudity, sexual content or minors are refused. One character per image for now. Tags and seed alone don't hold a face perfectly steady across scenes.
+
+**Updating it on the GPU box** (its own nightwire checkout isn't used):
+
+```
+rsync -a --delete --exclude __pycache__ --include 'tools/' --include 'tools/*.py' --include 'narrator/' --include 'narrator/**' --include 'engine/' --include 'engine/__init__.py' --include 'engine/character.py' --exclude '*' ./ 192.168.10.19:anvil-deploy/stack/image-studio/app/
+scp tools/image_studio.html 192.168.10.19:anvil-deploy/stack/dashboard/studio/index.html
+ssh 192.168.10.19 'cd anvil-deploy/stack && docker compose restart image-studio'
+```
+
+New approved designs need only the rsync. Jobs are in `image-studio/state/jobs.json`; images are in ComfyUI's `output/image_studio/`.
+
+## Option A: the ComfyUI web UI (people)
 
 1. Open ComfyUI and go to **Workflows** (left bar). Pick a `Nightwire - …` preset:
 

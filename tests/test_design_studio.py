@@ -87,8 +87,8 @@ async def test_sheets_for_character_and_location(studio):
     assert await ds.main(_args(studio, "sheets", "--approved-missing"), backend=backend) == 0
     assert sorted(p.name for p in (data / "mama-sato").glob("*.png")) == ["colorguide.png", "expressions.png", "turnaround.png"]
     assert sorted(p.name for p in (data / "izakaya").glob("*.png")) == ["alternate.png", "establishing.png", "moodkeys.png", "props.png"]
-    # 3 character sheets + establishing + alternate + props + 3 mood renders
-    assert len(backend.workflows) == 9
+    # turnaround + colorguide + 6 expression panels + establishing + alternate + props + 3 mood renders
+    assert len(backend.workflows) == 14
     assert load_design(designs / "mama-sato.toml").palette
     backend.workflows.clear()
     await ds.main(_args(studio, "sheets", "--approved-missing"), backend=backend)
@@ -109,6 +109,7 @@ async def test_gallery_and_export(studio):
     assert 'data-slug="izakaya" data-name="Izakaya" data-round="1" data-pick' in html
     assert 'data-slug="mama-sato" data-name="Mama Sato" data-round="1" data-pick' not in html
     assert "window.claude" not in html and 'const API = "api/picks"' in html
+    assert json.loads((data / "gallery" / "status.json").read_text()) == {"needs_pick": {"izakaya": 1}}
     assert await ds.main(_args(studio, "export")) == 0
     zips = list((data / "exports").glob("nightwire-designs-*.zip"))
     names = zipfile.ZipFile(zips[0]).namelist()
@@ -131,7 +132,7 @@ async def test_reapprove_clears_sheets_and_rerenders(studio):
     assert d.palette == [] and not list((data / "mama-sato").glob("*.png"))
     backend.workflows.clear()
     await ds.main(_args(studio, "sheets", "--approved-missing"), backend=backend)
-    assert len(backend.workflows) == 3
+    assert len(backend.workflows) == 8
     assert load_design(designs / "mama-sato.toml").palette
 
 
@@ -224,3 +225,16 @@ def test_modules_import_without_pillow():
     r = subprocess.run([sys.executable, "-c", "import sys; sys.modules['PIL']=None; "
                         "import narrator.design_sheets, tools.design_studio"], capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
+
+
+async def test_only_redoes_one_sheet_and_keeps_the_others(studio):
+    designs, data = studio
+    backend = FakeBackend()
+    await ds.main(_args(studio, "candidates", "mama-sato"), backend=backend)
+    await ds.main(_args(studio, "approve", "mama-sato", "1"))
+    await ds.main(_args(studio, "sheets", "mama-sato"), backend=backend)
+    before = (data / "mama-sato" / "turnaround.png").stat().st_mtime_ns
+    backend.workflows.clear()
+    assert await ds.main(_args(studio, "sheets", "mama-sato", "--only", "expressions"), backend=backend) == 0
+    assert len(backend.workflows) == 6
+    assert (data / "mama-sato" / "turnaround.png").stat().st_mtime_ns == before

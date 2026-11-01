@@ -13,7 +13,7 @@ DESIGNS_DIR = Path(__file__).parent / "worlds" / "designs"
 KINDS = ("character", "location")
 STATUSES = ("draft", "candidates", "approved")
 PRESENTATIONS = ("feminine", "masculine", "androgynous")
-_ORDER = ("name", "kind", "source", "presentation", "tags", "negative", "alt_tags", "props",
+_ORDER = ("name", "kind", "source", "presentation", "tags", "required", "held", "negative", "alt_tags", "props",
           "status", "seed", "palette", "notes")
 
 
@@ -31,6 +31,8 @@ class Design:
     tags: str
     presentation: str | None = None
     negative: str = ""
+    required: list[str] = field(default_factory=list)  # canon the tags leave open, e.g. eye colour; first on close views
+    held: list[str] = field(default_factory=list)  # carried items: on body views only, or they float beside a head
     alt_tags: str = ""
     props: list[str] = field(default_factory=list)
     status: str = "draft"
@@ -59,6 +61,8 @@ def validate(d: Design) -> None:
             raise ValueError(f"{d.name}: alt_tags and props are for locations only")
     elif d.presentation is not None:
         raise ValueError(f"{d.name}: presentation is for characters only")
+    elif d.held or d.required:
+        raise ValueError(f"{d.name}: held and required are for characters only")
     if d.status == "approved" and not d.seed:
         raise ValueError(f"{d.name}: an approved design needs a seed")
 
@@ -91,6 +95,8 @@ def save_design(d: Design, path: Path) -> None:
         if key == "presentation" and (d.kind != "character" or value is None):
             continue
         if key in ("alt_tags", "props") and d.kind != "location":
+            continue
+        if key in ("held", "required") and d.kind != "character":
             continue
         lines.append(f"{key} = {_toml_value(value)}")
     path.write_text("\n".join(lines) + "\n")

@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Image Studio</title>
+<style>
+:root{color-scheme:dark;--bg:#0d0b14;--panel:#16121f;--panel2:#1e1929;--text:#e9e4f2;--dim:#a79fb8;--line:#3de8ff55;--pink:#ff3d9a;--cyan:#3de8ff;--pick:#ffe14d;--bad:#ff8a8a}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif;margin:0}
+a{color:var(--cyan)}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;padding:14px 24px;border-bottom:1px solid var(--line)}
+header h1{margin:0;font-size:1.3rem}
+header span{color:var(--dim);font-size:.85rem}
+main{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);gap:24px;padding:20px 24px 48px;align-items:start;max-width:1700px;margin:0 auto}
+form{background:var(--panel);border:1px solid #ffffff14;border-radius:10px;padding:16px;display:grid;gap:14px;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}
+label,legend{display:block;font-size:.8rem;font-weight:600;color:var(--dim);margin-bottom:4px;padding:0}
+fieldset{border:0;margin:0;padding:0;min-width:0}
+select,textarea,input[type=number]{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font:15px system-ui,sans-serif;min-height:42px}
+textarea{resize:vertical;min-height:84px}
+.preview{margin-top:6px;border-radius:6px;background:#000;aspect-ratio:3/2;width:100%;object-fit:contain;display:block}
+.preview[hidden]{display:none}
+.hint{color:var(--dim);font-size:.8rem;margin:4px 0 0}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.seg label{margin:0;color:var(--text);display:flex;align-items:center;justify-content:center;min-height:42px;padding:4px 8px;text-align:center;border:1px solid var(--line);border-radius:6px;cursor:pointer;font-size:.88rem;background:var(--bg)}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg input:checked+span{color:#0d0b14}
+.seg label:has(input:checked){background:var(--cyan);border-color:var(--cyan);color:#0d0b14}
+.seg label:has(input:focus-visible){outline:2px solid var(--cyan);outline-offset:1px}
+.seg label:has(input:disabled){opacity:.4;cursor:default}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.check{display:flex;gap:8px;align-items:center;color:var(--text);font-weight:400;font-size:.9rem;margin:0;min-height:32px}
+button{font:600 14px system-ui,sans-serif;min-height:42px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:0 14px;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--cyan)}
+button:focus-visible,select:focus-visible,textarea:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--cyan);outline-offset:1px}
+button:disabled{opacity:.5;cursor:default}
+button.go{background:var(--pink);border-color:var(--pink);color:#0d0b14;font-size:1rem;min-height:48px}
+.msg{min-height:1.2em;font-size:.88rem;margin:0}
+.msg.err{color:var(--bad)}
+.head{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;margin:0 0 12px}
+.head h2{font-size:1.1rem;margin:0}
+#now{color:var(--dim);font-size:.88rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.job{background:var(--panel);border-radius:8px;overflow:hidden;display:flex;flex-direction:column}
+.shot{all:unset;display:flex;align-items:center;justify-content:center;aspect-ratio:3/2;background:#000;color:var(--dim);text-align:center;padding:0;font-size:.9rem}
+button.shot{cursor:zoom-in}
+button.shot:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
+.shot img{width:100%;height:100%;object-fit:contain;display:block}
+.shot.wait{padding:12px;flex-direction:column;gap:8px}
+.bar{height:6px;width:70%;background:#ffffff1c;border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--pink));transition:width .3s}
+.shot.failed{color:var(--bad)}
+.meta{padding:8px 10px;font-size:.82rem;display:grid;gap:2px;flex:1}
+.meta strong{font-size:.92rem}
+.meta span{color:var(--dim);overflow-wrap:anywhere}
+.acts{display:flex;flex-wrap:wrap;gap:6px;padding:0 10px 10px}
+.acts button,.acts a{font:600 12.5px system-ui,sans-serif;min-height:36px;padding:0 10px;flex:1 1 auto;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--text);text-decoration:none;white-space:nowrap}
+.empty{color:var(--dim);padding:40px 12px;text-align:center;border:1px dashed #ffffff22;border-radius:8px}
+dialog{background:var(--bg);color:var(--text);border:1px solid var(--line);padding:12px;width:min(96vw,1600px);max-height:96vh}
+dialog::backdrop{background:#000c}
+dialog[open]{display:flex;flex-direction:column;gap:10px}
+.zoom-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#zoom-img{width:100%;max-height:calc(96vh - 90px);object-fit:contain;min-height:0}
+@media(max-width:800px){header{padding:12px 16px}main{grid-template-columns:minmax(0,1fr);padding:16px 16px 32px}form{position:static;max-height:none}.grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}}
+</style>
+</head>
+<body>
+<header><h1>Image Studio</h1><span>Pick a character, say what's happening, render in the Nightwire look.</span><a href="/">← AI Lab</a></header>
+<main>
+<form id="form" autocomplete="off">
+  <div>
+    <label for="character">Character</label>
+    <select id="character"></select>
+    <img class="preview" id="character-preview" alt="" hidden>
+  </div>
+  <fieldset>
+    <legend>Shot</legend>
+    <div class="seg" id="shots"></div>
+  </fieldset>
+  <div id="location-wrap">
+    <label for="location">Location</label>
+    <select id="location"></select>
+    <img class="preview" id="location-preview" alt="" hidden>
+  </div>
+  <div>
+    <label for="action">What's happening? <span id="action-count"></span></label>
+    <textarea id="action" placeholder="Tags work best: singing on stage, spotlight, smoke, from below"></textarea>
+    <p class="hint">Everyone stays adult and clothed: the art rules can't be turned off here.</p>
+  </div>
+  <div class="row">
+    <div><label for="size">Size</label><select id="size"></select></div>
+    <div><label for="count">Images</label><select id="count"></select></div>
+  </div>
+  <div>
+    <label for="seed-mode">Seed</label>
+    <select id="seed-mode">
+      <option value="random">Random (a new image each time)</option>
+      <option value="design">Design's seed (repeats exactly if nothing else changes)</option>
+      <option value="fixed">Exact seed…</option>
+    </select>
+    <input type="number" id="seed" min="1" step="1" placeholder="Seed number" aria-label="Exact seed" hidden style="margin-top:6px">
+  </div>
+  <label class="check"><input type="checkbox" id="day"> Daylight instead of neon night</label>
+  <button class="go" type="submit" id="go">Generate</button>
+  <p class="msg" id="msg" role="status"></p>
+</form>
+
+<section aria-labelledby="results-title">
+  <div class="head">
+    <h2 id="results-title">Results</h2>
+    <span id="now"></span>
+    <label class="check"><input type="checkbox" id="only"> This character only</label>
+  </div>
+  <div class="grid" id="grid"></div>
+  <p class="empty" id="empty" hidden>Nothing yet. Pick a character and press Generate. A landscape or portrait takes about 30 seconds; wallpapers take 2–3 minutes.</p>
+</section>
+</main>
+<dialog id="zoom" aria-label="Full size image">
+  <div class="zoom-top"><strong id="zoom-title"></strong><button type="button" id="zoom-close">Close</button></div>
+  <img id="zoom-img" alt="">
+</dialog>
+<script>
+(() => {
+  const API = "api";
+  const $ = id => document.getElementById(id);
+  const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
+  let options = null, jobs = [], others = 0, timer = null, progress = null, loadFailed = false;
+
+  async function call(path, method = "GET", body) {
+    const r = await fetch(`${API}${path}`, {method, cache: "no-store",
+      headers: body ? {"Content-Type": "application/json"} : {}, body: body ? JSON.stringify(body) : undefined});
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || `error ${r.status}`);
+    return data;
+  }
+  const say = (text, bad = false) => { $("msg").textContent = text; $("msg").className = bad ? "msg err" : "msg"; };
+
+  function fillSelect(sel, items, none) {
+    if (none) sel.append(el("option", {value: "", textContent: none}));
+    for (const i of items) sel.append(el("option", {value: i.slug ?? i.id, textContent: i.role ? `${i.name} – ${i.role}` : (i.name ?? i.label)}));
+  }
+  function preview(img, url) {
+    img.onerror = () => { img.hidden = true; };
+    img.hidden = !url;
+    if (url) img.src = url;
+  }
+
+  function sync() {
+    const hasChar = !!$("character").value;
+    document.querySelectorAll("#shots input").forEach(r => { r.disabled = !hasChar; });
+    const shot = currentShot();
+    $("location-wrap").hidden = hasChar && shot !== "scene";
+    preview($("character-preview"), hasChar ? `/designs/img/${$("character").value}/turnaround.jpg` : "");
+    preview($("location-preview"), !$("location-wrap").hidden && $("location").value ? `/designs/img/${$("location").value}/establishing.jpg` : "");
+    $("seed").hidden = $("seed-mode").value !== "fixed";
+    $("action-count").textContent = $("action").value.length > options.maxAction - 100 ? `(${$("action").value.length}/${options.maxAction})` : "";
+    render();
+  }
+  const currentShot = () => document.querySelector("#shots input:checked")?.value || "scene";
+
+  function jobCard(j) {
+    const params = [options.shots.find(s => s.id === j.shot)?.label, options.sizes.find(s => s.id === j.size)?.label, j.day ? "Daylight" : ""].filter(Boolean).join(" · ");
+    const card = el("article", {className: "job"});
+    if (j.status === "done" && j.hasImage) {
+      const src = `${API}/image/${j.id}`;
+      const shot = el("button", {type: "button", className: "shot", ariaLabel: `Enlarge ${j.label}`},
+        el("img", {src, alt: j.action ? `${j.label}: ${j.action}` : j.label, loading: "lazy"}));
+      shot.onclick = () => { $("zoom-img").src = src; $("zoom-img").alt = j.label; $("zoom-title").textContent = `${j.label} · seed ${j.seed}`; $("zoom").showModal(); };
+      card.append(shot);
+    } else if (j.status === "failed") {
+      card.append(el("div", {className: "shot wait failed", textContent: j.error || "Failed"}));
+    } else {
+      const live = j.status === "rendering" && progress && progress.max;
+      const text = j.status === "rendering" ? (live ? `Rendering, step ${progress.value} of ${progress.max}` : "Rendering…")
+        : j.position ? `Waiting, ${j.position} ahead` : "Waiting…";
+      const wait = el("div", {className: "shot wait", textContent: text});
+      if (j.status === "rendering") {
+        const fill = el("i");
+        fill.style.width = live ? `${Math.round(100 * progress.value / progress.max)}%` : "0";
+        wait.append(el("div", {className: "bar"}, fill));
+      }
+      card.append(wait);
+    }
+    const meta = el("div", {className: "meta"}, el("strong", {textContent: j.label}), el("span", {textContent: params}));
+    if (j.action) meta.append(el("span", {textContent: j.action}));
+    meta.append(el("span", {textContent: `Seed ${j.seed}`}));
+    card.append(meta);
+    const acts = el("div", {className: "acts"});
+    const reuse = (seedMode, label) => {
+      const b = el("button", {type: "button", textContent: label});
+      b.onclick = () => {
+        $("character").value = j.character || "";
+        if (j.location) $("location").value = j.location;
+        const radio = document.querySelector(`#shots input[value=${j.shot}]`);
+        if (radio) radio.checked = true;
+        $("action").value = j.action; $("size").value = j.size; $("day").checked = j.day;
+        $("seed-mode").value = seedMode;
+        if (seedMode === "fixed") $("seed").value = j.seed;
+        sync();
+        say(seedMode === "fixed" ? `Loaded with seed ${j.seed}. Change anything, then Generate.` : "Loaded with a random seed. Change anything, then Generate.");
+        $("form").scrollIntoView({behavior: "smooth", block: "nearest"});
+        $("go").focus({preventScroll: true});
+      };
+      return b;
+    };
+    if (j.status === "done" || j.status === "failed") {
+      acts.append(reuse("fixed", "Same seed"), reuse("random", "Try again"));
+      if (j.hasImage) acts.append(el("a", {href: `${API}/image/${j.id}`, download: `${(j.character || j.location || "image")}-${j.seed}.png`, textContent: "Save"}));
+    }
+    if (j.status !== "rendering") {
+      const rm = el("button", {type: "button", textContent: j.status === "queued" ? "Cancel" : "Remove",
+        title: j.status === "queued" ? "Take it out of the queue" : "Remove from this list. The file stays on the GPU box."});
+      rm.onclick = async () => {
+        rm.disabled = true;
+        try { await call(`/jobs/${j.id}`, "DELETE"); await poll(); }
+        catch (e) { say(`Couldn't remove it: ${e.message}`, true); rm.disabled = false; }
+      };
+      acts.append(rm);
+    }
+    card.append(acts);
+    return card;
+  }
+
+  function render() {
+    if (!options) return;
+    const list = $("only").checked && $("character").value ? jobs.filter(j => j.character === $("character").value) : jobs;
+    $("grid").replaceChildren(...list.map(jobCard));
+    $("empty").hidden = list.length > 0;
+    const active = jobs.filter(j => j.status === "queued" || j.status === "rendering").length;
+    $("now").textContent = loadFailed ? "Can't reach the studio service right now." :
+      [active ? `${active} in progress` : "", others > 0 ? `${others} other ComfyUI job${others > 1 ? "s" : ""} ahead` : ""].filter(Boolean).join(" · ");
+  }
+
+  async function poll() {
+    clearTimeout(timer);
+    try {
+      const data = await call("/jobs");
+      jobs = data.jobs; others = Math.max(0, data.othersWaiting); loadFailed = false;
+    } catch { loadFailed = true; }
+    render();
+    const active = jobs.some(j => j.status === "queued" || j.status === "rendering");
+    timer = setTimeout(poll, document.hidden ? 30000 : active ? 2500 : 15000);
+  }
+
+  // Live step counts. Purely cosmetic, so a dropped socket just falls back to "Rendering…".
+  function watchProgress() {
+    let ws;
+    try { ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/svc/comfy/ws`); } catch { return; }
+    ws.onmessage = e => {
+      if (typeof e.data !== "string") return;
+      const m = JSON.parse(e.data);
+      if (m.type === "progress") { progress = m.data; render(); }
+    };
+    ws.onclose = () => { progress = null; setTimeout(watchProgress, 5000); };
+  }
+
+  $("form").addEventListener("submit", async e => {
+    e.preventDefault();
+    if (!$("character").value && !$("location").value) return say("Choose a character or a location first.", true);
+    const mode = $("seed-mode").value;
+    const seed = mode === "design" ? "design" : mode === "random" ? null : Number($("seed").value);
+    if (mode === "fixed" && !(Number.isInteger(seed) && seed > 0)) return say("Enter a whole number for the seed.", true);
+    const hasChar = !!$("character").value, shot = currentShot();
+    const body = {character: $("character").value || null, location: !hasChar || shot === "scene" ? ($("location").value || null) : null,
+      shot, size: $("size").value, action: $("action").value, seed, day: $("day").checked, count: Number($("count").value)};
+    $("go").disabled = true; say("Sending to ComfyUI…");
+    try {
+      const r = await call("/jobs", "POST", body);
+      say(`Added ${r.created} to the queue.`);
+      await poll();
+    } catch (err) { say(err.message, true); }
+    $("go").disabled = false;
+  });
+  ["character", "location", "action", "seed-mode", "only"].forEach(id => $(id).addEventListener("input", sync));
+  $("zoom-close").onclick = () => $("zoom").close();
+  $("zoom").addEventListener("click", e => { if (e.target === $("zoom")) $("zoom").close(); });
+  $("zoom").addEventListener("close", () => $("zoom-img").removeAttribute("src"));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+
+  (async () => {
+    try { options = await call("/options"); }
+    catch (e) { say(`The studio service isn't answering: ${e.message}`, true); $("go").disabled = true; return; }
+    fillSelect($("character"), options.characters, "No character (location only)");
+    fillSelect($("location"), options.locations, "No location");
+    fillSelect($("size"), options.sizes);
+    for (let n = 1; n <= options.maxCount; n++) $("count").append(el("option", {value: n, textContent: n}));
+    options.shots.forEach((s, i) => {
+      const input = el("input", {type: "radio", name: "shot", value: s.id, checked: i === 0});
+      input.addEventListener("change", () => { $("size").value = s.size; sync(); });
+      $("shots").append(el("label", {}, input, el("span", {textContent: s.label})));
+    });
+    $("action").maxLength = options.maxAction;
+    if (options.characters.length) $("character").selectedIndex = 1;
+    $("size").value = options.shots[0].size;
+    sync();
+    poll();
+    watchProgress();
+  })();
+})();
+</script>
+</body>
+</html>

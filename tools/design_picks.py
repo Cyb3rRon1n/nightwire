@@ -55,6 +55,14 @@ def validate(slug: str, body, designs_dir: Path) -> dict:
     raise BadPick("unknown action")
 
 
+def write_json_atomic(path: Path, data) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+    with os.fdopen(fd, "w") as f:
+        json.dump(data, f, indent=1, sort_keys=True)
+    os.replace(tmp, path)
+
+
 class Store:
     """picks.json, replaced atomically. Unreadable data raises rather than reading as empty, so a
     damaged file can't be silently overwritten and lose the owner's picks."""
@@ -73,11 +81,7 @@ class Store:
                 picks.pop(slug, None)
             else:
                 picks[slug] = {**record, "at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")}
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            fd, tmp = tempfile.mkstemp(dir=self.path.parent, suffix=".tmp")
-            with os.fdopen(fd, "w") as f:
-                json.dump(picks, f, indent=1, sort_keys=True)
-            os.replace(tmp, self.path)
+            write_json_atomic(self.path, picks)
             return picks
 
 
