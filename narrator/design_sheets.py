@@ -4,7 +4,7 @@ Pure builders plus two Pillow helpers; no network here."""
 import io
 
 from narrator.designs import Design
-from narrator.image_prompt import NEGATIVE, QUALITY, STYLE
+from narrator.image_prompt import NEGATIVE, QUALITY, STYLE, _below_chest
 
 CHECKPOINT = "NoobAI-XL-Vpred-v1.0.safetensors"
 LORA = "Smooth_Booster_v3.safetensors"
@@ -27,11 +27,22 @@ MOOD_SUFFIXES = ("night, neon lights", "rain, wet street", "dawn, sunrise, soft 
 _SHEET_TAGS = {
     "turnaround": ("character sheet, reference sheet, turnaround, multiple views, front view, from side, "
                    "from behind, full body, standing"),
-    "expressions": ("expressions, expression chart, multiple views, portrait, upper body, smile, angry, "
-                    "surprised, sad, smirk, closed eyes"),
     "colorguide": ("character sheet, reference sheet, color guide, multiple views, full body, front view, "
                    "from behind, close-up"),
 }
+# One image per expression, assembled into a grid: a single render drawing 6-8 heads picks its own layout, drifts
+# between panels and strands carried items in mid-air (owner audit, 2026-11-01).
+EXPRESSIONS = (("Neutral", "expressionless, closed mouth"), ("Smile", "smile, closed mouth"),
+               ("Angry", "angry, frown, clenched teeth"), ("Surprised", "surprised, wide-eyed, open mouth"),
+               ("Sad", "sad, looking down, closed mouth"), ("Smirk", "smirk"))
+EXPRESSION_SIZE = (1024, 1024)
+_BELOW_FRAME_WORDS = ("heels", "fishnet", "garter", "hakama", "slit", "belt", "holster", "knee", "hip",
+                      "breasts", "waist", "tall", "slender", "toned", "lean", "wiry", "muscular", "abs", "shoulders",
+                      "gaunt", "cleavage", "neckline", "midriff", "backless", "gloves", "rings", "bracelet", "sleeve")
+_EXPRESSION_WORDS = ("smile", "smirk", "grin", "scowl", "expression", "stern", "serene", "calm")
+_EXPRESSION_NEGATIVE = ("multiple views, character sheet, expression chart, turnaround, split screen, full body, "
+                        "child face, baby face, round face, youthful face, cowboy shot, breast focus, cleavage, hand up, hands, hand on own face, hand on own chin, fingers, "
+                        "holding, cigarette, smoking, floating object, extra hands, sharp teeth, vampire, monster")
 _PROPS_TAGS = "still life, no humans, object focus, multiple views, white background"
 _SIGNATURE_WORDS = ("mechanical", "cyber", "prosthetic", "robot", "chrome", "implant", "weapon", "sword", "gun")
 _PRESENTATION = {"feminine": "1girl", "masculine": "1boy", "androgynous": "1other"}
@@ -90,6 +101,19 @@ def sheet_prompt(d: Design, sheet: str, mood: str | None = None) -> tuple[str, s
     return pos, _location_negative(d)
 
 
+def expression_prompts(d: Design) -> list[tuple[str, str, str]]:
+    """(label, positive, negative) per panel: the character's face and upper-body canon only. Tags for carried items,
+    the lower body and a fixed mood are left out, so each panel can only show the face and the mood it's asking for."""
+    held = {h.strip() for h in d.held}
+    tags = [t.strip() for t in d.tags.split(",")]
+    face = [t for t in dict.fromkeys(tags) if t not in held and t not in d.required and not _below_chest(t)
+            and not any(w in t for w in (*_BELOW_FRAME_WORDS, *_EXPRESSION_WORDS))]
+    fang = any(w in tags for w in ("fang", "fangs"))
+    negative = _join(_character_negative(d), _EXPRESSION_NEGATIVE, "" if fang else "fang, fangs", ", ".join(held))
+    return [(label, _join(CHARACTER_QUALITY, CHARACTER_SHEET_STYLE, "mature, adult, mature face, defined jawline, solo, portrait, close-up, face focus, looking at viewer",
+                          subject_for(d), mood, ", ".join(d.required), ", ".join(face)), negative) for label, mood in EXPRESSIONS]
+
+
 def _base(positive: str, negative: str, seed: int, *, checkpoint: str = CHECKPOINT, lora: str | None = LORA,
           lora_strength: float = 0.6, steps: int = 28, cfg: float = 4.5, sampler: str = "euler",
           scheduler: str = "normal", vpred: bool = True, clip_skip: int = -2) -> dict:
@@ -139,6 +163,22 @@ def sheet_workflow(positive: str, negative: str, seed: int, high_res: bool = Tru
     wf["40"] = {"class_type": "ImageUpscaleWithModel", "inputs": {"upscale_model": ["30", 0], "image": ["35", 0]}}
     wf["9"] = {"class_type": "SaveImage", "inputs": {"filename_prefix": "nightwire_design", "images": ["40", 0]}}
     return wf
+
+
+def expression_grid(panels: list[tuple[str, bytes]], columns: int = 3) -> bytes:
+    from PIL import Image, ImageDraw
+    frames = [(label, Image.open(io.BytesIO(b)).convert("RGB")) for label, b in panels]
+    w, h = frames[0][1].size
+    rows = -(-len(frames) // columns)
+    sheet = Image.new("RGB", (w * columns, h * rows), "#17151c")
+    draw = ImageDraw.Draw(sheet)
+    for i, (label, frame) in enumerate(frames):
+        x, y = (i % columns) * w, (i // columns) * h
+        sheet.paste(frame, (x, y))
+        draw.text((x + 16, y + 12), label, fill="#ffffff", stroke_width=3, stroke_fill="#000000", font_size=max(18, h // 24))
+    out = io.BytesIO()
+    sheet.save(out, "PNG")
+    return out.getvalue()
 
 
 def join_strip(images: list[bytes]) -> bytes:

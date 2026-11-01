@@ -18,7 +18,6 @@ import random
 import sys
 from pathlib import Path
 
-from narrator.comfyui_backend import ComfyUIBackend
 from narrator.design_sheets import (CHARACTER_MATURE, CHARACTER_NEGATIVE_EXTRA, CHARACTER_QUALITY,
                                     CHARACTER_SHEET_STYLE, CHECKPOINT, LORA, SHEET_NEGATIVE_EXTRA,
                                     candidate_workflow, sheet_workflow)
@@ -159,6 +158,7 @@ async def main(argv: list[str]) -> int:
     if a.seed is None:
         a.seed = dd.get("seed")
     a.out.mkdir(parents=True, exist_ok=True)
+    from narrator.comfyui_backend import ComfyUIBackend  # needs httpx; build() is stdlib-only for tools.image_studio
     backend = ComfyUIBackend(base_url=a.comfyui_url, profile="noobai", timeout=900.0)
     for i in range(a.count):
         seed = (a.seed + i) if a.seed is not None else random.randint(1, 2**32 - 1)

@@ -30,8 +30,8 @@ from pathlib import Path
 
 from narrator.comfyui_backend import ComfyUIBackend
 from narrator.design_sheets import (
-    CHARACTER_SHEETS, LOCATION_SHEETS, MOOD_SUFFIXES, candidate_prompt, candidate_workflow,
-    extract_palette, join_strip, sheet_prompt, sheet_workflow,
+    CHARACTER_SHEETS, EXPRESSION_SIZE, LOCATION_SHEETS, MOOD_SUFFIXES, candidate_prompt, candidate_workflow,
+    expression_grid, expression_prompts, extract_palette, join_strip, sheet_prompt, sheet_workflow,
 )
 from narrator.designs import DESIGNS_DIR, Design, load_design, load_designs, save_design
 
@@ -161,19 +161,29 @@ async def _sheets_one(slug: str, args, backend) -> None:
     slug_dir.mkdir(parents=True, exist_ok=True)
     sheets = CHARACTER_SHEETS if d.kind == "character" else LOCATION_SHEETS
     for sheet in sheets:
+        if getattr(args, "only", None) not in (None, sheet):
+            continue
         if sheet == "moodkeys":
             frames = []
             for mood in MOOD_SUFFIXES:
                 pos, neg = sheet_prompt(d, sheet, mood=mood)
                 frames.append(await backend.run_workflow(sheet_workflow(pos, neg, d.seed, high_res=False)))
             png = join_strip(frames)
+        elif sheet == "expressions":
+            panels = []
+            for label, pos, neg in expression_prompts(d):
+                wf = candidate_workflow(pos, neg, d.seed)
+                wf["5"]["inputs"].update(width=EXPRESSION_SIZE[0], height=EXPRESSION_SIZE[1])
+                panels.append((label, await backend.run_workflow(wf)))
+            png = expression_grid(panels)
         else:
             pos, neg = sheet_prompt(d, sheet)
             png = await backend.run_workflow(sheet_workflow(pos, neg, d.seed))
         (slug_dir / f"{sheet}.png").write_bytes(png)
         print(f"{slug}: {sheet}", flush=True)
     key = "turnaround" if d.kind == "character" else "establishing"
-    d.palette = extract_palette((slug_dir / f"{key}.png").read_bytes(), skip_background=d.kind == "character")
+    if (slug_dir / f"{key}.png").exists():
+        d.palette = extract_palette((slug_dir / f"{key}.png").read_bytes(), skip_background=d.kind == "character")
     save_design(d, args.designs_dir / f"{slug}.toml")
 
 
@@ -280,7 +290,7 @@ def cmd_gallery(designs, args) -> int:
         group = "candidates" if pick else "approved" if d.status == "approved" else "other"
         groups[group].append(_gallery_section(slug, d, r, figs, pick))
     body = '<div id="bar" role="status">Loading picks…</div><h1>Kuroshio Design Studio</h1>'
-    body += '<p class="lede">Tap an image to see it full size. Pick one for each character, or ask for a reroll with a note. Picks save as you go.</p>'
+    body += '<p class="lede"><a href="/">← AI Lab</a> · Tap an image to see it full size. Pick one for each character, or ask for a reroll with a note. Picks save as you go.</p>'
     if groups["candidates"]:
         body += f'<h2 class="group">Needs your pick ({len(groups["candidates"])})</h2>' + "".join(groups["candidates"])
     if groups["other"]:
@@ -295,6 +305,8 @@ def cmd_gallery(designs, args) -> int:
     out.mkdir(parents=True, exist_ok=True)
     (out / "index.html").write_text(page)
     (out / "rounds.json").write_text(json.dumps(rounds))
+    needs_pick = sorted(s for s, d in designs.items() if d.status == "candidates" and s in rounds)
+    (out / "status.json").write_text(json.dumps({"needs_pick": {s: rounds[s] for s in needs_pick}}))  # dashboard badge
     print(out / "index.html")
     return 0
 
@@ -332,6 +344,7 @@ def _parser() -> argparse.ArgumentParser:
     a = sub.add_parser("approve"); a.add_argument("slug"); a.add_argument("n", type=int); a.add_argument("--round", type=int)
     r = sub.add_parser("reroll"); r.add_argument("slug"); r.add_argument("note")
     s = sub.add_parser("sheets"); s.add_argument("slugs", nargs="*"); s.add_argument("--approved-missing", action="store_true")
+    s.add_argument("--only", choices=(*CHARACTER_SHEETS, *LOCATION_SHEETS), help="redo just this sheet; keeps the others")
     sub.add_parser("gallery"); sub.add_parser("export")
     return p
 
