@@ -1,6 +1,7 @@
 """Checks rendered expression sheets against each character's reference record, panel by panel.
 
     ~/.cache/nightwire-qa/bin/python -m tools.design_check [slug ...]
+    ~/.cache/nightwire-qa/bin/python -m tools.design_check --scenes
 
 Needs the `qa` extra (dghs-imgutils, onnxruntime); CPU only, models download on first run. Writes
 design-data/qa/report.json, which the Review page shows. Flags are prompts to look, not verdicts:
@@ -56,6 +57,59 @@ def flags_for(entry: dict, n_panels: int = 6) -> list[str]:
     return out
 
 
+def scene_people(name: str) -> list[str]:
+    """Who each scene file should show, left to right: a--loc.png or pair--a--b--loc.png."""
+    parts = name.removesuffix(".png").split("--")
+    return parts[1:3] if parts[0] == "pair" else parts[:1]
+
+
+def rank_of(slug: str, medians: dict[str, float]) -> int:
+    """1 means this crop reads as closer to the character it should be than to anyone else in the cast."""
+    return sorted(medians, key=medians.get).index(slug) + 1
+
+
+def check_scenes(args) -> int:
+    """Finds each person's head in a scene and compares it with every character's expression panels, so the score
+    doesn't depend on a fixed threshold: the test is whether the right character comes out closest."""
+    from imgutils.detect import detect_heads
+    from imgutils.metrics import ccip_batch_differences, ccip_extract_feature
+    from imgutils.tagging import get_wd14_tags
+    from PIL import Image
+
+    panels = {}
+    for p in sorted(args.designs_dir.glob("*.toml")):
+        d, sheet = load_design(p), args.design_dir / p.stem / "expressions.png"
+        if d.kind == "character" and sheet.exists():
+            panels[p.stem] = [ccip_extract_feature(c) for c in panels_of(sheet)]
+    report = {}
+    for scene in sorted((args.design_dir / "scenes").glob("*.png")):
+        im = Image.open(scene).convert("RGB")
+        people = scene_people(scene.name)
+        heads = sorted(detect_heads(im), key=lambda h: h[2], reverse=True)[:len(people)]
+        boxes = sorted((h[0] for h in heads), key=lambda b: b[0])
+        entry = {"heads_found": len(heads), "expected": len(people), "people": {}}
+        for slug, box in zip(people, boxes):
+            pad = (box[2] - box[0]) // 3
+            crop = im.crop((max(box[0] - pad, 0), max(box[1] - pad, 0), min(box[2] + pad, im.width), min(box[3] + pad, im.height)))
+            feature = ccip_extract_feature(crop)
+            medians = {o: statistics.median(float(ccip_batch_differences([feature, x])[0][1]) for x in fs) for o, fs in panels.items()}
+            d = load_design(args.designs_dir / f"{slug}.toml")
+            tags = get_wd14_tags(crop, model_name=TAG_MODEL, general_threshold=0.0, character_threshold=1.0,
+                                 no_underline=True, drop_overlap=False)[1]
+            verdict = judge_tags(d.required, [t for t in ("cigarette", "visor") if t not in d.required and t not in d.tags], [tags])
+            entry["people"][slug] = {"rank": rank_of(slug, medians), "of": len(medians), "difference": medians[slug],
+                                     "closest": min(medians, key=medians.get), "missing": list(verdict["missing"])}
+        report[scene.name] = entry
+    out = args.design_dir / "qa" / "scenes.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(report, indent=1, sort_keys=True))
+    for name, entry in report.items():
+        print(name, f"heads {entry['heads_found']}/{entry['expected']}",
+              {s: (f"rank {v['rank']}/{v['of']}", f"closest {v['closest']}", v["missing"]) for s, v in entry["people"].items()})
+    print(out)
+    return 0
+
+
 def panels_of(path: Path):
     from PIL import Image
     im = Image.open(path).convert("RGB")
@@ -69,7 +123,10 @@ def main(argv=None) -> int:
     parser.add_argument("slugs", nargs="*")
     parser.add_argument("--designs-dir", type=Path, default=Path("narrator/worlds/designs"))
     parser.add_argument("--design-dir", type=Path, default=Path("design-data"))
+    parser.add_argument("--scenes", action="store_true", help="check design-data/scenes instead of the expression sheets")
     args = parser.parse_args(argv)
+    if args.scenes:
+        return check_scenes(args)
     from imgutils.metrics import ccip_batch_differences, ccip_extract_feature
     from imgutils.tagging import get_wd14_tags
     from narrator.design_sheets import EXPRESSIONS

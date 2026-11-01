@@ -20,3 +20,10 @@ def test_flags_use_thresholds():
     flags = dc.flags_for(entry)
     assert len(flags) == 4 and "looks like rin" in flags[3]
     assert len(dc.flags_for({"forbidden": {}, "missing": {}, "worst_panel_pair": {"a": "a", "b": "b", "difference": 0.1}, "nearest": {"slug": "r", "difference": 0.9}})) == 0
+
+
+def test_scene_people_and_rank():
+    assert dc.scene_people("ayame-tsuda--the-loop.png") == ["ayame-tsuda"]
+    assert dc.scene_people("pair--a--b--the-loop.png") == ["a", "b"]
+    assert dc.rank_of("a", {"a": 0.1, "b": 0.2}) == 1 and dc.rank_of("b", {"a": 0.1, "b": 0.2}) == 2
+
