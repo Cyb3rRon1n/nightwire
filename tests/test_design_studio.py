@@ -105,6 +105,10 @@ async def test_gallery_and_export(studio):
     html = (data / "gallery" / "index.html").read_text()
     assert "Mama Sato" in html and "Izakaya" in html and "#4" in html
     assert (data / "gallery" / "img").is_dir()
+    # Only undecided candidates can be picked, and the picker needs no claude.ai login.
+    assert 'data-slug="izakaya" data-name="Izakaya" data-round="1" data-pick' in html
+    assert 'data-slug="mama-sato" data-name="Mama Sato" data-round="1" data-pick' not in html
+    assert "window.claude" not in html and 'const API = "api/picks"' in html
     assert await ds.main(_args(studio, "export")) == 0
     zips = list((data / "exports").glob("nightwire-designs-*.zip"))
     names = zipfile.ZipFile(zips[0]).namelist()

@@ -27,5 +27,5 @@ Owner-approved over the Phase 19a/19b review rounds (2026-10-28/29). Use this fo
 - **New portraits must follow this guide.** Apply the same mature tone and, for women, the idol proportions above. Phase 19c will make portraits and scenes reuse each character's approved design record (`narrator/worlds/designs/<slug>.toml`: tags and seed) so a character looks the same everywhere.
 - **For a new NPC:**
   1. Write `narrator/worlds/designs/<slug>.toml` from their world card, following the rules above.
-  2. Run `python -m tools.design_studio candidates <slug>`, then `gallery`, and republish the gallery with its picker (see `docs/design-studio-resume.md`).
+  2. Run `python -m tools.design_studio candidates <slug>`, then `gallery`, and publish it (see `docs/design-studio-resume.md`).
   3. The owner picks; then run `approve` and `sheets`.

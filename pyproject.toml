@@ -27,3 +27,4 @@ include = ["ruleset", "engine", "server", "narrator", "tools"]
 
 [tool.setuptools.package-data]
 narrator = ["worlds/*.toml", "worlds/designs/*.toml"]
+tools = ["design_picker.html"]
