@@ -87,3 +87,12 @@ def test_mature_tags_follow_the_subject():
     assert "mature male" in boy and "mature female" not in boy
     other = build("android", "subject", False, "", "base", 1, subject="1other")["6"]["inputs"]["text"]
     assert "mature female" not in other and "adult" in other
+
+
+def test_closeup_reproduces_the_owners_favourite_look():
+    wf = build("casual outfit, sfw", "closeup", False, "", "base", 3654015602)
+    pos, neg = wf["6"]["inputs"]["text"], wf["7"]["inputs"]["text"]
+    assert pos.startswith("masterpiece, best quality, very awa, newest, year 2024, absurdres, highres, sensitive, 1girl, solo")
+    assert "yellow accents" in pos and "fully clothed" in pos and "nsfw" not in pos
+    assert "nude" in neg and "child" in neg
+    assert (wf["5"]["inputs"]["width"], wf["5"]["inputs"]["height"]) == (1216, 832)

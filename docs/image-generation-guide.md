@@ -19,6 +19,7 @@ This guide is for people and for coding agents such as opencode and Claude Code.
    | Preset | Makes |
    |---|---|
    | Portrait – portrait | head-and-shoulders character portrait, in-world neon |
+   | Closeup – base, 1080p, 4k, phone | **owner favourite**: moody close bust, glowing neon, few tags (keep the prompt short) |
    | Character – base / 4k | full-body character model sheet, dark backdrop |
    | Scene – base, 1080p, 4k, ultrawide, phone | locations with no people, including wallpapers |
    | Plain – same sizes | game style with no subject forced |
@@ -37,7 +38,7 @@ To regenerate the presets after a style change, run `python -m tools.comfy_prese
 Run it from the `nightwire` repo with its venv (`.venv/bin/python`, or `uv run`):
 
 ```
-python -m tools.imagegen "<tags or description>" --kind scene|subject|crowd|portrait|character|plain --size base|1080p|1440p|4k|ultrawide|phone|square|portrait [--seed N] [--count N] [--negative "..."] [--raw]
+python -m tools.imagegen "<tags or description>" --kind scene|subject|crowd|portrait|closeup|character|plain --size base|1080p|1440p|4k|ultrawide|phone|square|portrait [--seed N] [--count N] [--negative "..."] [--raw]
 python -m tools.imagegen --design hachi --size 4k          # an approved design's tags, negative and seed
 ```
 

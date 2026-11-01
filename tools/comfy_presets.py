@@ -33,6 +33,7 @@ PRESETS = {
     "scene day": {"kind": "scene", "prompt": EXAMPLES["scene day"], "sizes": WIDE, "options": {"day": True}},
     "subject": {"kind": "subject", "prompt": EXAMPLES["subject"], "sizes": ("base", "1080p", "4k", "phone")},
     "crowd": {"kind": "crowd", "prompt": EXAMPLES["crowd"], "sizes": ("base", "1080p", "4k")},
+    "closeup": {"kind": "closeup", "prompt": "casual outfit, sfw", "sizes": ("base", "1080p", "4k", "phone")},
     "portrait": {"kind": "portrait", "prompt": EXAMPLES["portrait"], "sizes": ("portrait",)},
     "character": {"kind": "character", "prompt": EXAMPLES["character"], "sizes": ("base", "4k")},
     "plain": {"kind": "plain", "prompt": EXAMPLES["plain"], "sizes": WIDE},
