@@ -188,6 +188,10 @@ class Comfy:
         with urllib.request.urlopen(f"{self.comfy}/view?{query}", timeout=60) as r:
             return r.read()
 
+    def interrupt(self, prompt_id: str) -> None:
+        """Stops what's running. ComfyUI versions that don't read the id stop whatever is running, so check it's yours first."""
+        self._json(f"{self.comfy}/interrupt", {"prompt_id": prompt_id})
+
     def upload(self, name: str, data: bytes) -> str:
         """Puts an image in ComfyUI's input folder and returns the name LoadImage wants."""
         boundary = uuid.uuid4().hex

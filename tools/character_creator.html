@@ -65,6 +65,7 @@ ul.people li{padding:8px 0;border-bottom:1px solid #ffffff14}
 <script>
 "use strict";
 const API = "/create/api";
+const DELETE_WORDING = "Delete this character? This removes it and its images from the creator for good. Copies may remain in the image generator until they're cleaned up.";
 const STEPS = [["basics", "Basics"], ["look", "Look"], ["nightwire", "Nightwire details"], ["final", "Final touches"]];
 const app = document.getElementById("app");
 const titleEl = document.getElementById("title");
@@ -369,7 +370,7 @@ function toolbar(record) {
   parts.push(el("div", {class: "row"}, el("button", {class: "danger", text: "Delete character", onclick: () => { confirming = "delete"; draw(); }})));
   if (confirming === "delete") {
     parts.push(el("div", {class: "status err", role: "group", "aria-label": "Confirm delete"},
-      el("p", {style: "margin:0", text: "Delete this character and all its images for good?"}),
+      el("p", {style: "margin:0", text: DELETE_WORDING}),
       el("div", {class: "row"},
         el("button", {class: "danger", text: "Yes, delete it", onclick: async () => {
           try {

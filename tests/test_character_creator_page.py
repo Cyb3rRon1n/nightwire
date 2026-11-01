@@ -46,6 +46,16 @@ def test_page_offers_never_as_a_choice_list(page):
     assert '"multi"' in page and 'type: "checkbox"' in page
 
 
+def test_delete_says_what_it_removes_and_what_may_remain(page):
+    assert "from the creator" in page and "image generator" in page and "cleaned up" in page
+
+
+def test_task_6_keeps_private_links_out_of_nginx_logs():
+    plan = (REPO / "docs/superpowers/plans/2026-11-01-character-creator.md").read_text()
+    step = next(line for line in plan.splitlines() if "Add nginx routes" in line)
+    assert step.count("access_log off;") == 2
+
+
 def test_page_warns_before_lock_in(page):
     assert "lock_warning" in page
 

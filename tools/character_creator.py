@@ -45,6 +45,8 @@ NAME = re.compile(r"^(r\d+-c\d+-\d+|turnaround|colorguide|expression-\d)\.png$")
 DENOISE = {"subtle": 0.35, "strong": 0.6}  # starting values; tune on real renders in Task 6
 CANDIDATES_PER_ROUND = 4
 MAX_WAITING = 12
+MAX_CHARACTERS = 500
+MAX_SUGGESTIONS = 50
 MAX_DECLINE_NOTE = 500
 ACTIVE = ("waiting", "rendering")
 # The owner's batches leave about a second between images. Waiting this long for an empty queue keeps us out of those gaps.
@@ -141,6 +143,11 @@ class Creator:
             raise BadRequest(f"kind must be one of: {', '.join(KINDS)}")
         answers = clean_answers(answers)
         with self._mutex:
+            folder = self.root / "characters"
+            if folder.exists() and sum(TOKEN.fullmatch(p.name) is not None for p in folder.iterdir()) >= MAX_CHARACTERS:
+                raise Busy(f"the creator is full, at {MAX_CHARACTERS} characters; please ask the owner to clear some out")
+            if kind != "player" and not by_owner and sum(c["status"] == "suggested" for c in self.list_all()) >= MAX_SUGGESTIONS:
+                raise Busy(f"{MAX_SUGGESTIONS} suggestions are already waiting for review; please try again once the owner has been through them")
             now = self.now()
             cid = secrets.token_urlsafe(24)
             return self._save({
@@ -154,11 +161,24 @@ class Creator:
             return self._view(self._load(cid), self._jobs())
 
     def list_all(self) -> list[dict]:
+        """Everyone, by name, with anything unreadable or half-deleted first and flagged so the owner can delete it."""
         with self._mutex:
-            jobs = self._jobs()
+            try:
+                jobs = self._jobs()
+            except ValueError:
+                jobs = []   # the worker reports this one; the owner still needs the list
             folder = self.root / "characters"
-            found = [self._view(self._load(p.name), jobs) for p in folder.iterdir() if TOKEN.fullmatch(p.name)] if folder.exists() else []
-        return sorted(found, key=lambda r: (r["answers"]["name"].lower(), r["id"]))
+            found = []
+            for p in folder.iterdir() if folder.exists() else ():
+                if not TOKEN.fullmatch(p.name):
+                    continue
+                try:
+                    view = self._view(self._load(p.name), jobs)
+                    view["answers"]["name"].lower()
+                    found.append(view)
+                except (KeyError, ValueError, TypeError, AttributeError, OSError):
+                    found.append({"id": p.name, "damaged": True, "status": "damaged", "kind": "", "answers": {"name": ""}})
+        return sorted(found, key=lambda r: ("damaged" not in r, r["answers"]["name"].lower(), r["id"]))
 
     def update_answers(self, cid: str, answers) -> dict:
         with self._mutex:
@@ -332,9 +352,28 @@ class Creator:
 
     def delete(self, cid: str) -> None:
         with self._mutex:
-            self._load(cid)
-            self._write_jobs([j for j in self._jobs() if j["character"] != cid])
-            shutil.rmtree(self._dir(cid))
+            folder = self._dir(cid)
+            if not folder.exists():
+                raise KeyError(cid)
+            jobs = self._jobs()
+            for job in jobs:
+                if job["character"] == cid and job["status"] in ACTIVE:
+                    self._gpu_owed = True
+                    for item in job["items"]:
+                        if item["comfy_id"] and not item["done"]:
+                            self._cancel_render(item["comfy_id"])
+            self._write_jobs([j for j in jobs if j["character"] != cid])
+            shutil.rmtree(folder)
+
+    def _cancel_render(self, comfy_id: str) -> None:
+        try:
+            queue = self.comfy.queue()
+            if comfy_id in {q[1] for q in queue["queue_pending"]}:
+                self.comfy.cancel(comfy_id)
+            elif comfy_id in {q[1] for q in queue["queue_running"]}:
+                self.comfy.interrupt(comfy_id)
+        except OSError:
+            pass   # best effort: it finishes unseen, and deleting mustn't depend on ComfyUI being up
 
     def image_path(self, cid: str, name: str) -> Path:
         if not NAME.fullmatch(name):
@@ -508,6 +547,10 @@ def export(root: Path, cid: str, designs_dir: Path, design_dir: Path) -> Path:
     if a.get("signature"):
         design.notes.append(f"signature item, in the tags and not in held: {a['signature']}. Move it to held by hand if it floats on close-ups.")
     validate(design)
+    try:
+        picked = creator.image_path(cid, record["picked"])
+    except KeyError:
+        raise BadRequest("the picked image is missing, so pick another one first") from None
     slug = design.slug
     if not slug:
         raise BadRequest("this name has no letters a file name can use: edit the name first")
@@ -515,10 +558,17 @@ def export(root: Path, cid: str, designs_dir: Path, design_dir: Path) -> Path:
     folder = Path(design_dir) / slug
     if path.exists() or folder.exists():
         raise BadRequest(f"{slug} already exists: rename this character first")
-    image = folder / "candidates" / f"r1-c1-{design.seed}.png"
-    image.parent.mkdir(parents=True)
-    shutil.copyfile(creator.image_path(cid, record["picked"]), image)
-    save_design(design, path)
+    fd, tmp = tempfile.mkstemp(dir=designs_dir, suffix=".tmp")   # not *.toml, so load_designs can't read it half-written
+    os.close(fd)
+    try:
+        save_design(design, Path(tmp))
+        _write_bytes_atomic(folder / "candidates" / f"r1-c1-{design.seed}.png", picked.read_bytes())
+        os.link(tmp, path)   # all or nothing, and it can't replace a design that appeared meanwhile
+        os.chmod(path, 0o644)   # mkstemp's 0o600 would make it unreadable to anyone else who shares the repo
+    except FileExistsError:
+        raise BadRequest(f"{slug} already exists: rename this character first") from None
+    finally:
+        os.unlink(tmp)
     return path
 
 

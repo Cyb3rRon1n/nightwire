@@ -21,11 +21,14 @@ class FakeComfy:
         self.freed = self.ollama_freed = 0
         self.down = self.refuse = False
         self.image_error = self.submit_error = None
+        self.cancelled, self.interrupted, self.pending = [], [], False
 
     def queue(self):
         if self.down:
             raise urllib.error.URLError("down")
         running = (["someone-else"] if self.others_running else []) + ([self.current] if self.current else [])
+        if self.pending:
+            return {"queue_running": [], "queue_pending": [[0, c] for c in running]}
         return {"queue_running": [[0, c] for c in running], "queue_pending": []}
 
     def submit(self, wf):
@@ -54,6 +57,12 @@ class FakeComfy:
 
     def free_comfy(self):
         self.freed += 1
+
+    def cancel(self, cid):
+        self.cancelled.append(cid)
+
+    def interrupt(self, cid):
+        self.interrupted.append(cid)
 
     def finish(self):
         self.done[self.current] = {"status": {"completed": True, "status_str": "success"},
@@ -795,9 +804,124 @@ def test_delete_removes_the_character_and_its_queued_work(creator, comfy):
     with pytest.raises(KeyError):
         creator.get(cid)
     assert not (creator.root / "characters" / cid).exists()
+    assert comfy.interrupted == ["c1"] and comfy.cancelled == []
     comfy.finish()
     creator.tick()
     assert len(comfy.submitted) == 1 and not (creator.root / "characters" / cid).exists()
+
+
+def test_delete_cancels_a_render_still_waiting_in_comfyui(creator, comfy):
+    cid = in_line(creator, comfy)
+    creator.tick()
+    comfy.pending = True
+    creator.delete(cid)
+    assert comfy.cancelled == ["c1"] and comfy.interrupted == []
+
+
+def test_delete_of_a_job_not_yet_submitted_leaves_comfyui_alone(creator, comfy):
+    first, second = in_line(creator, comfy), in_line(creator, comfy)
+    creator.tick()
+    creator.delete(second)
+    assert comfy.cancelled == [] and comfy.interrupted == []
+    assert creator.get(first)["queue"]["position"] == 1
+    assert [j["character"] for j in creator._jobs()] == [first]
+
+
+def test_delete_doesnt_touch_someone_elses_render(creator, comfy):
+    cid = in_line(creator, comfy)
+    creator.tick()
+    comfy.lose()              # ours has gone
+    comfy.others_running = True
+    creator.delete(cid)
+    assert comfy.cancelled == [] and comfy.interrupted == []
+
+
+def test_delete_works_with_comfyui_down(creator, comfy):
+    cid = in_line(creator, comfy)
+    creator.tick()
+    comfy.down = True
+    creator.delete(cid)
+    assert not (creator.root / "characters" / cid).exists() and creator._jobs() == []
+
+
+def test_deleting_the_last_job_still_hands_the_gpu_back(creator, comfy):
+    cid = in_line(creator, comfy)
+    creator.tick()
+    creator.delete(cid)
+    comfy.lose()
+    creator.tick()
+    assert comfy.freed == 1
+
+
+def test_comfy_interrupt_names_the_render():
+    calls = []
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):
+            calls.append((self.path, self.rfile.read(int(self.headers["Content-Length"]))))
+            self.send_response(200)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+        def log_message(self, *args):
+            pass
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, args=(0.01,), daemon=True).start()
+    try:
+        Comfy(f"http://127.0.0.1:{server.server_port}", "http://127.0.0.1:9").interrupt("abc")
+    finally:
+        server.shutdown()
+    assert calls == [("/interrupt", b'{"prompt_id": "abc"}')]
+
+
+@pytest.mark.parametrize("damage", ["{broken", '"not a record"', '{"id": "x"}', "[]", None])
+def test_list_all_flags_a_bad_entry_and_keeps_the_rest(creator, damage):
+    good = creator.create("player", GOOD, by_owner=False)["id"]
+    bad = creator.create("player", GOOD, by_owner=False)["id"]
+    path = creator.root / "characters" / bad / "character.json"
+    if damage is None:
+        path.unlink()   # half-deleted
+    else:
+        path.write_text(damage)
+    got = {c["id"]: c for c in creator.list_all()}
+    assert set(got) == {good, bad}
+    assert got[bad]["damaged"] is True and got[bad]["status"] == "damaged" and "damaged" not in got[good]
+    assert creator.list_all()[0]["id"] == bad   # first, so it's seen
+    creator.delete(bad)
+    assert [c["id"] for c in creator.list_all()] == [good]
+    if damage is not None:
+        assert not path.exists()
+
+
+def test_list_all_skips_stray_files(creator):
+    cid = creator.create("player", GOOD, by_owner=False)["id"]
+    (creator.root / "characters" / "stray.tmp").write_text("x")
+    assert [c["id"] for c in creator.list_all()] == [cid]
+
+
+def test_list_all_survives_a_damaged_queue_file(creator):
+    cid = creator.create("player", GOOD, by_owner=False)["id"]
+    creator.queue_file.write_text("{broken")
+    assert [c["id"] for c in creator.list_all()] == [cid]
+    assert creator.queue_file.read_text() == "{broken"
+
+
+def test_store_caps_have_a_clear_message(creator, monkeypatch):
+    assert cc.MAX_CHARACTERS == 500 and cc.MAX_SUGGESTIONS == 50
+    monkeypatch.setattr(cc, "MAX_SUGGESTIONS", 2)
+    monkeypatch.setattr(cc, "MAX_CHARACTERS", 4)
+    first = creator.create("npc", GOOD, by_owner=False)["id"]
+    creator.create("ai", GOOD, by_owner=False)
+    with pytest.raises(Busy, match="suggestions"):
+        creator.create("npc", GOOD, by_owner=False)
+    assert creator.create("npc", GOOD, by_owner=True)["status"] == "draft"   # the owner's own aren't suggestions
+    creator.accept(first)    # one fewer waiting
+    creator.create("player", GOOD, by_owner=False)
+    with pytest.raises(Busy, match="4"):
+        creator.create("player", GOOD, by_owner=False)
+    with pytest.raises(Busy, match="4"):
+        creator.create("npc", GOOD, by_owner=True)
 
 
 def test_list_all_is_everyone_without_leaking_workflows(creator):
@@ -965,6 +1089,27 @@ def test_export_refuses_a_name_with_no_usable_slug(creator, comfy, tmp_path):
     cid = picked_npc(creator, comfy, name="夜")
     with pytest.raises(BadRequest, match="name"):
         run_export(creator, cid, tmp_path)
+
+
+def test_export_checks_the_image_before_creating_anything(creator, comfy, tmp_path):
+    cid = picked_npc(creator, comfy)
+    creator.image_path(cid, creator.get(cid)["picked"]).unlink()
+    with pytest.raises(BadRequest, match="image"):
+        run_export(creator, cid, tmp_path)
+    assert not (tmp_path / "design-data").exists() and list((tmp_path / "designs").iterdir()) == []
+
+
+def test_export_leaves_no_temp_files_and_a_failed_write_leaves_no_toml(creator, comfy, tmp_path, monkeypatch):
+    cid = picked_npc(creator, comfy)
+    monkeypatch.setattr(cc, "save_design", lambda d, path: (path.write_text("half"), (_ for _ in ()).throw(OSError("full")))[1])
+    with pytest.raises(OSError):
+        run_export(creator, cid, tmp_path)
+    assert list((tmp_path / "designs").iterdir()) == []
+    monkeypatch.undo()
+    no_quiet = creator.get(cid)
+    assert no_quiet["picked"]
+    path, designs, _ = run_export(creator, cid, tmp_path)
+    assert [p.name for p in designs.iterdir()] == ["vex.toml"] and path.read_text().startswith("name")
 
 
 def test_export_unknown_character_is_a_keyerror(creator, tmp_path):

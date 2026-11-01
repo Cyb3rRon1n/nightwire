@@ -279,6 +279,24 @@ def test_only_the_owner_route_lists_characters(api):
     assert listing["characters"][0]["answers"]["name"] == "Aki"
 
 
+def test_a_damaged_character_doesnt_take_down_the_owner_list(api):
+    url, creator, _ = api
+    good, bad = new(url), new(url)
+    (creator.root / "characters" / bad / "character.json").write_text("{broken")
+    status, listing = call(f"{url}/owner/{OWNER}/characters")
+    assert status == 200 and {c["id"]: c.get("damaged", False) for c in listing["characters"]} == {good: False, bad: True}
+    assert call(f"{url}/owner/{OWNER}/characters/{bad}", "DELETE", {})[0] == 200
+    assert [c["id"] for c in call(f"{url}/owner/{OWNER}/characters")[1]["characters"]] == [good]
+
+
+def test_full_store_is_429_with_a_clear_message(api, monkeypatch):
+    url, _, _ = api
+    monkeypatch.setattr(cc, "MAX_SUGGESTIONS", 1)
+    new(url, "npc")
+    status, body = call(f"{url}/characters", "POST", {"kind": "ai", "answers": GOOD})
+    assert status == 429 and "suggestions" in body["error"]
+
+
 def test_comfy_being_down_doesnt_stop_anyone_getting_in_line(tmp_path):
     creator = cc.Creator(tmp_path, Comfy("http://127.0.0.1:9", "http://127.0.0.1:9"))
     server = cc.make_server("127.0.0.1", 0, creator, OWNER)
