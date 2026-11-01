@@ -17,6 +17,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "pytest-asyncio>=0.24", "pillow>=10"]
 design = ["pillow>=10"]
+qa = ["dghs-imgutils", "onnxruntime"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -27,4 +28,4 @@ include = ["ruleset", "engine", "server", "narrator", "tools"]
 
 [tool.setuptools.package-data]
 narrator = ["worlds/*.toml", "worlds/designs/*.toml"]
-tools = ["design_picker.html", "image_studio.html"]
+tools = ["design_picker.html", "design_review.html", "image_studio.html"]

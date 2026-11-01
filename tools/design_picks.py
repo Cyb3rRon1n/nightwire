@@ -8,6 +8,10 @@ PUT    /designs/api/picks/<slug>  {"action": "pick", "n": 2, "round": 1}
                                   {"action": "reroll", "note": "older"} | {"action": "skip"}
 DELETE /designs/api/picks/<slug>  undo
 
+GET    /designs/api/reviews         -> {slug: {verdict, note, v, at}}
+PUT    /designs/api/reviews/<slug>  {"verdict": "ok", "v": "<sheet version>"} | {"verdict": "fix", "note": "...", "v": "..."}
+DELETE /designs/api/reviews/<slug>  undo
+
 There's no login: like the rest of the dashboard it relies on being LAN/Tailscale only. Requiring
 a JSON content type stops other websites writing through the owner's browser.
 """
@@ -22,6 +26,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 PREFIX = "/designs/api/picks"
+REVIEWS = "/designs/api/reviews"
 MAX_BODY = 4096
 MAX_NOTE = 500
 
@@ -55,6 +60,22 @@ def validate(slug: str, body, designs_dir: Path) -> dict:
     raise BadPick("unknown action")
 
 
+def validate_review(slug: str, body, designs_dir: Path) -> dict:
+    """The owner's verdict on a rendered sheet. `v` ties it to one render, so a re-render asks again."""
+    if slug not in json.loads((designs_dir / "rounds.json").read_text()):
+        raise BadPick("unknown design")
+    if not isinstance(body, dict):
+        raise BadPick("expected an object")
+    verdict, note, v = body.get("verdict"), body.get("note", ""), body.get("v")
+    if not isinstance(v, str) or not 0 < len(v) <= 40:
+        raise BadPick("missing sheet version")
+    if verdict == "ok":
+        return {"verdict": verdict, "note": "", "v": v}
+    if verdict == "fix" and isinstance(note, str) and note.strip() and len(note) <= MAX_NOTE:
+        return {"verdict": verdict, "note": note.strip(), "v": v}
+    raise BadPick(f"a fix needs a note of up to {MAX_NOTE} characters")
+
+
 def write_json_atomic(path: Path, data) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
@@ -86,7 +107,8 @@ class Store:
 
 
 def make_server(host: str, port: int, data: Path, designs_dir: Path) -> ThreadingHTTPServer:
-    store = Store(Path(data))
+    data = Path(data)
+    routes = {PREFIX: (Store(data), validate), REVIEWS: (Store(data.with_name("reviews.json")), validate_review)}
     designs_dir = Path(designs_dir)
 
     class Handler(BaseHTTPRequestHandler):
@@ -99,22 +121,28 @@ def make_server(host: str, port: int, data: Path, designs_dir: Path) -> Threadin
             self.end_headers()
             self.wfile.write(raw)
 
-        def _slug(self) -> str | None:
+        def _route(self):
+            """(store, validator, slug) for a /<slug> path, or None."""
             path = self.path.split("?", 1)[0]
-            return path[len(PREFIX) + 1:] if path.startswith(PREFIX + "/") else None
+            for prefix, (store, check) in routes.items():
+                if path.startswith(prefix + "/"):
+                    return store, check, path[len(prefix) + 1:]
+            return None
 
         def do_GET(self):
-            if self.path.split("?", 1)[0] != PREFIX:
+            route = routes.get(self.path.split("?", 1)[0])
+            if route is None:
                 return self._send(404, {"error": "not found"})
             try:
-                self._send(200, store.read())
+                self._send(200, route[0].read())
             except (OSError, ValueError) as e:
                 self._send(500, {"error": f"picks file unreadable: {e}"})
 
         def do_PUT(self):
-            slug = self._slug()
-            if slug is None:
+            route = self._route()
+            if route is None:
                 return self._send(404, {"error": "not found"})
+            store, check, slug = route
             self.close_connection = True  # any refused body stays unread
             if self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json":
                 return self._send(415, {"error": "expected JSON"})
@@ -125,20 +153,20 @@ def make_server(host: str, port: int, data: Path, designs_dir: Path) -> Threadin
             if not 0 <= length <= MAX_BODY:
                 return self._send(413, {"error": "too large"})
             try:
-                record = validate(slug, json.loads(self.rfile.read(length)), designs_dir)
+                record = check(slug, json.loads(self.rfile.read(length)), designs_dir)
             except BadPick as e:
                 return self._send(400, {"error": str(e)})
             except json.JSONDecodeError:
                 return self._send(400, {"error": "bad JSON"})
-            self._write(slug, record)
+            self._write(store, slug, record)
 
         def do_DELETE(self):
-            slug = self._slug()
-            if slug is None:
+            route = self._route()
+            if route is None:
                 return self._send(404, {"error": "not found"})
-            self._write(slug, None)
+            self._write(route[0], route[2], None)
 
-        def _write(self, slug: str, record: dict | None) -> None:
+        def _write(self, store: Store, slug: str, record: dict | None) -> None:
             try:
                 self._send(200, store.change(slug, record))
             except (OSError, ValueError) as e:
