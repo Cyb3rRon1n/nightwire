@@ -47,7 +47,16 @@ MATURE_18_OTHER = "adult, mature face, adult proportions"
 MATURE_18_NEG = "child face, baby face, round face, youthful face, oversized eyes, small nose, loli face, underage"
 TURNAROUND = ("character sheet, reference sheet, turnaround, multiple views, front view, from side, "
               "from behind, full body, standing")
-KINDS = ("scene", "subject", "crowd", "portrait", "character", "plain")
+# The owner's favourite look (2026-10-31, ComfyUI mature_lab_00103_/00120_): a close, moody bust in the in-game
+# neon style with NO character tags - adding a design's tags widens the shot and loses the mood.
+CLOSEUP_NEGATIVE = ("child, loli, shota, underage, teen, petite, flat chest, young, chibi, kid, toddler, nsfw, nude, "
+                    "nipples, explicit, worst quality, old, early, low quality, lowres, signature, username, logo, "
+                    "bad hands, mutated hands, mammal, anthro, furry, ambiguous form, feral, semi-anthro, watermark, "
+                    "jpeg artifacts, blurry, worst aesthetic, flat color, simple background, blue skin, colored skin, "
+                    "monochrome, limited palette, scenery, background clutter, inconsistent outfit, different clothes, "
+                    "different hairstyle, aged down, kawaii, moe, cute, big eyes, deformed, wide hips, thick thighs, "
+                    "plump, chubby, gigantic breasts, huge breasts, curvy")
+KINDS = ("scene", "subject", "crowd", "portrait", "closeup", "character", "plain")
 
 
 def build(prompt: str, kind: str, raw: bool, negative: str, size: str, seed: int, *, day: bool = False,
@@ -65,6 +74,10 @@ def build(prompt: str, kind: str, raw: bool, negative: str, size: str, seed: int
         neg = ", ".join(x for x in (NEGATIVE, CHARACTER_NEGATIVE_EXTRA, MATURE_18_NEG if mature else "",
                                     "full body, feet, shoes, boots, legs, lower body",
                                     "scenery, background clutter" if sheet_style else "", negative) if x)
+    elif kind == "closeup":
+        pos = ", ".join(x for x in (QUALITY.replace("safe", "sensitive"), subject, "solo, upper body, portrait, "
+                                    "looking at viewer", style, "fully clothed", prompt) if x)
+        neg = ", ".join(x for x in (CLOSEUP_NEGATIVE, negative) if x)
     elif kind == "character":
         pos = ", ".join([CHARACTER_QUALITY, CHARACTER_SHEET_STYLE, CHARACTER_MATURE, adult,
                          TURNAROUND, subject, prompt])
@@ -109,7 +122,7 @@ async def main(argv: list[str]) -> int:
                                     "narrator/worlds/designs/, so the render matches its Nightwire sheets")
     p.add_argument("--kind", choices=KINDS, default=None,
                    help="scene: game style, no people; subject: in-world scene with a person; crowd: in-world crowd; "
-                        "portrait: in-world bust portrait; character: mature character sheet; plain: game style, no subject")
+                        "portrait: in-world bust portrait; closeup: moody close bust, few tags; character: mature character sheet; plain: game style, no subject")
     p.add_argument("--size", choices=sorted(SIZES), default="base")
     p.add_argument("--day", action="store_true", help="daylight style instead of the default night look")
     p.add_argument("--negative", default="")
