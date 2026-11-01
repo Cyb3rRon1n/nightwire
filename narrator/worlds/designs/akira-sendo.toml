@@ -1,0 +1,10 @@
+name = "Akira Sendo"
+kind = "character"
+source = "new:Akira Sendo"
+presentation = "masculine"
+tags = "long hair, silver hair, low ponytail, calm expression, purple eyes, mature male, slender, tall, handsome, ronin, dark haori, techwear underneath, high collar, katana, glowing katana, cybernetic spine, data cables"
+negative = "child, teen, young, bishounen, pretty boy"
+status = "candidates"
+seed = 0
+palette = []
+notes = ["2026-11-01 draft: freelance blade for hire, The Loop", "2026-10-31 round 1: 4 candidates"]

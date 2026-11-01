@@ -1,0 +1,10 @@
+name = "Kaede Mori"
+kind = "character"
+source = "new:Kaede Mori"
+presentation = "feminine"
+tags = "ponytail, long hair, orange hair, streaked hair, grin, green eyes, mature female, slender, narrow waist, large breasts, long legs, toned, beautiful face, idol, courier, motorcycle racing suit, unzipped, cropped jacket, gloves, helmet under arm, led trim, mechanical left leg, human right leg"
+negative = "two mechanical legs, wide hips, thick thighs, plump, chubby, gigantic breasts, huge breasts, curvy, cute, kawaii, big eyes, child"
+status = "candidates"
+seed = 0
+palette = []
+notes = ["2026-11-01 draft: Yomi Line courier and street racer", "2026-10-31 round 1: 4 candidates"]

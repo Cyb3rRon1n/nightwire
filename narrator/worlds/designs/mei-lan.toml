@@ -1,0 +1,10 @@
+name = "Mei Lan"
+kind = "character"
+source = "new:Mei Lan"
+presentation = "feminine"
+tags = "long hair, black hair, hair bun, hair ornament, red lips, half-closed eyes, mature female, slender, narrow waist, large breasts, long legs, beautiful face, idol, nightclub singer, black qipao, side slit, led trim, sheer gloves, high heels, microphone, glowing tattoo on neck"
+negative = "wide hips, thick thighs, plump, chubby, gigantic breasts, huge breasts, curvy, cute, kawaii, big eyes, child"
+status = "candidates"
+seed = 0
+palette = []
+notes = ["2026-11-01 draft: Hanabira-cho club singer and information broker", "2026-10-31 round 1: 4 candidates"]
