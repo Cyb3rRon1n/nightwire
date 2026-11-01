@@ -361,6 +361,7 @@ function toolbar(record) {
   if (confirming === "lock") {
     parts.push(el("div", {class: "status", role: "group", "aria-label": "Confirm lock in"},
       el("p", {style: "margin:0", text: "Lock in this character? You can't change the answers or the pick afterwards, though each sheet can be redone."}),
+      record.lock_warning ? el("p", {style: "margin:8px 0 0;font-weight:600", text: record.lock_warning}) : null,
       el("div", {class: "row"},
         el("button", {class: "go", text: "Yes, lock in", onclick: () => { confirming = null; act(() => api("POST", `${path}/lock`)); }}),
         el("button", {text: "Not yet", onclick: () => { confirming = null; draw(); }}))));

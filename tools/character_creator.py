@@ -119,7 +119,22 @@ class Creator:
         queue = None
         if job:
             queue = {"position": active.index(job) + 1 if job in active else None, "label": job["label"], "error": job["error"]}
-        return {**record, "queue": queue}
+        return {**record, "queue": queue, "lock_warning": Creator._lock_warning(record)}
+
+    @staticmethod
+    def _lock_warning(record: dict) -> str:
+        """Sheets are text renders from the answers, so say so when that can't match the picked image."""
+        picked = next((r for r in record["rounds"] if record["picked"] in r["images"]), None)
+        if picked is None or record["status"] == "locked":
+            return ""
+        reasons = []
+        if picked["type"] == "vary":
+            reasons.append("the picked image is a variation")
+        if picked.get("answers") != record["answers"]:
+            reasons.append("the answers have changed since the picked image was drawn")
+        if not reasons:
+            return ""
+        return f"Sheets are redrawn from the answers, so they can differ from the picked image: {' and '.join(reasons)}."
 
     def create(self, kind, answers, by_owner: bool) -> dict:
         if kind not in KINDS:
@@ -181,7 +196,7 @@ class Creator:
             raise Busy(f"{MAX_WAITING} batches are already waiting; please try again in a few minutes")
         jobs = [j for j in jobs if j["character"] != cid]   # what's left of it is a failed batch this replaces
         self._write_jobs(jobs + [{"id": uuid.uuid4().hex, "character": cid, "label": label, "round": round_no, "status": "waiting",
-                                  "items": items, "error": "", "note": note, "from": source}])
+                                  "items": items, "error": "", "note": note, "from": source, "answers": record["answers"]}])
 
     def _candidates(self, record: dict, round_no: int, note: str, prepare=lambda wf: wf) -> list[dict]:
         pos, neg = candidate_prompt(to_design(record["answers"], record["kind"], record["seed"]))
@@ -240,7 +255,7 @@ class Creator:
             record = self._load(cid)
             self._can_render(record)
             record["picked"] = self._image(record, round_no, n)
-            record["seed"] = int(record["picked"].rsplit("-", 1)[1].removesuffix(".png"))   # sheets render from the picked look
+            record["seed"] = int(record["picked"].rsplit("-", 1)[1].removesuffix(".png"))
             return self._save(record)
 
     def favourite(self, cid: str, round_no, n) -> dict:
@@ -255,15 +270,22 @@ class Creator:
 
     def _sheet_items(self, record: dict, sheet: str, seed: int) -> list[dict]:
         design = to_design(record["answers"], record["kind"], seed, close_up=sheet == "expressions")
+        picked = next(r for r in record["rounds"] if record["picked"] in r["images"])
+        note = clean_note(picked["note"], record["answers"])
+
+        def positive(pos: str) -> str:
+            pos = rated(pos, record["answers"])
+            return f"{pos}, {note}" if note else pos
+
         if sheet == "expressions":
             items = []
             for i, (_label, pos, neg) in enumerate(expression_prompts(design), 1):
-                wf = candidate_workflow(rated(pos, record["answers"]), neg, seed)
+                wf = candidate_workflow(positive(pos), neg, seed)
                 wf["5"]["inputs"].update(width=EXPRESSION_SIZE[0], height=EXPRESSION_SIZE[1])
                 items.append((f"expression-{i}.png", wf))
         else:
             pos, neg = sheet_prompt(design, sheet)
-            items = [(f"{sheet}.png", sheet_workflow(rated(pos, record["answers"]), neg, seed))]
+            items = [(f"{sheet}.png", sheet_workflow(positive(pos), neg, seed))]
         return [{"name": name, "workflow": _private(wf), "comfy_id": None, "done": False} for name, wf in items]
 
     def lock(self, cid: str) -> dict:
@@ -334,7 +356,7 @@ class Creator:
                 record["sheets"].update((n.removesuffix(".png"), n) for n in names if n not in expressions)
             elif not any(r["n"] == job["round"] for r in record["rounds"]):   # a crash before the queue was saved repeats this step
                 record["rounds"].append({"n": job["round"], "type": "vary" if job["label"] == "variations" else "reroll",
-                                         "from": job["from"], "note": job["note"], "images": names})
+                                         "from": job["from"], "note": job["note"], "answers": job["answers"], "images": names})
             self._save(record)
         except KeyError as e:
             if e.args and e.args[0] == job["character"]:   # the character's gone, and its images with it

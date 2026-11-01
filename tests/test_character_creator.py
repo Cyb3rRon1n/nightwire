@@ -622,12 +622,68 @@ def test_lock_needs_a_pick_then_queues_all_sheets(creator, comfy):
         assert "katana" not in text(wf, "7") and "katana" not in text(wf)   # can't float, can't negate
     assert "katana" in text(sheets[0]) and "katana" in text(sheets[1])
     assert all("katana" not in text(wf, "7") for wf in sheets)
-    assert {wf["3"]["inputs"]["seed"] for wf in sheets} == {seed}   # the picked look, as in approve then sheets
+    assert {wf["3"]["inputs"]["seed"] for wf in sheets} == {seed}   # the picked image's seed, as in approve then sheets
     got = creator.get(cid)
     assert got["sheets"] == {"turnaround": "turnaround.png", "colorguide": "colorguide.png",
                              "expressions": [f"expression-{i}.png" for i in range(1, 7)]}
     for name in ("turnaround.png", "colorguide.png", "expression-6.png"):
         assert creator.image_path(cid, name).exists()
+
+
+def test_the_picked_rounds_note_reaches_every_sheet(creator, comfy):
+    cid = creator.create("player", GOOD, by_owner=False)["id"]
+    creator.generate(cid, note="(red scarf:1.5)")
+    render(creator, comfy)
+    creator.generate(cid, note="blue scarf")
+    render(creator, comfy)
+    creator.pick(cid, 1, 1)
+    before = len(comfy.submitted)
+    creator.lock(cid)
+    render(creator, comfy)
+    sheets = comfy.submitted[before:]
+    assert len(sheets) == 8
+    assert all("red scarf" in text(wf) and "blue scarf" not in text(wf) and "1.5" not in text(wf) for wf in sheets)
+    creator.redo_sheet(cid, "turnaround")
+    render(creator, comfy)
+    assert "red scarf" in text(comfy.submitted[-1])
+
+
+def test_a_note_is_cleaned_again_on_its_way_to_the_sheets(creator, comfy):
+    cid = creator.create("player", GOOD, by_owner=False)["id"]
+    creator.generate(cid, note="red scarf")
+    render(creator, comfy)
+    creator.pick(cid, 1, 1)
+    path = creator.root / "characters" / cid / "character.json"
+    path.write_text(path.read_text().replace('"note": "red scarf"', '"note": "nude"'))
+    with pytest.raises(BadRequest, match="nude"):
+        creator.lock(cid)
+    assert creator.get(cid)["status"] == "draft"
+
+
+def test_no_warning_when_the_sheets_can_follow_the_picked_image(creator, comfy):
+    cid = with_round(creator, comfy)
+    assert creator.get(cid)["lock_warning"] == ""
+    assert creator.pick(cid, 1, 1)["lock_warning"] == ""
+
+
+def test_warns_when_answers_changed_since_the_picked_image(creator, comfy):
+    cid = with_round(creator, comfy)
+    creator.pick(cid, 1, 1)
+    got = creator.update_answers(cid, {**GOOD, "outfit": "trench coat"})
+    assert "redrawn from the answers" in got["lock_warning"] and "changed" in got["lock_warning"]
+    creator.generate(cid)
+    render(creator, comfy)
+    assert creator.pick(cid, 2, 1)["lock_warning"] == ""   # the new round was drawn from the new answers
+    assert creator.pick(cid, 1, 1)["lock_warning"]
+
+
+def test_warns_when_the_picked_image_is_a_variation(creator, comfy):
+    cid = with_round(creator, comfy)
+    creator.vary(cid, 1, 1, "subtle")
+    render(creator, comfy)
+    got = creator.pick(cid, 2, 1)
+    assert "redrawn from the answers" in got["lock_warning"] and "variation" in got["lock_warning"]
+    assert creator.lock(cid)["lock_warning"] == ""   # nothing left to warn about
 
 
 def test_locked_character_can_redo_a_sheet_but_nothing_else(creator, comfy):
