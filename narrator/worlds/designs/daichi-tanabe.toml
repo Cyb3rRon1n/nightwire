@@ -8,5 +8,5 @@ held = []
 negative = "two mechanical arms, child, teen, young, bishounen, pretty boy, eyepatch"
 status = "approved"
 seed = 810349481
-palette = ["#4e4e4d", "#4e4d4d", "#08040b", "#2c1d35", "#130d1a", "#91708f"]
+palette = ["#4d4d4c", "#4d4c4c", "#4e4e4d", "#18121d", "#322536", "#070408"]
 notes = ["2026-11-01 draft: Ikebe Low gang enforcer, irezumi and chrome jaw", "2026-10-31 round 1: 4 candidates", "2026-11-01 approved r1 #4 (seed 810349481)"]

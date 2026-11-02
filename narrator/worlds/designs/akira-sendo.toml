@@ -8,5 +8,5 @@ held = ["katana", "glowing katana"]
 negative = "child, teen, young, bishounen, pretty boy"
 status = "approved"
 seed = 1591239200
-palette = ["#2e2e2e", "#0c0b12", "#2e2e2d", "#2f2f2f", "#191925", "#675575"]
+palette = ["#323232", "#0c0b10", "#323132", "#2c1f30", "#323231", "#686e84"]
 notes = ["2026-11-01 draft: freelance blade for hire, The Loop", "2026-10-31 round 1: 4 candidates", "2026-11-01 approved r1 #4 (seed 1591239200)"]
