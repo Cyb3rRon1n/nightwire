@@ -13,9 +13,10 @@ BASE_SIZE = (1216, 832)
 SHEET_SIZE = (3648, 2496)
 SHEET_STYLE = ("anime coloring, cel shading, thick outlines, official art, flat lighting, simple background, "
                "white background")
-# Turnarounds and colour guides: plain mid-grey and even light, so true colours can be judged (owner pick, 2026-11-01).
-CHARACTER_SHEET_STYLE = ("anime coloring, cel shading, thick outlines, official art, simple background, (grey background:1.3), "
-                         "even lighting, bright face, front lighting, natural skin, neon accents")
+# Turnarounds and colour guides: the portraits' drawn look under plain light on mid-grey, so a sheet shows the same
+# person in true colours (owner approved, 2026-11-02; glossy `official art` read as a different person).
+CHARACTER_SHEET_STYLE = ("anime screenshot, anime coloring, cel shading, thick outlines, simple background, (grey background:1.3), "
+                         "even lighting, front lighting, cyberpunk")
 _SHEET_GUARD = ("(realistic:1.4), (photorealistic:1.4), (photo (medium):1.3), (3d:1.3), (semi-realistic:1.3), painterly, oil painting, "
                 "(skin texture:1.3), pores, airbrushed, detailed skin, hairy, (shadow over face:1.2), (dark face:1.2), low key, "
                 "underexposed, silhouette, black background, multiple heads, extra heads, disembodied head, "
@@ -33,8 +34,6 @@ MOOD_SUFFIXES = ("night, neon lights", "rain, wet street", "dawn, sunrise, soft 
 _SHEET_TAGS = {
     "turnaround": ("character sheet, reference sheet, turnaround, multiple views, front view, from side, "
                    "from behind, full body, standing"),
-    "colorguide": ("character sheet, reference sheet, color guide, multiple views, full body, front view, "
-                   "from behind, close-up"),
 }
 # One image per expression, assembled into a grid: a single render drawing 6-8 heads picks its own layout, drifts
 # between panels and strands carried items in mid-air (owner audit, 2026-11-01).
@@ -59,7 +58,6 @@ _EXPRESSION_NEGATIVE = ("multiple views, character sheet, expression chart, turn
 _PORTRAIT_GUARD = ("realistic, photorealistic, photo (medium), 3d, semi-realistic, painterly, oil painting, skin texture, pores, "
                    "airbrushed, (blue skin:1.3), (colored skin:1.3), (grey skin:1.3), (shadow over face:1.2)")
 _PROPS_TAGS = "still life, no humans, object focus, multiple views, white background"
-_SIGNATURE_WORDS = ("mechanical", "cyber", "prosthetic", "robot", "chrome", "implant", "weapon", "sword", "gun")
 _PRESENTATION = {"feminine": "1girl", "masculine": "1boy", "androgynous": "1other"}
 
 
@@ -91,13 +89,6 @@ def _location_negative(d: Design) -> str:
     return _join(NEGATIVE, d.negative)
 
 
-def _signature_focus(d: Design) -> str:
-    for tag in (t.strip() for t in d.tags.split(",")):
-        if any(w in tag for w in _SIGNATURE_WORDS):
-            return f"{tag} focus"
-    return ""
-
-
 def candidate_prompt(d: Design) -> tuple[str, str]:
     if d.kind == "character":
         return sheet_prompt(d, "turnaround")
@@ -108,10 +99,11 @@ def sheet_prompt(d: Design, sheet: str, mood: str | None = None) -> tuple[str, s
     if d.kind == "character":
         if sheet not in CHARACTER_SHEETS:
             raise ValueError(f"{sheet!r} is not a character sheet")
+        if sheet == "colorguide":
+            raise ValueError("the colour guide is built from the turnaround, see colour_guide")
         if sheet == "portrait":
             return portrait_prompt(d)
-        extra = _signature_focus(d) if sheet == "colorguide" else ""
-        pos = _join(CHARACTER_QUALITY, CHARACTER_SHEET_STYLE, CHARACTER_MATURE, _SHEET_TAGS[sheet], extra, subject_for(d), ", ".join(d.required),
+        pos = _join(CHARACTER_QUALITY, CHARACTER_SHEET_STYLE, CHARACTER_MATURE, _SHEET_TAGS[sheet], subject_for(d), ", ".join(d.required),
                     ", ".join(t for t in (x.strip() for x in d.tags.split(",")) if t not in d.required))
         return pos, _styled_negative(d, _SHEET_GUARD)
     if sheet not in LOCATION_SHEETS:
@@ -226,25 +218,40 @@ def expression_grid(panels: list[tuple[str, bytes]], columns: int = 3) -> bytes:
     return out.getvalue()
 
 
-def flatten_background(png: bytes, grey: int = 128, tolerance: int = 28) -> bytes:
-    """Repaints everything connected to the picture's edge in one grey, so a whole cast's body sheets match. Prompts
-    alone landed anywhere from near-white to near-black (pilot, 2026-11-02). Thick outlines keep the fill out of the figures."""
-    from PIL import Image, ImageChops, ImageDraw, ImageFilter
+def flatten_background(png: bytes, grey: int = 128) -> bytes:
+    """Puts the figures on one flat grey, so a whole cast's body sheets match; prompts alone land anywhere from near-white
+    to near-black. A segmentation model, because colour fills ate dark dresses that matched a dark backdrop (pilot,
+    2026-11-02). Generated swatches go with the backdrop: the record's palette comes from extract_palette."""
+    import numpy as np
+    from imgutils.segment import segment_rgba_with_isnetis
+    from PIL import Image
     im = Image.open(io.BytesIO(png)).convert("RGB")
-    small = im.resize((im.width * 1024 // max(im.size), im.height * 1024 // max(im.size)), Image.LANCZOS)
-    marker = (255, 0, 254)  # no character sheet uses this exact colour
-    w, h = small.size
-    for x, y in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1), (w // 2, 0), (w // 2, h - 1), (0, h // 2), (w - 1, h // 2)):
-        if small.getpixel((x, y)) != marker:
-            ImageDraw.floodfill(small, (x, y), marker, thresh=tolerance)
-    mask = small.convert("RGB").point(lambda v: v).split()
-    is_bg = ImageChops.multiply(ImageChops.multiply(mask[0].point(lambda v: 255 * (v == 255)), mask[1].point(lambda v: 255 * (v == 0))),
-                                mask[2].point(lambda v: 255 * (v == 254)))
-    is_bg = is_bg.resize(im.size, Image.BILINEAR).filter(ImageFilter.GaussianBlur(1))
-    im.paste((grey, grey, grey), mask=is_bg)
+    alpha = np.clip((segment_rgba_with_isnetis(im)[0] - 0.25) / 0.5, 0, 1)  # the model is unsure on dark cloth: firm up its soft edges
+    im.paste((grey, grey, grey), mask=Image.fromarray(((1 - alpha) * 255).astype("uint8")))
     out = io.BytesIO()
     im.save(out, "PNG")
     return out.getvalue()
+
+
+def colour_guide(turnaround: bytes, palette: list[str], head: tuple[int, int, int, int] | None = None, grey: int = 128) -> bytes:
+    """The turnaround plus a close-up cropped from it and its palette. Built, not rendered: two separate renders of one
+    character never fully agreed on hair and outfit (pilot, 2026-11-02), and the reference has to have one answer."""
+    from PIL import Image, ImageDraw
+    im = Image.open(io.BytesIO(turnaround)).convert("RGB")
+    side = im.height // 2
+    out = Image.new("RGB", (im.width + side, im.height), (grey, grey, grey))
+    out.paste(im, (0, 0))
+    if head:
+        x0, y0, x1, y1 = head
+        pad = (x1 - x0) // 3
+        out.paste(im.crop((max(x0 - pad, 0), max(y0 - pad, 0), x1 + pad, y1 + pad)).resize((side, side), Image.LANCZOS), (im.width, 0))
+    draw = ImageDraw.Draw(out)
+    for i, colour in enumerate(palette):
+        top = side + i * side // max(len(palette), 1)
+        draw.rectangle((im.width, top, out.width, top + side // max(len(palette), 1)), fill=colour)
+    buf = io.BytesIO()
+    out.save(buf, "PNG")
+    return buf.getvalue()
 
 
 def join_strip(images: list[bytes]) -> bytes:
@@ -264,10 +271,17 @@ def extract_palette(png: bytes, n: int = 6, skip_background: bool = True) -> lis
     from PIL import Image
     img = Image.open(io.BytesIO(png)).convert("RGB")
     img.thumbnail((256, 256))
-    quantized = img.quantize(colors=n + 4)
+    quantized = img.quantize(colors=n + 18)
     flat = quantized.getpalette()
     counts = sorted(quantized.getcolors(), reverse=True)
     colors = [(c, tuple(flat[i * 3:i * 3 + 3])) for c, i in counts]
-    if skip_background:  # sheets sit on a white background
-        colors = [(c, rgb) for c, rgb in colors if min(rgb) < 235]
-    return ["#%02x%02x%02x" % rgb for _c, rgb in colors[:n]]
+    if skip_background:  # body sheets sit on flat mid-grey
+        colors = [(c, rgb) for c, rgb in colors if max(abs(v - 128) for v in rgb) > 12]
+    kept = []
+    for _c, rgb in colors:  # a dark outfit otherwise fills the palette with near-identical blacks
+        if all(sum(abs(a - b) for a, b in zip(rgb, other)) > 36 for other in kept):
+            kept.append(rgb)
+    # Most of the area first, then the strongest accents: small details like coloured hair tips rarely win on area.
+    main, rest = kept[:max(n - 2, 1)], kept[max(n - 2, 1):]
+    rest.sort(key=lambda rgb: max(rgb) - min(rgb), reverse=True)
+    return ["#%02x%02x%02x" % rgb for rgb in (main + rest)[:n]]

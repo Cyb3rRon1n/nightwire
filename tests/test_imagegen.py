@@ -56,7 +56,7 @@ def test_character_kind_matches_the_design_studio_sheet_composition():
     wf = build("android, blank eyes", "character", False, "", "base", 1, subject="1other")
     pos, neg = wf["6"]["inputs"]["text"], wf["7"]["inputs"]["text"]
     assert "character sheet, reference sheet, turnaround" in pos and "full body, standing" in pos
-    assert "1other" in pos and "grey background" in pos and "official art" in pos
+    assert "1other" in pos and "grey background" in pos and "even lighting" in pos
     assert "big eyes" in neg and "different hairstyle" in neg and "scenery" in neg
 
 
@@ -71,7 +71,7 @@ def test_mature_tags_are_adult_and_removable():
 def test_sheet_style_portrait_swaps_the_scene_look():
     wf = build("black hair", "portrait", False, "", "portrait", 1, sheet_style=True)
     pos = wf["6"]["inputs"]["text"]
-    assert "official art" in pos and "grey background" in pos and "anime screenshot" not in pos
+    assert "even lighting" in pos and "grey background" in pos and "neon lights" not in pos
     assert "scenery, background clutter" in wf["7"]["inputs"]["text"]
 
 
