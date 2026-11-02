@@ -85,10 +85,10 @@ async def test_sheets_for_character_and_location(studio):
         await ds.main(_args(studio, "approve", slug, "1"))
     backend.workflows.clear()
     assert await ds.main(_args(studio, "sheets", "--approved-missing"), backend=backend) == 0
-    assert sorted(p.name for p in (data / "mama-sato").glob("*.png")) == ["colorguide.png", "expressions.png", "turnaround.png"]
+    assert sorted(p.name for p in (data / "mama-sato").glob("*.png")) == ["colorguide.png", "expressions.png", "portrait.png", "turnaround.png"]
     assert sorted(p.name for p in (data / "izakaya").glob("*.png")) == ["alternate.png", "establishing.png", "moodkeys.png", "props.png"]
-    # turnaround + colorguide + 6 expression panels + establishing + alternate + props + 3 mood renders
-    assert len(backend.workflows) == 14
+    # turnaround + colorguide + portrait + 6 expression panels + establishing + alternate + props + 3 mood renders
+    assert len(backend.workflows) == 15
     assert load_design(designs / "mama-sato.toml").palette
     backend.workflows.clear()
     await ds.main(_args(studio, "sheets", "--approved-missing"), backend=backend)
@@ -143,7 +143,7 @@ async def test_reapprove_clears_sheets_and_rerenders(studio):
     assert d.palette == [] and not list((data / "mama-sato").glob("*.png"))
     backend.workflows.clear()
     await ds.main(_args(studio, "sheets", "--approved-missing"), backend=backend)
-    assert len(backend.workflows) == 8
+    assert len(backend.workflows) == 9
     assert load_design(designs / "mama-sato.toml").palette
 
 

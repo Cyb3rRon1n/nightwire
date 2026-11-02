@@ -200,3 +200,37 @@ def test_sheets_carry_the_record_and_no_generic_marks():
     assert pos.count("red hair") == 1 and "purple eyes" in pos
     assert "tattoo" not in pos and "piercing" not in pos and "floating object" in neg
 
+
+
+from narrator import design_sheets as ds  # noqa: E402
+
+
+def _portrait_design():
+    from narrator.designs import load_designs
+    from tools.design_studio import DESIGNS_DIR
+    return load_designs(DESIGNS_DIR)["mei-lan"]
+
+
+def test_portrait_uses_the_scene_look_with_the_character_and_stays_adult():
+    from narrator.image_prompt import STYLE
+    d = _portrait_design()
+    pos, neg = ds.portrait_prompt(d)
+    assert STYLE in pos and "portrait" in pos and "adult" in pos
+    assert all(t in pos for t in d.required)
+    assert all(h not in pos for h in d.held)
+    assert "child" in neg and "nude" in neg
+
+
+def test_portrait_allows_its_city_background_and_guards_the_skin():
+    pos, neg = ds.portrait_prompt(_portrait_design())
+    assert "scenery" not in neg and "simple background" not in neg
+    assert "blue skin" in neg and "realistic" in neg
+
+
+def test_portrait_is_a_character_sheet_at_expression_size():
+    d = _portrait_design()
+    assert "portrait" in ds.CHARACTER_SHEETS
+    assert ds.sheet_prompt(d, "portrait") == ds.portrait_prompt(d)
+    wf = ds.sheet_workflow(*ds.portrait_prompt(d), 1, size=ds.EXPRESSION_SIZE)
+    assert (wf["5"]["inputs"]["width"], wf["5"]["inputs"]["height"]) == ds.EXPRESSION_SIZE
+    assert wf["9"]["inputs"]["images"] == ["40", 0]  # the full-quality path, not a draft
