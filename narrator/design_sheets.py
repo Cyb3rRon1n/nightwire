@@ -22,7 +22,7 @@ CHARACTER_NEGATIVE_EXTRA = ("nude, nipples, pussy, penis, sex, explicit, loli, s
                             "teenage, aged down, chibi, kawaii, moe, cute, big eyes, deformed")
 SHEET_NEGATIVE_EXTRA = ("scenery, background clutter, inconsistent outfit, different clothes, different hairstyle, "
                         "floating object, mismatched footwear, extra arms, extra legs")
-CHARACTER_SHEETS = ("turnaround", "expressions", "colorguide")
+CHARACTER_SHEETS = ("turnaround", "expressions", "colorguide", "portrait")
 LOCATION_SHEETS = ("establishing", "alternate", "moodkeys", "props")
 MOOD_SUFFIXES = ("night, neon lights", "rain, wet street", "dawn, sunrise, soft light")
 _SHEET_TAGS = {
@@ -47,6 +47,9 @@ _EXPRESSION_NEGATIVE = ("multiple views, character sheet, expression chart, turn
                         "child face, baby face, round face, youthful face, cowboy shot, breast focus, cleavage, hand up, hands, hand on own face, hand on own chin, fingers, "
                         "holding, cigarette, smoking, floating object, extra hands, sharp teeth, vampire, monster, "
                         "pink skin, red skin, blue skin, purple skin, colored skin, monochrome, red theme, pink theme, neon lights, backlighting")
+# Neon light tints faces and pulls older men towards realism; these keep portraits in the same drawn style.
+_PORTRAIT_GUARD = ("realistic, photorealistic, photo (medium), 3d, semi-realistic, painterly, oil painting, skin texture, pores, "
+                   "airbrushed, (blue skin:1.3), (colored skin:1.3), (grey skin:1.3), (shadow over face:1.2)")
 _PROPS_TAGS = "still life, no humans, object focus, multiple views, white background"
 _SIGNATURE_WORDS = ("mechanical", "cyber", "prosthetic", "robot", "chrome", "implant", "weapon", "sword", "gun")
 _PRESENTATION = {"feminine": "1girl", "masculine": "1boy", "androgynous": "1other"}
@@ -89,6 +92,8 @@ def sheet_prompt(d: Design, sheet: str, mood: str | None = None) -> tuple[str, s
     if d.kind == "character":
         if sheet not in CHARACTER_SHEETS:
             raise ValueError(f"{sheet!r} is not a character sheet")
+        if sheet == "portrait":
+            return portrait_prompt(d)
         extra = _signature_focus(d) if sheet == "colorguide" else ""
         pos = _join(CHARACTER_QUALITY, CHARACTER_SHEET_STYLE, CHARACTER_MATURE, _SHEET_TAGS[sheet], extra, subject_for(d), ", ".join(d.required),
                     ", ".join(t for t in (x.strip() for x in d.tags.split(",")) if t not in d.required))
@@ -106,13 +111,29 @@ def sheet_prompt(d: Design, sheet: str, mood: str | None = None) -> tuple[str, s
     return pos, _location_negative(d)
 
 
+def _face_tags(d: Design) -> list[str]:
+    """The character's face and upper-body canon: no carried items, lower body or fixed mood."""
+    held = {h.strip() for h in d.held}
+    return [t for t in dict.fromkeys(x.strip() for x in d.tags.split(",")) if t not in held and t not in d.required
+            and not _below_chest(t) and not any(w in t for w in (*_BELOW_FRAME_WORDS, *_EXPRESSION_WORDS))]
+
+
+def portrait_prompt(d: Design) -> tuple[str, str]:
+    """The avatar: the character in the scene look, so the owner's approved neon style carries from avatar to scene."""
+    pos = _join(CHARACTER_QUALITY, STYLE, "mature, adult, solo, portrait, close-up, face focus, looking at viewer",
+                subject_for(d), ", ".join(d.required), ", ".join(_face_tags(d)))
+    neg = _character_negative(d)
+    for allowed in ("flat color, ", "simple background, ", "scenery, background clutter, "):
+        neg = neg.replace(allowed, "")
+    return pos, _join(neg, _PORTRAIT_GUARD, ", ".join(h.strip() for h in d.held))
+
+
 def expression_prompts(d: Design) -> list[tuple[str, str, str]]:
     """(label, positive, negative) per panel: the character's face and upper-body canon only. Tags for carried items,
     the lower body and a fixed mood are left out, so each panel can only show the face and the mood it's asking for."""
     held = {h.strip() for h in d.held}
     tags = [t.strip() for t in d.tags.split(",")]
-    face = [t for t in dict.fromkeys(tags) if t not in held and t not in d.required and not _below_chest(t)
-            and not any(w in t for w in (*_BELOW_FRAME_WORDS, *_EXPRESSION_WORDS))]
+    face = _face_tags(d)
     fang = any(w in tags for w in ("fang", "fangs"))
     negative = _join(_character_negative(d), _EXPRESSION_NEGATIVE, "" if fang else "fang, fangs", ", ".join(held))
     return [(label, _join(CHARACTER_QUALITY, _EXPRESSION_STYLE, "mature, adult, mature face, defined jawline, solo, portrait, close-up, face focus, looking at viewer",
@@ -150,10 +171,13 @@ def candidate_workflow(positive: str, negative: str, seed: int, **options) -> di
     return wf
 
 
-def sheet_workflow(positive: str, negative: str, seed: int, high_res: bool = True, **options) -> dict:
+def sheet_workflow(positive: str, negative: str, seed: int, high_res: bool = True, size: tuple[int, int] | None = None,
+                   **options) -> dict:
     if not high_res:
         return candidate_workflow(positive, negative, seed, **options)
     wf = _base(positive, negative, seed, **options)
+    if size:
+        wf["5"]["inputs"].update(width=size[0], height=size[1])
     tiled = {"tile_size": 512, "overlap": 64, "temporal_size": 64, "temporal_overlap": 8}
     wf["30"] = {"class_type": "UpscaleModelLoader", "inputs": {"model_name": UPSCALER}}
     wf["31"] = {"class_type": "ImageUpscaleWithModel", "inputs": {"upscale_model": ["30", 0], "image": ["8", 0]}}

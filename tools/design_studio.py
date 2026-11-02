@@ -186,7 +186,8 @@ async def _sheets_one(slug: str, args, backend) -> None:
             png = expression_grid(panels)
         else:
             pos, neg = sheet_prompt(d, sheet)
-            png = await backend.run_workflow(sheet_workflow(pos, neg, d.seed))
+            size = EXPRESSION_SIZE if sheet == "portrait" else None
+            png = await backend.run_workflow(sheet_workflow(pos, neg, d.seed, size=size))
         (slug_dir / f"{sheet}.png").write_bytes(png)
         print(f"{slug}: {sheet}", flush=True)
     key = "turnaround" if d.kind == "character" else "establishing"
@@ -293,7 +294,7 @@ def _review_page(designs, args, out: Path) -> dict[str, str]:
         won = _approved_candidate(d, slug_dir)
         if won and won[2]:
             figures.append(("Approved design", f"r{won[0]}-c{won[1]}.jpg", won[2]))
-        for s, title in (("expressions", "Expressions"), ("turnaround", "Turnaround"), ("colorguide", "Colour guide")):
+        for s, title in (("portrait", "Portrait"), ("expressions", "Expressions"), ("turnaround", "Turnaround"), ("colorguide", "Colour guide")):
             if (slug_dir / f"{s}-old.png").exists():
                 figures.append((f"{title}: before", f"{s}-old.jpg", slug_dir / f"{s}-old.png"))
             if (slug_dir / f"{s}.png").exists():
