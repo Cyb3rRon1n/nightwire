@@ -1,4 +1,4 @@
-"""Checks rendered expression sheets against each character's reference record, panel by panel.
+"""Checks rendered character sheets against each character's reference record and against each other.
 
     ~/.cache/nightwire-qa/bin/python -m tools.design_check [slug ...]
     ~/.cache/nightwire-qa/bin/python -m tools.design_check --scenes
@@ -23,6 +23,8 @@ REQUIRED_MIN = 0.35
 FORBIDDEN_MIN = 0.5
 SAME_CHARACTER_MAX = 0.178  # CCIP's published threshold, below which two crops read as one character
 LOOKS_ALIKE_MAX = 0.07  # median across panel pairs; set from this cast's own scores (same character sits near 0.03)
+COLOURS = ("aqua", "black", "blonde", "blue", "brown", "green", "grey", "orange", "pink", "purple", "red", "white", "silver")
+SHEET_GREY = (60, 215)  # border brightness a turnaround's plain background should fall in
 ALWAYS_FORBIDDEN = ("cigarette", "smoking", "holding", "multiple views", "2girls", "2boys", "multiple boys",
                     "multiple girls", "extra arms", "extra hands", "fangs", "visor")
 
@@ -44,6 +46,30 @@ def judge_tags(required: list[str], forbidden: list[str], panels: list[dict[str,
             "unchecked": [t for t in required if t not in vocab]}
 
 
+def colour_drift(panels: list[dict[str, float]], canon: set[str]) -> dict:
+    """Eye and hair colours that change between panels. Colours the record asks for don't count against hair with
+    coloured tips, but two different colours where the record names one do."""
+    out = {}
+    for part in ("eyes", "hair"):
+        seen = {}
+        for p in panels:
+            colour = max(COLOURS, key=lambda c: p.get(f"{c} {part}", 0))
+            if p.get(f"{colour} {part}", 0) >= REQUIRED_MIN:
+                seen[colour] = seen.get(colour, 0) + 1
+        if len(seen) > 1 and not all(f"{c} {part}" in canon for c in seen):
+            out[part] = seen
+    return out
+
+
+def border_brightness(im) -> float:
+    """Median brightness of the outermost 2% of the picture, which on a plain sheet is the background."""
+    grey = im.convert("L")
+    w, h = grey.size
+    m = max(w, h) // 50
+    boxes = ((0, 0, w, m), (0, h - m, w, h), (0, 0, m, h), (w - m, 0, w, h))
+    return statistics.median(v for b in boxes for v in grey.crop(b).resize((32, 32)).tobytes())
+
+
 def flags_for(entry: dict, n_panels: int = 6) -> list[str]:
     out = [f"{t}: shows in {n} of {n_panels} panels" for t, n in entry["forbidden"].items()]
     # One or two misses are mostly tagger noise on small details; half the sheet is worth a look.
@@ -51,6 +77,14 @@ def flags_for(entry: dict, n_panels: int = 6) -> list[str]:
     worst = entry.get("worst_panel_pair")
     if worst and worst["difference"] > SAME_CHARACTER_MAX:
         out.append(f"{worst['a']} and {worst['b']} may not read as the same character ({worst['difference']:.2f})")
+    out += [f"{part} colour changes between panels: {seen}" for part, seen in entry.get("drift", {}).items()]
+    for sheet, diff in entry.get("sheets", {}).items():
+        if diff > SAME_CHARACTER_MAX:
+            out.append(f"{sheet} may not read as the same character as its matching sheet ({diff:.2f})")
+    out += [f"{t}: missing from turnaround" for t in entry.get("body_hair_missing", [])]
+    for sheet, level in entry.get("background", {}).items():
+        if not SHEET_GREY[0] <= level <= SHEET_GREY[1]:
+            out.append(f"{sheet} background isn't mid-grey (brightness {level:.0f})")
     near = entry.get("nearest")
     if near and near["difference"] <= LOOKS_ALIKE_MAX:
         out.append(f"looks like {near['slug']} ({near['difference']:.2f})")
@@ -110,6 +144,48 @@ def check_scenes(args) -> int:
     return 0
 
 
+def sheet_consistency(slug_dir: Path, panels: list) -> tuple[dict[str, float], dict[str, float]]:
+    """Largest-head difference between sheets in the same look (portrait against expressions, colour guide against
+    turnaround), and the body sheets' background brightness. Across E and F the score didn't separate characters
+    (pilot, 2026-11-02: two of five turnarounds sat closer to someone else's expressions), so it isn't compared."""
+    from imgutils.detect import detect_heads
+    from imgutils.metrics import ccip_batch_differences, ccip_extract_feature
+    from PIL import Image
+
+    features, background = {}, {}
+    for sheet in ("portrait", "turnaround", "colorguide"):
+        path = slug_dir / f"{sheet}.png"
+        if not path.exists():
+            continue
+        im = Image.open(path).convert("RGB")
+        im.thumbnail((1216, 1216))
+        if sheet != "portrait":
+            background[sheet] = border_brightness(im)
+        heads = detect_heads(im)
+        if heads:
+            box = max((h[0] for h in heads), key=lambda b: (b[2] - b[0]) * (b[3] - b[1]))
+            features[sheet] = ccip_extract_feature(im.crop(box))
+    same = {}
+    if "portrait" in features:
+        same["portrait"] = statistics.median(float(ccip_batch_differences([features["portrait"], x])[0][1]) for x in panels)
+    if "colorguide" in features and "turnaround" in features:
+        same["colorguide"] = float(ccip_batch_differences([features["colorguide"], features["turnaround"]])[0][1])
+    return same, background
+
+
+def body_hair_missing(d, slug_dir: Path) -> list[str]:
+    """Hair colours the record asks for that the turnaround doesn't show: the one check that crosses from E to F."""
+    from imgutils.tagging import get_wd14_tags
+    from PIL import Image
+
+    path = slug_dir / "turnaround.png"
+    if not path.exists():
+        return []
+    tags = get_wd14_tags(Image.open(path).convert("RGB"), model_name=TAG_MODEL, general_threshold=0.0, character_threshold=1.0,
+                         no_underline=True, drop_overlap=False)[1]
+    return [t for t in d.required if t.endswith(" hair") and t.split()[0] in COLOURS and tags.get(t, 0) < REQUIRED_MIN]
+
+
 def panels_of(path: Path):
     from PIL import Image
     im = Image.open(path).convert("RGB")
@@ -129,15 +205,15 @@ def main(argv=None) -> int:
         return check_scenes(args)
     from imgutils.metrics import ccip_batch_differences, ccip_extract_feature
     from imgutils.tagging import get_wd14_tags
-    from narrator.design_sheets import EXPRESSIONS
+    from narrator.design_sheets import expressions_for
 
-    labels = [label for label, _ in EXPRESSIONS]
     report, features = {}, {}
     for p in sorted(args.designs_dir.glob("*.toml")):
         d, sheet = load_design(p), args.design_dir / p.stem / "expressions.png"
         if d.kind != "character" or not sheet.exists() or (args.slugs and p.stem not in args.slugs):
             continue
         crops = panels_of(sheet)
+        labels = [label for label, _ in expressions_for(d)]
         tags = [get_wd14_tags(c, model_name=TAG_MODEL, general_threshold=0.0, character_threshold=1.0,
                               no_underline=True, drop_overlap=False)[1] for c in crops]
         entry = judge_tags(d.required, forbidden_terms(d), tags)
@@ -145,6 +221,9 @@ def main(argv=None) -> int:
         diffs = ccip_batch_differences(features[p.stem])
         a, b = max(itertools.combinations(range(len(crops)), 2), key=lambda ij: diffs[ij[0]][ij[1]])
         entry["worst_panel_pair"] = {"a": labels[a], "b": labels[b], "difference": float(diffs[a][b])}
+        entry["drift"] = colour_drift(tags, set(d.required) | {t.strip() for t in d.tags.split(",")})
+        entry["sheets"], entry["background"] = sheet_consistency(args.design_dir / p.stem, features[p.stem])
+        entry["body_hair_missing"] = body_hair_missing(d, args.design_dir / p.stem)
         report[p.stem] = entry
     # ponytail: every panel against every other character's, O(n²) but this cast is 20 characters
     for slug, entry in report.items():

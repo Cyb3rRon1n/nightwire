@@ -32,7 +32,7 @@ from narrator.comfyui_backend import ComfyUIBackend
 from tools.batch_status import Batch, batch_url
 from narrator.design_sheets import (
     CHARACTER_SHEETS, EXPRESSION_SIZE, LOCATION_SHEETS, MOOD_SUFFIXES, candidate_prompt, candidate_workflow,
-    expression_grid, expression_prompts, extract_palette, join_strip, sheet_prompt, sheet_workflow,
+    expression_grid, expression_prompts, extract_palette, flatten_background, join_strip, sheet_prompt, sheet_workflow,
 )
 from narrator.designs import DESIGNS_DIR, Design, load_design, load_designs, save_design
 
@@ -188,6 +188,8 @@ async def _sheets_one(slug: str, args, backend) -> None:
             pos, neg = sheet_prompt(d, sheet)
             size = EXPRESSION_SIZE if sheet == "portrait" else None
             png = await backend.run_workflow(sheet_workflow(pos, neg, d.seed, size=size))
+            if d.kind == "character" and sheet != "portrait":
+                png = flatten_background(png)
         (slug_dir / f"{sheet}.png").write_bytes(png)
         print(f"{slug}: {sheet}", flush=True)
     key = "turnaround" if d.kind == "character" else "establishing"

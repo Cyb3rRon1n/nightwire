@@ -21,6 +21,10 @@ Owner-approved over the Phase 19a/19b review rounds (2026-10-28/29). Use this fo
 - **Always clearly adult.** Elderly characters, and anyone written as 18–19, are styled gritty and are never sexualized.
 - **Tag order:** hair → face and eyes → build and proportions → outfit → signature chrome last. Chrome names its side ("mechanical right arm, human left hand"), with a matching negative ("two mechanical arms").
 
+## AI characters
+
+AI characters default to logic over feeling and are still learning human emotion, though each can be further along than another. Their expression sheets use restrained panels (`AI_EXPRESSIONS` in `narrator/design_sheets.py`), not full human moods.
+
 ## New character portraits (in game, and new NPCs)
 
 - **In-game portraits** (`server/portrait.py` through `narrator/image_prompt.py`) use bust framing. Lower-body tags are dropped and the portrait negative blocks full body. Player `presentation` gives 1girl, 1boy or 1other; a tsukumogami is an android.
