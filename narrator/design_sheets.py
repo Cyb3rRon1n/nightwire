@@ -13,10 +13,15 @@ BASE_SIZE = (1216, 832)
 SHEET_SIZE = (3648, 2496)
 SHEET_STYLE = ("anime coloring, cel shading, thick outlines, official art, flat lighting, simple background, "
                "white background")
-CHARACTER_SHEET_STYLE = ("anime coloring, cel shading, thick outlines, official art, simple background, grey background, "
-                         "dark background, neon rim light, pink neon rim light, cyan backlight")
+# Turnarounds and colour guides: plain mid-grey and even light, so true colours can be judged (owner pick, 2026-11-01).
+CHARACTER_SHEET_STYLE = ("anime coloring, cel shading, thick outlines, official art, simple background, (grey background:1.3), "
+                         "even lighting, bright face, front lighting, natural skin, neon accents")
+_SHEET_GUARD = ("(realistic:1.4), (photorealistic:1.4), (photo (medium):1.3), (3d:1.3), (semi-realistic:1.3), painterly, oil painting, "
+                "(skin texture:1.3), pores, airbrushed, detailed skin, hairy, (shadow over face:1.2), (dark face:1.2), low key, "
+                "underexposed, silhouette, black background, multiple heads, extra heads, disembodied head, "
+                "(white background:1.4), (light background:1.2)")  # "white" pulls pale outfits that change from view to view
 # Tattoos, scars and the like belong in each character's own tags: listed here they appeared on everyone.
-CHARACTER_MATURE = "mature, adult, serious, sharp features, gritty, dark atmosphere, cyberpunk, techwear, neon accents"
+CHARACTER_MATURE = "mature, adult, serious, cyberpunk, techwear"
 CHARACTER_QUALITY = QUALITY.replace("safe", "sensitive")  # suggestive allowed, explicit not
 CHARACTER_NEGATIVE_EXTRA = ("nude, nipples, pussy, penis, sex, explicit, loli, shota, child, petite, flat chest, young, "
                             "teenage, aged down, chibi, kawaii, moe, cute, big eyes, deformed")
@@ -36,12 +41,15 @@ _SHEET_TAGS = {
 EXPRESSIONS = (("Neutral", "expressionless, closed mouth"), ("Smile", "smile, closed mouth"),
                ("Angry", "angry, frown, clenched teeth"), ("Surprised", "surprised, wide-eyed, open mouth"),
                ("Sad", "sad, looking down, closed mouth"), ("Smirk", "smirk"))
+# AI characters default to logic over feeling and are still learning emotion (owner, 2026-11-01), so their sheets
+# show restraint and misfires instead of full human moods.
+AI_EXPRESSIONS = (("Neutral", "expressionless, closed mouth"), ("Polite", "light smile, closed mouth, expressionless"),
+                  ("Attentive", "expressionless, head tilt, closed mouth"), ("Confused", "confused, expressionless, closed mouth"),
+                  ("Processing", "expressionless, looking to the side, closed mouth"), ("Almost sad", "expressionless, looking down, closed mouth"))
 EXPRESSION_SIZE = (1024, 1024)
 _BELOW_FRAME_WORDS = ("heels", "fishnet", "garter", "hakama", "slit", "belt", "holster", "knee", "hip",
                       "breasts", "waist", "tall", "slender", "toned", "lean", "wiry", "muscular", "abs", "shoulders",
                       "gaunt", "cleavage", "neckline", "midriff", "backless", "gloves", "rings", "bracelet", "sleeve")
-# Coloured rim light floods a close-up's whole face, so these panels are lit plainly to show true skin and features.
-_EXPRESSION_STYLE = "anime coloring, cel shading, thick outlines, official art, simple background, dark grey background, rim light, bright face, front lighting, natural skin, neon accents"
 _EXPRESSION_WORDS = ("smile", "smirk", "grin", "scowl", "expression", "stern", "serene", "calm")
 _EXPRESSION_NEGATIVE = ("multiple views, character sheet, expression chart, turnaround, split screen, full body, "
                         "child face, baby face, round face, youthful face, cowboy shot, breast focus, cleavage, hand up, hands, hand on own face, hand on own chin, fingers, "
@@ -71,6 +79,14 @@ def _character_negative(d: Design, mature: bool = True) -> str:
     return _join(NEGATIVE.replace(", text,", ","), SHEET_NEGATIVE_EXTRA, CHARACTER_NEGATIVE_EXTRA if mature else "", d.negative)
 
 
+def _styled_negative(d: Design, guard: str, scene: bool = False) -> str:
+    """The character negative without the tags this sheet's own look asks for, plus the guard that holds that look."""
+    neg = _character_negative(d)
+    for allowed in ("flat color, ", "simple background, ", *(("scenery, background clutter, ",) if scene else ())):
+        neg = neg.replace(allowed, "")
+    return _join(neg, guard)
+
+
 def _location_negative(d: Design) -> str:
     return _join(NEGATIVE, d.negative)
 
@@ -97,7 +113,7 @@ def sheet_prompt(d: Design, sheet: str, mood: str | None = None) -> tuple[str, s
         extra = _signature_focus(d) if sheet == "colorguide" else ""
         pos = _join(CHARACTER_QUALITY, CHARACTER_SHEET_STYLE, CHARACTER_MATURE, _SHEET_TAGS[sheet], extra, subject_for(d), ", ".join(d.required),
                     ", ".join(t for t in (x.strip() for x in d.tags.split(",")) if t not in d.required))
-        return pos, _character_negative(d)
+        return pos, _styled_negative(d, _SHEET_GUARD)
     if sheet not in LOCATION_SHEETS:
         raise ValueError(f"{sheet!r} is not a location sheet")
     if sheet == "props":
@@ -111,6 +127,10 @@ def sheet_prompt(d: Design, sheet: str, mood: str | None = None) -> tuple[str, s
     return pos, _location_negative(d)
 
 
+def expressions_for(d: Design) -> tuple[tuple[str, str], ...]:
+    return AI_EXPRESSIONS if "android" in d.tags else EXPRESSIONS
+
+
 def _face_tags(d: Design) -> list[str]:
     """The character's face and upper-body canon: no carried items, lower body or fixed mood."""
     held = {h.strip() for h in d.held}
@@ -119,25 +139,21 @@ def _face_tags(d: Design) -> list[str]:
 
 
 def portrait_prompt(d: Design) -> tuple[str, str]:
-    """The avatar: the character in the scene look, so the owner's approved neon style carries from avatar to scene."""
-    pos = _join(CHARACTER_QUALITY, STYLE, "mature, adult, solo, portrait, close-up, face focus, looking at viewer",
-                subject_for(d), ", ".join(d.required), ", ".join(_face_tags(d)))
-    neg = _character_negative(d)
-    for allowed in ("flat color, ", "simple background, ", "scenery, background clutter, "):
-        neg = neg.replace(allowed, "")
-    return pos, _join(neg, _PORTRAIT_GUARD, ", ".join(h.strip() for h in d.held))
+    """The avatar is the neutral expression panel at full quality, so avatar and expressions share one face and look."""
+    return expression_prompts(d)[0][1:]
 
 
 def expression_prompts(d: Design) -> list[tuple[str, str, str]]:
-    """(label, positive, negative) per panel: the character's face and upper-body canon only. Tags for carried items,
+    """(label, positive, negative) per panel, in the scene look like the portrait (owner pick, 2026-11-01): the
+    character's face and upper-body canon only. Tags for carried items,
     the lower body and a fixed mood are left out, so each panel can only show the face and the mood it's asking for."""
     held = {h.strip() for h in d.held}
     tags = [t.strip() for t in d.tags.split(",")]
     face = _face_tags(d)
     fang = any(w in tags for w in ("fang", "fangs"))
-    negative = _join(_character_negative(d), _EXPRESSION_NEGATIVE, "" if fang else "fang, fangs", ", ".join(held))
-    return [(label, _join(CHARACTER_QUALITY, _EXPRESSION_STYLE, "mature, adult, mature face, defined jawline, solo, portrait, close-up, face focus, looking at viewer",
-                          subject_for(d), mood, ", ".join(d.required), ", ".join(face)), negative) for label, mood in EXPRESSIONS]
+    negative = _join(_styled_negative(d, _PORTRAIT_GUARD, scene=True), _EXPRESSION_NEGATIVE, "" if fang else "fang, fangs", ", ".join(held))
+    return [(label, _join(CHARACTER_QUALITY, STYLE, "mature, adult, solo, portrait, close-up, face focus, looking at viewer",
+                          subject_for(d), mood, ", ".join(d.required), ", ".join(face)), negative) for label, mood in expressions_for(d)]
 
 
 def _base(positive: str, negative: str, seed: int, *, checkpoint: str = CHECKPOINT, lora: str | None = LORA,
@@ -207,6 +223,27 @@ def expression_grid(panels: list[tuple[str, bytes]], columns: int = 3) -> bytes:
         draw.text((x + 16, y + 12), label, fill="#ffffff", stroke_width=3, stroke_fill="#000000", font_size=max(18, h // 24))
     out = io.BytesIO()
     sheet.save(out, "PNG")
+    return out.getvalue()
+
+
+def flatten_background(png: bytes, grey: int = 128, tolerance: int = 28) -> bytes:
+    """Repaints everything connected to the picture's edge in one grey, so a whole cast's body sheets match. Prompts
+    alone landed anywhere from near-white to near-black (pilot, 2026-11-02). Thick outlines keep the fill out of the figures."""
+    from PIL import Image, ImageChops, ImageDraw, ImageFilter
+    im = Image.open(io.BytesIO(png)).convert("RGB")
+    small = im.resize((im.width * 1024 // max(im.size), im.height * 1024 // max(im.size)), Image.LANCZOS)
+    marker = (255, 0, 254)  # no character sheet uses this exact colour
+    w, h = small.size
+    for x, y in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1), (w // 2, 0), (w // 2, h - 1), (0, h // 2), (w - 1, h // 2)):
+        if small.getpixel((x, y)) != marker:
+            ImageDraw.floodfill(small, (x, y), marker, thresh=tolerance)
+    mask = small.convert("RGB").point(lambda v: v).split()
+    is_bg = ImageChops.multiply(ImageChops.multiply(mask[0].point(lambda v: 255 * (v == 255)), mask[1].point(lambda v: 255 * (v == 0))),
+                                mask[2].point(lambda v: 255 * (v == 254)))
+    is_bg = is_bg.resize(im.size, Image.BILINEAR).filter(ImageFilter.GaussianBlur(1))
+    im.paste((grey, grey, grey), mask=is_bg)
+    out = io.BytesIO()
+    im.save(out, "PNG")
     return out.getvalue()
 
 

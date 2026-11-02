@@ -44,7 +44,7 @@ def test_character_candidate_is_a_turnaround_preview():
     assert "safe" not in pos.split(", ") and "sensitive" in pos.split(", ")
     assert SHEET_STYLE not in pos
     assert pos.endswith(", 1girl, black hair, short hair, yellow eyes, black bomber jacket, mechanical left arm, human right hand")
-    assert ", text," not in neg and SHEET_NEGATIVE_EXTRA in neg and neg.endswith("two mechanical arms")
+    assert ", text," not in neg and SHEET_NEGATIVE_EXTRA in neg and "two mechanical arms" in neg
     assert "nude" in neg and "loli" in neg
 
 
@@ -234,3 +234,37 @@ def test_portrait_is_a_character_sheet_at_expression_size():
     wf = ds.sheet_workflow(*ds.portrait_prompt(d), 1, size=ds.EXPRESSION_SIZE)
     assert (wf["5"]["inputs"]["width"], wf["5"]["inputs"]["height"]) == ds.EXPRESSION_SIZE
     assert wf["9"]["inputs"]["images"] == ["40", 0]  # the full-quality path, not a draft
+
+
+def test_expressions_use_the_same_look_as_the_portrait():
+    from narrator.image_prompt import STYLE
+    d = _portrait_design()
+    for _, pos, neg in ds.expression_prompts(d):
+        assert STYLE in pos and "defined jawline" not in pos
+        assert "scenery" not in neg and "simple background" not in neg and "blue skin" in neg
+
+
+def test_turnaround_and_colorguide_hold_the_plain_grey_look():
+    d = _portrait_design()
+    for sheet in ("turnaround", "colorguide"):
+        pos, neg = ds.sheet_prompt(d, sheet)
+        assert "(grey background:1.3)" in pos and "gritty" not in pos and "rim light" not in pos
+        assert "black background" in neg and "extra heads" in neg and "simple background" not in neg
+
+
+def test_ai_characters_get_restrained_expressions():
+    ai = Design("Hachi", "character", "x", "android, blank eyes", presentation="feminine")
+    panels = ds.expression_prompts(ai)
+    assert [p[0] for p in panels] == [e[0] for e in ds.AI_EXPRESSIONS] and len(panels) == len(EXPRESSIONS)
+    assert all("angry" not in p[1] and "expressionless" in p[1] for p in panels)
+    assert [p[0] for p in expression_prompts(_ayame())] == [e[0] for e in EXPRESSIONS]
+
+
+def test_flatten_background_repaints_the_edge_and_keeps_the_figure():
+    from PIL import Image, ImageDraw
+    im = Image.new("RGB", (200, 200), (245, 245, 240))
+    ImageDraw.Draw(im).ellipse((50, 50, 150, 150), fill=(250, 250, 250), outline=(0, 0, 0), width=8)  # pale figure, thick outline
+    out = io.BytesIO()
+    im.save(out, "PNG")
+    got = Image.open(io.BytesIO(ds.flatten_background(out.getvalue()))).convert("RGB")
+    assert got.getpixel((5, 5)) == (128, 128, 128) and got.getpixel((100, 100)) == (250, 250, 250)
