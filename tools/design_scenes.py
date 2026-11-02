@@ -18,6 +18,7 @@ from pathlib import Path
 
 from narrator.comfyui_backend import ComfyUIBackend
 from narrator.designs import load_designs
+from tools.batch_status import Batch, batch_url
 from tools.design_studio import _gpu_etiquette
 from tools.image_studio import _subject, compose, workflow
 from tools.imagegen import build
@@ -79,18 +80,20 @@ def gpu_busy(url: str) -> bool:
     return bool(q["queue_running"] or q["queue_pending"])
 
 
-async def render(jobs, out: Path, backend) -> int:
+async def render(jobs, out: Path, backend, batch_to: str | None = None) -> int:
     failed = 0
     out.mkdir(parents=True, exist_ok=True)
-    for name, wf in jobs:
-        if (out / name).exists():
-            continue
+    todo = [(name, wf) for name, wf in jobs if not (out / name).exists()]
+    batch = Batch("Scene test", len(todo), batch_to) if todo else None
+    for name, wf in todo:
         try:
             (out / name).write_bytes(await backend.run_workflow(wf))
             print(name, flush=True)
+            batch.step(name)
         except Exception as e:  # one bad render shouldn't lose the rest of a long batch
             print(f"{name}: {e}", file=sys.stderr, flush=True)
             failed += 1
+            batch.step(name, failed=True)
     return failed
 
 
@@ -111,7 +114,7 @@ def main(argv=None) -> int:
     _gpu_etiquette(args.comfyui_url, before=True)
     try:
         backend = ComfyUIBackend(base_url=args.comfyui_url, profile="noobai", timeout=600.0)
-        return 1 if asyncio.run(render(jobs, args.design_dir / "scenes", backend)) else 0
+        return 1 if asyncio.run(render(jobs, args.design_dir / "scenes", backend, batch_url())) else 0
     finally:
         _gpu_etiquette(args.comfyui_url, before=False)
 

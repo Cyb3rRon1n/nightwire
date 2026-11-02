@@ -12,6 +12,11 @@ GET    /designs/api/reviews         -> {slug: {verdict, note, v, at}}
 PUT    /designs/api/reviews/<slug>  {"verdict": "ok", "v": "<sheet version>"} | {"verdict": "fix", "note": "...", "v": "..."}
 DELETE /designs/api/reviews/<slug>  undo
 
+GET    /designs/api/renders -> latest Nightwire images in ComfyUI's history, with their recipes
+GET    /designs/api/batch   -> the long batch in progress, with time left
+PUT    /designs/api/batch   {"name": "Sheets", "done": 3, "total": 19, "item": "hachi", "failed": 0}
+DELETE /designs/api/batch   clear it
+
 There's no login: like the rest of the dashboard it relies on being LAN/Tailscale only. Requiring
 a JSON content type stops other websites writing through the owner's browser.
 """
@@ -21,14 +26,25 @@ import datetime as dt
 import json
 import os
 import tempfile
+import re
 import threading
+import time
+import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 PREFIX = "/designs/api/picks"
 REVIEWS = "/designs/api/reviews"
+RENDERS = "/designs/api/renders"
+BATCH = "/designs/api/batch"
 MAX_BODY = 4096
 MAX_NOTE = 500
+RENDER_LIMIT = 12
+HISTORY_SCAN = 120
+NAME_MATCH = 0.5  # share of a character's tags a prompt must contain before it's named
+# Only these may be listed or viewed, so nothing else ComfyUI has made shows on the dashboard.
+# nginx's /svc/comfy/view applies the same rule to the images themselves.
+_VIEWABLE = re.compile(r"^(nightwire_|image_studio)[A-Za-z0-9_-]+\.png$")
 
 
 class BadPick(ValueError):
@@ -76,6 +92,79 @@ def validate_review(slug: str, body, designs_dir: Path) -> dict:
     raise BadPick(f"a fix needs a note of up to {MAX_NOTE} characters")
 
 
+def _style_of(positive: str) -> str:
+    if "anime screenshot" in positive:
+        return "Neon screenshot"
+    if "bright face" in positive:
+        return "Glossy cel"
+    if "neon rim light" in positive:
+        return "Neon rim sheet"
+    return "Other"
+
+
+def _character_in(positive: str, characters: dict) -> str:
+    words = {w.strip() for w in positive.split(",")}
+    best, best_score = "", NAME_MATCH
+    for c in characters.values():
+        tags = c.get("tags") or []
+        score = sum(t in words for t in tags) / len(tags) if tags else 0
+        if score > best_score:
+            best, best_score = c.get("name", ""), score
+    return best
+
+
+def summarize_history(history: dict, characters: dict, limit: int = RENDER_LIMIT) -> list[dict]:
+    """Newest first. ComfyUI lists its history oldest first."""
+    out = []
+    for entry in reversed(list(history.values())):
+        images = [i for node in (entry.get("outputs") or {}).values() for i in node.get("images", [])
+                  if i.get("type") == "output" and _VIEWABLE.match(i.get("subfolder", "") + i.get("filename", ""))]
+        try:
+            graph = entry["prompt"][2]
+            sampler = next(n["inputs"] for n in graph.values() if n["class_type"] == "KSampler")
+            positive = graph[sampler["positive"][0]]["inputs"]["text"]
+            negative = graph[sampler["negative"][0]]["inputs"]["text"]
+        except (KeyError, IndexError, TypeError, StopIteration):
+            continue
+        node = lambda kind, field: next((n["inputs"].get(field) for n in graph.values() if n["class_type"] == kind), None)
+        for image in images:
+            sub = image.get("subfolder", "")
+            named = re.sub(r"_\d+_?\.png$", "", image["filename"]).replace("-", " ").title() if sub else ""
+            out.append({"file": image["filename"], "subfolder": sub, "style": _style_of(positive),
+                        "character": named or _character_in(positive, characters), "positive": positive,
+                        "negative": negative, "seed": sampler.get("seed"), "steps": sampler.get("steps"),
+                        "cfg": sampler.get("cfg"), "sampler": sampler.get("sampler_name"),
+                        "checkpoint": node("CheckpointLoaderSimple", "ckpt_name"), "lora": node("LoraLoader", "lora_name")})
+            if len(out) >= limit:
+                return out
+    return out
+
+
+def next_batch(current: dict, body, now: float) -> dict:
+    """The new batch record, or BadPick. Going backwards or changing name is a new batch, so the clock restarts."""
+    if not isinstance(body, dict):
+        raise BadPick("expected an object")
+    name, done, total, item, failed = (body.get("name"), body.get("done"), body.get("total"),
+                                       body.get("item", ""), body.get("failed", 0))
+    if not isinstance(name, str) or not 0 < len(name) <= 80 or not isinstance(item, str) or len(item) > 80:
+        raise BadPick("bad name or item")
+    if type(done) is not int or type(total) is not int or type(failed) is not int or not 0 <= done <= total or total < 1 or failed < 0:
+        raise BadPick("bad counts")
+    same = current.get("name") == name and current.get("total") == total and current.get("done", 0) <= done
+    return {"name": name, "done": done, "total": total, "item": item, "failed": failed,
+            "started": current["started"] if same else int(now), "updated": int(now)}
+
+
+def batch_view(state: dict, now: float) -> dict:
+    """What the dashboard shows. Time per step comes from the steps finished so far."""
+    if not state:
+        return {}
+    elapsed = state["updated"] - state["started"]
+    left = state["total"] - state["done"]
+    eta = round(elapsed / state["done"] * left) if state["done"] and left else None
+    return {**state, "eta_seconds": eta, "elapsed_seconds": elapsed, "age_seconds": int(now) - state["updated"]}
+
+
 def write_json_atomic(path: Path, data) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
@@ -106,8 +195,11 @@ class Store:
             return picks
 
 
-def make_server(host: str, port: int, data: Path, designs_dir: Path) -> ThreadingHTTPServer:
+def make_server(host: str, port: int, data: Path, designs_dir: Path,
+                comfyui: str = "http://127.0.0.1:8188") -> ThreadingHTTPServer:
     data = Path(data)
+    batch_file = data.with_name("batch.json")
+    batch_lock = threading.Lock()
     routes = {PREFIX: (Store(data), validate), REVIEWS: (Store(data.with_name("reviews.json")), validate_review)}
     designs_dir = Path(designs_dir)
 
@@ -130,7 +222,16 @@ def make_server(host: str, port: int, data: Path, designs_dir: Path) -> Threadin
             return None
 
         def do_GET(self):
-            route = routes.get(self.path.split("?", 1)[0])
+            path = self.path.split("?", 1)[0]
+            if path == RENDERS:
+                return self._renders()
+            if path == BATCH:
+                try:
+                    state = json.loads(batch_file.read_text()) if batch_file.exists() else {}
+                    return self._send(200, batch_view(state, time.time()))
+                except (OSError, ValueError) as e:
+                    return self._send(500, {"error": f"batch file unreadable: {e}"})
+            route = routes.get(path)
             if route is None:
                 return self._send(404, {"error": "not found"})
             try:
@@ -138,11 +239,24 @@ def make_server(host: str, port: int, data: Path, designs_dir: Path) -> Threadin
             except (OSError, ValueError) as e:
                 self._send(500, {"error": f"picks file unreadable: {e}"})
 
+        def _renders(self):
+            try:
+                with urllib.request.urlopen(f"{comfyui}/history?max_items={HISTORY_SCAN}", timeout=8) as r:
+                    history = json.load(r)
+            except (OSError, ValueError) as e:
+                return self._send(502, {"error": f"ComfyUI unavailable: {e}"})
+            try:
+                characters = json.loads((designs_dir / "characters.json").read_text())
+            except (OSError, ValueError):
+                characters = {}
+            self._send(200, summarize_history(history, characters))
+
         def do_PUT(self):
-            route = self._route()
-            if route is None:
+            is_batch = self.path.split("?", 1)[0] == BATCH
+            route = None if is_batch else self._route()
+            if route is None and not is_batch:
                 return self._send(404, {"error": "not found"})
-            store, check, slug = route
+            store, check, slug = route or (None, None, None)
             self.close_connection = True  # any refused body stays unread
             if self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json":
                 return self._send(415, {"error": "expected JSON"})
@@ -153,7 +267,16 @@ def make_server(host: str, port: int, data: Path, designs_dir: Path) -> Threadin
             if not 0 <= length <= MAX_BODY:
                 return self._send(413, {"error": "too large"})
             try:
-                record = check(slug, json.loads(self.rfile.read(length)), designs_dir)
+                body = json.loads(self.rfile.read(length))
+                if is_batch:
+                    with batch_lock:
+                        current = json.loads(batch_file.read_text()) if batch_file.exists() else {}
+                        state = next_batch(current, body, time.time())
+                        write_json_atomic(batch_file, state)
+                    return self._send(200, batch_view(state, time.time()))
+                record = check(slug, body, designs_dir)
+            except OSError as e:
+                return self._send(500, {"error": f"couldn't save: {e}"})
             except BadPick as e:
                 return self._send(400, {"error": str(e)})
             except json.JSONDecodeError:
@@ -161,6 +284,10 @@ def make_server(host: str, port: int, data: Path, designs_dir: Path) -> Threadin
             self._write(store, slug, record)
 
         def do_DELETE(self):
+            if self.path.split("?", 1)[0] == BATCH:
+                with batch_lock:
+                    batch_file.unlink(missing_ok=True)
+                return self._send(200, {})
             route = self._route()
             if route is None:
                 return self._send(404, {"error": "not found"})

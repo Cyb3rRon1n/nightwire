@@ -29,6 +29,7 @@ import zipfile
 from pathlib import Path
 
 from narrator.comfyui_backend import ComfyUIBackend
+from tools.batch_status import Batch, batch_url
 from narrator.design_sheets import (
     CHARACTER_SHEETS, EXPRESSION_SIZE, LOCATION_SHEETS, MOOD_SUFFIXES, candidate_prompt, candidate_workflow,
     expression_grid, expression_prompts, extract_palette, join_strip, sheet_prompt, sheet_workflow,
@@ -83,11 +84,14 @@ def _gpu_etiquette(comfyui_url: str, before: bool) -> None:
 
 async def cmd_candidates(designs: dict[str, Design], slugs: list[str], args, backend) -> int:
     failed = 0
+    batch = Batch("Candidates", len(slugs), getattr(args, "batch_url", None))
     for slug in slugs:
         try:
             await _candidates_one(slug, args, backend)
+            batch.step(designs[slug].name)
         except Exception as e:
             failed += 1
+            batch.step(designs[slug].name, failed=True)
             print(f"{slug}: FAILED: {e}", file=sys.stderr)
     return 1 if failed else 0
 
@@ -143,11 +147,15 @@ def cmd_reroll(designs, slug: str, note: str, args) -> int:
 
 async def cmd_sheets(designs, slugs: list[str], args, backend) -> int:
     failed = 0
+    only = getattr(args, "only", None)
+    batch = Batch(f"{only.capitalize()} sheets" if only else "Sheets", len(slugs), getattr(args, "batch_url", None))
     for slug in slugs:
         try:
             await _sheets_one(slug, args, backend)
+            batch.step(designs[slug].name)
         except Exception as e:
             failed += 1
+            batch.step(designs[slug].name, failed=True)
             print(f"{slug}: FAILED: {e}", file=sys.stderr)
     return 1 if failed else 0
 
@@ -363,6 +371,9 @@ def cmd_gallery(designs, args) -> int:
     out.mkdir(parents=True, exist_ok=True)
     (out / "index.html").write_text(page)
     (out / "rounds.json").write_text(json.dumps(rounds))
+    (out / "characters.json").write_text(json.dumps({
+        slug: {"name": d.name, "tags": [t.strip() for t in d.tags.split(",") if t.strip()]}
+        for slug, d in designs.items() if d.kind == "character"}))
     needs_pick = sorted(s for s, d in designs.items() if d.status == "candidates" and s in rounds)
     review = _review_page(designs, args, out)
     (out / "status.json").write_text(json.dumps({"needs_pick": {s: rounds[s] for s in needs_pick}, "review": review}))  # dashboard badges
@@ -431,6 +442,7 @@ async def main(argv: list[str], backend=None) -> int:
         if not slugs:
             print("nothing to do")
             return 0
+        args.batch_url = None if backend else batch_url()
         backend = backend or ComfyUIBackend(base_url=args.comfyui_url, profile="noobai", timeout=600.0)
         if not args.no_gpu_etiquette:
             _gpu_etiquette(args.comfyui_url, before=True)

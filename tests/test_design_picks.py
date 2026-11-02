@@ -92,3 +92,90 @@ def test_reviews_are_separate_from_picks_and_validated(api):
     assert call(url) == (200, {}) and json.loads(data.with_name("reviews.json").read_text())["mei-lan"]["v"] == "1"
     assert call(f"{reviews}/mei-lan", "DELETE") == (200, {})
 
+
+
+def _entry(filename, positive="", subfolder="", kind="output"):
+    graph = {"4": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": "model.safetensors"}},
+             "20": {"class_type": "LoraLoader", "inputs": {"lora_name": "l.safetensors"}},
+             "6": {"class_type": "CLIPTextEncode", "inputs": {"text": positive}},
+             "7": {"class_type": "CLIPTextEncode", "inputs": {"text": "bad"}},
+             "3": {"class_type": "KSampler", "inputs": {"seed": 5, "steps": 28, "cfg": 4.5, "sampler_name": "euler",
+                                                         "positive": ["6", 0], "negative": ["7", 0]}}}
+    return {"prompt": [1, "id", graph, {}, ["9"]],
+            "outputs": {"9": {"images": [{"filename": filename, "subfolder": subfolder, "type": kind}]}}}
+
+
+def test_renders_newest_first_and_only_nightwire_images():
+    history = {"a": _entry("nightwire_design_00001_.png", "first"),
+               "b": _entry("mature_00001_.png", "secret tags"),
+               "c": _entry("mei-lan_00001_.png", "x", subfolder="image_studio"),
+               "d": _entry("nightwire_x_00001_.png", "temp", kind="temp"),
+               "e": _entry("nightwire_design_00002_.png", "second")}
+    out = dp.summarize_history(history, {})
+    assert [r["file"] for r in out] == ["nightwire_design_00002_.png", "mei-lan_00001_.png", "nightwire_design_00001_.png"]
+    assert "secret tags" not in json.dumps(out)
+    assert out[0]["seed"] == 5 and out[0]["negative"] == "bad" and out[0]["lora"] == "l.safetensors"
+    assert out[1]["character"] == "Mei Lan" and out[1]["subfolder"] == "image_studio"
+
+
+def test_renders_respect_the_limit_and_skip_entries_without_a_graph():
+    history = {str(i): _entry(f"nightwire_a_{i:05}_.png") for i in range(5)}
+    history["bad"] = {"outputs": {"9": {"images": [{"filename": "nightwire_b_.png", "subfolder": "", "type": "output"}]}}}
+    assert [r["file"] for r in dp.summarize_history(history, {}, limit=2)] == ["nightwire_a_00004_.png", "nightwire_a_00003_.png"]
+
+
+def test_renders_name_the_character_from_its_tags():
+    chars = {"hachi": {"name": "Hachi", "tags": ["blue hair", "bob cut", "android", "uniform"]},
+             "rin": {"name": "Rin", "tags": ["pink hair", "hoodie"]}}
+    out = dp.summarize_history({"a": _entry("nightwire_design_1_.png", "1other, blue hair, bob cut, android, sad"),
+                                "b": _entry("nightwire_sky_1_.png", "no humans, city, hoodie")}, chars)
+    assert out[1]["character"] == "Hachi" and out[0]["character"] == ""
+
+
+@pytest.mark.parametrize("positive,style", [
+    ("anime screenshot, neon lights, night", "Neon screenshot"),
+    ("cel shading, bright face, front lighting", "Glossy cel"),
+    ("cel shading, pink neon rim light, turnaround", "Neon rim sheet"),
+    ("no style words", "Other")])
+def test_renders_label_the_style(positive, style):
+    assert dp.summarize_history({"a": _entry("nightwire_a_.png", positive)}, {})[0]["style"] == style
+
+
+def test_batch_estimates_time_left_and_restarts_on_a_new_batch():
+    state = dp.next_batch({}, {"name": "Turnarounds", "done": 0, "total": 10}, now=1000)
+    state = dp.next_batch(state, {"name": "Turnarounds", "done": 4, "total": 10, "item": "hachi"}, now=1400)
+    view = dp.batch_view(state, now=1400)
+    assert (view["done"], view["total"], view["item"], view["eta_seconds"], view["elapsed_seconds"]) == (4, 10, "hachi", 600, 400)
+    state = dp.next_batch(state, {"name": "Expressions", "done": 0, "total": 3}, now=2000)
+    assert state["started"] == 2000 and dp.batch_view(state, now=2000)["eta_seconds"] is None
+
+
+@pytest.mark.parametrize("body", [[], {"name": "", "done": 0, "total": 1}, {"name": "x" * 81, "done": 0, "total": 1},
+                                  {"name": "a", "done": 2, "total": 1}, {"name": "a", "done": True, "total": 1},
+                                  {"name": "a", "done": 0, "total": 0}, {"name": "a", "done": 0, "total": 1, "failed": -1},
+                                  {"name": "a", "done": 0, "total": 1, "item": "x" * 81}])
+def test_batch_refuses_bad_updates(body):
+    with pytest.raises(dp.BadPick):
+        dp.next_batch({}, body, now=1)
+
+
+def test_batch_api_round_trip(api):
+    base = api[0].rsplit("/", 1)[0] + "/batch"
+    assert call(base) == (200, {})
+    assert call(base, "PUT", {"name": "Sheets", "done": 1, "total": 2})[0] == 200
+    status, view = call(base)
+    assert status == 200 and view["name"] == "Sheets" and view["done"] == 1
+    assert call(base, "PUT", {"name": "Sheets", "done": 3, "total": 2})[0] == 400
+    assert call(base, "PUT", b"{}", ctype="text/plain")[0] == 415
+    assert call(base, "DELETE")[0] == 200
+    assert call(base) == (200, {})
+
+
+def test_renders_api_reports_comfyui_being_down(tmp_path):
+    (tmp_path / "rounds.json").write_text("{}")
+    server = dp.make_server("127.0.0.1", 0, tmp_path / "s" / "picks.json", tmp_path, comfyui="http://127.0.0.1:9")
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        assert call(f"http://127.0.0.1:{server.server_port}/designs/api/renders")[0] == 502
+    finally:
+        server.shutdown()
