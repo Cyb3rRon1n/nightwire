@@ -22,6 +22,12 @@ class FakeBackend:
         return _png()
 
 
+@pytest.fixture(autouse=True)
+def no_segmentation_models(monkeypatch):
+    monkeypatch.setattr(ds, "flatten_background", lambda png: png)
+    monkeypatch.setattr(ds, "_front_head", lambda png: None)
+
+
 @pytest.fixture
 def studio(tmp_path):
     designs = tmp_path / "designs"; data = tmp_path / "data"
@@ -87,8 +93,8 @@ async def test_sheets_for_character_and_location(studio):
     assert await ds.main(_args(studio, "sheets", "--approved-missing"), backend=backend) == 0
     assert sorted(p.name for p in (data / "mama-sato").glob("*.png")) == ["colorguide.png", "expressions.png", "portrait.png", "turnaround.png"]
     assert sorted(p.name for p in (data / "izakaya").glob("*.png")) == ["alternate.png", "establishing.png", "moodkeys.png", "props.png"]
-    # turnaround + colorguide + portrait + 6 expression panels + establishing + alternate + props + 3 mood renders
-    assert len(backend.workflows) == 15
+    # turnaround + portrait + 6 expression panels + establishing + alternate + props + 3 mood renders; colorguide is built
+    assert len(backend.workflows) == 14
     assert load_design(designs / "mama-sato.toml").palette
     backend.workflows.clear()
     await ds.main(_args(studio, "sheets", "--approved-missing"), backend=backend)
@@ -143,7 +149,7 @@ async def test_reapprove_clears_sheets_and_rerenders(studio):
     assert d.palette == [] and not list((data / "mama-sato").glob("*.png"))
     backend.workflows.clear()
     await ds.main(_args(studio, "sheets", "--approved-missing"), backend=backend)
-    assert len(backend.workflows) == 9
+    assert len(backend.workflows) == 8  # the colour guide is built from the turnaround
     assert load_design(designs / "mama-sato.toml").palette
 
 

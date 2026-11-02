@@ -56,9 +56,27 @@ def test_location_candidate_uses_the_game_style():
     assert "safe" in est.split(", ") and "sensitive" not in est
 
 
-def test_colorguide_focuses_the_signature_chrome():
-    pos, _ = sheet_prompt(_char(), "colorguide")
-    assert "color guide" in pos and "mechanical left arm focus" in pos
+def test_colour_guide_is_built_from_the_turnaround_not_rendered():
+    with pytest.raises(ValueError):
+        sheet_prompt(_char(), "colorguide")
+    im = Image.new("RGB", (400, 200), (128, 128, 128))
+    im.paste((10, 200, 10), (50, 50, 70, 70))  # the head
+    buf = io.BytesIO(); im.save(buf, "PNG")
+    got = Image.open(io.BytesIO(ds.colour_guide(buf.getvalue(), ["#ff0000", "#0000ff"], head=(50, 50, 70, 70)))).convert("RGB")
+    assert got.size == (500, 200)
+    assert got.getpixel((60, 60)) == (10, 200, 10)  # the turnaround itself, untouched
+    assert got.getpixel((450, 50))[1] > 150  # close-up of the head
+    assert got.getpixel((450, 120)) == (255, 0, 0) and got.getpixel((450, 180)) == (0, 0, 255)
+
+
+def test_extract_palette_skips_the_grey_and_near_duplicates():
+    img = Image.new("RGB", (100, 100), (128, 128, 128))
+    img.paste((20, 20, 20), (0, 0, 40, 100))
+    img.paste((26, 26, 26), (40, 0, 60, 100))
+    img.paste((240, 240, 240), (60, 0, 80, 100))
+    buf = io.BytesIO(); img.save(buf, "PNG")
+    palette = extract_palette(buf.getvalue(), n=4)
+    assert len(palette) == 2 and palette[0].startswith("#14") and palette[1].startswith("#f0")
 
 
 def _ayame():
@@ -184,14 +202,18 @@ def _white_sheet():
     return buf.getvalue()
 
 
-def test_extract_palette_skips_white_background():
-    palette = extract_palette(_white_sheet(), n=2)
-    assert len(palette) == 2 and "#ffffff" not in palette
-    assert palette[0].startswith("#c8") and palette[1].startswith("#1e")
+def test_extract_palette_keeps_a_small_saturated_accent():
+    img = Image.new("RGB", (100, 100), (128, 128, 128))
+    img.paste((20, 20, 20), (0, 0, 40, 100))
+    img.paste((230, 230, 230), (40, 0, 70, 100))
+    img.paste((70, 70, 75), (70, 0, 90, 100))
+    img.paste((240, 20, 150), (90, 0, 93, 100))
+    buf = io.BytesIO(); img.save(buf, "PNG")
+    assert any(c.startswith("#f0") for c in extract_palette(buf.getvalue(), n=3))
 
 
-def test_extract_palette_keeps_white_when_asked():
-    assert "#ffffff" in extract_palette(_white_sheet(), n=3, skip_background=False)
+def test_extract_palette_keeps_white_clothes():
+    assert "#ffffff" in extract_palette(_white_sheet(), n=3)
 
 
 def test_sheets_carry_the_record_and_no_generic_marks():
@@ -244,12 +266,10 @@ def test_expressions_use_the_same_look_as_the_portrait():
         assert "scenery" not in neg and "simple background" not in neg and "blue skin" in neg
 
 
-def test_turnaround_and_colorguide_hold_the_plain_grey_look():
-    d = _portrait_design()
-    for sheet in ("turnaround", "colorguide"):
-        pos, neg = ds.sheet_prompt(d, sheet)
-        assert "(grey background:1.3)" in pos and "gritty" not in pos and "rim light" not in pos
-        assert "black background" in neg and "extra heads" in neg and "simple background" not in neg
+def test_turnaround_holds_the_plain_grey_look():
+    pos, neg = ds.sheet_prompt(_portrait_design(), "turnaround")
+    assert "(grey background:1.3)" in pos and "gritty" not in pos and "rim light" not in pos
+    assert "black background" in neg and "extra heads" in neg and "simple background" not in neg
 
 
 def test_ai_characters_get_restrained_expressions():
@@ -260,11 +280,23 @@ def test_ai_characters_get_restrained_expressions():
     assert [p[0] for p in expression_prompts(_ayame())] == [e[0] for e in EXPRESSIONS]
 
 
-def test_flatten_background_repaints_the_edge_and_keeps_the_figure():
-    from PIL import Image, ImageDraw
-    im = Image.new("RGB", (200, 200), (245, 245, 240))
-    ImageDraw.Draw(im).ellipse((50, 50, 150, 150), fill=(250, 250, 250), outline=(0, 0, 0), width=8)  # pale figure, thick outline
+def test_flatten_background_paints_what_the_segmenter_calls_backdrop(monkeypatch):
+    import sys, types
+    import numpy as np
+    from PIL import Image
+    mask = np.zeros((100, 100), dtype=float)
+    mask[20:80, 20:80] = 1.0
+    mask[0, 0] = 0.5  # unsure: half way once firmed up
+    mask[50, 5] = 0.2  # barely there: counts as backdrop
+    fake = types.ModuleType("imgutils.segment")
+    fake.segment_rgba_with_isnetis = lambda im: (mask, im)
+    monkeypatch.setitem(sys.modules, "imgutils", types.ModuleType("imgutils"))
+    monkeypatch.setitem(sys.modules, "imgutils.segment", fake)
     out = io.BytesIO()
-    im.save(out, "PNG")
+    Image.new("RGB", (100, 100), (20, 20, 20)).save(out, "PNG")
     got = Image.open(io.BytesIO(ds.flatten_background(out.getvalue()))).convert("RGB")
-    assert got.getpixel((5, 5)) == (128, 128, 128) and got.getpixel((100, 100)) == (250, 250, 250)
+    assert got.getpixel((50, 50)) == (20, 20, 20)
+    assert got.getpixel((5, 50)) == (128, 128, 128)
+    assert 60 < got.getpixel((0, 0))[0] < 90
+
+

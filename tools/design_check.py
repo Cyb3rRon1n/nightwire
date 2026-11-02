@@ -153,7 +153,7 @@ def sheet_consistency(slug_dir: Path, panels: list) -> tuple[dict[str, float], d
     from PIL import Image
 
     features, background = {}, {}
-    for sheet in ("portrait", "turnaround", "colorguide"):
+    for sheet in ("portrait", "turnaround"):
         path = slug_dir / f"{sheet}.png"
         if not path.exists():
             continue
@@ -168,8 +168,6 @@ def sheet_consistency(slug_dir: Path, panels: list) -> tuple[dict[str, float], d
     same = {}
     if "portrait" in features:
         same["portrait"] = statistics.median(float(ccip_batch_differences([features["portrait"], x])[0][1]) for x in panels)
-    if "colorguide" in features and "turnaround" in features:
-        same["colorguide"] = float(ccip_batch_differences([features["colorguide"], features["turnaround"]])[0][1])
     return same, background
 
 

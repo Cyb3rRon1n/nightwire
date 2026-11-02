@@ -11,7 +11,8 @@ Owner-approved over the Phase 19a/19b review rounds (2026-10-28/29). Use this fo
 ## Characters
 
 - **Tone:** mature, adult, serious, gritty dark cyberpunk society. Techwear, LED trim, tattoos, scars, piercings, dark makeup.
-- **Model sheets:** dark grey backdrop with pink and cyan neon rim light (`CHARACTER_SHEET_STYLE`). Turnaround, expression sheet and colour guide.
+- **Portraits and expressions:** the neon scene look.
+- **Turnarounds and colour guides:** the same drawn look under plain, even light on mid-grey (`CHARACTER_SHEET_STYLE`), so a sheet shows the same person in true colours. Neon lighting would record the wrong hair and outfit colours.
 - **Rating:** `sensitive`, so suggestive is allowed. Every character prompt negates `nude, nipples, pussy, penis, sex, explicit, loli, shota, child, petite, flat chest, young, teenage, aged down, chibi, kawaii, moe, cute, big eyes, deformed`. **No nudity.**
 - **Women,** including female-presenting androids:
   - **Proportions:** idol proportions, like a K-pop idol or Chun-Li: `mature female, slender, narrow waist, large breasts, long legs, toned, beautiful face, idol`.

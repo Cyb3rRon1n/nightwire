@@ -32,7 +32,7 @@ from narrator.comfyui_backend import ComfyUIBackend
 from tools.batch_status import Batch, batch_url
 from narrator.design_sheets import (
     CHARACTER_SHEETS, EXPRESSION_SIZE, LOCATION_SHEETS, MOOD_SUFFIXES, candidate_prompt, candidate_workflow,
-    expression_grid, expression_prompts, extract_palette, flatten_background, join_strip, sheet_prompt, sheet_workflow,
+    colour_guide, expression_grid, expression_prompts, extract_palette, flatten_background, join_strip, sheet_prompt, sheet_workflow,
 )
 from narrator.designs import DESIGNS_DIR, Design, load_design, load_designs, save_design
 
@@ -184,6 +184,9 @@ async def _sheets_one(slug: str, args, backend) -> None:
                 wf["5"]["inputs"].update(width=EXPRESSION_SIZE[0], height=EXPRESSION_SIZE[1])
                 panels.append((label, await backend.run_workflow(wf)))
             png = expression_grid(panels)
+        elif sheet == "colorguide":
+            source = (slug_dir / "turnaround.png").read_bytes()
+            png = colour_guide(source, extract_palette(source), _front_head(source))
         else:
             pos, neg = sheet_prompt(d, sheet)
             size = EXPRESSION_SIZE if sheet == "portrait" else None
@@ -196,6 +199,14 @@ async def _sheets_one(slug: str, args, backend) -> None:
     if (slug_dir / f"{key}.png").exists():
         d.palette = extract_palette((slug_dir / f"{key}.png").read_bytes(), skip_background=d.kind == "character")
     save_design(d, args.designs_dir / f"{slug}.toml")
+
+
+def _front_head(png: bytes) -> tuple[int, int, int, int] | None:
+    """The turnaround's leftmost head, its front view."""
+    from imgutils.detect import detect_heads
+    from PIL import Image
+    heads = detect_heads(Image.open(io.BytesIO(png)).convert("RGB"))
+    return tuple(min((h[0] for h in heads), key=lambda b: b[0])) if heads else None
 
 
 def _sheets_present(d: Design, slug_dir: Path) -> bool:
