@@ -8,5 +8,5 @@ held = []
 negative = "two mechanical arms, child, teen, young, slim, skinny, feminine, bishounen, pretty boy, smooth skin, eyepatch, visor"
 status = "approved"
 seed = 961023264
-palette = ["#282827", "#282928", "#0d080f", "#3d2f3d", "#897390", "#221c24"]
+palette = ["#020202", "#585853", "#2c2925", "#191614", "#95804f", "#786144"]
 notes = ["2026-10-29 draft: techie, junkyard veteran, prosthetic leg", "2026-10-29 round 1: 4 candidates", "2026-11-01 approved r1 #4 (seed 961023264)", "2026-11-01 eye colour recorded from earlier sheets: brown eyes, panels drifted without one"]

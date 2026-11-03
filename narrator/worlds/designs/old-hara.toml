@@ -8,5 +8,5 @@ held = []
 negative = "two mechanical eyes, two monocles"
 status = "approved"
 seed = 1024394434
-palette = ["#454140", "#13181d", "#39373e", "#454141", "#414444", "#577364"]
+palette = ["#040505", "#4d5044", "#b7a595", "#6b6253", "#8e8072", "#9b9083"]
 notes = ["2026-10-28 draft from world card", "2026-10-29 round 1: 4 candidates", "2026-10-29 art direction: mature cyberpunk pass", "2026-10-29 round 2: 4 candidates", "2026-10-29 approved r2 #1 (seed 1024394433)", "2026-11-01 owner style pick: seed 2 (seed 1024394434)", "2026-11-01 eye colour recorded from earlier sheets: black eyes, panels drifted without one"]

@@ -8,5 +8,5 @@ held = ["holding clipboard", "glowing visor"]
 negative = "visor, eyepatch"
 status = "approved"
 seed = 3529186270
-palette = ["#323230", "#030304", "#32322f", "#0d0d11", "#211f2a", "#7b4d7d"]
+palette = ["#09090a", "#30343b", "#232429", "#3a4550", "#7e6763", "#53565a"]
 notes = ["2026-10-28 draft from world card", "2026-10-28 round 1: 4 candidates", "2026-10-29 art direction: mature cyberpunk pass", "2026-10-29 round 2: 4 candidates", "2026-10-29 approved r2 #2 (seed 3529186269)", "2026-11-01 owner style pick: seed 2 (seed 3529186270)", "2026-11-01 eye colour recorded from earlier sheets: black eyes, panels drifted without one"]

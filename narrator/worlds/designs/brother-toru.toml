@@ -8,5 +8,5 @@ held = ["holding lantern", "glowing lantern", "hooded robe"]
 negative = "hood up, hood"
 status = "approved"
 seed = 2806524837
-palette = ["#151515", "#151514", "#050407", "#372f3b", "#1e1519", "#0c0d13"]
+palette = ["#0e1217", "#19242c", "#040505", "#404a50", "#a29e89", "#786b65"]
 notes = ["2026-10-28 draft from world card", "2026-10-28 round 1: 4 candidates", "2026-10-29 art direction: mature cyberpunk pass", "2026-10-29 round 2: 4 candidates", "2026-10-29 approved r2 #3 (seed 2806524837)", "2026-11-01 eye colour recorded from earlier sheets: blue eyes, panels drifted without one"]
