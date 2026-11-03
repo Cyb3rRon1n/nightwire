@@ -8,5 +8,5 @@ held = ["cane", "hands in sleeves"]
 negative = ""
 status = "approved"
 seed = 100355588
-palette = ["#50504f", "#040304", "#020203", "#4f4f4e", "#010102", "#504f4e"]
+palette = ["#020203", "#392b21", "#645e55", "#cdc7be", "#a18056", "#85735e"]
 notes = ["2026-10-28 draft from world card", "2026-10-28 round 1: 4 candidates", "2026-10-29 art direction: mature cyberpunk pass", "2026-10-29 round 2: 4 candidates", "2026-10-29 approved r2 #1 (seed 100355587)", "2026-11-01 owner style pick: new seed, F rework (seed 100355588)", "2026-11-01 eye colour recorded from earlier sheets: red eyes, panels drifted without one"]

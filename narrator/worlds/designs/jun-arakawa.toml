@@ -8,5 +8,5 @@ held = ["holding notebook"]
 negative = ""
 status = "approved"
 seed = 1553498808
-palette = ["#4a4a49", "#020203", "#4b4a49", "#4a4a48", "#07060f", "#4b4948"]
+palette = ["#010102", "#111317", "#2b2b2e", "#646464", "#b6aea4"]
 notes = ["2026-10-28 draft from world card", "2026-10-28 round 1: 4 candidates", "2026-10-29 art direction: mature cyberpunk pass", "2026-10-29 round 2: 4 candidates", "2026-10-29 approved r2 #2 (seed 1553498808)"]
