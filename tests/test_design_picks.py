@@ -187,3 +187,18 @@ def test_renders_api_reports_comfyui_being_down(tmp_path):
         assert call(f"http://127.0.0.1:{server.server_port}/designs/api/renders")[0] == 502
     finally:
         server.shutdown()
+
+
+def test_image_verdicts_are_saved_and_validated(api):
+    url, data = api
+    images = url.replace("/picks", "/images")
+    assert call(images) == (200, {})
+    assert call(f"{images}/debt-train-90233", "PUT", {"verdict": "maybe"})[0] == 400
+    assert call(f"{images}/debt-train-90233", "PUT", {"verdict": "fix", "note": " "})[0] == 400
+    assert call(f"{images}/Bad..Id", "PUT", {"verdict": "keep"})[0] == 400
+    assert call(f"{images}/debt-train-90233", "PUT", {"verdict": "keep"}, ctype="text/plain")[0] == 415
+    status, saved = call(f"{images}/debt-train-90233", "PUT", {"verdict": "fix", "note": "hand"})
+    assert status == 200 and saved["debt-train-90233"]["note"] == "hand"
+    assert call(url) == (200, {})
+    assert json.loads(data.with_name("images.json").read_text()).keys() == {"debt-train-90233"}
+    assert call(f"{images}/debt-train-90233", "DELETE") == (200, {})
