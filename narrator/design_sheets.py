@@ -28,6 +28,7 @@ CHARACTER_NEGATIVE_EXTRA = ("nude, nipples, pussy, penis, sex, explicit, loli, s
                             "teenage, aged down, chibi, kawaii, moe, cute, big eyes, deformed")
 SHEET_NEGATIVE_EXTRA = ("scenery, background clutter, inconsistent outfit, different clothes, different hairstyle, "
                         "floating object, mismatched footwear, extra arms, extra legs")
+POSE_CONTROLNET = "noob_openpose_pre.safetensors"
 CHARACTER_SHEETS = ("turnaround", "expressions", "colorguide", "portrait")
 LOCATION_SHEETS = ("establishing", "alternate", "moodkeys", "props")
 MOOD_SUFFIXES = ("night, neon lights", "rain, wet street", "dawn, sunrise, soft light")
@@ -115,8 +116,10 @@ def sheet_prompt(d: Design, sheet: str, mood: str | None = None) -> tuple[str, s
     if sheet == "moodkeys":
         # STYLE's standalone "night" tag would override the mood suffix (dawn, rain...); the mood supplies its own time of day
         style = ", ".join(t for t in STYLE.split(", ") if t != "night")
-    pos = _join(QUALITY, style, subject_for(d), content, mood if sheet == "moodkeys" else "")
-    return pos, _location_negative(d)
+    # The owner's medium dark look for places (2026-11-03); mood strips keep their own time of day, so only "dim" stays out.
+    look = _LOCATION_MOOD.replace("dim lighting, ", "") if sheet == "moodkeys" else _LOCATION_MOOD
+    pos = _join(QUALITY, style, subject_for(d), content, look, mood if sheet == "moodkeys" else "")
+    return pos, _join(_location_negative(d), _LOCATION_NEGATIVE)
 
 
 def expressions_for(d: Design) -> tuple[tuple[str, str], ...]:
@@ -180,7 +183,8 @@ def candidate_workflow(positive: str, negative: str, seed: int, **options) -> di
 
 
 def sheet_workflow(positive: str, negative: str, seed: int, high_res: bool = True, size: tuple[int, int] | None = None,
-                   **options) -> dict:
+                   pose: str | None = None, **options) -> dict:
+    """`pose` is an uploaded skeleton image that fixes the layout during the first pass; the refine pass stays free."""
     if not high_res:
         return candidate_workflow(positive, negative, seed, **options)
     wf = _base(positive, negative, seed, **options)
@@ -199,7 +203,154 @@ def sheet_workflow(positive: str, negative: str, seed: int, high_res: bool = Tru
     wf["35"] = {"class_type": "VAEDecodeTiled", "inputs": {"samples": ["34", 0], "vae": ["4", 2], **tiled}}
     wf["40"] = {"class_type": "ImageUpscaleWithModel", "inputs": {"upscale_model": ["30", 0], "image": ["35", 0]}}
     wf["9"] = {"class_type": "SaveImage", "inputs": {"filename_prefix": "nightwire_design", "images": ["40", 0]}}
+    if pose:
+        wf["50"] = {"class_type": "ControlNetLoader", "inputs": {"control_net_name": POSE_CONTROLNET}}
+        wf["51"] = {"class_type": "LoadImage", "inputs": {"image": pose}}
+        wf["52"] = {"class_type": "ControlNetApplyAdvanced", "inputs": {"positive": ["6", 0], "negative": ["7", 0], "control_net": ["50", 0],
+                    "image": ["51", 0], "strength": 0.7, "start_percent": 0.0, "end_percent": 0.7}}
+        wf["3"]["inputs"].update(positive=["52", 0], negative=["52", 1])
     return wf
+
+
+# The owner's approved "medium dark" scene look (2026-11-03): a solo character painted into the place in one pass.
+SCENE_SIZE = (1216, 848)
+SCENE_MOOD = "dim lighting, muted colors, soft rim light, subtle neon glow, serious atmosphere, detailed clothes"
+_SCENE_NEGATIVE = ("science fiction, machinery, control room, computer, monitor, cable, oversaturated, vivid colors, "
+                   "pink theme, purple theme, blue theme, blue skin, purple skin, english text, latin letters")
+_LOCATION_MOOD = "dim lighting, muted colors, soft rim light, subtle neon glow, serious atmosphere"
+_LOCATION_NEGATIVE = ("oversaturated, vivid colors, pink theme, purple theme, blue theme, english text, latin letters, "
+                      "1girl, 1boy, people, person, silhouette, crowd, realistic, photorealistic, photo (medium), 3d, painterly, oil painting")
+_SCENE_PX_PER_CM = 3.0
+_SCENE_FEET_Y = 770
+_FACE_DENOISE = 0.4
+_TILED = {"tile_size": 512, "overlap": 64, "temporal_size": 64, "temporal_overlap": 8}
+
+
+def scene_prompt(d: Design, what: str) -> tuple[str, str]:
+    who = _join(", ".join(d.required), ", ".join(t for t in (x.strip() for x in d.tags.split(",")) if t and t not in d.required))
+    pos = _join(CHARACTER_QUALITY, STYLE.replace(", cyberpunk", ""), "mature, adult, solo", subject_for(d), who, what, SCENE_MOOD)
+    return pos, _join(_styled_negative(d, _PORTRAIT_GUARD, scene=True), _SCENE_NEGATIVE)
+
+
+def scene_workflow(positive: str, negative: str, seed: int, pose: str, reference: str) -> dict:
+    """Skeleton for pose and height, the turnaround as outfit reference early on so the scene's light still lands, then a refine."""
+    wf = sheet_workflow(positive, negative, seed, size=SCENE_SIZE, pose=pose, cfg=3.5)
+    wf["60"] = {"class_type": "IPAdapterModelLoader", "inputs": {"ipadapter_file": "noobIPAMARK1_mark1.safetensors"}}
+    wf["61"] = {"class_type": "CLIPVisionLoader", "inputs": {"clip_name": "clip-vision_vit-g.safetensors"}}
+    wf["62"] = {"class_type": "LoadImage", "inputs": {"image": reference}}
+    wf["63"] = {"class_type": "IPAdapterAdvanced", "inputs": {"model": wf["3"]["inputs"]["model"], "ipadapter": ["60", 0], "image": ["62", 0],
+                "clip_vision": ["61", 0], "weight": 0.8, "weight_type": "linear", "combine_embeds": "concat", "start_at": 0.2,
+                "end_at": 0.5, "embeds_scaling": "V only"}}
+    wf["3"]["inputs"]["model"] = ["63", 0]
+    wf["34"]["inputs"]["model"] = ["63", 0]
+    wf["9"]["inputs"]["images"] = ["35", 0]  # the final upscale waits until after the face pass
+    del wf["40"]
+    return wf
+
+
+def natural_scene_workflow(positive: str, negative: str, seed: int, reference: str, place: str | None = None) -> dict:
+    """A character doing something: no skeleton, so the pose follows the action. Started from the empty location when there
+    is one, so the figure takes the room's light. The reference comes in late for the same reason."""
+    wf = scene_workflow(positive, negative, seed, None, reference)
+    wf["63"]["inputs"].update(weight=0.7, start_at=0.35, end_at=0.75)
+    if place:
+        del wf["5"]
+        wf["70"] = {"class_type": "LoadImage", "inputs": {"image": place}}
+        wf["71"] = {"class_type": "VAEEncodeTiled", "inputs": {"pixels": ["70", 0], "vae": ["4", 2], **_TILED}}
+        wf["3"]["inputs"].update(latent_image=["71", 0], denoise=0.8)
+    return wf
+
+
+def face_workflow(positive: str, negative: str, seed: int, crop: str) -> dict:
+    """Repaint an enlarged head crop lightly, for faces too small in a full-body shot to resolve on their own."""
+    wf = candidate_workflow(positive, negative, seed, cfg=3.5)
+    del wf["5"]
+    wf["60"] = {"class_type": "LoadImage", "inputs": {"image": crop}}
+    wf["61"] = {"class_type": "VAEEncodeTiled", "inputs": {"pixels": ["60", 0], "vae": ["4", 2], **_TILED}}
+    wf["3"]["inputs"].update(latent_image=["61", 0], denoise=_FACE_DENOISE)
+    return wf
+
+
+def upscale_workflow(image: str) -> dict:
+    return {"30": {"class_type": "UpscaleModelLoader", "inputs": {"model_name": UPSCALER}},
+            "60": {"class_type": "LoadImage", "inputs": {"image": image}},
+            "31": {"class_type": "ImageUpscaleWithModel", "inputs": {"upscale_model": ["30", 0], "image": ["60", 0]}},
+            "9": {"class_type": "SaveImage", "inputs": {"filename_prefix": "nightwire_scene", "images": ["31", 0]}}}
+
+
+def height_pose(template: bytes, height_cm: int) -> bytes:
+    """The turnaround skeleton's front figure, scaled to the character's height with the feet on one ground line."""
+    import numpy as np
+    from PIL import Image
+    im = Image.open(io.BytesIO(template)).convert("RGB")
+    lit = np.asarray(im).sum(axis=2) > 30
+    cols = np.where(lit.any(axis=0))[0]
+    gap = np.where(np.diff(cols) > 15)[0]
+    x1 = int(cols[gap[0]]) if len(gap) else int(cols[-1])
+    rows = np.where(lit[:, :x1 + 1].any(axis=1))[0]
+    figure = im.crop((int(cols[0]), int(rows[0]), x1 + 1, int(rows[-1]) + 1))
+    h = round(height_cm * _SCENE_PX_PER_CM)
+    figure = figure.resize((round(figure.width * h / figure.height), h), Image.LANCZOS)
+    canvas = Image.new("RGB", SCENE_SIZE, "black")
+    canvas.paste(figure, ((SCENE_SIZE[0] - figure.width) // 2, _SCENE_FEET_Y - h))
+    out = io.BytesIO()
+    canvas.save(out, "PNG")
+    return out.getvalue()
+
+
+def lift_blacks(png: bytes) -> bytes:
+    """Dark clothes stay readable against dark scenes."""
+    import numpy as np
+    from PIL import Image
+    a = np.asarray(Image.open(io.BytesIO(png)).convert("RGB")).astype("float32")
+    out = io.BytesIO()
+    Image.fromarray((10 + a * 0.96).astype("uint8")).save(out, "PNG")
+    return out.getvalue()
+
+
+def front_figure(turnaround: bytes, grey: int = 128):
+    """The turnaround's leftmost figure, cut at the first empty column and trimmed to the head and soles."""
+    import numpy as np
+    from PIL import Image
+    im = Image.open(io.BytesIO(turnaround)).convert("RGB")
+    fg = np.abs(np.asarray(im).astype(int) - grey).sum(axis=2) > 24
+    cols = fg.any(axis=0)
+    start = int(np.argmax(cols))
+    gaps = np.where(~cols[start:])[0]
+    gaps = gaps[gaps > im.width * .05]
+    end = min(start + int(gaps[0]) if len(gaps) else im.width, start + int(im.width * .45))
+    rows = np.where(fg[:, start:end].any(axis=1))[0]
+    return im.crop((start, int(rows[0]), end, int(rows[-1]) + 1))
+
+
+def height_lineup(entries: list[tuple[str, int, bytes]], px_per_cm: int = 4, grey: int = 128) -> bytes:
+    """Everyone at one scale on one ground line, tallest first, with 10 cm guides. Entries are (name, height_cm, turnaround png)."""
+    from PIL import Image, ImageDraw, ImageFont
+    people = sorted(entries, key=lambda e: -e[1])
+    figures = []
+    for name, cm, png in people:
+        f = front_figure(png, grey)
+        h = cm * px_per_cm
+        figures.append((name, cm, f.resize((max(1, f.width * h // f.height), h), Image.LANCZOS)))
+    pad, left, top = 20, 90, 30
+    ground = top + people[0][1] * px_per_cm
+    width = left + sum(f.width + pad for _, _, f in figures)
+    sheet = Image.new("RGB", (width, ground + 90), (grey, grey, grey))
+    d = ImageDraw.Draw(sheet)
+    font = ImageFont.load_default(size=22)
+    for cm in range(100, people[0][1] + 1, 10):
+        y = ground - cm * px_per_cm
+        d.line((left - 10, y, width, y), fill=(105, 105, 105))
+        d.text((8, y - 13), f"{cm} cm", fill=(235, 235, 235), font=font)
+    x = left
+    for name, cm, f in figures:
+        sheet.paste(f, (x, ground - f.height))
+        d.text((x, ground + 10), name, fill=(255, 255, 255), font=font)
+        d.text((x, ground + 40), f"{cm} cm", fill=(235, 235, 235), font=font)
+        x += f.width + pad
+    out = io.BytesIO()
+    sheet.save(out, "PNG")
+    return out.getvalue()
 
 
 def expression_grid(panels: list[tuple[str, bytes]], columns: int = 3) -> bytes:
@@ -218,6 +369,9 @@ def expression_grid(panels: list[tuple[str, bytes]], columns: int = 3) -> bytes:
     return out.getvalue()
 
 
+_MIN_FIGURE_SHARE = 0.01
+
+
 def flatten_background(png: bytes, grey: int = 128) -> bytes:
     """Puts the figures on one flat grey, so a whole cast's body sheets match; prompts alone land anywhere from near-white
     to near-black. A segmentation model, because colour fills ate dark dresses that matched a dark backdrop (pilot,
@@ -226,7 +380,13 @@ def flatten_background(png: bytes, grey: int = 128) -> bytes:
     from imgutils.segment import segment_rgba_with_isnetis
     from PIL import Image
     im = Image.open(io.BytesIO(png)).convert("RGB")
-    alpha = np.clip((segment_rgba_with_isnetis(im)[0] - 0.25) / 0.5, 0, 1)  # the model is unsure on dark cloth: firm up its soft edges
+    def firmed(source):  # the model is unsure on dark cloth: firm up its soft edges
+        return np.clip((segment_rgba_with_isnetis(source)[0] - 0.25) / 0.5, 0, 1)
+    alpha = firmed(im)
+    if alpha.mean() < _MIN_FIGURE_SHARE:  # a dark figure on near-black can vanish whole (Wataru Ono, 2026-11-04)
+        alpha = firmed(im.point(lambda v: int(255 * (v / 255) ** 0.5)))
+    if alpha.mean() < _MIN_FIGURE_SHARE:
+        raise ValueError("no figure found to keep; refusing to write a blank sheet")
     im.paste((grey, grey, grey), mask=Image.fromarray(((1 - alpha) * 255).astype("uint8")))
     out = io.BytesIO()
     im.save(out, "PNG")

@@ -20,6 +20,11 @@ select,textarea,input[type=number]{width:100%;background:var(--bg);color:var(--t
 textarea{resize:vertical;min-height:84px}
 .preview{margin-top:6px;border-radius:6px;background:#000;aspect-ratio:3/2;width:100%;object-fit:contain;display:block}
 .preview[hidden]{display:none}
+#examples{margin-bottom:24px}#examples[hidden]{display:none}
+.example{margin:0;border:1px solid #ffffff14;border-radius:8px;overflow:hidden;background:var(--panel)}
+.example img{display:block;width:100%;height:auto}
+.example figcaption{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 10px;font-size:.85rem}
+.example-use{min-height:36px;padding:4px 10px;cursor:pointer}
 .hint{color:var(--dim);font-size:.8rem;margin:4px 0 0}
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .seg label{margin:0;color:var(--text);display:flex;align-items:center;justify-content:center;min-height:42px;padding:4px 8px;text-align:center;border:1px solid var(--line);border-radius:6px;cursor:pointer;font-size:.88rem;background:var(--bg)}
@@ -105,6 +110,10 @@ dialog[open]{display:flex;flex-direction:column;gap:10px}
   <p class="msg" id="msg" role="status"></p>
 </form>
 
+<section id="examples" aria-labelledby="examples-title" hidden>
+  <div class="head"><h2 id="examples-title">Examples</h2><span>Scenes in the Nightwire look. Use one to fill in the form, then change it.</span></div>
+  <div class="grid" id="example-grid"></div>
+</section>
 <section aria-labelledby="results-title">
   <div class="head">
     <h2 id="results-title">Results</h2>
@@ -277,6 +286,23 @@ dialog[open]{display:flex;flex-direction:column;gap:10px}
   $("zoom").addEventListener("close", () => $("zoom-img").removeAttribute("src"));
   document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
 
+  async function loadExamples() {
+    let items;
+    try { items = await (await fetch("/world/examples.json", {cache: "no-store"})).json(); }
+    catch { return; }  // the page works without them
+    for (const x of items) {
+      const use = el("button", {type: "button", textContent: "Use this", className: "example-use"});
+      use.addEventListener("click", () => {
+        $("character").value = x.character; $("location").value = x.location || ""; $("action").value = x.action;
+        sync(); $("form").scrollIntoView({behavior: "smooth", block: "start"}); $("action").focus({preventScroll: true});
+      });
+      $("example-grid").append(el("figure", {className: "example"},
+        el("a", {href: x.full, target: "_blank", rel: "noopener"}, el("img", {src: x.image, alt: x.name, loading: "lazy"})),
+        el("figcaption", {}, el("span", {textContent: x.name}), use)));
+    }
+    $("examples").hidden = !items.length;
+  }
+
   (async () => {
     try { options = await call("/options"); }
     catch (e) { say(`The studio service isn't answering: ${e.message}`, true); $("go").disabled = true; return; }
@@ -295,6 +321,7 @@ dialog[open]{display:flex;flex-direction:column;gap:10px}
     sync();
     poll();
     watchProgress();
+    loadExamples();
   })();
 })();
 </script>

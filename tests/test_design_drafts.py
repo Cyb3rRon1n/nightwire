@@ -2,10 +2,10 @@ from narrator.designs import kuroshio_designs
 from narrator.world import kuroshio
 
 
-def test_all_22_drafts_load():
+def test_all_23_drafts_load():
     designs = kuroshio_designs()
-    assert len(designs) == 22
-    assert sum(d.kind == "character" for d in designs.values()) == 11
+    assert len(designs) == 23
+    assert sum(d.kind == "character" for d in designs.values()) == 12
 
 
 def test_character_sources_match_world_npcs():
@@ -24,7 +24,7 @@ def test_drafts_follow_the_writing_rules():
     for d in kuroshio_designs().values():
         tags = [t.strip() for t in d.tags.split(",")]
         assert 12 <= len(tags) <= 25, d.name
-        assert d.notes and d.notes[0] == "2026-10-28 draft from world card", d.name
+        assert d.notes and d.notes[0].split(" ", 1)[1].startswith("draft"), d.name
         if d.kind == "location":
             assert d.alt_tags and 3 <= len(d.props) <= 5, d.name
             assert "scenery" not in d.tags, d.name

@@ -50,8 +50,9 @@ def test_character_candidate_is_a_turnaround_preview():
 
 def test_location_candidate_uses_the_game_style():
     pos, neg = candidate_prompt(_loc())
-    assert pos == ", ".join([QUALITY, STYLE, "scenery, no humans", "izakaya, paper lanterns, noren"])
-    assert neg == NEGATIVE
+    assert pos.startswith(", ".join([QUALITY, STYLE, "scenery, no humans", "izakaya, paper lanterns, noren"]))
+    assert "muted colors" in pos  # the owner's medium dark look
+    assert neg.startswith(NEGATIVE) and "people" in neg
     est, _ = sheet_prompt(_loc(), "establishing")
     assert "safe" in est.split(", ") and "sensitive" not in est
 
@@ -156,6 +157,14 @@ def test_sheet_workflow_has_refine_and_final_upscale():
     save = [n["inputs"] for n in wf.values() if n["class_type"] == "SaveImage"][0]
     final = wf[save["images"][0]]
     assert final["class_type"] == "ImageUpscaleWithModel"
+
+
+def test_sheet_pose_steers_first_pass_only():
+    wf = sheet_workflow("P", "N", 7, pose="skeleton.png")
+    assert wf["51"]["inputs"]["image"] == "skeleton.png"
+    assert wf["3"]["inputs"]["positive"] == ["52", 0] and wf["3"]["inputs"]["negative"] == ["52", 1]
+    assert wf["34"]["inputs"]["positive"] == ["6", 0]
+    assert "50" not in sheet_workflow("P", "N", 7)
 
 
 def test_sheet_workflow_low_res_is_single_pass():
@@ -300,3 +309,109 @@ def test_flatten_background_paints_what_the_segmenter_calls_backdrop(monkeypatch
     assert 60 < got.getpixel((0, 0))[0] < 90
 
 
+def _turnaround(height: int) -> bytes:
+    from PIL import Image, ImageDraw
+    im = Image.new("RGB", (900, 600), (128, 128, 128))
+    d = ImageDraw.Draw(im)
+    d.rectangle((50, 600 - height, 150, 599), fill=(10, 10, 10))  # front view
+    d.rectangle((500, 100, 600, 599), fill=(10, 10, 10))  # a later view, must be ignored
+    out = io.BytesIO()
+    im.save(out, "PNG")
+    return out.getvalue()
+
+
+def test_front_figure_takes_only_the_first_view():
+    from narrator.design_sheets import front_figure
+    assert front_figure(_turnaround(300)).size == (101, 300)
+
+
+def test_height_lineup_is_to_scale_on_one_ground_line():
+    import numpy as np
+    from PIL import Image
+    from narrator.design_sheets import height_lineup
+    png = height_lineup([("Short", 150, _turnaround(300)), ("Tall", 200, _turnaround(300))], px_per_cm=2)
+    a = np.asarray(Image.open(io.BytesIO(png)).convert("RGB")).astype(int)
+    dark = a.sum(axis=2) < 60
+    heights = [int(dark[:, x].sum()) for x in np.where(dark.any(axis=0))[0]]
+    assert max(heights) == 400 and min(heights) == 300  # tallest first, 2 px per cm
+    rows = np.where(dark.any(axis=1))[0]
+    assert (rows.max() - rows.min() + 1) == 400  # both stand on the same line
+
+
+def test_natural_scene_starts_from_the_empty_location():
+    from narrator.design_sheets import natural_scene_workflow
+    wf = natural_scene_workflow("P", "N", 7, "ref.png", "room.png")
+    assert "5" not in wf and wf["70"]["inputs"]["image"] == "room.png"
+    assert wf["3"]["inputs"]["latent_image"] == ["71", 0] and wf["3"]["inputs"]["denoise"] == 0.8
+    assert (wf["63"]["inputs"]["weight"], wf["63"]["inputs"]["start_at"], wf["63"]["inputs"]["end_at"]) == (0.7, 0.35, 0.75)
+    assert "ControlNetApplyAdvanced" not in _types(wf)
+
+
+def test_natural_scene_without_a_location_starts_empty():
+    from narrator.design_sheets import natural_scene_workflow
+    wf = natural_scene_workflow("P", "N", 7, "ref.png")
+    assert "5" in wf and "70" not in wf
+
+
+def test_scene_workflow_uses_pose_and_timed_reference_and_stops_before_upscale():
+    from narrator.design_sheets import scene_workflow
+    wf = scene_workflow("P", "N", 7, "pose.png", "ref.png")
+    assert wf["51"]["inputs"]["image"] == "pose.png" and wf["62"]["inputs"]["image"] == "ref.png"
+    assert (wf["63"]["inputs"]["start_at"], wf["63"]["inputs"]["end_at"]) == (0.2, 0.5)
+    assert wf["3"]["inputs"]["model"] == ["63", 0] == wf["34"]["inputs"]["model"]
+    assert wf["3"]["inputs"]["cfg"] == 3.5 and wf["9"]["inputs"]["images"] == ["35", 0] and "40" not in wf
+
+
+def test_height_pose_scales_figure_and_keeps_feet_on_the_ground_line():
+    import numpy as np
+    from narrator.design_sheets import SCENE_SIZE, height_pose
+    template = Image.new("RGB", (1216, 832), "black")
+    for x0, x1 in ((100, 200), (500, 600)):  # front figure, then another view after a gap
+        template.paste((255, 255, 255), (x0, 100, x1, 700))
+    buf = io.BytesIO(); template.save(buf, "PNG")
+    def extent(cm):
+        a = np.asarray(Image.open(io.BytesIO(height_pose(buf.getvalue(), cm))).convert("L")) > 30
+        rows = np.where(a.any(axis=1))[0]
+        return rows[0], rows[-1], a.shape
+    t_top, t_feet, shape = extent(195)
+    s_top, s_feet, _ = extent(160)
+    assert shape == (SCENE_SIZE[1], SCENE_SIZE[0])
+    assert abs(t_feet - s_feet) <= 1 and t_top < s_top
+    assert abs((t_feet - t_top) / (s_feet - s_top) - 195 / 160) < 0.01
+
+
+def _fake_segmenter(monkeypatch, masks):
+    import sys, types
+    fake = types.ModuleType("imgutils.segment")
+    seen = []
+    def segment(im):
+        seen.append(im.getpixel((0, 0))[0])
+        return masks[min(len(seen) - 1, len(masks) - 1)], im
+    fake.segment_rgba_with_isnetis = segment
+    monkeypatch.setitem(sys.modules, "imgutils", types.ModuleType("imgutils"))
+    monkeypatch.setitem(sys.modules, "imgutils.segment", fake)
+    return seen
+
+
+def test_flatten_background_retries_on_a_brighter_copy_when_a_dark_figure_is_missed(monkeypatch):
+    import numpy as np
+    from PIL import Image
+    found = np.zeros((100, 100), dtype=float)
+    found[20:80, 20:80] = 1.0
+    seen = _fake_segmenter(monkeypatch, [np.zeros((100, 100), dtype=float), found])
+    out = io.BytesIO()
+    Image.new("RGB", (100, 100), (20, 20, 20)).save(out, "PNG")
+    got = Image.open(io.BytesIO(ds.flatten_background(out.getvalue()))).convert("RGB")
+    assert seen[1] > seen[0]
+    assert got.getpixel((50, 50)) == (20, 20, 20)  # the original pixels survive, not the brightened ones
+    assert got.getpixel((5, 50)) == (128, 128, 128)
+
+
+def test_flatten_background_refuses_to_return_a_blank_sheet(monkeypatch):
+    import numpy as np
+    from PIL import Image
+    _fake_segmenter(monkeypatch, [np.zeros((100, 100), dtype=float)])
+    out = io.BytesIO()
+    Image.new("RGB", (100, 100), (20, 20, 20)).save(out, "PNG")
+    with pytest.raises(ValueError, match="no figure"):
+        ds.flatten_background(out.getvalue())

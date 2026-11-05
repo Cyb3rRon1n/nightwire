@@ -18,7 +18,7 @@ def _loc(**kw):
     return Design(**base)
 
 
-@pytest.mark.parametrize("name,slug", [("Mama Sato", "mama-sato"), ("Brother Tōru", "brother-toru"),
+@pytest.mark.parametrize("name,slug", [("Mama Sato", "mama-sato"), ("Saeko Kirigaya", "saeko-kirigaya"),
                                        ("Tenjō Heights", "tenjo-heights"), ("Mama Sato's izakaya", "mama-satos-izakaya"),
                                        ("Hanabira-chō", "hanabira-cho"), ("Yomi  Line", "yomi-line")])
 def test_slugify(name, slug):
@@ -90,3 +90,22 @@ def test_control_chars_round_trip(tmp_path):
     d = _char(notes=["line1\nline2\ttab\r\x01end"])
     save_design(d, tmp_path / "m.toml")
     assert load_design(tmp_path / "m.toml").notes == d.notes
+
+
+def test_height_and_bio_round_trip_and_stay_optional(tmp_path):
+    path = tmp_path / "x.toml"
+    save_design(_char(height_cm=178, bio="A fixer."), path)
+    assert (load_design(path).height_cm, load_design(path).bio) == (178, "A fixer.")
+    save_design(_char(), path)
+    assert "height_cm" not in path.read_text() and "bio" not in path.read_text()
+
+
+@pytest.mark.parametrize("bad", [99, 251])
+def test_height_out_of_range_raises(bad):
+    with pytest.raises(ValueError, match="height_cm"):
+        validate(_char(height_cm=bad))
+
+
+def test_location_cannot_have_height_or_bio():
+    with pytest.raises(ValueError, match="characters only"):
+        validate(_loc(height_cm=170))

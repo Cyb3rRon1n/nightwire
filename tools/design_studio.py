@@ -32,9 +32,11 @@ from narrator.comfyui_backend import ComfyUIBackend
 from tools.batch_status import Batch, batch_url
 from narrator.design_sheets import (
     CHARACTER_SHEETS, EXPRESSION_SIZE, LOCATION_SHEETS, MOOD_SUFFIXES, candidate_prompt, candidate_workflow,
-    colour_guide, expression_grid, expression_prompts, extract_palette, flatten_background, join_strip, sheet_prompt, sheet_workflow,
+    face_workflow, front_figure, height_pose, lift_blacks, natural_scene_workflow, portrait_prompt, scene_prompt, scene_workflow, upscale_workflow, SCENE_MOOD, SCENE_SIZE, _join,
+    height_lineup, colour_guide, expression_grid, expression_prompts, extract_palette, flatten_background, join_strip, sheet_prompt, sheet_workflow,
 )
 from narrator.designs import DESIGNS_DIR, Design, load_design, load_designs, save_design
+from narrator.world import kuroshio
 
 _CANDIDATE = re.compile(r"^r(\d+)-c(\d+)-(\d+)\.png$")
 CANDIDATES_PER_ROUND = 4
@@ -175,7 +177,7 @@ async def _sheets_one(slug: str, args, backend) -> None:
             frames = []
             for mood in MOOD_SUFFIXES:
                 pos, neg = sheet_prompt(d, sheet, mood=mood)
-                frames.append(await backend.run_workflow(sheet_workflow(pos, neg, d.seed, high_res=False)))
+                frames.append(await backend.run_workflow(sheet_workflow(pos, neg, d.seed, high_res=False, cfg=3.5)))
             png = join_strip(frames)
         elif sheet == "expressions":
             panels = []
@@ -190,7 +192,9 @@ async def _sheets_one(slug: str, args, backend) -> None:
         else:
             pos, neg = sheet_prompt(d, sheet)
             size = EXPRESSION_SIZE if sheet == "portrait" else None
-            png = await backend.run_workflow(sheet_workflow(pos, neg, d.seed, size=size))
+            pose = await _turnaround_pose(d, backend) if sheet == "turnaround" else None
+            options = {"cfg": 3.5} if d.kind == "location" and sheet != "props" else {}
+            png = await backend.run_workflow(sheet_workflow(pos, neg, getattr(args, "seed", None) or d.seed, size=size, pose=pose, **options))
             if d.kind == "character" and sheet != "portrait":
                 png = flatten_background(png)
         (slug_dir / f"{sheet}.png").write_bytes(png)
@@ -199,6 +203,61 @@ async def _sheets_one(slug: str, args, backend) -> None:
     if (slug_dir / f"{key}.png").exists():
         d.palette = extract_palette((slug_dir / f"{key}.png").read_bytes(), skip_background=d.kind == "character")
     save_design(d, args.designs_dir / f"{slug}.toml")
+
+
+async def _turnaround_pose(d: Design, backend) -> str:
+    """Everyone's turnaround is drawn on one front, side and back skeleton, so every sheet has the same three views."""
+    name = f"turnaround_{'masculine' if d.presentation == 'masculine' else 'feminine'}.png"
+    return await backend.upload_image(f"nightwire_{name}", (Path(__file__).parent / "poses" / name).read_bytes())
+
+
+async def cmd_scene(d: Design, slug: str, what: str, name: str, args, backend) -> int:
+    """One solo scene in the approved medium dark look, by default a natural shot started from --place. --standing is the old full-body recipe."""
+    from tools.scene_images import square_on_blur
+    slug_dir = args.design_dir / slug
+    turnaround = slug_dir / "turnaround.png"
+    if d.kind != "character" or not d.height_cm or not turnaround.exists():
+        print(f"{slug}: needs a character with a height and a turnaround", file=sys.stderr)
+        return 1
+    ref = await backend.upload_image(f"nightwire_scene_ref_{slug}.png", square_on_blur(front_figure(turnaround.read_bytes())))
+    pos, neg = scene_prompt(d, what)
+    if args.standing:
+        kind = "masculine" if d.presentation == "masculine" else "feminine"
+        pose = await backend.upload_image(f"nightwire_scene_pose_{slug}.png", height_pose((Path(__file__).parent / "poses" / f"turnaround_{kind}.png").read_bytes(), d.height_cm))
+        wf = scene_workflow(pos, neg, d.seed, pose, ref)
+    else:
+        place = await _upload_place(args.place, slug, backend) if args.place else None
+        wf = natural_scene_workflow(f"{what}, detailed background, {pos}", neg, d.seed, ref, place)
+    png = await _scene_face(d, slug, await backend.run_workflow(wf), backend)
+    upscaled = await backend.run_workflow(upscale_workflow(await backend.upload_image(f"nightwire_scene_up_{slug}.png", png)))
+    out = args.design_dir / "scenes" / f"{slug}--{name}.png"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_bytes(lift_blacks(upscaled))
+    print(out)
+    return 0
+
+
+async def _upload_place(path: Path, slug: str, backend) -> str:
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.open(path).convert("RGB").resize(SCENE_SIZE).save(buf, "PNG")
+    return await backend.upload_image(f"nightwire_scene_place_{slug}.png", buf.getvalue())
+
+
+async def _scene_face(d: Design, slug: str, png: bytes, backend) -> bytes:
+    from tools.scene_images import face_box, paste_face
+    box = face_box(png)
+    if not box:
+        print(f"{slug}: no head found, skipping the face pass", file=sys.stderr)
+        return png
+    from PIL import Image
+    crop = Image.open(io.BytesIO(png)).convert("RGB").crop(box).resize((1024, 1024), Image.LANCZOS)
+    buf = io.BytesIO()
+    crop.save(buf, "PNG")
+    name = await backend.upload_image(f"nightwire_scene_face_{slug}.png", buf.getvalue())
+    pos, neg = portrait_prompt(d)
+    face = await backend.run_workflow(face_workflow(_join(pos, SCENE_MOOD), neg, d.seed, name))
+    return paste_face(png, face, box)
 
 
 def _front_head(png: bytes) -> tuple[int, int, int, int] | None:
@@ -216,10 +275,16 @@ def _sheets_present(d: Design, slug_dir: Path) -> bool:
 
 def _web_copy(src: Path, dest: Path) -> None:
     from PIL import Image
+    """A quick-loading preview at dest, and the whole image beside it for tapping through (see _full_name)."""
     im = Image.open(src).convert("RGB")
-    im.thumbnail((1100, 1100))
     dest.parent.mkdir(parents=True, exist_ok=True)
+    im.save(dest.with_name(_full_name(dest.name)), "JPEG", quality=92)
+    im.thumbnail((1100, 1100))
     im.save(dest, "JPEG", quality=84)
+
+
+def _full_name(preview: str) -> str:
+    return preview.removesuffix(".jpg") + "-full.jpg"
 
 
 GALLERY_STYLE = """
@@ -291,6 +356,27 @@ def _approved_candidate(d: Design, slug_dir: Path) -> tuple[int, int, Path] | No
     return r, n, _latest_candidates(slug_dir, r)[1].get(n)
 
 
+def _bio(d: Design) -> str:
+    """The record's bio, else the world card. A card's secret stays out: this page is for art review, not the game's answers."""
+    if d.bio:
+        return d.bio
+    npc = next((n for n in kuroshio().npcs if n.name == d.name), None)
+    return npc.card.split("Secret:")[0].strip() if npc else ""
+
+
+def _lineup(designs, args, out: Path) -> str:
+    """The cast's height line-up, or nothing until someone has both a height and a turnaround."""
+    entries = [(d.name, d.height_cm, (args.design_dir / slug / "turnaround.png").read_bytes()) for slug, d in sorted(designs.items())
+               if d.kind == "character" and d.height_cm and (args.design_dir / slug / "turnaround.png").exists()]
+    if not entries:
+        return ""
+    src = args.design_dir / "lineup.png"
+    src.write_bytes(height_lineup(entries))
+    _web_copy(src, out / "img" / "lineup.jpg")
+    return ('<section><h3>Height line-up</h3><figure><a href="../img/lineup-full.jpg" target="_blank" rel="noopener"><img src="../img/lineup.jpg" '
+            'alt="Every character at one scale on one ground line" loading="lazy"></a></figure></section>')
+
+
 def _review_page(designs, args, out: Path) -> dict[str, str]:
     """review/index.html: the approved art beside each sheet's old and new version, with the checker's flags.
     Returns {slug: sheet version}, so the dashboard can count what's still unreviewed."""
@@ -315,7 +401,7 @@ def _review_page(designs, args, out: Path) -> dict[str, str]:
         figs = []
         for label, rel, src in figures:
             _web_copy(src, out / "img" / slug / rel)
-            figs.append(f'<figure><a href="../img/{slug}/{rel}" target="_blank" rel="noopener"><img src="../img/{slug}/{rel}" '
+            figs.append(f'<figure><a href="../img/{slug}/{_full_name(rel)}" target="_blank" rel="noopener"><img src="../img/{slug}/{rel}" '
                         f'alt="{name}: {label}" loading="lazy"></a><figcaption>{label}</figcaption></figure>')
         entry = report.get(slug)
         flags = entry["flags"] if entry else []
@@ -329,12 +415,13 @@ def _review_page(designs, args, out: Path) -> dict[str, str]:
         if unchecked:
             check += f'<p class="state">Too small or specific to check: {html.escape(", ".join(unchecked))}</p>'
         versions[slug] = str(max((slug_dir / f"{s}.png").stat().st_mtime_ns for s in CHARACTER_SHEETS if (slug_dir / f"{s}.png").exists()))
-        cards.append((not flags, f'<section data-slug="{html.escape(slug)}" data-v="{versions[slug]}"><h3>{name}</h3>'
+        about = (f"<p><strong>Height:</strong> {d.height_cm} cm</p>" if d.height_cm else "") + (f"<p>{html.escape(_bio(d))}</p>" if _bio(d) else "")
+        cards.append((not flags, f'<section data-slug="{html.escape(slug)}" data-v="{versions[slug]}"><h3>{name}</h3>{about}'
                       f'<div class="grid">{"".join(figs)}</div>{check}<div class="ctl">'
                       '<button type="button" class="ok">Looks right</button><input type="text" maxlength="500" '
                       f'aria-label="What needs fixing on {name}" placeholder="What needs fixing?">'
                       '<button type="button" class="fix">Needs a fix</button><span class="state" role="status"></span></div></section>'))
-    body = "".join(c for _, c in sorted(cards, key=lambda c: c[0]))
+    body = _lineup(designs, args, out) + "".join(c for _, c in sorted(cards, key=lambda c: c[0]))
     template = Path(__file__).with_name("design_review.html").read_text()
     (out / "review").mkdir(parents=True, exist_ok=True)
     (out / "review" / "index.html").write_text(template.replace("/*STYLE*/", GALLERY_STYLE).replace("<!--CARDS-->", body))
@@ -359,14 +446,20 @@ def cmd_gallery(designs, args) -> int:
             won = d.status == "approved" and any(re.search(rf"approved r{r} #{n}\b", note) for note in d.notes)
             button = f'<button type="button" class="pick">Pick #{n}</button>' if pick else f"#{n}" + (" ✓ approved" if won else "")
             figs.append(f'<figure data-n="{n}"><button type="button" class="zoom" aria-label="Enlarge {name} candidate {n}">'
-                        f'<img src="{rel}" alt="{name} candidate {n}" loading="lazy"></button><figcaption>{button}</figcaption></figure>')
+                        f'<img src="{rel}" data-full="{_full_name(rel)}" alt="{name} candidate {n}" loading="lazy"></button><figcaption>{button}</figcaption></figure>')
         sheets = CHARACTER_SHEETS if d.kind == "character" else LOCATION_SHEETS
         for s in sheets:
             if (slug_dir / f"{s}.png").exists():
                 rel = f"img/{slug}/{s}.jpg"
                 _web_copy(slug_dir / f"{s}.png", out / rel)
                 figs.append(f'<figure><button type="button" class="zoom" aria-label="Enlarge {name} {s}">'
-                            f'<img src="{rel}" alt="{name} {s}" loading="lazy"></button><figcaption>{s}</figcaption></figure>')
+                            f'<img src="{rel}" data-full="{_full_name(rel)}" alt="{name} {s}" loading="lazy"></button><figcaption>{s}</figcaption></figure>')
+        city = slug_dir.parent / "scenes" / f"{slug}--city.png"
+        if d.kind == "character" and d.status == "approved" and city.exists():
+            rel = f"img/{slug}/city.jpg"
+            _web_copy(city, out / rel)
+            figs.append(f'<figure><button type="button" class="zoom" aria-label="Enlarge {name} in the city">'
+                        f'<img src="{rel}" data-full="{_full_name(rel)}" alt="{name} in the city" loading="lazy"></button><figcaption>in the city</figcaption></figure>')
         group = "candidates" if pick else "approved" if d.status == "approved" else "other"
         groups[group].append(_gallery_section(slug, d, r, figs, pick))
     body = '<div id="bar" role="status">Loading picks…</div><h1>Kuroshio Design Studio</h1>'
@@ -429,6 +522,10 @@ def _parser() -> argparse.ArgumentParser:
     r = sub.add_parser("reroll"); r.add_argument("slug"); r.add_argument("note")
     s = sub.add_parser("sheets"); s.add_argument("slugs", nargs="*"); s.add_argument("--approved-missing", action="store_true")
     s.add_argument("--only", choices=(*CHARACTER_SHEETS, *LOCATION_SHEETS), help="redo just this sheet; keeps the others")
+    s.add_argument("--seed", type=int, help="render with this seed instead of the design's; not saved")
+    sc = sub.add_parser("scene"); sc.add_argument("slug"); sc.add_argument("what", help="place and action tags"); sc.add_argument("--name", required=True, help="file name, e.g. alley")
+    sc.add_argument("--place", type=Path, help="empty location image to start from, so the character takes its light")
+    sc.add_argument("--standing", action="store_true", help="old recipe: full-body skeleton, no starting image")
     sub.add_parser("gallery"); sub.add_parser("export")
     return p
 
@@ -464,6 +561,15 @@ async def main(argv: list[str], backend=None) -> int:
             if args.command == "candidates":
                 return await cmd_candidates(designs, slugs, args, backend)
             return await cmd_sheets(designs, slugs, args, backend)
+        finally:
+            if not args.no_gpu_etiquette:
+                _gpu_etiquette(args.comfyui_url, before=False)
+    if args.command == "scene":
+        backend = backend or ComfyUIBackend(base_url=args.comfyui_url, profile="noobai", timeout=1200.0)
+        if not args.no_gpu_etiquette:
+            _gpu_etiquette(args.comfyui_url, before=True)
+        try:
+            return await cmd_scene(designs[args.slug], args.slug, args.what, args.name, args, backend)
         finally:
             if not args.no_gpu_etiquette:
                 _gpu_etiquette(args.comfyui_url, before=False)
