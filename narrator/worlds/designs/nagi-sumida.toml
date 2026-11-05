@@ -1,0 +1,13 @@
+name = "Nagi Sumida"
+kind = "character"
+source = "npc:Nagi Sumida"
+presentation = "feminine"
+height_cm = 172
+tags = "black hair, short hair, grey streak in hair, tired eyes, calm, gentle smile, mature female, tall, slender, beautiful face, neck port, thin cables, holding lantern, glowing paper lantern, long dark navy coat, simple clothes, plain coat, white shirt collar, plain trousers, work shoes"
+required = ["light skin", "black hair", "short hair", "grey streak in hair", "grey eyes", "long dark navy coat", "neck port"]
+held = ["holding lantern", "glowing paper lantern"]
+negative = "robe, hood, monk, nun, tattoo, face tattoo, forehead mark, cleavage, tactical vest, body armor, puffer jacket, bulky clothes, oversized jacket, cargo pouches, harness, backpack, knee pads, military, soldier, reflective stripes, (blue skin:1.3), blue face"
+status = "approved"
+seed = 2284112963
+palette = ["#080a08", "#ccd4d8", "#182025", "#2e3235", "#555c5f"]
+notes = ["2026-11-04 draft: Lantern Guild keeper", "2026-11-04 round 1: 4 candidates", "2026-11-04 approved r1 #2 (seed 2284112963)"]

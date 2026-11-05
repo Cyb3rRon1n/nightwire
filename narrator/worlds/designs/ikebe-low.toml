@@ -7,5 +7,5 @@ alt_tags = "alley shrine, small shrine, fox statue, rope, paper lantern, darknes
 props = ["paper lantern", "noren curtain", "alley shrine", "utility pole", "vending machine"]
 status = "approved"
 seed = 3726252021
-palette = ["#04172b", "#030c19", "#3b3050", "#29192b", "#040710", "#636386"]
+palette = ["#031e28", "#043b49", "#040a0f", "#908d72", "#455450", "#332a27"]
 notes = ["2026-10-28 draft from world card", "2026-10-28 round 1: 4 candidates", "2026-10-29 approved r1 #3 (seed 3726252021)"]

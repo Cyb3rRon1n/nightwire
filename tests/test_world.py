@@ -18,8 +18,8 @@ def test_shipped_kuroshio_world_loads():
     world = kuroshio()
 
     assert len(world.districts) == 6
-    assert len(world.factions) == 6
-    assert len(world.npcs) == 11
+    assert len(world.factions) == 9
+    assert len(world.npcs) == 12
     assert "utsusemi" in world.system_block()
     assert "Kuroshio" in world.primer
 
