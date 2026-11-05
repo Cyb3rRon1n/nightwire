@@ -4,7 +4,7 @@
 # ("Ōgane" already matches "Ogane" - don't add re-spellings as aliases).
 
 primer = """
-Setting: Kuroshio, a Pacific megacity in Japan, 2089, named for the black ocean current that feeds its port. Five keiretsu houses built the city and financed the chrome that keeps its people working. Nearly everyone's chrome is on a payment plan, and torite repo crews take back what you can't pay for. Giri binds the city: favors are currency and everyone owes someone. The deep net, Yomi, holds the lingering data of the dead, tended by the Lantern Guild. Old machines that run too long sometimes wake as tsukumogami. Districts: Tenjō Heights, Hanabira-chō, Ikebe Low, Kuroshio Docks, The Loop, Yomi Line. When the party moves, set update_world location to a district name, then the specific spot (e.g. "Ikebe Low - Mama Sato's izakaya"). Tone: stylish, fast and darkly funny like a neon action film, but every piece of chrome costs something and the city always collects. Ground every scene in concrete sensory detail: rain, food, signage, engine noise, crowds, machine hum. Use Japanese words only from the glossary, naturally, without explaining them. Atop Tenjō Heights the keiretsu families live as corporate royalty. Some woken machines rent utsusemi, synthetic shells leased on the same payment plans, and the torite take those back too.
+Setting: Kuroshio, a Pacific megacity in Japan, 2089, named for the black ocean current that feeds its port. Five keiretsu houses built the city and financed the chrome that keeps its people working. Nearly everyone's chrome is on a payment plan, and torite repo crews take back what you can't pay for. Giri binds the city: favors are currency and everyone owes someone. The deep net, Yomi, holds the lingering data of the dead, tended by the Lantern Guild. Old machines that run too long sometimes wake as tsukumogami. Districts: Tenjō Heights, Hanabira-chō, Ikebe Low, Kuroshio Docks, The Loop, Yomi Line. When the party moves, set update_world location to a district name, then the specific spot (e.g. "Ikebe Low - Mama Sato's izakaya"). Tone: stylish, fast and darkly funny like a neon action film, but every piece of chrome costs something and the city always collects. Ground every scene in concrete sensory detail: rain, food, signage, engine noise, crowds, machine hum. Use Japanese words only from the glossary, naturally, without explaining them. Atop Tenjō Heights the keiretsu families live as corporate royalty. Some woken machines rent utsusemi, synthetic shells leased on the same payment plans, and the torite take those back too. Mentioning someone's status light is rude.
 """
 
 [glossary]
@@ -18,6 +18,7 @@ Yomi = "the deep net, where the data of the dead lingers"
 "going to the lantern" = "dying"
 tsukumogami = "an old machine that woke up as a rogue AI"
 utsusemi = "a rented synthetic body that an AI wears to walk the street"
+"status light" = "chrome's green, amber or red payment light"
 
 [[district]]
 name = "Tenjō Heights"
@@ -79,6 +80,21 @@ name = "Tsukumogami"
 aliases = ["rogue AI", "rogue AIs"]
 card = "Tsukumogami are old machines that ran too long and woke: vending machines, ticket gates, trains. The lucky ones rent utsusemi shells from Hoshikawa and walk the street, owing installments like anyone. Each wants something strange and specific: to be thanked, to finish a last route, to keep its shell. Narrate them as uncanny: chimes that sound wrong, screens that answer back, shells too still."
 
+[[faction]]
+name = "Status Light"
+aliases = ["the squeeze", "guarantor", "amber light", "red light"]
+card = "A status light on financed chrome shows green, amber or red. Amber brings soft reminders and declined small purchases. Red throttles the chrome, blacklists trains and rentals, and calls the guarantor, who inherits the debt if the holder vanishes. Then a torite crew comes after a courteous final notice. Kuze-gumi debts add public shaming at work or family events. Narrate it polite and ordinary."
+
+[[faction]]
+name = "Night Movers"
+aliases = ["night mover"]
+card = "The Night Movers are small crews with unmarked vans who get debtors out before dawn. Wants: paid up front, and no names. Method: price by distance, belongings and how hard you are being hunted. Leaving strands your guarantor with the debt, so every job leaves someone behind. Narrate them quiet, quick and unsentimental, with neighbours' lights kept off."
+
+[[faction]]
+name = "Light Fakers"
+aliases = ["light faker"]
+card = "Light Fakers sell a way to show green. Hanabira-chō stalls sell cheap overlays that fool people but not Ōgane scanners, and getting caught adds a fraud fine. Off-the-books chrome-ya spoof the implant itself, which holds until a Hoshikawa audit and is usually paid in favors. Kaminari Run riders just cut the light out. Narrate them cheerful, and never sure the work will hold."
+
 [[npc]]
 name = "Mama Sato"
 aliases = ["Sato"]
@@ -115,10 +131,16 @@ home = "Tenjō Heights"
 card = "Hoshikawa Rei is the twenty-four-year-old heir of the Hoshikawa Keiretsu, who goes slumming in Hanabira-chō for thrills. Wants: something that feels real. Secret: she wants her father, Tadamori, out of the way. Voice: bored, curious, cruel when amused, generous on a whim. Pays crews absurdly well for strange jobs."
 
 [[npc]]
-name = "Brother Tōru"
-aliases = ["Toru"]
+name = "Nagi Sumida"
+aliases = ["Nagi"]
 home = "Yomi Line"
-card = "Brother Tōru is a Lantern Guild keeper who tends the dead along the sealed Yomi Line. Wants: to keep the dead at peace. Secret: the dead in Yomi keep asking for him by name, and he does not know why. Voice: soft, slow, kind, never surprised. Knows what the dead remember, and trades it for favors."
+card = "Nagi Sumida is a Lantern Guild keeper who walks the sealed Yomi Line with a paper lantern, tending the dead. Wants: to keep the dead at peace. Secret: the dead in Yomi keep asking for her by name, and she does not know why. Voice: soft, slow, kind, never surprised. Knows what the dead remember, and trades it for favors."
+
+[[npc]]
+name = "Wataru Ono"
+aliases = ["Wataru"]
+home = "Ikebe Low"
+card = "Wataru Ono is the Lantern Guild steward in Ikebe Low who deals with collectors when a debtor goes to the lantern. Wants: the dead kept out of the ledgers. Secret: he quietly loses the records of the poorest dead, so their guarantors never get the call. Voice: tired, courteous, exact. Hears a family's last request and asks a favor in return, never money."
 
 [[npc]]
 name = "Kenji Moro"

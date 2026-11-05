@@ -1,0 +1,13 @@
+name = "Wataru Ono"
+kind = "character"
+source = "npc:Wataru Ono"
+presentation = "masculine"
+height_cm = 180
+tags = "black hair, swept back hair, grey temples, stubble, tired eyes, calm, gentle smile, middle-aged, mature male, tall, lean, slim, neck port, thin cables, holding lantern, glowing paper lantern, long dark navy coat, simple clothes, plain coat, white shirt collar, plain trousers, work shoes"
+required = ["black hair", "grey temples", "stubble", "grey eyes", "long dark navy coat", "neck port"]
+held = ["holding lantern", "glowing paper lantern"]
+negative = "robe, hood, monk, tattoo, face tattoo, forehead mark, bald, shaved head, tactical vest, body armor, puffer jacket, bulky clothes, oversized jacket, cargo pouches, harness, backpack, knee pads, military, soldier, reflective stripes, fur collar, fur trim, glowing collar, muscular, broad shoulders"
+status = "approved"
+seed = 1228695734
+palette = ["#040d13", "#11534b", "#033033", "#464a48", "#589991", "#b2dabb"]
+notes = ["2026-11-04 draft: Lantern Guild steward", "2026-11-04 round 1: 4 candidates", "2026-11-04 approved r1 #1 (seed 1228695734)", "2026-11-04 turnaround seed 3699854649: the picked seed rendered black on black with the coat"]

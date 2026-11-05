@@ -1,11 +1,11 @@
 name = "Hachi's pier"
 kind = "location"
 source = "place:Hachi's pier"
-tags = "pier, wooden pier, harbor, bollard, sea, horizon, black water, waves, rust, lamppost, bench, gantry crane, sunrise, orange sky, mist"
-negative = ""
-alt_tags = "from behind, container stack, gantry crane, bench, mist, sunrise"
+tags = "pier, wooden pier, harbor, bollard, sea, horizon, black water, waves, rust, lamppost, bench, gantry crane, pre-dawn, dark sky, mist"
+negative = "indoors, neon sign, shop"
+alt_tags = "outdoors, wooden pier, sea, horizon, empty bench, container stack, gantry crane, mist, pre-dawn, dark sky"
 props = ["mooring bollard", "bench", "lamppost", "rope coil", "seagull"]
 status = "approved"
 seed = 3662687803
-palette = ["#083e65", "#020103", "#03030b", "#eeaa91", "#823d69", "#090b1c"]
-notes = ["2026-10-28 draft from world card", "2026-10-28 round 1: 4 candidates", "2026-10-29 approved r1 #4 (seed 3662687803)"]
+palette = ["#030709", "#031922", "#2f4b59", "#052c38", "#26323e", "#6d6d80"]
+notes = ["2026-10-28 draft from world card", "2026-10-28 round 1: 4 candidates", "2026-10-29 approved r1 #4 (seed 3662687803)", "2026-11-04 owner asked for redo; picked seeds: establishing 72903, alternate 60277"]

@@ -7,5 +7,5 @@ alt_tags = "interior, atrium, marble floor, glass wall, city view, tall ceiling,
 props = ["monorail pod", "kiosk", "gate", "security camera", "sky bridge railing"]
 status = "approved"
 seed = 1314433835
-palette = ["#030815", "#021f4a", "#1a84c9", "#0353a3", "#09b4e0", "#061634"]
+palette = ["#012443", "#021225", "#02040b", "#0da5ce", "#0784b4", "#46bed8"]
 notes = ["2026-10-28 draft from world card", "2026-10-29 round 1: 4 candidates", "2026-10-29 approved r1 #4 (seed 1314433835)"]
