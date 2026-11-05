@@ -12,6 +12,10 @@ GET    /designs/api/reviews         -> {slug: {verdict, note, v, at}}
 PUT    /designs/api/reviews/<slug>  {"verdict": "ok", "v": "<sheet version>"} | {"verdict": "fix", "note": "...", "v": "..."}
 DELETE /designs/api/reviews/<slug>  undo
 
+GET    /designs/api/images         -> {image id: {verdict, note, at}}
+PUT    /designs/api/images/<id>    {"verdict": "keep"} | {"verdict": "reject"} | {"verdict": "fix", "note": "..."}
+DELETE /designs/api/images/<id>    undo
+
 GET    /designs/api/renders -> latest Nightwire images in ComfyUI's history, with their recipes
 GET    /designs/api/batch   -> the long batch in progress, with time left
 PUT    /designs/api/batch   {"name": "Sheets", "done": 3, "total": 19, "item": "hachi", "failed": 0}
@@ -35,6 +39,7 @@ from pathlib import Path
 
 PREFIX = "/designs/api/picks"
 REVIEWS = "/designs/api/reviews"
+IMAGES = "/designs/api/images"
 RENDERS = "/designs/api/renders"
 BATCH = "/designs/api/batch"
 MAX_BODY = 4096
@@ -44,6 +49,7 @@ HISTORY_SCAN = 120
 NAME_MATCH = 0.5  # share of a character's tags a prompt must contain before it's named
 # Only these may be listed or viewed, so nothing else ComfyUI has made shows on the dashboard.
 # nginx's /svc/comfy/view applies the same rule to the images themselves.
+_IMAGE_ID = re.compile(r"[a-z0-9][a-z0-9-]{0,99}")
 _VIEWABLE = re.compile(r"^(nightwire_|image_studio)[A-Za-z0-9_-]+\.png$")
 
 
@@ -90,6 +96,22 @@ def validate_review(slug: str, body, designs_dir: Path) -> dict:
     if verdict == "fix" and isinstance(note, str) and note.strip() and len(note) <= MAX_NOTE:
         return {"verdict": verdict, "note": note.strip(), "v": v}
     raise BadPick(f"a fix needs a note of up to {MAX_NOTE} characters")
+
+
+def validate_image(image: str, body, designs_dir: Path) -> dict:
+    """The owner's verdict on one image in a gallery. A new render gets a new id, so it asks again."""
+    if not _IMAGE_ID.fullmatch(image):
+        raise BadPick("bad image id")
+    if not isinstance(body, dict):
+        raise BadPick("expected an object")
+    verdict, note = body.get("verdict"), body.get("note", "")
+    if not isinstance(note, str) or len(note) > MAX_NOTE:
+        raise BadPick(f"a note can be up to {MAX_NOTE} characters")
+    if verdict not in ("keep", "fix", "reject"):
+        raise BadPick("unknown verdict")
+    if verdict == "fix" and not note.strip():
+        raise BadPick("a fix needs a note")
+    return {"verdict": verdict, "note": note.strip()}
 
 
 def _style_of(positive: str) -> str:
@@ -200,7 +222,8 @@ def make_server(host: str, port: int, data: Path, designs_dir: Path,
     data = Path(data)
     batch_file = data.with_name("batch.json")
     batch_lock = threading.Lock()
-    routes = {PREFIX: (Store(data), validate), REVIEWS: (Store(data.with_name("reviews.json")), validate_review)}
+    routes = {PREFIX: (Store(data), validate), REVIEWS: (Store(data.with_name("reviews.json")), validate_review),
+              IMAGES: (Store(data.with_name("images.json")), validate_image)}
     designs_dir = Path(designs_dir)
 
     class Handler(BaseHTTPRequestHandler):
