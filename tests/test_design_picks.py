@@ -11,6 +11,7 @@ from tools import design_picks as dp
 @pytest.fixture
 def api(tmp_path):
     (tmp_path / "rounds.json").write_text(json.dumps({"mei-lan": 2}))
+    (tmp_path / "status.json").write_text(json.dumps({"needs_pick": {}, "review": {"mei-lan": "1", "akira-sendo": "7"}}))
     (tmp_path / "img" / "mei-lan").mkdir(parents=True)
     (tmp_path / "img" / "mei-lan" / "r2-c3.jpg").write_bytes(b"x")
     data = tmp_path / "state" / "picks.json"
@@ -92,6 +93,13 @@ def test_reviews_are_separate_from_picks_and_validated(api):
     assert call(url) == (200, {}) and json.loads(data.with_name("reviews.json").read_text())["mei-lan"]["v"] == "1"
     assert call(f"{reviews}/mei-lan", "DELETE") == (200, {})
 
+
+
+def test_a_sheet_can_be_reviewed_after_its_design_left_the_picker(api):
+    url, _ = api
+    reviews = url.replace("/picks", "/reviews")
+    status, saved = call(f"{reviews}/akira-sendo", "PUT", {"verdict": "ok", "v": "7"})
+    assert status == 200 and saved["akira-sendo"]["verdict"] == "ok"
 
 
 def _entry(filename, positive="", subfolder="", kind="output"):

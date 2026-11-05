@@ -17,6 +17,9 @@ class FakeBackend:
     def __init__(self):
         self.workflows = []
 
+    async def upload_image(self, name, png):
+        return name
+
     async def run_workflow(self, workflow):
         self.workflows.append(workflow)
         return _png()
@@ -215,6 +218,18 @@ async def test_batch_reloads_design_from_disk(studio):
     assert d.tags == "izakaya, edited-tag" and d.status == "candidates"
 
 
+async def test_gallery_publishes_a_preview_and_a_full_size_copy(studio):
+    _, data = studio
+    await ds.main(_args(studio, "candidates", "mama-sato"), backend=FakeBackend())
+    await ds.main(_args(studio, "approve", "mama-sato", "1"))
+    await ds.main(_args(studio, "sheets", "mama-sato"), backend=FakeBackend())
+    await ds.main(_args(studio, "gallery"))
+    img = data / "gallery" / "img" / "mama-sato"
+    assert (img / "turnaround.jpg").exists() and (img / "turnaround-full.jpg").exists()
+    assert "turnaround-full.jpg" in (data / "gallery" / "review" / "index.html").read_text()
+    assert 'data-full="img/mama-sato/turnaround-full.jpg"' in (data / "gallery" / "index.html").read_text()
+
+
 async def test_gallery_writes_rounds_and_approve_uses_them(studio):
     designs, data = studio
     backend = FakeBackend()
@@ -255,3 +270,28 @@ async def test_only_redoes_one_sheet_and_keeps_the_others(studio):
     assert await ds.main(_args(studio, "sheets", "mama-sato", "--only", "expressions"), backend=backend) == 0
     assert len(backend.workflows) == 6
     assert (data / "mama-sato" / "turnaround.png").stat().st_mtime_ns == before
+
+
+async def test_sheets_seed_overrides_one_render_without_saving(studio):
+    designs, data = studio
+    backend = FakeBackend()
+    await ds.main(_args(studio, "candidates", "mama-sato"), backend=backend)
+    await ds.main(_args(studio, "approve", "mama-sato", "1"))
+    saved = load_design(designs / "mama-sato.toml").seed
+    backend.workflows.clear()
+    assert await ds.main(_args(studio, "sheets", "mama-sato", "--only", "portrait", "--seed", "777"), backend=backend) == 0
+    assert any(n["inputs"].get("seed") == 777 for wf in backend.workflows for n in wf.values())
+    assert load_design(designs / "mama-sato.toml").seed == saved
+
+
+async def test_gallery_shows_a_characters_city_scene(studio):
+    designs, data = studio
+    backend = FakeBackend()
+    await ds.main(_args(studio, "candidates", "mama-sato"), backend=backend)
+    await ds.main(_args(studio, "approve", "mama-sato", "1"))
+    await ds.main(_args(studio, "sheets", "mama-sato"), backend=backend)
+    (data / "scenes").mkdir()
+    (data / "scenes" / "mama-sato--city.png").write_bytes((data / "mama-sato" / "portrait.png").read_bytes())
+    assert await ds.main(_args(studio, "gallery")) == 0
+    assert "in the city" in (data / "gallery" / "index.html").read_text()
+    assert (data / "gallery" / "img" / "mama-sato" / "city.jpg").exists()

@@ -128,7 +128,7 @@
 
   function showZoom() {
     const f = open.figures[open.i], img = f.querySelector("img");
-    zoomImg.src = img.src; zoomImg.alt = img.alt;
+    zoomImg.src = img.dataset.full || img.src; zoomImg.alt = img.alt;
     document.getElementById("zoom-title").textContent = img.alt;
     const single = open.figures.length < 2;
     document.getElementById("zoom-prev").hidden = single;

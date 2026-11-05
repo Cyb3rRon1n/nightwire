@@ -136,6 +136,12 @@ class ComfyUIBackend:
         workflow = self._build_workflow(prompt, seed, width, height, filename_prefix, negative)
         return await self.run_workflow(workflow)
 
+    async def upload_image(self, name: str, png: bytes) -> str:
+        """Put an image in ComfyUI's input folder; returns the name a LoadImage node should use."""
+        r = await self._client.post("/upload/image", files={"image": (name, png, "image/png")}, data={"overwrite": "true"})
+        r.raise_for_status()
+        return r.json()["name"]
+
     async def run_workflow(self, workflow: dict) -> bytes:
         """Submit any ComfyUI workflow, wait for it, return the first output image's bytes."""
         submit = await self._client.post("/prompt", json={"prompt": workflow})

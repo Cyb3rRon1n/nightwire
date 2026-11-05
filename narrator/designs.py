@@ -13,7 +13,7 @@ DESIGNS_DIR = Path(__file__).parent / "worlds" / "designs"
 KINDS = ("character", "location")
 STATUSES = ("draft", "candidates", "approved")
 PRESENTATIONS = ("feminine", "masculine", "androgynous")
-_ORDER = ("name", "kind", "source", "presentation", "tags", "required", "held", "negative", "alt_tags", "props",
+_ORDER = ("name", "kind", "source", "presentation", "height_cm", "bio", "tags", "required", "held", "negative", "alt_tags", "props",
           "status", "seed", "palette", "notes")
 
 
@@ -39,6 +39,8 @@ class Design:
     seed: int = 0
     palette: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    height_cm: int = 0  # 0 = not set; characters only, drives line-ups and group scale
+    bio: str = ""  # for characters without a world card
 
     @property
     def slug(self) -> str:
@@ -61,8 +63,10 @@ def validate(d: Design) -> None:
             raise ValueError(f"{d.name}: alt_tags and props are for locations only")
     elif d.presentation is not None:
         raise ValueError(f"{d.name}: presentation is for characters only")
-    elif d.held or d.required:
-        raise ValueError(f"{d.name}: held and required are for characters only")
+    elif d.held or d.required or d.height_cm or d.bio:
+        raise ValueError(f"{d.name}: held, required, height_cm and bio are for characters only")
+    if d.height_cm and not 100 <= d.height_cm <= 250:
+        raise ValueError(f"{d.name}: height_cm must be between 100 and 250")
     if d.status == "approved" and not d.seed:
         raise ValueError(f"{d.name}: an approved design needs a seed")
 
@@ -97,6 +101,8 @@ def save_design(d: Design, path: Path) -> None:
         if key in ("alt_tags", "props") and d.kind != "location":
             continue
         if key in ("held", "required") and d.kind != "character":
+            continue
+        if key in ("height_cm", "bio") and not value:
             continue
         lines.append(f"{key} = {_toml_value(value)}")
     path.write_text("\n".join(lines) + "\n")

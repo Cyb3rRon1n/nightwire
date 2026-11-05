@@ -89,3 +89,49 @@ Option C is the raw HTTP API: POST `{"prompt": <api workflow>}` to `/prompt`, po
 
 - **Nightwire's own pipeline** keeps characters adult and non-explicit (see `docs/art-direction.md`).
 - **NoobAI-XL** is fair-ai-public-license-1.0-sd, and the **AnimeSharp** upscaler is CC BY-NC-SA 4.0. Both forbid commercial use, and that covers the images they generate.
+
+## Review before publishing
+
+Thumbnails hide most errors, so every image passes these steps before it goes on a page. Treat a failure as a reason to keep the image off the page or re-render it, and tell the owner about any flaw that remains.
+
+1. **Prompt, before rendering.** Nothing requested may appear in the negatives (a design's `negative` can block a prop the shot needs). Outfit words must match the model sheet, not only the tags.
+2. **Tagger.** Run `tools.design_check` for required features and forbidden tags. Its flags are prompts to look, not verdicts.
+3. **Character, at full size beside the turnaround.** Check hair, face, every outfit piece, chrome on the correct side, and props.
+4. **Construction, at full size.** Check hands, held objects, vehicles (wheels, forks, how a rider sits or touches it), extra limbs and merged people.
+5. **Brief.** Check that the image shows what was asked, in the right place, and that it looks like Kuroshio. Look for lettering that shouldn't be there, stray people, and shots that repeat another shot.
+6. **Age.** Crop every head and check each one reads as an adult. Remove anything unclear.
+7. **Owner.** Publish what passed, with its remaining flaws stated.
+
+## Fix an area or render again
+
+Fix the area when the image is right apart from a local error: a prop, a hand, a face, a piece of clothing. Render again only when the pose, framing or place is wrong, because a full render changes everything else too.
+
+    PYTHONPATH=. .venv/bin/python -m tools.fix_area IMAGE --shape X,Y X,Y X,Y... --prompt "what belongs there" --out FIXED.png
+
+- **Shape.** Trace the area in the image's own pixels, following its outline. Stay inside the object's edges: the fill runs to the edge of the shape.
+- **Strength (`--denoise`).** About 0.4 for hands and faces (one [NoobAI guide](https://rentry.org/fluffscaler-noob) found hands turn messy by 0.45). Test on the image and keep the lowest that works.
+- **Changing what something is.** A redraw keeps the colours underneath: Kaede's bare stomach stayed skin at 0.7. Add `--fill R,G,B`, a rough coat of the new colour taken from the same image. 0.6 turned it into cloth.
+- **Limit.** This changes what is already there. It failed to add new objects: a cup under Mama Sato's pour glowed or vanished over 5 tries, and a hand repaint left a flat block. A wider crop did not help. Pick a different render instead, or change the action.
+- **Faces.** Repaint at 0.4 and keep the result only inside a tight oval around the head. At 0.55 faces became different people, and a wide oval changed the background.
+- **Check.** The tool refuses to save if a pixel outside the mask moved, and writes `FIXED-compare.jpg`. Look at the result at normal size too: at heavy zoom a fix can look flatter than the area around it.
+
+Then run the fix through "Review before publishing" like any new image, and keep the original beside it.
+
+## Testing a method
+
+Change one thing at a time on the same seeds and the same characters, and record the settings. Compare at full size. Keep a new method only if it beats the old one on the same images, and write down what would have disproved it first.
+
+## Natural shots
+
+`python -m tools.design_studio scene SLUG "PLACE AND ACTION TAGS" --name NAME --place WALLPAPER.png` puts a character in a location doing something. This is the default recipe: no skeleton, a start from the empty location at 0.8 so the figure takes the room's light, and the turnaround as reference from 35% to 75% of the steps at 0.7. `--standing` keeps the old full-body recipe. Without `--place` it starts from nothing, for rooms with no wallpaper yet.
+
+- **Check the start image first.** Use a wallpaper with nobody in it that shows the place the prompt names. Kaede's highway came out as an alley because her start image was an alley with a figure in it.
+- **Check the design's negative against the action.** Rin's blocked "monitor" and "cable", Kaede's blocked "motorcycle". Take those out for that shot.
+- **Keep hands simple.** Holding something works better than a two-object action: pours failed, holding a cup worked.
+
+## ComfyUI add-ons
+
+Restarting the `comfyui` container reinstalls ComfyUI's Python requirements, and this can upgrade packages. Restart only when the queue is empty, and test a render afterwards.
+
+ComfyUI-Inpaint-CropAndStitch is installed at commit 6005efc02f7745649118edd89cdd084c2b9bd3ae (v3.0.20, GPLv3), nodes only, with no bundled test files. The pinned commit is in `PINNED_COMMIT` in its folder. It has not replaced `tools.fix_area` yet: compare them on a real fix first.
+

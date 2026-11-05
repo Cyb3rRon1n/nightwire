@@ -78,7 +78,7 @@ def validate(slug: str, body, designs_dir: Path) -> dict:
 
 def validate_review(slug: str, body, designs_dir: Path) -> dict:
     """The owner's verdict on a rendered sheet. `v` ties it to one render, so a re-render asks again."""
-    if slug not in json.loads((designs_dir / "rounds.json").read_text()):
+    if slug not in json.loads((designs_dir / "status.json").read_text())["review"]:  # not rounds.json: that only lists designs in the picker
         raise BadPick("unknown design")
     if not isinstance(body, dict):
         raise BadPick("expected an object")
