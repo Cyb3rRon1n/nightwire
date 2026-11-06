@@ -24,3 +24,45 @@
 .nw-rail-label { writing-mode: vertical-rl; font-size: 13px; letter-spacing: .24em; text-transform: uppercase; }
 .nw-rail-badge { min-width: 18px; height: 18px; background: var(--nw-red); color: var(--nw-ink); font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center; }
 .nw-panel-heading { margin-bottom: 6px; font: 700 13px "Rajdhani", sans-serif; letter-spacing: .16em; text-transform: uppercase; color: var(--nw-gold); }
+
+/* Conversation panel */
+.nw-feed { display: flex; flex-direction: column; align-items: center; gap: 14px; scrollbar-width: thin; scrollbar-color: var(--nw-red) transparent; }
+.nw-feed > * { width: 100%; max-width: 660px; flex-shrink: 0; }
+.nw-line-narrator { max-width: 62ch; font-family: var(--font-source-serif), Georgia, serif; font-size: 18px; line-height: 1.6; color: var(--nw-prose); white-space: pre-wrap; text-wrap: pretty; }
+.nw-line-npc { display: flex; gap: 12px; }
+.nw-line-own { display: flex; gap: 12px; flex-direction: row-reverse; text-align: right; }
+.nw-line-teammate > div { outline: 1.5px solid var(--nw-frame-cool); outline-offset: 4px; }
+.nw-speaker { font: 700 14px "Rajdhani", sans-serif; letter-spacing: .16em; text-transform: uppercase; }
+.nw-speech { font-size: 17px; line-height: 1.55; white-space: pre-wrap; text-wrap: pretty; }
+.nw-avatar-gap { width: 40px; flex-shrink: 0; }
+.nw-system { border-block: 1px solid #6b2a25; padding: 6px 0; text-align: center; font: 600 13px "Rajdhani", sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #ff8a80; }
+.nw-scene-frame { display: block; padding: 0; border: 1.5px solid var(--nw-frame-cool); background: none; cursor: zoom-in; }
+.nw-typing { display: flex; align-items: center; gap: 6px; font: 13px "Rajdhani", sans-serif; letter-spacing: .16em; color: #9aa3ad; }
+.nw-typing span { margin-right: 4px; }
+.nw-typing i { width: 6px; height: 6px; background: var(--nw-prose); animation: nw-pulse 1.2s infinite; }
+.nw-typing i:nth-child(3) { animation-delay: .2s; }
+.nw-typing i:nth-child(4) { animation-delay: .4s; }
+@keyframes nw-pulse { 50% { opacity: .25; } }
+.nw-new-lines { position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%); z-index: 2; height: 32px; padding: 0 12px; background: var(--nw-cyan); color: var(--nw-ink); border: 0; font: 700 13px "Rajdhani", sans-serif; letter-spacing: .14em; cursor: pointer; }
+.nw-composer { border-top: 1.5px solid var(--nw-frame); background: rgba(11,13,17,.96); padding: 12px 16px 16px; }
+.nw-composer textarea { flex: 1; min-width: 0; resize: none; background: var(--nw-ink); border: 1.5px solid var(--nw-frame-cool); color: #e6e8ec; font-size: 16px; line-height: 1.5; padding: 10px 12px; max-height: calc(6em + 23px); }
+.nw-composer textarea:focus { border-color: var(--nw-cyan); outline: none; }
+.nw-composer textarea::placeholder { color: #8b949e; }
+.nw-prompt { padding-bottom: 12px; font: 700 18px "Rajdhani", sans-serif; color: var(--nw-cyan); }
+.nw-send { height: 48px; padding: 0 22px; background: var(--nw-cyan); color: var(--nw-ink); border: 0; font: 700 16px "Rajdhani", sans-serif; letter-spacing: .16em; cursor: pointer; }
+.nw-send:disabled { opacity: .5; cursor: default; }
+@media (prefers-reduced-motion: reduce) { .nw-typing i { animation: none; } }
+
+/* Roll cards and chrome offers keep their components; only the frame changes. */
+.nw-play .nw-roll-card { width: 100%; max-width: 660px; border-radius: 0; border: 1.5px solid var(--nw-frame); background: rgba(15,13,10,.92); }
+.nw-play .nw-roll-badge { border-radius: 0; }
+
+/* Scene art behind the conversation */
+.nw-scene-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 600ms ease; }
+.nw-scene-scrim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(7,8,11,.15) 0%, rgba(7,8,11,.25) 20%, rgba(7,8,11,.86) 34%, rgba(7,8,11,.93) 100%); }
+/* 86% ink is reached where .nw-scene-title (34% tall) ends, so every line of the feed sits on it. */
+.nw-scene-title { position: relative; height: 34%; min-height: 120px; max-height: 290px; flex-shrink: 0; padding: 22px 32px 16px; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; }
+.nw-scene-title-plain { height: auto; min-height: 0; padding-top: 16px; border-bottom: 1px solid #1d2128; margin-bottom: 14px; }
+.nw-scene-title h1 { font: 700 28px "Rajdhani", sans-serif; letter-spacing: .14em; color: #fff; text-shadow: 0 0 8px #000, 0 0 2px #000; text-transform: uppercase; line-height: 1.1; }
+.nw-session-id { font: 13px ui-monospace, monospace; letter-spacing: .12em; color: #ff8a80; text-shadow: 0 0 4px #000, 0 0 2px #000; }
+@media (prefers-reduced-motion: reduce) { .nw-scene-bg { transition: none; } }
