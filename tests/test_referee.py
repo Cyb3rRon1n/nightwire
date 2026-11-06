@@ -17,16 +17,16 @@ def _session(**kw) -> Session:
     return s
 
 
-def test_human_with_no_debt_is_only_asked_about_human_moments():
-    assert list(build_questions(_session(), "p1")) == ["human_moment"]
+def test_human_with_no_debt_is_only_asked_about_human_moments_and_location():
+    assert list(build_questions(_session(), "p1")) == ["human_moment", "moved_to"]
 
 
 def test_conditional_questions_follow_state():
     s = _session(lifepath="tsukumogami", installments_owed=4, pending_repo="kagerou", throttled="kagerou")
-    assert set(build_questions(s, "p1")) == {"human_moment", "acted_as_machine", "gave_up_repo_item",
+    assert set(build_questions(s, "p1")) == {"human_moment", "moved_to", "acted_as_machine", "gave_up_repo_item",
                                              "gig_paid_out", "hara_unlocked_chrome"}
     bodiless = _session(lifepath="tsukumogami", installments_owed=4, bodiless=True)
-    assert set(build_questions(bodiless, "p1")) == {"human_moment", "acted_as_machine", "got_new_shell"}
+    assert set(build_questions(bodiless, "p1")) == {"human_moment", "moved_to", "acted_as_machine", "got_new_shell"}
 
 
 def test_schema_requires_every_question():
@@ -220,3 +220,30 @@ def test_selfhood_log_records_applied_change_not_requested():
     t.log.clear()
     apply_verdict(t, "p1", {"human_moment": "none", "acted_as_machine": "big"})  # already 0
     assert not any(line.startswith("[selfhood") for line in t.log)
+
+
+async def test_arriving_somewhere_named_in_the_scene_sets_the_location():
+    # Live 2026-11-06: the narrator spent its one tool on remember_npc and never set the izakaya as the location.
+    s = _session()
+    await run_referee(s, _Client({"moved_to": "Mama Sato's izakaya", "human_moment_quote": "", "human_moment": "none"}),
+                      "p1", "I duck into Mama Sato's izakaya out of the rain.", "The door swings shut behind you.")
+    assert s.location == "Mama Sato's izakaya"
+
+
+async def test_a_location_not_named_in_the_scene_is_ignored():
+    s = _session(); s.location = "Ikebe Low"
+    await run_referee(s, _Client({"moved_to": "Hoshikawa penthouse", "human_moment_quote": "", "human_moment": "none"}),
+                      "p1", "I wait in the alley.", "Rain drips from the awning.")
+    assert s.location == "Ikebe Low"
+    assert "[referee: moved_to had no match in the scene, ignored]" in s.log
+
+
+async def test_no_move_keeps_the_location():
+    s = _session(); s.location = "Ikebe Low"
+    await run_referee(s, _Client({"moved_to": "", "human_moment_quote": "", "human_moment": "none"}), "p1", "I wait.", "Rain.")
+    assert s.location == "Ikebe Low"
+
+
+def test_location_question_is_always_asked_as_text():
+    q = build_questions(_session(), "p1")
+    assert "moved_to" in q and build_schema(q)["properties"]["moved_to"] == {"type": "string", "maxLength": 60}
