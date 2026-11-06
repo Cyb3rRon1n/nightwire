@@ -31,7 +31,7 @@ def test_conditional_questions_follow_state():
 
 def test_schema_requires_every_question():
     schema = build_schema({"human_moment": "q", "gig_paid_out": "q"})
-    assert schema["required"] == ["human_moment", "gig_paid_out"]
+    assert schema["required"] == ["human_moment_quote", "human_moment", "gig_paid_out"]
     assert schema["properties"]["human_moment"]["enum"] == ["none", "small", "big"]
     assert schema["properties"]["gig_paid_out"]["type"] == "boolean"
     assert schema["additionalProperties"] is False
@@ -39,9 +39,11 @@ def test_schema_requires_every_question():
 
 def test_validate_rejects_missing_or_wrong_types():
     q = {"human_moment": "q", "gig_paid_out": "q"}
-    validate_verdict({"human_moment": "small", "gig_paid_out": False}, q)
-    for bad in ({"human_moment": "small"}, {"human_moment": "huge", "gig_paid_out": False},
-                {"human_moment": "small", "gig_paid_out": "yes"}):
+    validate_verdict({"human_moment_quote": "", "human_moment": "small", "gig_paid_out": False}, q)
+    for bad in ({"human_moment_quote": "", "human_moment": "small"},
+                {"human_moment_quote": "", "human_moment": "huge", "gig_paid_out": False},
+                {"human_moment_quote": "", "human_moment": "small", "gig_paid_out": "yes"},
+                {"human_moment_quote": 3, "human_moment": "small", "gig_paid_out": False}):
         with pytest.raises(ValueError):
             validate_verdict(bad, q)
 
@@ -124,11 +126,64 @@ class _Client:
 
 async def test_run_referee_applies_a_valid_verdict_and_sends_context():
     s = _session(installments_owed=4)
-    client = _Client({"human_moment": "small", "gig_paid_out": True})
+    client = _Client({"human_moment_quote": "pays you in cash", "human_moment": "small", "gig_paid_out": True})
     await run_referee(s, client, "p1", "I finish Arakawa's job.", "Arakawa pays you in cash.")
     assert s.characters["p1"].humanity == 52 and s.characters["p1"].installments_owed == 3
     prompt = json.dumps(client.calls[0][0])
     assert "Arakawa pays you in cash." in prompt and "owes 4" in prompt
+
+
+def test_level_answers_need_a_quote_field_before_them():
+    schema = build_schema({"human_moment": "q", "gig_paid_out": "q"})
+    assert list(schema["properties"]) == ["human_moment_quote", "human_moment", "gig_paid_out"]
+    assert schema["required"] == ["human_moment_quote", "human_moment", "gig_paid_out"]
+    with pytest.raises(ValueError):
+        validate_verdict({"human_moment": "small", "gig_paid_out": False}, {"human_moment": "q", "gig_paid_out": "q"})
+
+
+async def test_a_moment_backed_by_a_real_quote_counts():
+    s = _session()
+    client = _Client({"human_moment_quote": "You share  your noodles", "human_moment": "small"})
+    await run_referee(s, client, "p1", "I sit with the kid.", "You share your noodles with the kid. She grins.")
+    assert s.characters["p1"].humanity == 52
+
+
+async def test_a_moment_without_a_matching_quote_is_dropped():
+    # Phase 18 live: plain stealth and jump turns earned +2 "human moments".
+    for quote in ("", "you comfort the old man", "  "):
+        s = _session()
+        client = _Client({"human_moment_quote": quote, "human_moment": "small"})
+        await run_referee(s, client, "p1", "I sneak past the guard.", "You slip past the guard unseen.")
+        assert s.characters["p1"].humanity == 50
+        assert "[referee: human_moment had no quote from the scene, ignored]" in s.log
+
+
+async def test_acting_as_a_machine_needs_the_players_own_words():
+    # Live 2026-11-06: the referee quoted the narrator's description of a roof climb as "big" machine behaviour.
+    machine = {"human_moment_quote": "", "human_moment": "none"}
+    narration = "The rain slicks the roof tiles. You climb onto the roof of the izakaya."
+    s = _session(lifepath="tsukumogami", humanity=30)
+    await run_referee(s, _Client({**machine, "acted_as_machine_quote": "You climb onto the roof of the izakaya.",
+                                  "acted_as_machine": "big"}), "p1", "I climb onto the roof.", narration)
+    assert s.characters["p1"].humanity == 30
+    assert "[referee: acted_as_machine had no quote from the player's action, ignored]" in s.log
+    t = _session(lifepath="tsukumogami", humanity=30)
+    await run_referee(t, _Client({**machine, "acted_as_machine_quote": "I tell her my owner's script says pay up",
+                                  "acted_as_machine": "small"}), "p1", "I tell her my owner's script says pay up.", "She stares.")
+    assert t.characters["p1"].humanity == 28
+
+
+async def test_question_rules_out_skill_checks():
+    s = _session()
+    client = _Client({"human_moment_quote": "", "human_moment": "none"})
+    await run_referee(s, client, "p1", "a", "b")
+    assert "Sneaking" in json.dumps(client.calls[0][0])
+
+
+def test_machine_question_rules_out_skill_checks_and_dice():
+    # Live 2026-11-06: a plain roof climb cost Hachi selfhood, quoting the dice line as "cold calculation".
+    q = build_questions(_session(lifepath="tsukumogami", humanity=30), "p1")["acted_as_machine"]
+    assert "Sneaking" in q and "dice" in q
 
 
 async def test_run_referee_failure_logs_and_changes_nothing():
