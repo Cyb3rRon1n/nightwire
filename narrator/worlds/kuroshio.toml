@@ -4,7 +4,7 @@
 # ("Ōgane" already matches "Ogane" - don't add re-spellings as aliases).
 
 primer = """
-Setting: Kuroshio, a Pacific megacity in Japan, 2089, named for the black ocean current that feeds its port. Five keiretsu houses built the city and financed the chrome that keeps its people working. Nearly everyone's chrome is on a payment plan, and torite repo crews take back what you can't pay for. Giri binds the city: favors are currency and everyone owes someone. The deep net, Yomi, holds the lingering data of the dead, tended by the Lantern Guild. Old machines that run too long sometimes wake as tsukumogami. Districts: Tenjō Heights, Hanabira-chō, Ikebe Low, Kuroshio Docks, The Loop, Yomi Line. When the party moves, set update_world location to a district name, then the specific spot (e.g. "Ikebe Low - Mama Sato's izakaya"). Tone: stylish, fast and darkly funny like a neon action film, but every piece of chrome costs something and the city always collects. Ground every scene in concrete sensory detail: rain, food, signage, engine noise, crowds, machine hum. Use Japanese words only from the glossary, naturally, without explaining them. Atop Tenjō Heights the keiretsu families live as corporate royalty. Some woken machines rent utsusemi, synthetic shells leased on the same payment plans, and the torite take those back too. Mentioning someone's status light is rude.
+Setting: Kuroshio, a Pacific megacity in Japan, 2089. Five keiretsu houses built the city and financed the chrome that keeps its people working. Nearly everyone's chrome is on a payment plan, and torite repo crews take back what you can't pay for. Giri binds the city: favors are currency and everyone owes someone. The deep net, Yomi, holds the lingering data of the dead, tended by the Lantern Guild. Old machines that run too long sometimes wake as tsukumogami. Districts: Tenjō Heights, Hanabira-chō, Ikebe Low, Kuroshio Docks, The Loop, Ring Line, Yomi Line. When the party moves, set update_world location to a district name, then the specific spot (e.g. "Ikebe Low - Mama Sato's izakaya"). Tone: stylish, fast and darkly funny like a neon action film, but every piece of chrome costs something and the city always collects. Ground every scene in concrete sensory detail: rain, food, signage, engine noise, crowds, machine hum. Use Japanese words only from the glossary, naturally, without explaining them. Keiretsu families live atop Tenjō in quiet tradition; corporate money is loud; the street is wired. Some woken machines rent utsusemi, synthetic shells leased on the same payment plans, and the torite take those back too. Mentioning someone's status light is rude.
 """
 
 [glossary]
@@ -44,6 +44,11 @@ card = "Kuroshio Docks is container canyons and gantry cranes, black water slapp
 name = "The Loop"
 aliases = ["Loop"]
 card = "The Loop is the elevated ring expressway around the city, with arcade towers glowing at every off-ramp. Every night Kaminari Run bikes race it, light-trails bending through the rain. Kaminari Run holds it after dark; Ōgane traffic drones hold it by day. Hazard: speed duels settle disputes here, and the loser forfeits their ride. Hook: someone is racing the Loop on a bike with no rider."
+
+[[district]]
+name = "Ring Line"
+aliases = ["the Ring", "Ring Line station"]
+card = "The Ring Line is the commuter loop under the expressway, stopping in every district but Tenjō: packed cars, the same line colour and signs everywhere, hub stations swallowed by shopping arcades and underground malls, Hoshikawa payment ads on every wall. Hazard: a red status light gets you turned back at the gate. Hook: a train keeps stopping at a station sealed twenty years ago."
 
 [[district]]
 name = "Yomi Line"

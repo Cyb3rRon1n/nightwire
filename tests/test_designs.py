@@ -109,3 +109,12 @@ def test_height_out_of_range_raises(bad):
 def test_location_cannot_have_height_or_bio():
     with pytest.raises(ValueError, match="characters only"):
         validate(_loc(height_cm=170))
+
+
+def test_pilot_places_load_as_new_locations():
+    from narrator.designs import DESIGNS_DIR
+    designs = load_designs(DESIGNS_DIR)
+    for slug in ("ogane-precinct", "old-family-house", "danchi-block", "rins-room"):
+        d = designs[slug]
+        assert d.kind == "location" and d.source.startswith("new:") and d.status == "approved", slug
+        assert "night" in d.tags and "neon" in d.tags, slug  # cyberpunk always shows

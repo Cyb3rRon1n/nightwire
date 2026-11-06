@@ -17,7 +17,9 @@ def _raw(**overrides):
 def test_shipped_kuroshio_world_loads():
     world = kuroshio()
 
-    assert len(world.districts) == 6
+    assert len(world.districts) == 7
+    assert "Ring Line" in world.system_block()
+    assert "quiet tradition" in world.primer
     assert len(world.factions) == 9
     assert len(world.npcs) == 12
     assert "utsusemi" in world.system_block()

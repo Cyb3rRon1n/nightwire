@@ -1,0 +1,11 @@
+name = "Ōgane precinct"
+kind = "location"
+source = "new:Ōgane precinct"
+tags = "police station interior, open-plan office, rows of desks, one large desk at the head of the room, computer monitors, case files, whiteboard, wall screens, window blinds, harbor cranes outside the window, neon signs outside, fluorescent lights, night, indoors"
+negative = "classroom, school, courtroom"
+alt_tags = "holding cells, police counter, wanted posters, wall screens, fluorescent lights, night, indoors"
+props = ["case file", "desk lamp", "duty roster", "radio"]
+status = "approved"
+seed = 52817
+palette = []
+notes = ["2026-11-06 draft from the connected world spec: Captain Ide and Shinji's workplace at the Docks", "2026-11-06 approved pilot (seed 52817); owner kept 52817 and the retry office takes precinct-b 70342 and 81299"]

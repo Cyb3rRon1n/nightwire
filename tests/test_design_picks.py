@@ -202,3 +202,10 @@ def test_image_verdicts_are_saved_and_validated(api):
     assert call(url) == (200, {})
     assert json.loads(data.with_name("images.json").read_text()).keys() == {"debt-train-90233"}
     assert call(f"{images}/debt-train-90233", "DELETE") == (200, {})
+    assert call(f"{images}/wall-ikebe", "PUT", {"verdict": None, "note": ""})[0] == 400  # nothing to save
+    status, saved = call(f"{images}/wall-ikebe", "PUT", {"verdict": None, "note": "more cyberpunk"})
+    assert status == 200 and saved["wall-ikebe"]["verdict"] is None and saved["wall-ikebe"]["note"] == "more cyberpunk"
+    status, saved = call(f"{images}/wall-ikebe", "PUT", {"verdict": "keep", "note": "love the rain"})
+    assert status == 200 and saved["wall-ikebe"]["verdict"] == "keep" and saved["wall-ikebe"]["note"] == "love the rain"
+    status, saved = call(f"{images}/wall-ikebe", "PUT", {"verdict": "original"})
+    assert status == 200 and saved["wall-ikebe"]["verdict"] == "original"
