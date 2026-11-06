@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { classifyLine, groupStarts, sceneImages, speakerKey } from "../../src/lib/nightwire/feed.ts";
+import { classifyLine, groupStarts, isPlayerFacing, sceneImages, speakerKey } from "../../src/lib/nightwire/feed.ts";
 import type { StateView } from "../../src/lib/nightwire/protocol.ts";
 
 const view = {
@@ -35,4 +35,26 @@ test("speakerKey only groups speech", () => {
 test("scene images in log order", () => {
   assert.deepEqual(sceneImages(["a", "[image: scenes/1.png]", "b", "[image: scenes/2.png]"]), ["scenes/1.png", "scenes/2.png"]);
   assert.deepEqual(sceneImages(["no images"]), []);
+});
+
+test("own actions drop the '> ' the composer adds", () => {
+  assert.deepEqual(classifyLine("p1: > I wait.", view, "p1"), { kind: "own", text: "I wait." });
+  assert.deepEqual(classifyLine('p1: > You say "hi"', view, "p1"), { kind: "own", text: 'You say "hi"' });
+});
+
+test("only player-facing bracket lines are shown", () => {
+  for (const line of ["[initiative: Rin rolled 14]", "[chrome installed: Rin — Kagerou]", "[chrome removed: Rin — Kagerou]",
+    "[torite: final notice]", "[selfhood: +2]", "[utsusemi: Hachi wakes in a new shell]"]) {
+    assert.equal(isPlayerFacing(line), true, line);
+  }
+  for (const line of ["[remember_npc: {'name': 'Mama Sato', 'facts': ['secretly pays protection']}]", "[audio error: tts failed]",
+    "[image error: refused]", "[tool error: bad id]", "[image prompt (tags): rain]", "[referee: human_moment had no quote]",
+    "[voice filtered: Rin]", "[redo: no body]", "[summary error: timeout]"]) {
+    assert.equal(isPlayerFacing(line), false, line);
+  }
+});
+
+test("lines that render nothing don't break a speaker's run", () => {
+  // undefined = skipped (hidden meta, audio): the run carries on across it
+  assert.deepEqual(groupStarts(["npc:mama sato", undefined, "npc:mama sato", null, "npc:mama sato"]), [true, false, false, false, true]);
 });
