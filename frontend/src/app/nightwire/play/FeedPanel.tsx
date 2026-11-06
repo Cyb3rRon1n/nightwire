@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { CharacterSheet, ClientMessage, RedactedCharacter, RollResult, StateView } from "@/lib/nightwire/protocol";
 import { portraitFor } from "@/lib/nightwire/portrait";
 import { mediaUrl } from "@/lib/nightwire/media";
-import { AUDIO_LINE, IMAGE_LINE, ROLL_LINE, ROLL_PENDING_LINE, classifyLine, groupStarts, sceneImages, speakerKey } from "@/lib/nightwire/feed";
+import { AUDIO_LINE, IMAGE_LINE, ROLL_LINE, ROLL_PENDING_LINE, classifyLine, groupStarts, isPlayerFacing, sceneImages, speakerKey } from "@/lib/nightwire/feed";
 import { npcColour } from "@/lib/nightwire/npcColour";
 import { PendingRollCard, RollResultCard } from "../RollCard";
 import { ChromeOfferCard } from "../ChromeOfferCard";
@@ -146,7 +146,13 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, onO
   const myRollPending = Boolean(view.pending_rolls?.[playerId]);
   const lastRollIndex = view.log.findLastIndex((l) => ROLL_LINE.test(l));
   const entries = view.log.map((line) => classifyLine(line, view, playerId));
-  const starts = groupStarts(entries.map(speakerKey));
+  // Images and rolls end a speaker's run; lines that render nothing (or only an audio player) don't.
+  const starts = groupStarts(entries.map((entry, i) => {
+    const line = view.log[i];
+    if (IMAGE_LINE.test(line) || ROLL_LINE.test(line)) return null;
+    if (AUDIO_LINE.test(line) || ROLL_PENDING_LINE.test(line) || (entry.kind === "meta" && !isPlayerFacing(entry.text))) return undefined;
+    return speakerKey(entry);
+  }));
   const images = sceneImages(view.log);
   const latest = images.at(-1) ?? null;
   const backdrop = sceneArt && latest && !compact;
@@ -232,7 +238,7 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, onO
               </div>
             );
           }
-          if (entry.kind === "meta" && entry.text.startsWith("[image prompt")) return null; // server-log tuning line
+          if (entry.kind === "meta" && !isPlayerFacing(entry.text)) return null;
           const notice = entry.kind === "meta" && ["[torite: ", "[selfhood: ", "[utsusemi: "].find((p) => entry.text.startsWith(p));
           if (notice) {
             return (
@@ -241,7 +247,7 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, onO
               </p>
             );
           }
-          if (entry.kind === "meta") return <p key={i} className="nw-hud text-xs" style={{ color: "#9aa3ad" }}>{entry.text}</p>;
+          if (entry.kind === "meta") return <p key={i} className="nw-hud text-center text-xs" style={{ color: "#9aa3ad" }}>{entry.text.slice(1, -1)}</p>;
           return <p key={i} className="nw-line-narrator">{entry.text}</p>;
         })}
         {view.pending_chrome_offers?.[playerId] && (

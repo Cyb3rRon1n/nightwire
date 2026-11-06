@@ -35,7 +35,8 @@ export function classifyLine(line: string, view: StateView, playerId: string): L
   for (const [pid, character] of Object.entries(view.characters)) {
     const prefix = `${pid}: `;
     if (line.startsWith(prefix)) {
-      const text = line.slice(prefix.length);
+      // Player actions are stored as "> I wait." or '> You say "hi"' (FeedPanel's composer).
+      const text = line.slice(prefix.length).replace(/^>\s*/, "");
       return pid === playerId ? { kind: "own", text } : { kind: "speaking", text, name: character.name, character };
     }
   }
@@ -60,9 +61,16 @@ export function speakerKey(entry: LogEntry): string | null {
 }
 
 // true where a line needs its speaker label: the first line of each run.
-// null entries (narration, rolls, images) end the run.
-export function groupStarts(keys: (string | null)[]): boolean[] {
-  return keys.map((key, i) => key !== null && keys[i - 1] !== key);
+// null entries (narration, rolls, images) end the run; undefined entries
+// (lines that render nothing, or audio players) are skipped over.
+export function groupStarts(keys: (string | null | undefined)[]): boolean[] {
+  let previous: string | null = null;
+  return keys.map((key) => {
+    if (key === undefined) return false;
+    const starts = key !== null && key !== previous;
+    previous = key;
+    return starts;
+  });
 }
 
 export function sceneImages(log: string[]): string[] {
@@ -70,4 +78,13 @@ export function sceneImages(log: string[]): string[] {
     const match = line.match(IMAGE_LINE);
     return match ? [match[1]] : [];
   });
+}
+
+// Bracket lines are mostly for the server and its logs (tool results, errors,
+// prompts, referee notes), and remember_npc results would even leak NPC
+// secrets. Show only the ones written for players; the rest stay hidden.
+const PLAYER_FACING = ["[initiative: ", "[chrome installed: ", "[chrome removed: ", "[torite: ", "[selfhood: ", "[utsusemi: "];
+
+export function isPlayerFacing(line: string): boolean {
+  return PLAYER_FACING.some((prefix) => line.startsWith(prefix));
 }
