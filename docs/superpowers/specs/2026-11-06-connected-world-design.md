@@ -142,7 +142,7 @@ Natural shots are redone in these places. The owner notes on existing shots carr
 
 1. **Strong original first.** A place gets its night original approved before any day version is made. The night image must show enough wall and street detail for the outlines to carry over.
 2. **Day from night.** Keep the layout using the lineart ControlNet on Canny edges (strength 0.85, ending at 0.85), chained into both passes with the same seed. Tile ControlNet is not used, because it keeps the image at night. Use day to night only where a night original is too dark to convert.
-3. **Day keeps its cyberpunk.** Day prompts keep signs, cables, screens and chrome. Only the lighting changes: unlit or dim signs, screens still on, and traffic drones.
+3. **Kuroshio day is barely lighter than night** (owner, 2026-11-06). Towers and structures block most of the sun, so day means a dawn-cyan sky, light only in the gaps between buildings, streets and rooms in shade, and every neon sign and window still lit. The reference is the Tenjō establishing image the owner read as sunrise. No midday sun, blue-sky brightness or flat light: those were all rejected.
 4. **Tenjō windows.** Prompt for lit or reflective glass so day windows don't break into coloured specks.
 5. **Original button.** The owner's "Original" choice in the World Gallery marks the base image. Otherwise a kept location image counts as a candidate.
 6. **Review.** Every image is reviewed at full size before it is published. Local fixes use `tools/fix_area.py`. Content rules are unchanged: adults only, no nudity.
