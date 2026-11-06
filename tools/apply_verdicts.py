@@ -12,7 +12,7 @@ import urllib.request
 from pathlib import Path
 
 LAB = "http://192.168.10.19:8080/designs/api/images"
-STATUS = {"keep": "approved", "fix": "needs-fix", "reject": "rejected"}
+STATUS = {"keep": "approved", "original": "approved", "fix": "needs-fix", "reject": "rejected"}
 PREFIXES = ("debt-", "life-", "wall-", "day-", "room-")
 
 
@@ -27,8 +27,9 @@ def apply(entries: list[dict], verdicts: dict[str, dict]) -> tuple[int, list[str
             unmatched.append(image)
             continue
         note = f"owner: {v['note']}" if v.get("note") else entry.get("note", "")
-        if entry.get("status") != STATUS[v["verdict"]] or entry.get("note", "") != note:
-            entry.update(status=STATUS[v["verdict"]], note=note)
+        status = STATUS.get(v["verdict"], entry.get("status"))  # A note alone leaves the status as it was.
+        if entry.get("status") != status or entry.get("note", "") != note:
+            entry.update(status=status, note=note)
             changed += 1
     return changed, unmatched
 

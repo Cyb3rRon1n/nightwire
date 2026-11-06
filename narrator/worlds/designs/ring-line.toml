@@ -1,0 +1,11 @@
+name = "Ring Line"
+kind = "location"
+source = "district:Ring Line"
+tags = "train station, platform, commuter train, station signs, line color stripe, ticket gates, shopping arcade, escalator, crowd barriers, fluorescent lights, advertisement screens, neon signs, vending machine, tiled floor, overhead cables, elevated tracks, night"
+negative = "rural, countryside, steam locomotive"
+alt_tags = "underground mall, shopping arcade, shop fronts, advertisement screens, escalator, station signs, tiled floor, night"
+props = ["ticket gate", "line map", "vending machine", "station clock"]
+status = "approved"
+seed = 70342
+palette = []
+notes = ["2026-11-06 draft from the connected world spec", "2026-11-06 approved pilot (seed 70342); owner kept 70342 and 52817"]

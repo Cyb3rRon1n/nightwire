@@ -1,0 +1,11 @@
+name = "Rin's room"
+kind = "location"
+source = "new:Rin's room"
+tags = "small apartment room, lived-in, clean, multiple computer monitors, glowing screens, keyboard, cables neatly bundled, bed, snacks, posters, figurines, neon signs through the window, city lights, pink and cyan lighting, night, indoors"
+negative = "ruins, rubble, abandoned, broken, dirty, dust, post-apocalypse, debris"
+alt_tags = "desk with monitors, gaming chair, energy drink cans, sticky notes, neon window, night, indoors"
+props = ["monitor", "keyboard", "headset", "energy drink"]
+status = "approved"
+seed = 52817
+palette = []
+notes = ["2026-11-06 draft from the connected world spec: Rin's stacked-block room, redone", "2026-11-06 approved pilot (seed 52817); owner kept 52817"]

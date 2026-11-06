@@ -13,7 +13,7 @@ PUT    /designs/api/reviews/<slug>  {"verdict": "ok", "v": "<sheet version>"} | 
 DELETE /designs/api/reviews/<slug>  undo
 
 GET    /designs/api/images         -> {image id: {verdict, note, at}}
-PUT    /designs/api/images/<id>    {"verdict": "keep"} | {"verdict": "reject"} | {"verdict": "fix", "note": "..."}
+PUT    /designs/api/images/<id>    {"verdict": "keep"} | {"verdict": "original"} | {"verdict": "reject"} | {"verdict": "fix", "note": "..."}
 DELETE /designs/api/images/<id>    undo
 
 GET    /designs/api/renders -> latest Nightwire images in ComfyUI's history, with their recipes
@@ -99,7 +99,7 @@ def validate_review(slug: str, body, designs_dir: Path) -> dict:
 
 
 def validate_image(image: str, body, designs_dir: Path) -> dict:
-    """The owner's verdict on one image in a gallery. A new render gets a new id, so it asks again."""
+    """The owner's verdict and note on one image in a gallery, or just a note. A new render gets a new id, so it asks again."""
     if not _IMAGE_ID.fullmatch(image):
         raise BadPick("bad image id")
     if not isinstance(body, dict):
@@ -107,10 +107,10 @@ def validate_image(image: str, body, designs_dir: Path) -> dict:
     verdict, note = body.get("verdict"), body.get("note", "")
     if not isinstance(note, str) or len(note) > MAX_NOTE:
         raise BadPick(f"a note can be up to {MAX_NOTE} characters")
-    if verdict not in ("keep", "fix", "reject"):
+    if verdict not in ("keep", "original", "fix", "reject", None):
         raise BadPick("unknown verdict")
-    if verdict == "fix" and not note.strip():
-        raise BadPick("a fix needs a note")
+    if verdict in ("fix", None) and not note.strip():
+        raise BadPick("a fix or a note on its own needs words")
     return {"verdict": verdict, "note": note.strip()}
 
 

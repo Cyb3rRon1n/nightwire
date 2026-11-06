@@ -1,0 +1,11 @@
+name = "Danchi block"
+kind = "location"
+source = "new:Danchi block"
+tags = "public housing apartment blocks, identical concrete buildings, open-air corridors, balconies, laundry hanging, air conditioner units, satellite dishes, neon signs, small shop at ground level, vending machines, bicycles, elevated train track, night, rain"
+negative = "luxury, skyscraper, ruins, abandoned"
+alt_tags = "open-air corridor, apartment doors, potted plants, laundry, fluorescent lights, neon city in the distance, night"
+props = ["bicycle", "laundry pole", "mailboxes", "vending machine"]
+status = "approved"
+seed = 70342
+palette = []
+notes = ["2026-11-06 draft from the connected world spec: Shinji's and Saeko's homes", "2026-11-06 approved pilot (seed 70342); owner kept 70342 and the walkway retry danchi-c 52817 and 70342"]

@@ -1,0 +1,11 @@
+name = "Old-family house"
+kind = "location"
+source = "new:Old-family house"
+tags = "traditional japanese house, wooden veranda, tatami, shoji, zen garden, stone lantern, pine tree, koi pond, on top of a skyscraper, neon city far below, skyscrapers, holographic billboards in the distance, night, moonlight"
+negative = "ruins, abandoned, modern furniture"
+alt_tags = "tea room, tatami, tokonoma, hanging scroll, tea set, shoji, neon city through the window, night, indoors"
+props = ["stone lantern", "tea set", "hanging scroll", "bonsai"]
+status = "approved"
+seed = 52817
+palette = []
+notes = ["2026-11-06 draft from the connected world spec: Hoshikawa family home atop Tenjō", "2026-11-06 approved pilot (seed 52817); owner kept 52817 and 70342"]

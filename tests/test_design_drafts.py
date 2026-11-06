@@ -2,9 +2,9 @@ from narrator.designs import kuroshio_designs
 from narrator.world import kuroshio
 
 
-def test_all_23_drafts_load():
+def test_all_24_drafts_load():
     designs = kuroshio_designs()
-    assert len(designs) == 23
+    assert len(designs) == 24
     assert sum(d.kind == "character" for d in designs.values()) == 12
 
 
