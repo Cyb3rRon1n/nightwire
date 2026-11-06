@@ -142,9 +142,19 @@ re-run — only touches its own "Nightwire" group.
 
 Real captures of the live frontend running its own "Neon Noir" theme — a cyberpunk visual identity independent of `open-dungeon`'s default fantasy-tabletop styling (see `ROADMAP.md`'s Phase 4 entry for the design reasoning).
 
+The play screen is a messenger-style conversation over the current scene's art, between resizable panels: your character sheet and objectives on the left, the party on the right. Drag the dividers, collapse either side to a thin rail, or switch to Immersive view; the layout is remembered per browser. Phones get the same conversation with a tab bar (design: `docs/superpowers/specs/2026-11-06-messenger-play-screen-design.md`).
+
 <p align="center">
-  <img src="docs/images/screenshots/session.png" alt="Nightwire combat turn with narration, an NPC dialogue bubble with its own avatar, and TTS audio" width="480"><br>
-  <sub>Narration, dice-backed combat, and a speaker avatar next to each dialogue bubble</sub>
+  <img src="docs/images/screenshots/play-screen.jpg" alt="The Nightwire play screen: Rin's character sheet and objectives in a left panel, the conversation in the middle over scene art of a rainy neon alley with Mama Sato's lines in red, Rin's in cyan, a roll card and a red status-light strip, and the party in a right panel" width="720"><br>
+  <sub>The play screen: sheet and objectives, the conversation over the scene's art, and the party, in panels you can resize</sub>
+</p>
+<p align="center">
+  <img src="docs/images/screenshots/play-immersive.jpg" alt="The same play screen in Immersive view: both side panels collapsed to thin rails so the scene art and the conversation fill the window" width="720"><br>
+  <sub>Immersive view folds both side panels away, leaving the scene and the conversation</sub>
+</p>
+<p align="center">
+  <img src="docs/images/screenshots/play-phone.jpg" alt="The play screen at phone width: the scene art as a banner, the place name, the conversation and the input, with Feed, Status and World tabs along the bottom" width="260"><br>
+  <sub>On a phone: the scene as a banner, and tabs for Feed, Status and World</sub>
 </p>
 <p align="center">
   <img src="docs/images/screenshots/roll.png" alt="A Nightwire roll card: Stealth vs Hard 16, a d10 showing 6, the breakdown 6 +0 Cool +0 Stealth = 6 vs 16 and a red Failure badge, followed by the narrator's resolution" width="480"><br>

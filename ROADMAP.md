@@ -187,6 +187,19 @@ Each phase gets its own brainstorming pass (questions → approaches → design 
     - **Art direction, owner-reviewed 2026-10-29** (rounds 1–4 in the design-studio gallery): locations approved as rendered ("splendid"). Characters moved to a mature, dark cyberpunk look that fits the locations: dark grey backdrop with pink and cyan neon rim light; gritty techwear, tattoos, scars, piercings; rating tag "sensitive" (suggestive allowed), with nude/explicit/childlike terms in the negatives; every character clearly adult (Kenji, 19, styled rugged; elderly characters and others not sexualized). Women (Mama Sato, Mitsu, Saeko, Rei, Hachi as an adult female shell) use idol proportions — slender, narrow waist, long legs, slightly fuller bust, idol face — with wide hips, thick thighs and huge breasts in the negatives; sexy revealing outfits, no nudity. Owner: "perfect! let's roll with this." Next: owner picks per design → approve (gallery round) → full sheets → export.
     - **Parked**: approve picks the latest round unless `--round` is passed (runbook says pass it); Pillow is an eager import of `design_sheets` and only in the dev/design extras (revisit if 19c's server imports it); palettes on white sheets include white.
 
+20. **Messenger play screen, step 1** (designed and built 2026-11-06) — spec `docs/superpowers/specs/2026-11-06-messenger-play-screen-design.md`, plan `docs/superpowers/plans/2026-11-06-messenger-play-screen.md`.
+    - **Built**:
+      - Three resizable panels (`react-resizable-panels` 4.14.8): Status with the inline sheet and objectives, the Feed, and World with the scene and party.
+      - Panel behaviour: collapsing rails, a saved layout, Reset layout, Immersive view, and Ctrl/Cmd+K toggling Status.
+      - Feed: a messenger-style conversation over the latest scene image, with NPC name colours taken from approved design palettes and kept at 4.5:1 or better, plus a Scene art toggle and a Gallery overlay.
+      - Phones: a tabbed single column.
+      - Pure logic sits in `frontend/src/lib/nightwire/` with `npm run test:nightwire` (Node's built-in runner). `tools/export_npc_palettes.py` regenerates the palette file, and a pytest test catches it going stale.
+    - **Verified**:
+      - Headless Chrome against a staged session: drag and reload keeps the layout; the keyboard collapses and reopens panels; Gallery focus returns to its button; no horizontal scroll at 390px.
+      - `next build`, tsc, eslint, 11 node tests and 767 pytest tests all pass.
+      - Not yet checked: a live narrated turn with Ollama.
+    - **Next — step 2, the Phone**: engine-sent texts, a pop-out phone for texting one character while talking to another, private texts in the feed, and per-contact memory of what you told them.
+
 ### Studio track (candidates, surfaced 2026-10-28)
 Owner interest: if players like the world and story, grow toward an animation-studio-style pipeline. Candidate phases, roughly in order: **19c designs in play** (player design at creation, scenes and portraits reuse saved designs); **19d stronger identity** (per-character LoRA for principals, IPAdapter if it fits 8 GB, two named characters per scene via regional prompting); **props and the chrome catalog** (prop and vehicle sheets); **more character sheets** (pose and action, mouth and lip-sync, hands, height line-up, costume variants); **colour script and FX sheets** (overclock, Yomi static, glitch, bloom); **stage view** (visual-novel-style presentation: location art plus the speaking NPC with a matching expression, over free-text play); **district map** (clickable Kuroshio map from the location designs); **storyboard and animatic export** from session logs.
 
