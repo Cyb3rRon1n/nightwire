@@ -209,3 +209,15 @@ def test_image_verdicts_are_saved_and_validated(api):
     assert status == 200 and saved["wall-ikebe"]["verdict"] == "keep" and saved["wall-ikebe"]["note"] == "love the rain"
     status, saved = call(f"{images}/wall-ikebe", "PUT", {"verdict": "original"})
     assert status == 200 and saved["wall-ikebe"]["verdict"] == "original"
+
+
+def test_likes_are_saved_apart_from_verdicts(api):
+    url, data = api
+    taste = url.replace("/picks", "/taste")
+    assert call(taste) == (200, {})
+    assert call(f"{taste}/wall-ikebe", "PUT", {"like": "yes"})[0] == 400
+    assert call(f"{taste}/Bad..Id", "PUT", {"like": True})[0] == 400
+    status, saved = call(f"{taste}/wall-ikebe", "PUT", {"like": False})
+    assert status == 200 and saved["wall-ikebe"]["like"] is False
+    assert not data.with_name("images.json").exists()
+    assert call(f"{taste}/wall-ikebe", "DELETE") == (200, {})

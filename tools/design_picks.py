@@ -16,6 +16,10 @@ GET    /designs/api/images         -> {image id: {verdict, note, at}}
 PUT    /designs/api/images/<id>    {"verdict": "keep"} | {"verdict": "original"} | {"verdict": "reject"} | {"verdict": "fix", "note": "..."}
 DELETE /designs/api/images/<id>    undo
 
+GET    /designs/api/taste          -> {image id: {like, at}}  (taste, apart from whether an image is used)
+PUT    /designs/api/taste/<id>     {"like": true} | {"like": false}
+DELETE /designs/api/taste/<id>     undo
+
 GET    /designs/api/renders -> latest Nightwire images in ComfyUI's history, with their recipes
 GET    /designs/api/batch   -> the long batch in progress, with time left
 PUT    /designs/api/batch   {"name": "Sheets", "done": 3, "total": 19, "item": "hachi", "failed": 0}
@@ -40,6 +44,7 @@ from pathlib import Path
 PREFIX = "/designs/api/picks"
 REVIEWS = "/designs/api/reviews"
 IMAGES = "/designs/api/images"
+TASTE = "/designs/api/taste"
 RENDERS = "/designs/api/renders"
 BATCH = "/designs/api/batch"
 MAX_BODY = 4096
@@ -112,6 +117,15 @@ def validate_image(image: str, body, designs_dir: Path) -> dict:
     if verdict in ("fix", None) and not note.strip():
         raise BadPick("a fix or a note on its own needs words")
     return {"verdict": verdict, "note": note.strip()}
+
+
+def validate_taste(image: str, body, designs_dir: Path) -> dict:
+    """A like or dislike on one image. Teaches the owner's taste for later renders; Keep/Reject still decide use."""
+    if not _IMAGE_ID.fullmatch(image):
+        raise BadPick("bad image id")
+    if not isinstance(body, dict) or not isinstance(body.get("like"), bool):
+        raise BadPick('expected {"like": true or false}')
+    return {"like": body["like"]}
 
 
 def _style_of(positive: str) -> str:
@@ -223,7 +237,8 @@ def make_server(host: str, port: int, data: Path, designs_dir: Path,
     batch_file = data.with_name("batch.json")
     batch_lock = threading.Lock()
     routes = {PREFIX: (Store(data), validate), REVIEWS: (Store(data.with_name("reviews.json")), validate_review),
-              IMAGES: (Store(data.with_name("images.json")), validate_image)}
+              IMAGES: (Store(data.with_name("images.json")), validate_image),
+              TASTE: (Store(data.with_name("taste.json")), validate_taste)}
     designs_dir = Path(designs_dir)
 
     class Handler(BaseHTTPRequestHandler):
