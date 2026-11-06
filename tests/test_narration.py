@@ -1367,7 +1367,7 @@ def _scripted_client(responses: list[dict], judge_answers: list[dict] | None = N
 
     async def judge_fn(*, model, messages, format):
         if judge_answers is None:
-            answer = {k: ("none" if "enum" in v else False) for k, v in format["properties"].items()}
+            answer = {k: ("none" if "enum" in v else "" if v.get("type") == "string" else False) for k, v in format["properties"].items()}
         else:
             answer = judge_answers[state["j"]]
             state["j"] += 1
