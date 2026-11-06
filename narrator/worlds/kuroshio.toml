@@ -1,5 +1,5 @@
 # Kuroshio - nightwire's world bible (Phase 14).
-# District/faction/npc cards must be standalone (no pronouns pointing at other cards), <=400 chars. npc home = an existing district name.
+# District/place/faction/npc cards must be standalone (no pronouns pointing at other cards), <=400 chars. npc and place home = an existing district name.
 # Names/aliases must be unique after lowercasing + stripping diacritics
 # ("Ōgane" already matches "Ogane" - don't add re-spellings as aliases).
 
@@ -32,7 +32,7 @@ card = "Hanabira-chō is the pleasure district: idol streams on every wall, host
 
 [[district]]
 name = "Ikebe Low"
-aliases = ["Ikebe", "the Low"]
+aliases = ["Ikebe"]  # not "the Low": it matched "the low table"
 card = "Ikebe Low is old wooden-era alleys under the expressway: lantern-lit izakaya, family chrome-ya clinics behind noren curtains, alley shrines strung with prayer-cable. Nobody holds it; the Kuze-gumi, Kaminari Run and Hoshikawa repo men all work its streets. Hazard: power cuts drop whole blocks into darkness. Hook: an old chrome-ya installs chrome off the books, with no payment plan and no repo."
 
 [[district]]
@@ -54,6 +54,104 @@ card = "The Ring Line is the commuter loop under the expressway, stopping in eve
 name = "Yomi Line"
 aliases = ["the sealed line", "the dead line"]
 card = "The Yomi Line is a subway line sealed after an AI incident twenty years ago. Station signs still announce trains that never come, and the net is so thick that the dead speak through the platform speakers. Tsukumogami nest in the ticket machines and the dead trains. Hazard: stay too long and Yomi seeps into your chrome. Hook: the Lantern Guild wants something carried out of the deepest station."
+
+# Places: spots inside a district, loaded when the party is there or names them. home = an existing district.
+
+[[place]]
+name = "Hoshikawa house"
+aliases = ["the family house", "Hoshikawa estate"]
+home = "Tenjō Heights"
+card = "The Hoshikawa house sits atop Tenjō: old cypress wood, tatami, a moss garden and a tea room, every screen and sensor hidden behind paper and lacquer, the neon city spread below the veranda. Hoshikawa Tadamori keeps his study here. Guests kneel, use formal speech and are served tea. Hazard: a breach of manners is remembered for a generation. Hook: a scroll in the tea room hides a debt ledger."
+
+[[place]]
+name = "Security command"
+aliases = ["Hoshikawa security", "the command floor"]
+home = "Tenjō Heights"
+card = "Hoshikawa security command is a glass floor high in a Tenjō tower: a wall of surveillance feeds, a holographic city map, chrome consoles under the company crest, analysts on contract. Every camera in the high city ends here. Hazard: a face caught on a feed is flagged in seconds. Hook: one feed has been looping the same empty corridor for three nights."
+
+[[place]]
+name = "Ōgane precinct"
+aliases = ["the precinct", "precinct office"]
+home = "Kuroshio Docks"
+card = "The Ōgane Heavy precinct at the Docks is an open-plan office of desks pushed together in rows, case files, old monitors and a whiteboard, harbor cranes and neon outside the blinds; Captain Ide's desk faces the room from the head. Holding cells downstairs. Hazard: every favor here comes with an invoice. Hook: an evidence locker logs a deposit nobody made."
+
+[[place]]
+name = "Harbor danchi"
+aliases = ["the danchi", "danchi block"]
+home = "Kuroshio Docks"
+card = "The harbor danchi are identical concrete public housing blocks behind the Docks: open-air corridors, laundry on every balcony, air conditioners, a vending machine and a small shop with a neon sign at the foot, the Ring Line rattling past. Working families, cops and torite live door to door. Hazard: neighbours hear everything. Hook: a flat's rent is still paid by a tenant who died last year."
+
+[[place]]
+name = "Courier depot"
+aliases = ["drone depot"]
+home = "Kuroshio Docks"
+card = "The courier depot sits between shipping containers at the Docks: delivery robots in charging bays, parcel racks, a clattering conveyor, harbor cranes overhead. Hachi rents a charging bay here between jobs. Hazard: a parcel scanned by the wrong shift belongs to them. Hook: one bay charges a robot that nobody registered."
+
+[[place]]
+name = "Junkyard workshop"
+aliases = ["the junkyard"]
+home = "Kuroshio Docks"
+card = "The junkyard workshop is a scrap yard of stacked containers at the edge of the Docks: robot limbs in piles, a workbench under a welding torch, tools hanging from chains, rain drumming on corrugated roofs. The mechanic lives in a container at the back. Hazard: repossessed chrome turns up here, and the torite come looking. Hook: a scrapped shell keeps rebooting."
+
+[[place]]
+name = "Torite office"
+aliases = ["the repo office", "torite crew office"]
+home = "Ikebe Low"
+card = "The torite office is a cramped repo crew room in Ikebe Low: filing cabinets, a ledger desk, tow hooks, repossessed chrome arms on the shelves under fluorescent tubes, status-light readers on a charging strip. Saeko Kirigaya runs her crew from here. Hazard: walk in with an amber light and you may not walk out with your chrome. Hook: a seized arm on the shelf is still twitching."
+
+[[place]]
+name = "Low-city shrine"
+aliases = ["the alley shrine", "the shrine office"]
+home = "Ikebe Low"
+card = "The low-city shrine is a narrow alley shrine under the expressway: a red torii, stone fox statues in prayer-cable, paper lanterns, a shrine office window, tangled cables overhead. Wataru Ono sweeps it every morning and lives behind it. People leave old phones and chrome here to be laid to rest. Hazard: what is offered here must not be taken. Hook: an offered phone keeps ringing."
+
+[[place]]
+name = "Bike shop"
+aliases = ["motorcycle shop"]
+home = "Ikebe Low"
+card = "The bike shop is a small motorcycle repair shop on an Ikebe Low street, shutters up, bike parts and painted tanks everywhere, neon over the door, a flat upstairs reached by an outside stair. Kaminari Run riders come in after midnight. Hazard: a bike that leaves unpaid comes back with the torite. Hook: someone keeps leaving cash for a bike nobody ordered."
+
+[[place]]
+name = "Stacked block"
+aliases = ["the stacked block"]
+home = "Ikebe Low"
+card = "The stacked block is a tower of tiny rooms built onto each other in Ikebe Low: cables in bundles down every stairwell, hand-made neon, status lights blinking behind thin doors, rooms lived in by netrunners and the indebted. Hazard: the wiring is shared, so is the trouble. Hook: one room draws enough power for a whole floor."
+
+[[place]]
+name = "Gang office"
+aliases = ["the clan office", "Kuze office"]
+home = "Hanabira-chō"
+card = "The Kuze-gumi office sits above a Hanabira-chō street: calligraphy scroll, leather sofas, a low table, a kamidana shelf shrine, the clan crest over the door, blinds shut against the neon. Visitors bow, keep their hands visible and wait to be offered a seat. Hazard: owing the clan is worse than owing the bank. Hook: the oyabun's chair has been empty for a week."
+
+[[place]]
+name = "Pachinko back room"
+aliases = ["pachinko parlor"]
+home = "Hanabira-chō"
+card = "The pachinko back room hides behind a roaring Hanabira-chō parlor: a low table, cash envelopes, cigarette smoke, machine glow through the doorway. Debts are bought, sold and settled here. Hazard: the house always counts twice. Hook: one machine pays out every night at the same minute."
+
+[[place]]
+name = "Streaming studio"
+aliases = ["idol studio"]
+home = "Hanabira-chō"
+card = "The streaming studio is an idol set in a Hanabira-chō agency high-rise: ring lights, pastel set, cameras, plush toys, a wall screen of scrolling chat. Mitsu streams here. Hazard: the audience is always watching, and clips last forever. Hook: the chat keeps posting from accounts of people already gone to the lantern."
+
+[[place]]
+name = "Club stage"
+aliases = ["the jazz club"]
+home = "Hanabira-chō"
+card = "The club stage is a small Hanabira-chō jazz club: a vintage microphone in a spotlight, a piano, a red velvet curtain, round tables, neon over the bar, a dressing room behind and a room above. Host-club money drinks here. Hazard: tabs are sold to Hoshikawa at closing. Hook: the singer's old songs are playing on a station that went off air."
+
+[[place]]
+name = "Off-ramp garage"
+aliases = ["Kaminari garage"]
+home = "The Loop"
+card = "The off-ramp garage is a concrete hollow under a Loop off-ramp: motorcycles with painted tanks, tools on pegboard, graffiti, pillars shaking as traffic passes overhead. Kenji Moro sleeps here between races. Hazard: rival riders know where it is. Hook: a bike in the corner has a race win logged for tonight."
+
+[[place]]
+name = "Capsule tower"
+aliases = ["the capsule hotel", "capsule pods"]
+home = "The Loop"
+card = "The capsule tower is an arcade tower at a Loop off-ramp with capsule floors above the games: numbered pods stacked two high, small screens, narrow ladders, lockers, month-to-month tenants. Hazard: the walls are plastic and everybody listens. Hook: a pod that has been locked for a year still orders noodles."
 
 [[faction]]
 name = "Hoshikawa Keiretsu"

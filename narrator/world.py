@@ -1,4 +1,4 @@
-"""Nightwire's world bible: an always-on primer plus district/faction/NPC cards
+"""Nightwire's world bible: an always-on primer plus district/place/faction/NPC cards
 selected per turn - see docs/superpowers/specs/2026-10-26-world-bible-design.md."""
 
 import functools
@@ -24,7 +24,7 @@ class WorldEntry:
     name: str
     aliases: tuple[str, ...]
     card: str
-    # NPCs only: the district they live in (an existing district name).
+    # NPCs and places: the district they're in (an existing district name; required for places).
     home: str | None = None
 
 
@@ -35,6 +35,8 @@ class World:
     districts: tuple[WorldEntry, ...]
     factions: tuple[WorldEntry, ...]
     npcs: tuple[WorldEntry, ...] = ()
+    # Spots inside a district (the precinct, a family house, a workplace), so the world can grow without growing the primer.
+    places: tuple[WorldEntry, ...] = ()
 
     def system_block(self) -> str:
         terms = "\n".join(f"{term}: {definition}" for term, definition in self.glossary.items())
@@ -76,6 +78,7 @@ def parse_world(raw: dict) -> World:
         _entries(raw, "district"),
         _entries(raw, "faction"),
         _entries(raw, "npc"),
+        _entries(raw, "place"),
     )
     block_len = len(world.system_block())
     if block_len > _MAX_SYSTEM_BLOCK_CHARS:
@@ -84,8 +87,11 @@ def parse_world(raw: dict) -> World:
     for npc in world.npcs:
         if npc.home is not None and npc.home not in district_names:
             raise ValueError(f"world npc {npc.name!r} home {npc.home!r} is not a district")
+    for place in world.places:
+        if place.home not in district_names:
+            raise ValueError(f"world place {place.name!r} home {place.home!r} is not a district")
     seen: dict[str, str] = {}
-    for entry in world.districts + world.factions + world.npcs:
+    for entry in world.districts + world.places + world.factions + world.npcs:
         for key in (entry.name, *entry.aliases):
             normalized = _normalize(key)
             if normalized in seen:
@@ -112,20 +118,23 @@ def _mentions(entry: WorldEntry, normalized_text: str) -> bool:
 
 
 def select_cards(world: World, session: Session, action_text: str, budget_chars: int) -> list[str]:
-    """Cards for this turn, in priority order: the current location's district;
+    """Cards for this turn, in priority order: the current location's place, if any;
+    the current location's district;
     then one NPC who lives there (skipped if a local NPC is already mentioned);
     then districts/factions/NPCs mentioned in the action or recent narrative,
     most recent first. Capped by count and by budget_chars."""
     location = _normalize(session.location or "")
-    district = next((d for d in world.districts if location and _mentions(d, location)), None)
+    place = next((p for p in world.places if location and _mentions(p, location)), None)
+    district = next((d for d in world.districts if d.name == place.home) if place
+                    else (d for d in world.districts if location and _mentions(d, location)), None)
     # [image: ...]-style lines are UI annotations, not narrative (same filter
     # server/narration.py applies).
     narrative = [line for line in session.log if not line.startswith("[")][-_SCAN_LINES:]
     mentions: list[WorldEntry] = []
     for text in (action_text, *reversed(narrative)):
         normalized = _normalize(text)
-        for entry in world.districts + world.factions + world.npcs:
-            if entry is not district and entry not in mentions and _mentions(entry, normalized):
+        for entry in world.districts + world.places + world.factions + world.npcs:
+            if entry not in (district, place) and entry not in mentions and _mentions(entry, normalized):
                 mentions.append(entry)
     # Put someone on stage even when nobody was named, ahead of older mentions
     # so stale faction chatter can't crowd them out of the card cap.
@@ -135,7 +144,7 @@ def select_cards(world: World, session: Session, action_text: str, budget_chars:
     resident = None
     if district and not any(e.home == district.name for e in mentions):
         resident = next((n for n in world.npcs if n.home == district.name), None)
-    ordered = [e for e in (district, resident) if e] + mentions
+    ordered = [e for e in (place, district, resident) if e] + mentions
     cards: list[str] = []
     total = 0
     for entry in ordered[:_MAX_CARDS]:

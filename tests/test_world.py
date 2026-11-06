@@ -282,3 +282,51 @@ def test_npc_without_home_is_never_a_resident():
 
     assert homeless == ["Saeko Kirigaya"]
     assert _card(world, "Saeko Kirigaya") not in cards
+
+
+def _place_world():
+    raw = _raw(place=[{"name": "Lantern Alley", "aliases": ["the alley"], "home": "Ikebe Low", "card": "Lantern Alley is narrow."}],
+               npc=[{"name": "Mama Sato", "aliases": [], "home": "Ikebe Low", "card": "Mama Sato runs an izakaya."}])
+    return parse_world(raw)
+
+
+def test_place_needs_an_existing_district():
+    with pytest.raises(ValueError, match="home"):
+        parse_world(_raw(place=[{"name": "Lantern Alley", "aliases": [], "home": "Nowhere", "card": "Narrow."}]))
+    with pytest.raises(ValueError, match="home"):
+        parse_world(_raw(place=[{"name": "Lantern Alley", "aliases": [], "card": "Narrow."}]))
+
+
+def test_place_alias_colliding_with_a_district_alias_fails():
+    with pytest.raises(ValueError, match="duplicates"):
+        parse_world(_raw(place=[{"name": "Lantern Alley", "aliases": ["Ikebe"], "home": "Ikebe Low", "card": "Narrow."}]))
+
+
+def test_place_location_puts_place_then_its_district_then_a_resident():
+    world = _place_world()
+    session = Session(session_id="s", location="Lantern Alley")
+
+    cards = select_cards(world, session, "I look around.", budget_chars=10_000)
+
+    assert cards == ["Lantern Alley is narrow.", "Ikebe Low is old alleys.", "Mama Sato runs an izakaya."]
+
+
+def test_mentioned_place_loads_its_card():
+    world = _place_world()
+
+    cards = select_cards(world, Session(session_id="s"), "We head for the alley.", budget_chars=10_000)
+
+    assert cards == ["Lantern Alley is narrow."]
+
+
+def test_shipped_places_sit_in_real_districts():
+    world = kuroshio()
+    assert len(world.places) >= 14
+    districts = {d.name for d in world.districts}
+    assert all(p.home in districts for p in world.places)
+
+
+def test_a_low_table_is_not_ikebe_low():
+    cards = select_cards(kuroshio(), Session(session_id="s"), "I kneel at the low table.", budget_chars=10_000)
+
+    assert _card(kuroshio(), "Ikebe Low") not in cards
