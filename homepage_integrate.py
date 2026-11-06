@@ -19,7 +19,7 @@ from pathlib import Path
 import yaml
 
 GROUP_NAME = "Nightwire"
-ICON_URL = "https://raw.githubusercontent.com/Cyb3rRon1n/nightwire/main/docs/images/logo.svg"
+ICON_URL = "https://raw.githubusercontent.com/Cyb3rRon1n/nightwire/main/docs/images/icon.png"
 
 
 def find_vulcan_stack(search_paths: list[Path] | None = None) -> Path | None:
