@@ -15,8 +15,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "pytest-asyncio>=0.24", "pillow>=10"]
-design = ["pillow>=10", "dghs-imgutils", "onnxruntime"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.24", "pillow>=10", "numpy>=1.26"]
+design = ["pillow>=10", "numpy>=1.26", "dghs-imgutils", "onnxruntime"]
 qa = ["dghs-imgutils", "onnxruntime"]
 
 [tool.pytest.ini_options]
