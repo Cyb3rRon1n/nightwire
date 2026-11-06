@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/banner.svg"
-       alt="Nightwire - A cyberpunk AI game master for real-time tabletop sessions"
+  <img src="docs/images/banner.jpg"
+       alt="Nightwire, a cyberpunk AI game master: the wordmark over a rainy neon alley in Kuroshio"
        style="max-width: 100%; height: auto;">
 </p>
 
@@ -18,7 +18,17 @@ A cyberpunk tabletop RPG with an AI game master — playable solo or with friend
 
 Sibling project to [`oracle`](https://github.com/Cyb3rRon1n/oracle) (a D&D-flavored AI-DM) — built fresh rather than adapted, and researched independently at every design decision rather than leaning on oracle as precedent (see `ROADMAP.md`'s "Why a fresh project" section for the reasoning, and every spec under `docs/superpowers/specs/` for the citations behind each mechanic).
 
-**Status**: Phases 1–10 built and live-verified — ruleset, engine, AI narrator, web frontend, image generation (two backends, MLX and ComfyUI), text-to-speech (character-distinct voices), a skill system, photo-reference portraits, and attribute point-buy all work end to end. See `ROADMAP.md`'s Phases section for the full build history.
+**Status**: Phases 1–20 built:
+- the ruleset, engine and AI narrator,
+- image generation in one approved anime-cyberpunk look,
+- character-distinct voices,
+- skills and attributes,
+- chrome, humanity and chrome debt,
+- the tsukumogami origin,
+- the Kuroshio world bible and design studio, with 21 approved characters and the approved places,
+- the new messenger-style play screen.
+
+See `ROADMAP.md`'s Phases section for the full build history.
 
 ## What makes it Nightwire
 
@@ -26,7 +36,8 @@ Sibling project to [`oracle`](https://github.com/Cyb3rRon1n/oracle) (a D&D-flavo
 - **A tiered 1d10 resolution, not d20.** `1d10 + attribute + skill` vs. a difficulty class, deliberately the lowest-complexity class of cyberpunk system surveyed (Cyberpunk RED, CY_BORG), not Shadowrun-style dice pools.
 - **Four roles, checked against Cyberpunk 2077 itself**: Solo, Netrunner, Techie, Fixer — CP2077's three official archetypes plus a Fixer for social/negotiation. Six attributes (Body, Reflexes, Tech, Cool, Intellect, Presence).
 - **Structured output, not native tool-calling.** The narrator's tool choice and arguments are both constrained by a real JSON schema, after live testing found free-form tool-calling inventing plausible-but-wrong arguments on nearly every turn.
-- **Character-consistent image generation.** A portrait generated at character approval becomes a reference image for later scene generation, so a character looks like themselves across turns instead of a new face each time — on the default `flux_worker` backend. The `comfyui` backend (Docker/Linux-friendly, see below) doesn't support this yet: no IPAdapter/InstantID on the verified target instance, so it's text-prompt-only.
+- **A play screen that feels like a phone in the city.** The conversation reads like a messenger laid over the current scene's art: narration in serif, each NPC in their own colour, your lines in cyan, and debt notices as red HUD strips. Your sheet and objectives sit in a panel on one side, the party on the other. Drag the panels, fold them away, or go immersive, and the layout is remembered. On a phone it's one column with tabs.
+- **One look, one cast.** Every image is rendered in a single approved anime-cyberpunk style on a local ComfyUI. Every character and place has an approved design: a turnaround, expressions and a colour guide for people, and establishing shots for places. The play screen even takes NPC name colours from those designs.
 - **You roll the dice, the narrator lives with them.** When an action is risky, the narrator sets up the moment and stops; you click **Roll**, watch the d10 land with your modifiers, then the narrator tells what happens — true to the result, which stays in the story so it's remembered later.
 - **Chrome has a price.** Cyberware makes you better at the thing it's for — Kama blades, a Yomi jack, a Kagerou time-dilation rig — and costs humanity. Push an implant past its limits with ⚡ Overclock right on the roll card and it costs more. As humanity falls the narrator plays the slide; you never lose control of your character, and there's always a way back.
 - **Chrome is on credit.** Miss enough installments and the street notices: a polite final notice, then Hoshikawa remote-throttles your newest implant, then Saeko Kirigaya's torite crew comes to take it back. Pay it down with Jun Arakawa's gigs, or have Old Hara unlock it off the books — for a favor.
@@ -35,10 +46,21 @@ Sibling project to [`oracle`](https://github.com/Cyb3rRon1n/oracle) (a D&D-flavo
 
 ## World
 
-Nightwire's setting is **Kuroshio**, an original Japanese megacity in 2089 where everyone's chrome is on credit. It lives in `narrator/worlds/kuroshio.toml`:
+Nightwire's setting is **Kuroshio**, an original Japanese megacity in 2089 where everyone's chrome is on credit.
+
+<p align="center">
+  <img src="docs/images/cast.jpg" alt="Portraits of Nightwire's 21 approved characters in the anime-cyberpunk look, from Akira Sendo to Yuki Shirasagi, including Mama Sato, Saeko Kirigaya, Old Hara, Hachi and Rin Kageyama" width="820"><br>
+  <sub>The cast: 21 approved character designs, each with a turnaround, expressions and a colour guide</sub>
+</p>
+<p align="center">
+  <img src="docs/images/places.jpg" alt="Eight approved Kuroshio places: Ikebe Low, Mama Sato's izakaya, the Hoshikawa penthouse, Kuroshio Docks, Hanabira-chō, Tenjō Heights, the Yomi Line and the Ring Line" width="820"><br>
+  <sub>Some of Kuroshio's approved places, from the back-alley izakaya to the Hoshikawa penthouse</sub>
+</p>
+
+The world lives in `narrator/worlds/kuroshio.toml`:
 
 - **`primer` + `[glossary]`**: always in the narrator's system prompt (max 1,900 chars together).
-- **`[[district]]` / `[[faction]]` / `[[npc]]`**: `name`, `aliases`, `card` (max 400 chars); an NPC can also have a `home` district. Each turn, up to 4 cards are added: the district matching the current location first, then one NPC who lives there (unless a local NPC is already in the scene), then anything mentioned in the player's action or recent narration.
+- **`[[district]]` / `[[faction]]` / `[[npc]]` / `[[place]]`**: `name`, `aliases`, `card` (max 400 chars); an NPC can also have a `home` district, and a place (a spot inside a district, like the precinct or the danchi) reaches the narrator when it's the location or is mentioned. Each turn, up to 4 cards are added: the district matching the current location first, then one NPC who lives there (unless a local NPC is already in the scene), then anything mentioned in the player's action or recent narration.
 
 To add a place or faction, add an entry. Keep each card standalone (don't refer to "they" from another card), and make sure names and aliases are unique (matching ignores case and accents, so "Ōgane" already matches "Ogane"). The server checks the file at startup and refuses to start if it's invalid.
 
@@ -122,59 +144,54 @@ re-run — only touches its own "Nightwire" group.
 │   ├── session.py      #   Session dataclass, log, combat state
 │   ├── character.py    #   CharacterSheet
 │   ├── turns.py        #   join / start_combat / advance_turn / end_combat
+│   ├── chrome.py       #   implants, humanity, overclock
+│   ├── debt.py         #   installments, throttling, the repo crew
 │   └── persistence.py  #   JSON session storage
-├── narrator/            # the AI game master
-│   ├── client.py       #   Ollama client, NarratorResponse schema
-│   ├── tools.py         #   tool execution against engine state
-│   ├── image_backend.py #   ImageBackend protocol + FluxWorkerBackend + create_image_backend()
-│   └── comfyui_backend.py #   ComfyUIBackend — cross-platform, Docker-friendly, text-prompt-only
-├── server/              # WebSocket server (FastAPI)
-│   ├── app.py            #   app factory, connection lifecycle
-│   ├── dispatch.py       #   incoming message routing
-│   ├── narration.py      #   player action -> narrator -> tool/image execution
-│   └── views.py          #   per-player state broadcast (redacted for other players)
-├── frontend/            # Next.js web client (open-dungeon base, /nightwire route)
-├── tests/               # pytest: ruleset, engine, narrator, server
-└── docs/                # design specs, implementation plans, branding assets
+├── narrator/           # the AI game master
+│   ├── client.py       #   narrator client, NarratorResponse schema
+│   ├── tools.py        #   tool execution against engine state
+│   ├── referee.py      #   post-narration state checks (human moments, repo, pay)
+│   ├── world.py        #   Kuroshio world bible: primer, glossary, per-turn cards
+│   ├── designs.py      #   approved character and place design records
+│   ├── design_sheets.py #  ComfyUI graphs for the approved look
+│   ├── image_backend.py / comfyui_backend.py  # image generation
+│   └── worlds/         #   kuroshio.toml + designs/*.toml
+├── server/             # WebSocket server (FastAPI)
+├── tools/              # design studio, image tools, taste, palette export
+├── frontend/           # Next.js web client (open-dungeon base, /nightwire route)
+│   └── src/app/nightwire/play/  # the messenger play screen
+├── tests/              # pytest: ruleset, engine, narrator, server, tools
+└── docs/               # design specs, implementation plans, art direction, images
 ```
 
 ## Screenshots
 
-Real captures of the live frontend running its own "Neon Noir" theme — a cyberpunk visual identity independent of `open-dungeon`'s default fantasy-tabletop styling (see `ROADMAP.md`'s Phase 4 entry for the design reasoning).
-
-The play screen is a messenger-style conversation over the current scene's art, between resizable panels: your character sheet and objectives on the left, the party on the right. Drag the dividers, collapse either side to a thin rail, or switch to Immersive view; the layout is remembered per browser. Phones get the same conversation with a tab bar (design: `docs/superpowers/specs/2026-11-06-messenger-play-screen-design.md`).
+Captures of the live frontend, using hand-written demo sessions and approved Kuroshio art.
 
 <p align="center">
-  <img src="docs/images/screenshots/play-screen.jpg" alt="The Nightwire play screen: Rin's character sheet and objectives in a left panel, the conversation in the middle over scene art of a rainy neon alley with Mama Sato's lines in red, Rin's in cyan, a roll card and a red status-light strip, and the party in a right panel" width="720"><br>
-  <sub>The play screen: sheet and objectives, the conversation over the scene's art, and the party, in panels you can resize</sub>
+  <img src="docs/images/screenshots/play-screen.jpg" alt="The Nightwire play screen: Rin's character sheet and objectives in a left panel; in the middle, Mama Sato's izakaya behind the conversation with Mama Sato's lines in red, Rin's in cyan, a roll card and a red status-light strip; the party in a right panel" width="820"><br>
+  <sub>The play screen: your sheet and objectives, the conversation over the scene, and the party, in panels you can resize</sub>
 </p>
 <p align="center">
-  <img src="docs/images/screenshots/play-immersive.jpg" alt="The same play screen in Immersive view: both side panels collapsed to thin rails so the scene art and the conversation fill the window" width="720"><br>
-  <sub>Immersive view folds both side panels away, leaving the scene and the conversation</sub>
+  <img src="docs/images/screenshots/play-immersive.jpg" alt="The same scene in Immersive view: both side panels folded to thin rails so the izakaya and the conversation fill the window" width="820"><br>
+  <sub>Immersive view folds both side panels away</sub>
 </p>
 <p align="center">
-  <img src="docs/images/screenshots/play-phone.jpg" alt="The play screen at phone width: the scene art as a banner, the place name, the conversation and the input, with Feed, Status and World tabs along the bottom" width="260"><br>
-  <sub>On a phone: the scene as a banner, and tabs for Feed, Status and World</sub>
+  <img src="docs/images/screenshots/overclock.jpg" alt="A pending roll in the Hoshikawa penthouse: Hacking (Tech) vs Hard 12, with a Roll button and two overclock buttons, Yomi jack +3 and Kagerou +2 roll twice keep higher, each costing 1d6 humanity; the sheet lists both implants" width="820"><br>
+  <sub>You roll the dice. ⚡ Overclock an implant right on the roll card for a better shot, at a cost in humanity</sub>
 </p>
 <p align="center">
-  <img src="docs/images/screenshots/roll.png" alt="A Nightwire roll card: Stealth vs Hard 16, a d10 showing 6, the breakdown 6 +0 Cool +0 Stealth = 6 vs 16 and a red Failure badge, followed by the narrator's resolution" width="480"><br>
-  <sub>A player roll: the narrator set up the moment, the player clicked Roll, and the resolution follows the real result</sub>
+  <img src="docs/images/screenshots/debt.jpg" alt="Old Hara's clinic: red strips for Hoshikawa's final notice and the Kagerou being remote-throttled, Old Hara offering to unlock it off the books, Saeko Kirigaya warning that Thursday was yesterday; the sheet shows the Kagerou tagged Throttled and Repo crew coming, nine installments owed and a repo clock of five pips" width="820"><br>
+  <sub>Chrome is on credit: a throttled implant, the repo clock, and Saeko's crew on the way</sub>
 </p>
 <p align="center">
-  <img src="docs/images/screenshots/overclock.png" alt="A Nightwire roll card for Hacking vs Hard 12 with a Roll button and two overclock buttons: Yomi jack +3 and Kagerou +2 roll twice keep higher, each costing 1d6 humanity" width="480"><br>
-  <sub>⚡ Overclock on the roll card: spend humanity for a better shot at the moment of risk</sub>
-</p>
-<p align="center">
-  <img src="docs/images/screenshots/debt.png" alt="The Nightwire character sheet showing installments owed, a repo clock of six pips, Kagerou tagged Throttled and Repo crew coming, and torite notices in the log" width="480"><br>
-  <sub>Chrome debt: the repo clock, a throttled implant and Saeko's crew on the way</sub>
-</p>
-<p align="center">
-  <img src="docs/images/screenshots/tsukumogami.png" alt="A Nightwire character sheet for Hachi, a tsukumogami: the Shell and selfhood panel shows Selfhood 18, Appliance, and a Bodiless tag reading Living in a nearby machine, with installments owed and the repo clock" width="480"><br>
+  <img src="docs/images/screenshots/tsukumogami.jpg" alt="Hachi, a tsukumogami, at Hachi's pier: her shell has been repossessed and she flickers a vending machine's lights; Mitsu recognises her and a Selfhood +2 strip follows; the sheet shows Selfhood 18, Appliance, and Bodiless, living in a nearby machine" width="820"><br>
   <sub>Playing a tsukumogami: selfhood instead of humanity, and life without a shell</sub>
 </p>
 <p align="center">
-  <img src="docs/images/screenshots/scene.jpg" alt="Nightwire generated scene art of a flooded underpass lit by a flickering vending machine" width="480"><br>
-  <sub>A generated scene image for the current location and mood — real ComfyUI generation on a real GPU</sub>
+  <img src="docs/images/screenshots/gallery.jpg" alt="The gallery overlay showing the session's scene images, newest first" width="620">
+  <img src="docs/images/screenshots/play-phone.jpg" alt="The play screen at phone width: the scene as a banner, the conversation and the input, with Feed, Status and World tabs" width="190"><br>
+  <sub>The session's scene images on demand, and the same game on a phone</sub>
 </p>
 
 ## Contributing

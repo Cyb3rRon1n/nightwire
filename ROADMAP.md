@@ -198,6 +198,11 @@ Each phase gets its own brainstorming pass (questions → approaches → design 
       - Headless Chrome against a staged session: drag and reload keeps the layout; the keyboard collapses and reopens panels; Gallery focus returns to its button; no horizontal scroll at 390px.
       - `next build`, tsc, eslint, 11 node tests and 767 pytest tests all pass.
       - Not yet checked: a live narrated turn with Ollama.
+    - **Fixed while refreshing the README (2026-11-06)**:
+      - Rajdhani was named in the CSS but never loaded, so everyone saw a fallback font. It is now loaded with `next/font` in the root layout.
+      - The feed now re-pins to the newest line when a scene image finishes loading, because reconnecting used to land on old lines.
+      - The conversation's top edge fades out under the place name.
+    - **Repo refresh (2026-11-06)**: a new banner, social preview and Homepage icon made from approved Kuroshio art; cast and places grids; new screenshots of every feature in the new play screen. The old SVG branding and violet-theme screenshots were deleted.
     - **Next — step 2, the Phone**: engine-sent texts, a pop-out phone for texting one character while talking to another, private texts in the feed, and per-contact memory of what you told them.
 
 ### Studio track (candidates, surfaced 2026-10-28)
