@@ -344,6 +344,7 @@ async def _run_turn(
     prompt_text: str,
     actor_line: str | None,
     allow_roll: bool,
+    referee_action: str | None = None,
 ) -> None:
     # Events are shown once, but only dropped after the narrator actually
     # responded; events queued during the turn survive to the next one.
@@ -372,7 +373,7 @@ async def _run_turn(
     # Referee (Phase 18): not on the setup turn that opened a roll - the outcome
     # isn't known yet - nor when every segment was voice-filtered.
     if player_id not in session.pending_rolls and narration_text:
-        await run_referee(session, narrator_client, player_id, prompt_text, narration_text)
+        await run_referee(session, narrator_client, player_id, referee_action or prompt_text, narration_text)
 
     generated_image = False
     # The model is told "never two turns in a row" but has no way to enforce
@@ -490,7 +491,14 @@ async def narrate_roll(
             f"{rolled['reason']}. Narrate what happens now, true to that result."
         ),
         actor_line=None, allow_roll=False,
+        # The prompt is the engine's instruction; the referee judges what the player chose to do.
+        referee_action=_last_action(session, player_id) or rolled["reason"],
     )
+
+
+def _last_action(session: Session, player_id: str) -> str | None:
+    prefix = f"{player_id}: "
+    return next((line[len(prefix):] for line in reversed(session.log) if line.startswith(prefix)), None)
 
 
 async def handle_roll(

@@ -2,6 +2,8 @@
 decides the state changes qwen3:8b never volunteered as optional tool fields.
 See docs/superpowers/specs/2026-10-28-narrator-reliability-18-design.md."""
 
+import re
+
 from engine.character import is_tsukumogami
 from engine.chrome import change_humanity
 from engine.debt import SHELL, new_shell, pay_installment, repo_target_name, repossess, unthrottle
@@ -15,7 +17,8 @@ _HARA_OBJECTIVE = "Owe Old Hara a favor"
 _SYSTEM = (
     "You are a strict referee for a tabletop RPG. Read the player's action and the narration, "
     "then answer each question about what actually happened in the narration. "
-    "When unsure, answer none or false."
+    "When unsure, answer none or false. Before each none/small/big answer, its _quote field copies the exact words "
+    "from the action or narration that show it (empty for none)."
 )
 
 
@@ -24,11 +27,14 @@ def build_questions(session: Session, player_id: str) -> dict[str, str]:
     name = c.name
     questions = {
         "human_moment": f"none/small/big: did {name} share a genuinely human moment (a kindness, a shared meal, "
-                        "being thanked, keeping a promise, choosing restraint)?",
+                        "being thanked, keeping a promise, choosing restraint)? Sneaking, climbing, jumping, fighting, hacking "
+                        "or any other skill use on its own is none.",
     }
     if is_tsukumogami(c):
         questions["acted_as_machine"] = (f"none/small/big: did {name} act as a pure machine (cold calculation, "
-                                         "following an owner's script, treating people as inputs)?")
+                                         "following an owner's script, treating people as inputs)? Sneaking, climbing, "
+                                         "jumping, fighting, hacking or any other skill use, and the dice result line, "
+                                         "are none on their own.")
     if c.pending_repo:
         questions["gave_up_repo_item"] = (f"true/false: did {name} hand over or lose their "
                                           f"{repo_target_name(c.pending_repo)} to the repo crew?")
@@ -43,19 +49,27 @@ def build_questions(session: Session, player_id: str) -> dict[str, str]:
 
 
 def build_schema(questions: dict[str, str]) -> dict:
-    properties = {
-        k: ({"type": "string", "enum": _LEVELS} if k in _LEVEL_FIELDS else {"type": "boolean"})
-        for k in questions
-    }
-    return {"type": "object", "properties": properties, "required": list(questions), "additionalProperties": False}
+    # The quote comes first so the model commits to evidence before its answer.
+    properties = {}
+    for k in questions:
+        if k in _LEVEL_FIELDS:
+            properties[f"{k}_quote"] = {"type": "string"}
+            properties[k] = {"type": "string", "enum": _LEVELS}
+        else:
+            properties[k] = {"type": "boolean"}
+    return {"type": "object", "properties": properties, "required": list(properties), "additionalProperties": False}
 
 
 def validate_verdict(verdict: dict, questions: dict[str, str]) -> None:
-    if not isinstance(verdict, dict) or set(verdict) != set(questions):
+    expected = set(questions) | {f"{k}_quote" for k in questions if k in _LEVEL_FIELDS}
+    if not isinstance(verdict, dict) or set(verdict) != expected:
         raise ValueError(f"referee answered {sorted(verdict) if isinstance(verdict, dict) else verdict!r}, "
-                         f"expected {sorted(questions)}")
+                         f"expected {sorted(expected)}")
     for key, value in verdict.items():
-        ok = value in _LEVELS if key in _LEVEL_FIELDS else isinstance(value, bool)
+        if key.endswith("_quote"):
+            ok = isinstance(value, str)
+        else:
+            ok = value in _LEVELS if key in _LEVEL_FIELDS else isinstance(value, bool)
         if not ok:
             raise ValueError(f"bad referee value for {key}: {value!r}")
 
@@ -79,6 +93,28 @@ def _messages(session, player_id, action_text, narration_text, questions) -> lis
     user = (f"State: {_state_line(session, player_id)}\nAction: {action_text}\n"
             f"Narration: {narration_text}\nQuestions:\n{lines}")
     return [{"role": "system", "content": _SYSTEM}, {"role": "user", "content": user}]
+
+
+def _squash(text: str) -> str:
+    return " ".join(re.sub(r"[^\w\s']", " ", text.lower()).split())
+
+
+def ground(session: Session, verdict: dict, action: str, narration: str) -> dict:
+    """A level answer counts only if its quote really is in the text it may come from
+    (Phase 18 live: plain stealth and jump turns earned +2 "human moments"). A human
+    moment can be in the narration (being thanked); acting as a machine is the
+    player's choice, so it must be in their own words (2026-11-06 live: the
+    narrator's description of a roof climb was quoted as machine behaviour)."""
+    sources = {"human_moment": (_squash(f"{action}\n{narration}"), "the scene"),
+               "acted_as_machine": (_squash(action), "the player's action")}
+    grounded = {k: v for k, v in verdict.items() if not k.endswith("_quote")}
+    for k in _LEVEL_FIELDS:
+        text, where = sources[k]
+        quote = _squash(verdict.get(f"{k}_quote", ""))
+        if grounded.get(k, "none") != "none" and not (quote and quote in text):
+            grounded[k] = "none"
+            session.log.append(f"[referee: {k} had no quote from {where}, ignored]")
+    return grounded
 
 
 def apply_verdict(session: Session, player_id: str, verdict: dict) -> None:
@@ -119,4 +155,4 @@ async def run_referee(session: Session, client, player_id: str, action_text: str
     except Exception as e:  # a failed referee must never break the turn
         session.log.append(f"[referee error: {e}]")
         return
-    apply_verdict(session, player_id, verdict)
+    apply_verdict(session, player_id, ground(session, verdict, action_text, narration_text))

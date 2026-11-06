@@ -1497,7 +1497,7 @@ async def test_referee_skipped_when_every_segment_is_voice_filtered(tmp_path):
 async def test_referee_runs_on_action_turns_and_applies(tmp_path):
     session = _session_with_character()
     session.characters["p1"].humanity = 50
-    client = _scripted_client([_say("Mama Sato laughs and refills your bowl.")], judge_answers=[{"human_moment": "big"}])
+    client = _scripted_client([_say("Mama Sato laughs and refills your bowl.")], judge_answers=[{"human_moment_quote": "refills your bowl", "human_moment": "big"}])
     await _call(session, client, "p1", {"text": "I share a meal."}, tmp_path, tts_backend=FakeTTSBackend())
     assert session.characters["p1"].humanity == 54
 
@@ -1519,10 +1519,36 @@ async def test_referee_runs_on_roll_resolution(tmp_path):
     session.pending_rolls["p1"] = {"player_id": "p1", "attribute": "reflexes", "skill": "athletics", "stakes": "normal",
                                    "difficulty": "moderate", "reason": "the job", "dc": 9, "name": "Rook"}
     client = _scripted_client([_say("Arakawa counts out your pay.")],
-                              judge_answers=[{"human_moment": "none", "gig_paid_out": True}])
+                              judge_answers=[{"human_moment_quote": "", "human_moment": "none", "gig_paid_out": True}])
     store = JSONFileSessionStore(tmp_path)
     await handle_roll(session, client, store, _UnusedImageBackend(), FakeTTSBackend(), "p1")
     assert session.characters["p1"].installments_owed == 2
+
+
+async def test_roll_resolution_referee_sees_the_players_action(tmp_path):
+    # Live 2026-11-06: on roll turns the referee's "Action" was the engine's own instruction.
+    from server.narration import handle_roll
+    session = _session_with_character()
+    session.log.append("p1: > I climb onto the roof to look down the alley.")
+    session.pending_rolls["p1"] = {"player_id": "p1", "attribute": "reflexes", "skill": "athletics", "stakes": "normal",
+                                   "difficulty": "moderate", "reason": "the climb", "dc": 9, "name": "Rook"}
+    judged = []
+
+    async def chat_fn(*, model, messages, format):
+        return {"message": {"content": json.dumps(_say("You haul yourself onto the wet tiles."))}}
+
+    async def judge_fn(*, model, messages, format):
+        judged.append(messages[-1]["content"])
+        return {"message": {"content": json.dumps({k: ("none" if "enum" in v else (False if v.get("type") == "boolean" else ""))
+                                                   for k, v in format["properties"].items()})}}
+
+    async def generate_fn(**kwargs):
+        pass
+
+    client = NarratorClient(chat_fn=chat_fn, generate_fn=generate_fn, judge_fn=judge_fn)
+    await handle_roll(session, client, JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(), "p1")
+    assert "Action: > I climb onto the roof to look down the alley." in judged[0]
+    assert "Narrate what happens now" not in judged[0]
 
 
 class _TagImageBackend:
