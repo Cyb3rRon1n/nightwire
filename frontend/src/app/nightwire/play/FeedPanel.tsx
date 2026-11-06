@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CharacterSheet, ClientMessage, RedactedCharacter, RollResult, StateView } from "@/lib/nightwire/protocol";
 import { portraitFor } from "@/lib/nightwire/portrait";
 import { mediaUrl } from "@/lib/nightwire/media";
-import { AUDIO_LINE, IMAGE_LINE, ROLL_LINE, ROLL_PENDING_LINE, classifyLine } from "@/lib/nightwire/feed";
+import { AUDIO_LINE, IMAGE_LINE, ROLL_LINE, ROLL_PENDING_LINE, classifyLine, groupStarts, sceneImages, speakerKey } from "@/lib/nightwire/feed";
+import { npcColour } from "@/lib/nightwire/npcColour";
 import { PendingRollCard, RollResultCard } from "../RollCard";
 import { ChromeOfferCard } from "../ChromeOfferCard";
 
@@ -18,6 +19,11 @@ const COMPOSER_MODES: Array<{ value: ComposerMode; label: string; placeholder: s
   { value: "think", label: "Think", placeholder: "What do you think?" },
 ];
 
+// server/narration.py rejects actions over 1000 characters, and the Say/Think
+// wrapper below adds up to 14 ('> You think ""'), so the box stops at 980.
+const MAX_INPUT = 980;
+const COUNTER_FROM = 800;
+
 function formatComposerInput(mode: ComposerMode, text: string): string {
   const trimmed = text.trim();
   if (mode === "do") return `> ${trimmed}`;
@@ -25,27 +31,61 @@ function formatComposerInput(mode: ComposerMode, text: string): string {
   return mode === "say" ? `> You say ${quoted}` : `> You think ${quoted}`;
 }
 
-export const isAiOf = (view: StateView, pid: string) =>
+const isAiOf = (view: StateView, pid: string) =>
   (view.characters[pid] as { lifepath?: string } | undefined)?.lifepath === "tsukumogami";
 
-// A real portrait when the viewer is allowed to see one (their own character
-// only; teammates' portrait_path is redacted server-side, see server/views.py),
+const reducedMotion = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// A real portrait when the viewer may see one (their own character only;
+// teammates' portrait_path is redacted server-side, see server/views.py),
 // initials otherwise. NPCs have no CharacterSheet, so they always get initials.
-function SpeakerAvatar({ name, character }: { name: string; character?: CharacterSheet | RedactedCharacter | null }) {
+function SpeakerAvatar({ name, character, colour }: { name: string; character?: CharacterSheet | RedactedCharacter | null; colour: string }) {
   const portraitPath = character && "portrait_path" in character ? character.portrait_path : null;
+  const frame = { border: `1.5px solid ${colour}` };
   if (portraitPath) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={mediaUrl(portraitPath)} alt="" className="size-8 shrink-0 rounded-full object-cover" />;
+    return <img src={mediaUrl(portraitPath)} alt="" className="size-10 shrink-0 object-cover" style={frame} />;
   }
-  const { initials, colorClass } = portraitFor(character?.role ?? name, name);
+  const { initials } = portraitFor(character?.role ?? name, name);
   return (
-    <span className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${colorClass}`}>
+    <span className="flex size-10 shrink-0 items-center justify-center text-xs font-semibold" style={{ ...frame, color: colour, background: "#0b0d11" }}>
       {initials}
     </span>
   );
 }
 
-export function FeedPanel({ view, playerId, send, error, errorSeq }: {
+// Keeps the old image under the new one until it has loaded, then fades it in.
+function SceneBackdrop({ src }: { src: string }) {
+  const [shown, setShown] = useState(src);
+  const [incoming, setIncoming] = useState<string | null>(null);
+  if (src !== shown && src !== incoming) setIncoming(src); // derived state, set during render
+  const settle = () => {
+    if (incoming) setShown(incoming);
+    setIncoming(null);
+  };
+  return (
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="nw-scene-bg" src={shown} alt="" />
+      {incoming && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          className="nw-scene-bg"
+          src={incoming}
+          alt=""
+          style={{ opacity: 0 }}
+          onLoad={(e) => {
+            if (reducedMotion()) settle();
+            else e.currentTarget.style.opacity = "1";
+          }}
+          onTransitionEnd={settle}
+        />
+      )}
+    </>
+  );
+}
+
+export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, onOpenGallery, compact = false }: {
   view: StateView;
   playerId: string;
   send: (msg: ClientMessage) => void;
@@ -53,12 +93,17 @@ export function FeedPanel({ view, playerId, send, error, errorSeq }: {
   errorSeq: number;
   sceneArt: boolean;
   onOpenGallery: (index: number) => void;
+  compact?: boolean;
 }) {
   const [composerMode, setComposerMode] = useState<ComposerMode>("do");
   const [composerText, setComposerText] = useState("");
   const [sending, setSending] = useState(false);
   const [rolling, setRolling] = useState(false);
   const [combatActionPending, setCombatActionPending] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [pinned, setPinned] = useState(true);
+  const [unseen, setUnseen] = useState(false);
 
   // The only signal a sent action resolved is the next broadcast this
   // connection receives - the protocol has no per-request ack. Key on
@@ -72,8 +117,31 @@ export function FeedPanel({ view, playerId, send, error, errorSeq }: {
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [view, errorSeq]);
 
+  // Stick to the newest line unless the player has scrolled up to read.
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    if (pinned) el.scrollTop = el.scrollHeight;
+    else setUnseen(true); // eslint-disable-line react-hooks/set-state-in-effect -- reacting to new socket lines
+  }, [view.log.length, sending]); // eslint-disable-line react-hooks/exhaustive-deps -- only new lines matter
+
+  function onScroll() {
+    const el = listRef.current;
+    if (!el) return;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+    setPinned(atBottom);
+    if (atBottom) setUnseen(false);
+  }
+
+  const me = view.characters[playerId];
   const myRollPending = Boolean(view.pending_rolls?.[playerId]);
   const lastRollIndex = view.log.findLastIndex((l) => ROLL_LINE.test(l));
+  const entries = view.log.map((line) => classifyLine(line, view, playerId));
+  const starts = groupStarts(entries.map(speakerKey));
+  const images = sceneImages(view.log);
+  const latest = images.at(-1) ?? null;
+  const backdrop = sceneArt && latest && !compact;
+  let imageIndex = -1;
 
   function handleSendAction(event: React.FormEvent) {
     event.preventDefault();
@@ -81,6 +149,8 @@ export function FeedPanel({ view, playerId, send, error, errorSeq }: {
     send({ type: "action", text: formatComposerInput(composerMode, composerText) });
     setComposerText("");
     setSending(true);
+    setPinned(true);
+    if (inputRef.current) inputRef.current.style.height = "auto";
   }
 
   function combat(message: ClientMessage) {
@@ -89,8 +159,20 @@ export function FeedPanel({ view, playerId, send, error, errorSeq }: {
   }
 
   return (
-    <section aria-label="Conversation" className="relative flex h-full min-h-0 flex-col gap-3 p-4">
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+    <section aria-label="Conversation" className="relative flex h-full min-h-0 flex-col overflow-hidden">
+      {backdrop && <SceneBackdrop src={mediaUrl(latest)} />}
+      {backdrop && <div className="nw-scene-scrim" aria-hidden="true" />}
+
+      {compact && sceneArt && latest && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={mediaUrl(latest)} alt="" className="w-full shrink-0 object-cover" style={{ height: 150, borderBottom: "1.5px solid var(--nw-frame-cool)" }} />
+      )}
+      <div className={backdrop ? "nw-scene-title" : "nw-scene-title nw-scene-title-plain"}>
+        <h1>{view.location ?? "Kuroshio"}</h1>
+        <p className="nw-session-id">SES {view.session_id}{view.scene_mood ? ` · ${view.scene_mood.toUpperCase()}` : ""}</p>
+      </div>
+
+      <div ref={listRef} onScroll={onScroll} className="nw-feed relative min-h-0 flex-1 overflow-y-auto px-4 pb-4 sm:px-8">
         {view.log.map((line, i) => {
           if (ROLL_PENDING_LINE.test(line)) return null;
           const rollMatch = line.match(ROLL_LINE);
@@ -99,39 +181,43 @@ export function FeedPanel({ view, playerId, send, error, errorSeq }: {
               const roll = JSON.parse(rollMatch[1]) as RollResult;
               return <RollResultCard key={i} roll={roll} animate={i === lastRollIndex} isAi={isAiOf(view, roll.player_id)} />;
             } catch {
-              return <p key={i} className="nw-hud text-xs nw-text-faint">{line}</p>;
+              return <p key={i} className="nw-hud text-xs" style={{ color: "#9aa3ad" }}>{line}</p>;
             }
           }
           const imageMatch = line.match(IMAGE_LINE);
           if (imageMatch) {
-            // eslint-disable-next-line @next/next/no-img-element
-            return <img key={i} src={mediaUrl(imageMatch[1])} alt="" className="max-w-[85%] rounded-xl" />;
+            const index = ++imageIndex;
+            return (
+              <button key={i} type="button" className="nw-scene-frame" onClick={() => onOpenGallery(index)} aria-label={`Open scene image ${index + 1} in the gallery`}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={mediaUrl(imageMatch[1])} alt="" className="block w-full" />
+              </button>
+            );
           }
           const audioMatch = line.match(AUDIO_LINE);
-          if (audioMatch) {
-            return <audio key={i} controls src={mediaUrl(audioMatch[1])} className="max-w-[85%]" />;
-          }
-          const entry = classifyLine(line, view, playerId);
+          if (audioMatch) return <audio key={i} controls src={mediaUrl(audioMatch[1])} className="w-full" />;
+
+          const entry = entries[i];
           if (entry.kind === "own") {
-            const ownCharacter = view.characters[playerId];
             return (
-              <div key={i} className="ml-auto flex max-w-[85%] flex-row-reverse items-end gap-2">
-                <SpeakerAvatar name={ownCharacter.name} character={ownCharacter} />
-                <div className="nw-bubble-own px-4 py-3 text-sm leading-6">
-                  <p className="whitespace-pre-wrap text-pretty">{entry.text}</p>
+              <div key={i} className="nw-line-own">
+                {starts[i] ? <SpeakerAvatar name={me.name} character={me} colour="var(--nw-cyan)" /> : <span className="nw-avatar-gap" />}
+                <div>
+                  {starts[i] && <div className="nw-speaker" style={{ color: "var(--nw-cyan)" }}>{me.name}</div>}
+                  <div className="nw-speech" style={{ color: "#c9f6f7" }}>{entry.text}</div>
                 </div>
               </div>
             );
           }
           if (entry.kind === "speaking") {
+            const teammate = entry.character !== null;
+            const colour = teammate ? "var(--nw-cyan)" : npcColour(entry.name);
             return (
-              <div key={i} className="mr-auto flex max-w-[85%] items-end gap-2">
-                <SpeakerAvatar name={entry.name} character={entry.character} />
+              <div key={i} className={teammate ? "nw-line-own nw-line-teammate" : "nw-line-npc"}>
+                {starts[i] ? <SpeakerAvatar name={entry.name} character={entry.character} colour={colour} /> : <span className="nw-avatar-gap" />}
                 <div>
-                  <p className="nw-name-tag mb-1">{entry.name}</p>
-                  <div className="nw-bubble-teammate px-4 py-3 text-sm leading-6">
-                    <p className="whitespace-pre-wrap text-pretty">{entry.text}</p>
-                  </div>
+                  {starts[i] && <div className="nw-speaker" style={{ color: colour }}>{entry.name}</div>}
+                  <div className="nw-speech" style={{ color: teammate ? "#c9f6f7" : colour }}>{entry.text}</div>
                 </div>
               </div>
             );
@@ -140,15 +226,13 @@ export function FeedPanel({ view, playerId, send, error, errorSeq }: {
           const notice = entry.kind === "meta" && ["[torite: ", "[selfhood: ", "[utsusemi: "].find((p) => entry.text.startsWith(p));
           if (notice) {
             return (
-              <p key={i} className="nw-hud nw-torite text-xs">
+              <p key={i} className="nw-system">
                 {notice === "[selfhood: " ? `Selfhood ${entry.text.slice(notice.length, -1)}` : entry.text.slice(notice.length, -1)}
               </p>
             );
           }
-          if (entry.kind === "meta") {
-            return <p key={i} className="nw-hud text-xs nw-text-faint">{entry.text}</p>;
-          }
-          return <p key={i} className="nw-prose whitespace-pre-wrap text-pretty">{entry.text}</p>;
+          if (entry.kind === "meta") return <p key={i} className="nw-hud text-xs" style={{ color: "#9aa3ad" }}>{entry.text}</p>;
+          return <p key={i} className="nw-line-narrator">{entry.text}</p>;
         })}
         {view.pending_chrome_offers?.[playerId] && (
           <ChromeOfferCard
@@ -171,54 +255,76 @@ export function FeedPanel({ view, playerId, send, error, errorSeq }: {
             rolling={rolling}
           />
         ))}
-      </div>
-
-      {error && <p className="text-sm nw-text-danger">{error}</p>}
-
-      <div className="nw-hud flex items-center justify-between text-xs">
-        {view.in_combat ? (
-          <>
-            <span className="nw-text-muted">{view.is_your_turn ? "Your turn" : `${view.current_turn ?? "…"}'s turn`}</span>
-            <div className="flex gap-2">
-              {view.is_your_turn && (
-                <button type="button" onClick={() => combat({ type: "advance_turn" })} disabled={combatActionPending} className="nw-btn-ghost py-1 text-xs">
-                  End Turn
-                </button>
-              )}
-              <button type="button" onClick={() => combat({ type: "end_combat" })} disabled={combatActionPending} className="nw-btn-danger py-1 text-xs">
-                End Combat
-              </button>
-            </div>
-          </>
-        ) : (
-          <button type="button" onClick={() => combat({ type: "roll_initiative" })} disabled={combatActionPending} className="nw-btn-ghost py-1 text-xs">
-            Roll Initiative
-          </button>
+        {sending && (
+          <div className="nw-typing" role="status" aria-live="polite">
+            <span>NARRATOR</span><i /><i /><i />
+          </div>
         )}
       </div>
 
-      <form onSubmit={handleSendAction} className="flex flex-col gap-2">
-        <div className="nw-divider flex rounded-lg border bg-black/20 p-0.5">
+      {unseen && (
+        <button
+          type="button"
+          className="nw-new-lines"
+          onClick={() => {
+            const el = listRef.current;
+            if (el) el.scrollTop = el.scrollHeight;
+          }}
+        >
+          NEW LINES ↓
+        </button>
+      )}
+
+      <form onSubmit={handleSendAction} className="nw-composer relative flex shrink-0 flex-col gap-2">
+        {error && <p className="text-sm" style={{ color: "#ff8a80" }}>{error}</p>}
+        <div className="flex flex-wrap items-center gap-2">
           {COMPOSER_MODES.map((m) => (
-            <button key={m.value} type="button" aria-pressed={composerMode === m.value} onClick={() => setComposerMode(m.value)} className="nw-tab flex-1">
+            <button key={m.value} type="button" aria-pressed={composerMode === m.value} onClick={() => setComposerMode(m.value)} className="nw-chip">
               {m.label}
             </button>
           ))}
+          <span className="flex-1" />
+          {view.in_combat ? (
+            <>
+              <span className="nw-hud text-xs" style={{ color: "#9aa3ad" }}>{view.is_your_turn ? "YOUR TURN" : `${view.current_turn ?? "…"}'S TURN`}</span>
+              {view.is_your_turn && (
+                <button type="button" onClick={() => combat({ type: "advance_turn" })} disabled={combatActionPending} className="nw-chip">End turn</button>
+              )}
+              <button type="button" onClick={() => combat({ type: "end_combat" })} disabled={combatActionPending} className="nw-chip" style={{ borderColor: "var(--nw-red)", color: "#ff8a80" }}>End combat</button>
+            </>
+          ) : (
+            <button type="button" onClick={() => combat({ type: "roll_initiative" })} disabled={combatActionPending} className="nw-chip">Roll initiative</button>
+          )}
         </div>
-        <textarea
-          rows={2}
-          value={composerText}
-          onChange={(e) => setComposerText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) e.currentTarget.form?.requestSubmit();
-          }}
-          placeholder={myRollPending ? "Roll first" : COMPOSER_MODES.find((m) => m.value === composerMode)?.placeholder}
-          disabled={sending || myRollPending}
-          className="nw-field resize-none outline-none disabled:cursor-not-allowed"
-        />
-        <button type="submit" disabled={sending || myRollPending || !composerText.trim()} className="nw-btn-primary">
-          {sending ? "Waiting for the GM…" : "Send"}
-        </button>
+        <div className="flex items-end gap-2">
+          <span aria-hidden="true" className="nw-prompt">&gt;</span>
+          <textarea
+            ref={inputRef}
+            rows={1}
+            maxLength={MAX_INPUT}
+            value={composerText}
+            aria-label="Your action"
+            onChange={(e) => {
+              setComposerText(e.target.value);
+              e.target.style.height = "auto";
+              e.target.style.height = `${e.target.scrollHeight}px`; // CSS max-height caps it at 4 lines
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                e.currentTarget.form?.requestSubmit();
+              }
+            }}
+            placeholder={myRollPending ? "Roll first" : COMPOSER_MODES.find((m) => m.value === composerMode)?.placeholder}
+            disabled={sending || myRollPending}
+          />
+          <button type="submit" className="nw-send" disabled={sending || myRollPending || !composerText.trim()}>SEND</button>
+        </div>
+        {composerText.length > COUNTER_FROM && (
+          <p className="nw-hud text-right text-xs" style={{ color: composerText.length >= MAX_INPUT ? "#ff8a80" : "#9aa3ad" }}>
+            {composerText.length} / {MAX_INPUT}
+          </p>
+        )}
       </form>
     </section>
   );
