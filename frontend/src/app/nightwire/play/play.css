@@ -1,0 +1,25 @@
+/* Play screen look (docs/superpowers/specs/2026-11-06-messenger-play-screen-design.md).
+   Scoped to .nw-play so the pre-game screens keep the older violet .nw-theme tokens. */
+.nw-play {
+  --nw-ink: #07080b;
+  --nw-gold: #f9d066;
+  --nw-cyan: #7aeaee;
+  --nw-red: #d2453a;
+  --nw-frame: #4a3a26;
+  --nw-frame-cool: #2a4647;
+  --nw-prose: #e6dccb;
+  background: var(--nw-ink);
+  color: #e6e8ec;
+}
+.nw-play *:focus-visible { outline: 2px solid var(--nw-cyan); outline-offset: 2px; }
+.nw-play-header { display: flex; align-items: center; gap: 12px; height: 48px; flex-shrink: 0; padding: 0 16px; border-bottom: 1.5px solid var(--nw-frame); font-family: "Rajdhani", sans-serif; letter-spacing: .14em; }
+.nw-chip { height: 32px; padding: 0 10px; flex-shrink: 0; border: 1px solid var(--nw-frame-cool); background: transparent; color: #c9ced6; font: 600 13px "Rajdhani", sans-serif; letter-spacing: .14em; text-transform: uppercase; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; }
+.nw-chip[aria-pressed="true"] { border-color: var(--nw-cyan); color: var(--nw-cyan); }
+.nw-chip:disabled { opacity: .5; cursor: default; }
+.nw-separator { width: 8px; background: #0f1217; border-inline: 1px solid #1d2128; display: flex; align-items: center; justify-content: center; }
+.nw-separator::after { content: ""; width: 2px; height: 36px; background: var(--nw-frame-cool); }
+.nw-separator:hover::after, .nw-separator:focus-visible::after, .nw-separator[data-separator="active"]::after { background: var(--nw-cyan); }
+.nw-side { height: 100%; overflow-y: auto; background: #0b0d11; scrollbar-width: thin; scrollbar-color: var(--nw-red) transparent; }
+.nw-rail { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: 18px; background: #0b0d11; border: 0; color: #9aa3ad; cursor: pointer; font-family: "Rajdhani", sans-serif; }
+.nw-rail-label { writing-mode: vertical-rl; font-size: 13px; letter-spacing: .24em; text-transform: uppercase; }
+.nw-rail-badge { min-width: 18px; height: 18px; background: var(--nw-red); color: var(--nw-ink); font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center; }
