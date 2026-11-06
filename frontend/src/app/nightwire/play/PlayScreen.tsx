@@ -1,11 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Group, Panel, Separator, useDefaultLayout, type GroupImperativeHandle, type PanelImperativeHandle } from "react-resizable-panels";
 import type { ClientMessage, StateView } from "@/lib/nightwire/protocol";
 import { browserStore } from "@/lib/nightwire/safeStorage";
 import { FeedPanel } from "./FeedPanel";
 import { Rail } from "./Rail";
+import { StatusPanel } from "./StatusPanel";
+import { WorldPanel } from "./WorldPanel";
 import "./play.css";
 
 const RAIL_PX = 28;
@@ -45,6 +47,20 @@ export function PlayScreen({ view, playerId, send, readyLabel, error, errorSeq }
     }
   }
 
+  // Ctrl/Cmd+K used to open the sheet pop-over; the sheet now lives in the Status panel.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "k" && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        const panel = statusRef.current;
+        if (panel?.isCollapsed()) panel.expand();
+        else panel?.collapse();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const watchCollapsed = (set: (collapsed: boolean) => void) => (size: { inPixels: number }) => set(size.inPixels <= RAIL_PX + 1);
 
   return (
@@ -60,7 +76,7 @@ export function PlayScreen({ view, playerId, send, readyLabel, error, errorSeq }
         <Panel id="status" panelRef={statusRef} defaultSize="20" minSize="14" collapsible collapsedSize={RAIL_PX} onResize={watchCollapsed(setStatusCollapsed)}>
           {statusCollapsed
             ? <Rail label="Status" side="left" onOpen={() => statusRef.current?.expand()} />
-            : <aside aria-label="Status" className="nw-side" />}
+            : <StatusPanel view={view} playerId={playerId} send={send} />}
         </Panel>
         <Separator className="nw-separator" aria-label="Resize status panel" />
         <Panel id="feed" defaultSize="58" minSize="40">
@@ -70,7 +86,7 @@ export function PlayScreen({ view, playerId, send, readyLabel, error, errorSeq }
         <Panel id="world" panelRef={worldRef} defaultSize={RAIL_PX} minSize="14" collapsible collapsedSize={RAIL_PX} onResize={watchCollapsed(setWorldCollapsed)}>
           {worldCollapsed
             ? <Rail label="Party" side="right" onOpen={() => worldRef.current?.expand()} />
-            : <aside aria-label="World" className="nw-side" />}
+            : <WorldPanel view={view} playerId={playerId} />}
         </Panel>
       </Group>
     </div>
