@@ -103,6 +103,7 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, onO
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [pinned, setPinned] = useState(true);
+  const pinnedRef = useRef(true);
   const [unseen, setUnseen] = useState(false);
 
   // The only signal a sent action resolved is the next broadcast this
@@ -125,10 +126,18 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, onO
     else setUnseen(true); // eslint-disable-line react-hooks/set-state-in-effect -- reacting to new socket lines
   }, [view.log.length, sending]); // eslint-disable-line react-hooks/exhaustive-deps -- only new lines matter
 
+  // Images load after the jump to the bottom and push the newest lines out of
+  // view, so a loading image re-pins the feed if the player was at the bottom.
+  function stickToBottom() {
+    const el = listRef.current;
+    if (el && pinnedRef.current) el.scrollTop = el.scrollHeight;
+  }
+
   function onScroll() {
     const el = listRef.current;
     if (!el) return;
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+    pinnedRef.current = atBottom;
     setPinned(atBottom);
     if (atBottom) setUnseen(false);
   }
@@ -150,6 +159,7 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, onO
     setComposerText("");
     setSending(true);
     setPinned(true);
+    pinnedRef.current = true;
     if (inputRef.current) inputRef.current.style.height = "auto";
   }
 
@@ -190,7 +200,7 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, onO
             return (
               <button key={i} type="button" className="nw-scene-frame" onClick={() => onOpenGallery(index)} aria-label={`Open scene image ${index + 1} in the gallery`}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={mediaUrl(imageMatch[1])} alt="" className="block w-full" />
+                <img src={mediaUrl(imageMatch[1])} alt="" className="block w-full" onLoad={stickToBottom} />
               </button>
             );
           }

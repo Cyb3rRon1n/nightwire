@@ -12,44 +12,45 @@
   color: #e6e8ec;
 }
 .nw-play *:focus-visible { outline: 2px solid var(--nw-cyan); outline-offset: 2px; }
-.nw-play-header { display: flex; align-items: center; gap: 12px; height: 48px; flex-shrink: 0; padding: 0 16px; border-bottom: 1.5px solid var(--nw-frame); font-family: "Rajdhani", sans-serif; letter-spacing: .14em; }
-.nw-chip { height: 32px; padding: 0 10px; flex-shrink: 0; border: 1px solid var(--nw-frame-cool); background: transparent; color: #c9ced6; font: 600 13px "Rajdhani", sans-serif; letter-spacing: .14em; text-transform: uppercase; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; }
+.nw-play-header { display: flex; align-items: center; gap: 12px; height: 48px; flex-shrink: 0; padding: 0 16px; border-bottom: 1.5px solid var(--nw-frame); font-family: var(--font-rajdhani), "Rajdhani", sans-serif; letter-spacing: .14em; }
+.nw-chip { height: 32px; padding: 0 10px; flex-shrink: 0; border: 1px solid var(--nw-frame-cool); background: transparent; color: #c9ced6; font: 600 13px var(--font-rajdhani), "Rajdhani", sans-serif; letter-spacing: .14em; text-transform: uppercase; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; }
 .nw-chip[aria-pressed="true"] { border-color: var(--nw-cyan); color: var(--nw-cyan); }
 .nw-chip:disabled { opacity: .5; cursor: default; }
 .nw-separator { width: 8px; background: #0f1217; border-inline: 1px solid #1d2128; display: flex; align-items: center; justify-content: center; }
 .nw-separator::after { content: ""; width: 2px; height: 36px; background: var(--nw-frame-cool); }
 .nw-separator:hover::after, .nw-separator:focus-visible::after, .nw-separator[data-separator="active"]::after { background: var(--nw-cyan); }
 .nw-side { height: 100%; overflow-y: auto; background: #0b0d11; scrollbar-width: thin; scrollbar-color: var(--nw-red) transparent; }
-.nw-rail { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: 18px; background: #0b0d11; border: 0; color: #9aa3ad; cursor: pointer; font-family: "Rajdhani", sans-serif; }
+.nw-rail { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: 18px; background: #0b0d11; border: 0; color: #9aa3ad; cursor: pointer; font-family: var(--font-rajdhani), "Rajdhani", sans-serif; }
 .nw-rail-label { writing-mode: vertical-rl; font-size: 13px; letter-spacing: .24em; text-transform: uppercase; }
 .nw-rail-badge { min-width: 18px; height: 18px; background: var(--nw-red); color: var(--nw-ink); font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center; }
-.nw-panel-heading { margin-bottom: 6px; font: 700 13px "Rajdhani", sans-serif; letter-spacing: .16em; text-transform: uppercase; color: var(--nw-gold); }
+.nw-panel-heading { margin-bottom: 6px; font: 700 13px var(--font-rajdhani), "Rajdhani", sans-serif; letter-spacing: .16em; text-transform: uppercase; color: var(--nw-gold); }
 
 /* Conversation panel */
-.nw-feed { display: flex; flex-direction: column; align-items: center; gap: 14px; scrollbar-width: thin; scrollbar-color: var(--nw-red) transparent; }
+.nw-feed { mask-image: linear-gradient(to bottom, transparent 0, #000 28px); display: flex; flex-direction: column; align-items: center; gap: 14px; scrollbar-width: thin; scrollbar-color: var(--nw-red) transparent; }
+.nw-feed > :first-child { margin-top: 20px; }
 .nw-feed > * { width: 100%; max-width: 660px; flex-shrink: 0; }
 .nw-line-narrator { max-width: 62ch; font-family: var(--font-source-serif), Georgia, serif; font-size: 18px; line-height: 1.6; color: var(--nw-prose); white-space: pre-wrap; text-wrap: pretty; }
 .nw-line-npc { display: flex; gap: 12px; }
 .nw-line-own { display: flex; gap: 12px; flex-direction: row-reverse; text-align: right; }
 .nw-line-teammate > div { outline: 1.5px solid var(--nw-frame-cool); outline-offset: 4px; }
-.nw-speaker { font: 700 14px "Rajdhani", sans-serif; letter-spacing: .16em; text-transform: uppercase; }
+.nw-speaker { font: 700 14px var(--font-rajdhani), "Rajdhani", sans-serif; letter-spacing: .16em; text-transform: uppercase; }
 .nw-speech { font-size: 17px; line-height: 1.55; white-space: pre-wrap; text-wrap: pretty; }
 .nw-avatar-gap { width: 40px; flex-shrink: 0; }
-.nw-system { border-block: 1px solid #6b2a25; padding: 6px 0; text-align: center; font: 600 13px "Rajdhani", sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #ff8a80; }
+.nw-system { border-block: 1px solid #6b2a25; padding: 6px 0; text-align: center; font: 600 13px var(--font-rajdhani), "Rajdhani", sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #ff8a80; }
 .nw-scene-frame { display: block; padding: 0; border: 1.5px solid var(--nw-frame-cool); background: none; cursor: zoom-in; }
-.nw-typing { display: flex; align-items: center; gap: 6px; font: 13px "Rajdhani", sans-serif; letter-spacing: .16em; color: #9aa3ad; }
+.nw-typing { display: flex; align-items: center; gap: 6px; font: 13px var(--font-rajdhani), "Rajdhani", sans-serif; letter-spacing: .16em; color: #9aa3ad; }
 .nw-typing span { margin-right: 4px; }
 .nw-typing i { width: 6px; height: 6px; background: var(--nw-prose); animation: nw-pulse 1.2s infinite; }
 .nw-typing i:nth-child(3) { animation-delay: .2s; }
 .nw-typing i:nth-child(4) { animation-delay: .4s; }
 @keyframes nw-pulse { 50% { opacity: .25; } }
-.nw-new-lines { position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%); z-index: 2; height: 32px; padding: 0 12px; background: var(--nw-cyan); color: var(--nw-ink); border: 0; font: 700 13px "Rajdhani", sans-serif; letter-spacing: .14em; cursor: pointer; }
+.nw-new-lines { position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%); z-index: 2; height: 32px; padding: 0 12px; background: var(--nw-cyan); color: var(--nw-ink); border: 0; font: 700 13px var(--font-rajdhani), "Rajdhani", sans-serif; letter-spacing: .14em; cursor: pointer; }
 .nw-composer { border-top: 1.5px solid var(--nw-frame); background: rgba(11,13,17,.96); padding: 12px 16px 16px; }
 .nw-composer textarea { flex: 1; min-width: 0; resize: none; background: var(--nw-ink); border: 1.5px solid var(--nw-frame-cool); color: #e6e8ec; font-size: 16px; line-height: 1.5; padding: 10px 12px; max-height: calc(6em + 23px); }
 .nw-composer textarea:focus { border-color: var(--nw-cyan); outline: none; }
 .nw-composer textarea::placeholder { color: #8b949e; }
-.nw-prompt { padding-bottom: 12px; font: 700 18px "Rajdhani", sans-serif; color: var(--nw-cyan); }
-.nw-send { height: 48px; padding: 0 22px; background: var(--nw-cyan); color: var(--nw-ink); border: 0; font: 700 16px "Rajdhani", sans-serif; letter-spacing: .16em; cursor: pointer; }
+.nw-prompt { padding-bottom: 12px; font: 700 18px var(--font-rajdhani), "Rajdhani", sans-serif; color: var(--nw-cyan); }
+.nw-send { height: 48px; padding: 0 22px; background: var(--nw-cyan); color: var(--nw-ink); border: 0; font: 700 16px var(--font-rajdhani), "Rajdhani", sans-serif; letter-spacing: .16em; cursor: pointer; }
 .nw-send:disabled { opacity: .5; cursor: default; }
 @media (prefers-reduced-motion: reduce) { .nw-typing i { animation: none; } }
 
@@ -63,13 +64,13 @@
 /* 86% ink is reached where .nw-scene-title (34% tall) ends, so every line of the feed sits on it. */
 .nw-scene-title { position: relative; height: 34%; min-height: 120px; max-height: 290px; flex-shrink: 0; padding: 22px 32px 16px; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; }
 .nw-scene-title-plain { height: auto; min-height: 0; padding-top: 16px; border-bottom: 1px solid #1d2128; margin-bottom: 14px; }
-.nw-scene-title h1 { font: 700 28px "Rajdhani", sans-serif; letter-spacing: .14em; color: #fff; text-shadow: 0 0 8px #000, 0 0 2px #000; text-transform: uppercase; line-height: 1.1; }
+.nw-scene-title h1 { font: 700 28px var(--font-rajdhani), "Rajdhani", sans-serif; letter-spacing: .14em; color: #fff; text-shadow: 0 0 8px #000, 0 0 2px #000; text-transform: uppercase; line-height: 1.1; }
 .nw-session-id { font: 13px ui-monospace, monospace; letter-spacing: .12em; color: #ff8a80; text-shadow: 0 0 4px #000, 0 0 2px #000; }
 @media (prefers-reduced-motion: reduce) { .nw-scene-bg { transition: none; } }
 
 /* Phones and narrow windows: one column with a tab bar */
 .nw-tabs { flex-shrink: 0; height: 60px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid #1d2128; background: #0b0d11; }
-.nw-tabs button { background: none; border: 0; color: #9aa3ad; font: 14px "Rajdhani", sans-serif; letter-spacing: .14em; cursor: pointer; }
+.nw-tabs button { background: none; border: 0; color: #9aa3ad; font: 14px var(--font-rajdhani), "Rajdhani", sans-serif; letter-spacing: .14em; cursor: pointer; }
 .nw-tabs button[aria-current="page"] { color: var(--nw-cyan); font-weight: 700; border-top: 2px solid var(--nw-cyan); }
 @media (max-width: 1023.98px) {
   .nw-play-header { overflow-x: auto; gap: 8px; padding: 0 12px; }
