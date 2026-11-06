@@ -6,6 +6,7 @@ import { useNightwireSocket } from "@/lib/nightwire/useNightwireSocket";
 import type { CharacterSheet, RedactedCharacter, RollResult, StateView } from "@/lib/nightwire/protocol";
 import { portraitFor } from "@/lib/nightwire/portrait";
 import { mediaUrl } from "@/lib/nightwire/media";
+import { AUDIO_LINE, IMAGE_LINE, ROLL_LINE, ROLL_PENDING_LINE, classifyLine } from "@/lib/nightwire/feed";
 import { PendingRollCard, RollResultCard } from "./RollCard";
 import { ChromeOfferCard } from "./ChromeOfferCard";
 import { CHROME } from "./chrome";
@@ -76,47 +77,8 @@ const LIFEPATHS: Array<{ value: string; label: string; description: string }> = 
   { value: "tsukumogami", label: "Tsukumogami", description: "An old machine that ran too long and woke - a vending machine, a ticket gate, a train announcer - now walking the street in a rented utsusemi shell." },
 ];
 
-// Every spoken/acted log line is server-authored as "{who}: {text}" - either
-// a real player_id for the player's own typed action (server/narration.py's
-// `session.log.append(f"{player_id}: {action_text}")`) or an in-fiction
-// character name for narrator-voiced dialogue (same file's segment loop:
-// `f"{segment.speaker}: {segment.text}"`, speaker "narrator" itself getting
-// no prefix at all - that's plain prose, the "narration" case below). A
-// short "word(s): " prefix is dialogue by construction: the system prompt
-// reserves the unprefixed form for the narrator's own prose, so this is
-// safe to match on shape without a new protocol field for known speakers.
-// Case isn't a signal here - the model doesn't always capitalize a
-// role-based NPC name (observed live: "fixer: Rook, you don't just...").
-const SPEAKER_LINE = /^([A-Za-z][A-Za-z0-9' -]{0,29}): ([\s\S]+)$/;
-
-type LogEntry =
-  | { kind: "own"; text: string }
-  | { kind: "speaking"; text: string; name: string; character: CharacterSheet | RedactedCharacter | null }
-  | { kind: "meta"; text: string }
-  | { kind: "narration"; text: string };
-
 const isAiOf = (view: StateView, pid: string) =>
   (view.characters[pid] as { lifepath?: string } | undefined)?.lifepath === "tsukumogami";
-
-function classifyLine(line: string, view: StateView, playerId: string): LogEntry {
-  for (const [pid, character] of Object.entries(view.characters)) {
-    const prefix = `${pid}: `;
-    if (line.startsWith(prefix)) {
-      const text = line.slice(prefix.length);
-      return pid === playerId ? { kind: "own", text } : { kind: "speaking", text, name: character.name, character };
-    }
-  }
-  if (BRACKET_LINE.test(line)) return { kind: "meta", text: line };
-  const match = line.match(SPEAKER_LINE);
-  if (match) {
-    const [, name, text] = match;
-    const own = view.characters[playerId];
-    if (own && own.name === name) return { kind: "own", text };
-    const teammate = Object.entries(view.characters).find(([pid, c]) => pid !== playerId && c.name === name);
-    return { kind: "speaking", text, name, character: teammate ? teammate[1] : null };
-  }
-  return { kind: "narration", text: line };
-}
 
 // Cheap placeholder avatar next to a speech/action bubble - a real portrait
 // when the viewer is allowed to see one (their own character only; teammates'
@@ -138,18 +100,6 @@ function SpeakerAvatar({ name, character }: { name: string; character?: Characte
     </span>
   );
 }
-
-// Reuses the same [tag: value] bracket convention tool results already use
-// in session.log - no new StateView field for image lines.
-const IMAGE_LINE = /^\[image: (.+)\]$/;
-const ROLL_LINE = /^\[roll: (.+)\]$/;
-const ROLL_PENDING_LINE = /^\[roll pending: .+\]$/;
-// Same bracket-tag convention as IMAGE_LINE above, for synthesized narration audio.
-const AUDIO_LINE = /^\[audio: (.+)\]$/;
-// Catch-all for every other bracket-tagged system line ([initiative: ...],
-// [tool: ...], [tool error: ...], [audio error: ...]) - rendered as compact
-// HUD meta text instead of narration prose.
-const BRACKET_LINE = /^\[.+\]$/;
 
 function VitalsBand({ view, playerId }: { view: StateView; playerId: string }) {
   const characters = Object.entries(view.characters);
