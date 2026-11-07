@@ -72,6 +72,10 @@
   color: var(--nw-danger);
 }
 
+.nw-text-warn {
+  color: #fbbf24;
+}
+
 .nw-prose {
   font-family: var(--font-source-serif), Georgia, serif;
   color: var(--nw-text-body);

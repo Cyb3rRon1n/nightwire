@@ -167,7 +167,7 @@ export default function NightwirePage() {
   }
 
   return (
-    <main className="nw-theme mx-auto flex h-dvh w-full max-w-2xl flex-col gap-4 p-6 lg:max-w-3xl xl:max-w-4xl 2xl:max-w-5xl">
+    <main className="nw-theme mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-4 p-6 lg:max-w-3xl xl:max-w-4xl 2xl:max-w-5xl">
       <h1 className="nw-heading text-lg">Nightwire — live feed</h1>
 
       {!connected ? (
@@ -275,6 +275,16 @@ export default function NightwirePage() {
                   </option>
                 ))}
               </select>
+              {(() => {
+                // Playthrough 2026-11-07: a character joined with every point unspent and failed roll after roll.
+                const attrLeft = attributeBudgetRemaining(mergedAttributes, primaryAttribute);
+                const skillLeft = STARTING_SKILL_POINTS - Object.values(skills).reduce((a, b) => a + b, 0);
+                return attrLeft > 0 || skillLeft > 0 ? (
+                  <p className="text-sm nw-text-warn" role="note">
+                    {`Unspent: ${attrLeft} attribute and ${skillLeft} skill points. They are what your rolls add to the die; skill points can also be spent later on your sheet.`}
+                  </p>
+                ) : null;
+              })()}
               <button
                 type="button"
                 onClick={handleJoin}

@@ -217,7 +217,7 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, onO
             );
           }
           const audioMatch = line.match(AUDIO_LINE);
-          if (audioMatch) return <audio key={i} controls src={mediaUrl(audioMatch[1])} className="w-full" />;
+          if (audioMatch) return <VoiceButton key={i} src={mediaUrl(audioMatch[1])} />;
 
           const entry = entries[i];
           if (entry.kind === "own") {
@@ -358,5 +358,22 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, onO
         )}
       </form>
     </section>
+  );
+}
+
+
+// A small play button per voiced line: the browser's full audio player between every paragraph broke the scene
+// (playthrough 2026-11-07).
+function VoiceButton({ src }: { src: string }) {
+  const ref = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  return (
+    <div className="nw-voice">
+      <button type="button" aria-label={playing ? "Pause voice" : "Play voice"} onClick={() => {
+        const a = ref.current; if (!a) return;
+        if (a.paused) void a.play(); else a.pause();
+      }}>{playing ? "❚❚" : "▶"}</button>
+      <audio ref={ref} src={src} preload="none" onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)} />
+    </div>
   );
 }
