@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from engine.debt import active_chrome
 from engine.session import Session
+from narrator.movement import known_place
 from ruleset.attributes import modifier
 from ruleset.cyberware import CHROME, SOCIAL_SKILLS, chrome_roll_bonus, overclock_tier_bonus, slot_capacity, social_penalty
 from ruleset.difficulty import STAKES, Difficulty
@@ -145,8 +146,10 @@ def _execute_apply_character_update(session: Session, tool: ApplyCharacterUpdate
 
 
 def _execute_update_world(session: Session, tool: UpdateWorld) -> dict:
-    if tool.location is not None:
-        session.location = tool.location
+    # Only a known place, by its own name (soak run 7: "Ikebe Low - Mama Sato's izakaya" after the player walked away).
+    place = known_place(tool.location) if tool.location is not None else None
+    if place:
+        session.location = place
     if tool.scene_mood is not None:
         session.scene_mood = tool.scene_mood
     for objective in tool.add_objectives:
