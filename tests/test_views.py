@@ -225,3 +225,12 @@ def test_thread_is_ordered_by_delivery_turn():
     p["turn"] = 4
     texts = [m["text"] for m in build_view(s, "p1")["phone"]["threads"]["Jun Arakawa"]]
     assert texts == ["engine text", "reply"]
+
+
+def test_the_view_lists_every_image_in_the_session():
+    # Playthrough 2026-11-07: the gallery showed 3 of 6 images, built from only the last 50 log lines.
+    from engine.session import Session
+    from server.views import build_view
+    s = Session(session_id="s")
+    s.log = ["[image: images/s/1.png]"] + ["filler"] * 60 + ["[image: images/s/2.png]"]
+    assert build_view(s, "p1")["images"] == ["images/s/1.png", "images/s/2.png"]
