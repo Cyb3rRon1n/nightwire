@@ -1850,3 +1850,22 @@ async def test_a_line_copied_from_recent_turns_is_dropped(tmp_path):
                         "p1", {"type": "action", "text": "I wait."})
     assert session.log.count("Old Hara: You want a name, child? Then you'll have to pay for it.") == 1
     assert "Old Hara: Fine. Ask at the torite office." in session.log
+
+
+async def test_prose_inside_a_speech_line_goes_back_to_the_narrator(tmp_path):
+    # Playthrough 2026-11-07: "scarred ganger: The blade is already in his hand... 'You think you can trace it?'"
+    session = _session_with_character()
+    client = _segments_client([[{"speaker": "Scarred ganger", "text": "The blade is already in his hand, the hilt cool. 'You think you can trace it?'"}]], [])
+    await handle_action(session, client, JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(),
+                        "p1", {"type": "action", "text": "I trace the line."})
+    assert "The blade is already in his hand, the hilt cool." in session.log
+    assert "Scarred ganger: You think you can trace it?" in session.log
+
+
+async def test_an_apostrophe_in_speech_is_not_a_quote(tmp_path):
+    session = _session_with_character()
+    line = "Names in Ikebe don't just sell, child. They're traded like bullets."
+    client = _segments_client([[{"speaker": "Mama Sato", "text": line}]], [])
+    await handle_action(session, client, JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(),
+                        "p1", {"type": "action", "text": "I ask about names."})
+    assert f"Mama Sato: {line}" in session.log
