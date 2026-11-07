@@ -245,6 +245,15 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, onO
             );
           }
           if (entry.kind === "meta" && !isPlayerFacing(entry.text)) return null;
+          if (entry.kind === "meta" && (entry.text.startsWith("[ooc question: ") || entry.text.startsWith("[ooc: "))) {
+            const question = entry.text.startsWith("[ooc question: ");
+            return (
+              <p key={i} className="nw-ooc">
+                <span className="nw-ooc-label">{question ? "Out of character" : "Help"}</span>
+                {entry.text.slice(question ? "[ooc question: ".length : "[ooc: ".length, -1)}
+              </p>
+            );
+          }
           const notice = entry.kind === "meta" && ["[torite: ", "[selfhood: ", "[utsusemi: "].find((p) => entry.text.startsWith(p));
           if (notice) {
             return (
@@ -338,7 +347,7 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, onO
               }
             }}
             placeholder={myRollPending ? "Roll first" : COMPOSER_MODES.find((m) => m.value === composerMode)?.placeholder}
-            disabled={sending || myRollPending}
+            disabled={myRollPending}
           />
           <button type="submit" className="nw-send" disabled={sending || myRollPending || !composerText.trim()}>SEND</button>
         </div>

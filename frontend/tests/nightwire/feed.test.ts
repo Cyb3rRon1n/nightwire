@@ -44,7 +44,7 @@ test("own actions drop the '> ' the composer adds", () => {
 
 test("only player-facing bracket lines are shown", () => {
   for (const line of ["[initiative: Rin rolled 14]", "[chrome installed: Rin — Kagerou]", "[chrome removed: Rin — Kagerou]",
-    "[torite: final notice]", "[selfhood: +2]", "[utsusemi: Hachi wakes in a new shell]"]) {
+    "[torite: final notice]", "[selfhood: +2]", "[utsusemi: Hachi wakes in a new shell]", "[ooc question: Rin: (ooc) help]", "[ooc: Your sheet is on the left.]"]) {
     assert.equal(isPlayerFacing(line), true, line);
   }
   for (const line of ["[remember_npc: {'name': 'Mama Sato', 'facts': ['secretly pays protection']}]", "[audio error: tts failed]",

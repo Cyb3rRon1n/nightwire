@@ -23,3 +23,11 @@ def test_unknown_or_empty_location_has_no_art(monkeypatch):
 def test_every_shipped_art_file_belongs_to_an_approved_place():
     for slug in place_art._slugs():
         assert place_art.design_name(slug)
+
+
+def test_a_distinctive_last_word_alone_finds_the_place(monkeypatch):
+    # Dry run 2026-11-06: the narrator shortened the location to "izakaya" and the art disappeared.
+    monkeypatch.setattr(place_art, "_slugs", lambda: ["mama-satos-izakaya", "rins-room", "ring-line", "yomi-line"])
+    assert place_art.location_art("the izakaya") == "place-art/mama-satos-izakaya.jpg"
+    assert place_art.location_art("a back room") is None        # "room" is too generic
+    assert place_art.location_art("the line") is None           # shared by two places

@@ -8,6 +8,10 @@ import { CHROME } from "./chrome";
 import { SkillPicker, STARTING_SKILL_POINTS } from "./SkillPicker";
 import { AttributePicker, attributeBudgetRemaining, startingAttributes } from "./AttributePicker";
 import { PlayScreen } from "./play/PlayScreen";
+import { browserStore } from "@/lib/nightwire/safeStorage";
+import { normalizeId } from "@/lib/nightwire/ids";
+
+const LAST_GAME_KEY = "nightwire-last-game";
 import "./theme.css";
 
 const READY_STATE_LABEL: Record<ReadyState, string> = {
@@ -68,9 +72,13 @@ export default function NightwirePage() {
   const primaryAttribute = ROLES.find((r) => r.value === role)?.primaryAttribute ?? null;
   const mergedAttributes = { ...startingAttributes(primaryAttribute), ...attributes };
   const [connected, setConnected] = useState(false);
+  const [connectHint, setConnectHint] = useState("");
   const [startingChrome, setStartingChrome] = useState("");
   const [approvingPortrait, setApprovingPortrait] = useState(false);
   const [portraitSkipped, setPortraitSkipped] = useState(false);
+  // The portrait question belongs to making a character: a returning player (refresh, new tab) goes straight
+  // into the game (dry run 2026-11-06: a refresh asked again after the player had skipped it).
+  const [justJoined, setJustJoined] = useState(false);
   const [referencePhotos, setReferencePhotos] = useState<string[]>([]);
 
   const { view, error, errorSeq, send, readyState } = useNightwireSocket(
@@ -89,13 +97,38 @@ export default function NightwirePage() {
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [view, errorSeq]);
 
+  // Remembered per browser, so a refresh goes straight back into the game (dry run 2026-11-06: a refresh lost
+  // the session and asked for the IDs and the whole character form again).
+  useEffect(() => {
+    const saved = browserStore.getItem(LAST_GAME_KEY);
+    if (!saved) return;
+    try {
+      const { session, player } = JSON.parse(saved) as { session: string; player: string };
+      /* eslint-disable react-hooks/set-state-in-effect -- reading browser storage once after mount */
+      setSessionId(session); setPlayerId(player); setConnected(true);
+      /* eslint-enable react-hooks/set-state-in-effect */
+    } catch { /* ignore a damaged entry */ }
+  }, []);
+
   function handleConnect(event: React.FormEvent) {
     event.preventDefault();
-    if (!sessionId.trim() || !playerId.trim()) return;
+    const session = normalizeId(sessionId), player = normalizeId(playerId);
+    if (!session || !player) {
+      setConnectHint("Enter a session ID (the same for everyone at the table) and your own player ID.");
+      return;
+    }
+    setSessionId(session); setPlayerId(player); setConnectHint("");
+    browserStore.setItem(LAST_GAME_KEY, JSON.stringify({ session, player }));
     setConnected(true);
   }
 
+  function handleLeave() {
+    browserStore.setItem(LAST_GAME_KEY, "");
+    window.location.reload();
+  }
+
   function handleJoin() {
+    setJustJoined(true);
     send({
       type: "join",
       character: { player_id: playerId, name, role, lifepath, skills, attributes, ...(startingChrome ? { starting_chrome: startingChrome } : {}), ...(presentation ? { presentation } : {}) },
@@ -128,9 +161,9 @@ export default function NightwirePage() {
   }
 
   const me = view?.characters[playerId];
-  const inPlay = me && "player_id" in me && (me.portrait_path || portraitSkipped);
+  const inPlay = me && "player_id" in me && (me.portrait_path || portraitSkipped || !justJoined);
   if (view && inPlay) {
-    return <PlayScreen view={view} playerId={playerId} send={send} readyLabel={READY_STATE_LABEL[readyState]} error={error} errorSeq={errorSeq} />;
+    return <PlayScreen view={view} playerId={playerId} send={send} readyLabel={READY_STATE_LABEL[readyState]} error={error} errorSeq={errorSeq} onLeave={handleLeave} />;
   }
 
   return (
@@ -154,10 +187,14 @@ export default function NightwirePage() {
           <button type="submit" className="nw-btn-primary">
             Connect
           </button>
+          {connectHint && <p className="text-sm nw-text-danger" role="alert">{connectHint}</p>}
         </form>
       ) : (
         <>
-          <p className="nw-hud text-xs nw-text-faint">{READY_STATE_LABEL[readyState]}</p>
+          <p className="nw-hud text-xs nw-text-faint">
+            {READY_STATE_LABEL[readyState]} · {sessionId} / {playerId} ·{" "}
+            <button type="button" className="underline" onClick={handleLeave}>use a different session</button>
+          </p>
 
           {!view && (
             <div className="flex flex-col gap-2">
@@ -241,7 +278,7 @@ export default function NightwirePage() {
               <button
                 type="button"
                 onClick={handleJoin}
-                disabled={readyState !== ReadyState.OPEN}
+                disabled={readyState !== ReadyState.OPEN || !name.trim() || !role || !lifepath}
                 className="nw-btn-primary"
               >
                 Join
@@ -253,7 +290,7 @@ export default function NightwirePage() {
 
           {view && "player_id" in view.characters[playerId] &&
             !(view.characters[playerId] as CharacterSheet).portrait_path &&
-            !portraitSkipped && (
+            !portraitSkipped && justJoined && (
               <div className="nw-divider flex flex-col gap-2 rounded-lg border p-3 text-sm">
                 <p className="nw-text-body">
                   {name} — {role} · {lifepath}. Generate a portrait before playing?

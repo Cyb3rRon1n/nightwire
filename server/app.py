@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 
@@ -11,6 +13,7 @@ from server.connection_manager import ConnectionManager
 from server.dispatch import handle_message
 from server.narration import handle_action, narrate_roll, resolve_roll
 from server.portrait import handle_approve_character
+from server.views import build_view
 
 
 def create_app(
@@ -32,6 +35,23 @@ def create_app(
     manager = ConnectionManager()
     sessions: dict[str, Session] = {}  # ponytail: single-process; needs a real store if ever multi-worker
 
+    locks: dict[str, asyncio.Lock] = {}
+
+    async def _handle(session: Session, player_id: str, message: dict) -> None:
+        if message.get("type") == "action":
+            await handle_action(session, narrator_client, store, image_backend, tts_backend, player_id, message)
+        elif message.get("type") == "roll":
+            rolled = resolve_roll(session, player_id, overclock=message.get("overclock"))
+            # Show the die landing now; the resolution narration (slow) follows.
+            store.save(session)
+            await manager.broadcast(session.session_id, session)
+            await narrate_roll(session, narrator_client, store, image_backend, tts_backend, player_id, rolled)
+        elif message.get("type") == "approve_character":
+            await handle_approve_character(session, store, narrator_client, image_backend, player_id, message,
+                                           tts_backend=tts_backend)
+        else:
+            handle_message(session, message, player_id)
+
     @app.websocket("/ws/{session_id}/{player_id}")
     async def websocket_endpoint(websocket: WebSocket, session_id: str, player_id: str) -> None:
         await websocket.accept()
@@ -39,6 +59,9 @@ def create_app(
             sessions[session_id] = store.load(session_id) or Session(session_id=session_id)
         session = sessions[session_id]
         manager.connect(session_id, player_id, websocket)
+        if player_id in session.characters:
+            # A returning player (refresh, server restart, second tab) gets the game straight away instead of a join form.
+            await websocket.send_json(build_view(session, player_id))
 
         try:
             while True:
@@ -59,26 +82,16 @@ def create_app(
                         })
                         continue
 
-                try:
-                    if message.get("type") == "action":
-                        await handle_action(session, narrator_client, store, image_backend, tts_backend, player_id, message)
-                    elif message.get("type") == "roll":
-                        rolled = resolve_roll(session, player_id, overclock=message.get("overclock"))
-                        # Show the die landing now; the resolution narration (slow) follows.
-                        store.save(session)
-                        await manager.broadcast(session_id, session)
-                        await narrate_roll(session, narrator_client, store, image_backend, tts_backend, player_id, rolled)
-                    elif message.get("type") == "approve_character":
-                        await handle_approve_character(session, store, narrator_client, image_backend, player_id, message,
-                                                       tts_backend=tts_backend)
-                    else:
-                        handle_message(session, message, player_id)
-                except Exception as e:
-                    await websocket.send_json({"type": "error", "message": str(e)})
-                    continue
-
-                store.save(session)
-                await manager.broadcast(session_id, session)
+                # One turn at a time per session (dry run 2026-11-06: two players acting at once ran two narrations
+                # in parallel, each written without the other). Others' messages wait here.
+                async with locks.setdefault(session_id, asyncio.Lock()):
+                    try:
+                        await _handle(session, player_id, message)
+                    except Exception as e:
+                        await websocket.send_json({"type": "error", "message": str(e)})
+                        continue
+                    store.save(session)
+                    await manager.broadcast(session_id, session)
         except WebSocketDisconnect:
             manager.disconnect(session_id, player_id, websocket)
 

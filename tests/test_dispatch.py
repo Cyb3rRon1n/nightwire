@@ -155,16 +155,13 @@ def test_join_role_bonus_only_applies_to_the_selected_roles_primary_attribute():
     assert attributes["reflexes"] == 10
 
 
-def test_join_with_unknown_role_uses_base_scores_for_all_attributes():
-    session = Session(session_id="s1")
-    handle_message(session, {
-        "type": "join",
-        "character": {"player_id": "p1", "name": "Zeta", "role": "diplomat", "lifepath": "spacer"},
-    }, "p1")
-
-    assert session.characters["p1"].attributes == {
-        "body": 10, "reflexes": 10, "tech": 10, "cool": 10, "intellect": 10, "presence": 10,
-    }
+def test_join_refuses_an_unknown_role_or_lifepath_or_no_name():
+    # Dry run 2026-11-06: an empty join form made a nameless character. New characters need the basics.
+    for bad, message in (({"role": "diplomat"}, "role"), ({"lifepath": "spacer"}, "lifepath"), ({"name": " "}, "name")):
+        session = Session(session_id="s1")
+        character = {"player_id": "p1", "name": "Zeta", "role": "solo", "lifepath": "nomad", **bad}
+        with pytest.raises(ValueError, match=message):
+            handle_message(session, {"type": "join", "character": character}, "p1")
 
 
 def test_join_accepts_a_valid_attribute_allocation():

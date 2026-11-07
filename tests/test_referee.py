@@ -247,3 +247,18 @@ async def test_no_move_keeps_the_location():
 def test_location_question_is_always_asked_as_text():
     q = build_questions(_session(), "p1")
     assert "moved_to" in q and build_schema(q)["properties"]["moved_to"] == {"type": "string", "maxLength": 60}
+
+
+async def test_an_npc_naming_a_place_does_not_move_the_player():
+    # Dry run 2026-11-06: Mama Sato asking "What brings you to Ikebe?" moved the player out of her izakaya.
+    s = _session(); s.location = "Mama Sato's izakaya"
+    await run_referee(s, _Client({"moved_to": "Ikebe", "human_moment_quote": "", "human_moment": "none"}),
+                      "p1", "👍", "The lanterns sway.\nMama Sato: What brings you to Ikebe again, child?")
+    assert s.location == "Mama Sato's izakaya"
+
+
+async def test_the_narrator_describing_arrival_still_moves_the_player():
+    s = _session(); s.location = "Ikebe Low"
+    await run_referee(s, _Client({"moved_to": "the docks", "human_moment_quote": "", "human_moment": "none"}),
+                      "p1", "I head out.", "You reach the docks as the cranes groan.\nHachi: Late again.")
+    assert s.location == "The docks"

@@ -1666,3 +1666,23 @@ async def test_a_plain_action_gets_no_roll(tmp_path):
     assert "p1" not in session.pending_rolls
     assert "Mama Sato points at the karaage." in session.log and "You lean in, waiting." not in session.log
     assert "not risky" in seen[1][-1]["content"]
+
+
+async def test_an_out_of_character_question_skips_the_story(tmp_path):
+    session = _session_with_character()
+    seen = []
+    client = _scripted_client([_say("Mama Sato answers in character.")], judge_answers=[{"answer": "Your inventory is in the Status panel."}], seen=seen)
+    await _call(session, client, "p1", {"text": "(ooc) how do I check my inventory?"}, tmp_path, tts_backend=FakeTTSBackend())
+    assert seen == []  # the narrator never ran
+    assert session.log[-2:] == ["[ooc question: Rook: (ooc) how do I check my inventory?]", "[ooc: Your inventory is in the Status panel.]"]
+
+
+async def test_the_risk_checks_skill_wins_over_the_narrators(tmp_path):
+    # Dry run 2026-11-06 (with the real prompt): "I kill everyone in the bar" rolled Stealth.
+    session = _session_with_character()
+    sneak = {"player_id": "p1", "attribute": "cool", "skill": "stealth", "stakes": "high", "reason": "the bar"}
+    client = _scripted_client([_say("The room goes quiet.", "request_roll", sneak)],
+                              judge_answers=[{"risky_quote": "I kill everyone", "risky": True, "skill": "melee"}])
+    await _call(session, client, "p1", {"text": "I kill everyone in the bar."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert session.pending_rolls["p1"]["skill"] == "melee"
+    assert session.pending_rolls["p1"]["attribute"] in ("body", "reflexes")

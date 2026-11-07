@@ -34,8 +34,23 @@ def _world_names() -> list[tuple[str, ...]]:
     return [tuple(_normalize(n) for n in (e.name, *e.aliases)) for e in world.districts + world.places]
 
 
+# Last words too plain to stand for one place on their own ("the room", "a house").
+_GENERIC = {"room", "house", "box", "block", "low", "line", "heights", "loop", "docks", "cho"}
+
+
+def _last_words(slugs: tuple[str, ...]) -> dict[str, str]:
+    """A design's last word, when no other design ends with it and it isn't generic: "izakaya" -> Mama Sato's
+    izakaya (dry run 2026-11-06: the narrator shortened the location and the art disappeared)."""
+    last: dict[str, list[str]] = {}
+    for slug in slugs:
+        name = design_name(slug)
+        if name:
+            last.setdefault(_normalize(name).replace("-", " ").split()[-1], []).append(slug)
+    return {word: found[0] for word, found in last.items() if len(found) == 1 and word not in _GENERIC}
+
+
 def _keys(slugs: tuple[str, ...]) -> list[tuple[str, str]]:
-    keys = []
+    keys = [(word, slug) for word, slug in _last_words(slugs).items()]
     for slug in slugs:
         name = design_name(slug)
         if not name:

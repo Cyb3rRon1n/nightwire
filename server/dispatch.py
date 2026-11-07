@@ -4,6 +4,7 @@ from engine.session import Session
 from engine.turns import advance_turn, end_combat, join, roll_initiative
 from ruleset.attributes import Attribute
 from ruleset.cyberware import CHROME
+from ruleset.lifepaths import LIFEPATHS
 from ruleset.roles import ROLES
 from ruleset.skills import SKILLS, STARTING_SKILL_POINTS, skill_cap
 
@@ -113,6 +114,15 @@ def handle_message(session: Session, message: dict, player_id: str) -> None:
         character_data = message.get("character")
         if character_data is None:
             raise ValueError("missing 'character' in join message")
+        if character_data.get("player_id") not in session.characters:
+            # A new character needs the basics (dry run 2026-11-06: an empty form joined as a nameless nobody).
+            if not str(character_data.get("name") or "").strip():
+                raise ValueError("give your character a name")
+            if character_data.get("role") not in ROLES:
+                raise ValueError("pick a role")
+            if character_data.get("lifepath") not in LIFEPATHS:
+                raise ValueError("pick a lifepath")
+            character_data["name"] = str(character_data["name"]).strip()
         starting_chrome = character_data.get("starting_chrome")
         if starting_chrome is not None and (not isinstance(starting_chrome, str) or starting_chrome not in CHROME):
             raise ValueError(f"unknown chrome: {starting_chrome!r}")

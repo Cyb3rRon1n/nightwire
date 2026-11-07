@@ -64,3 +64,17 @@ async def test_disconnect_removes_the_connection_from_future_broadcasts():
 def test_disconnect_of_an_unknown_connection_is_a_no_op():
     manager = ConnectionManager()
     manager.disconnect("never-connected", "p1")  # must not raise
+
+
+@pytest.mark.asyncio
+async def test_every_tab_of_a_player_gets_updates():
+    # Dry run 2026-11-06: a second tab took the connection and the first went silent while saying CONNECTED.
+    manager = ConnectionManager()
+    tab1, tab2 = FakeConnection(), FakeConnection()
+    manager.connect("s1", "p1", tab1)
+    manager.connect("s1", "p1", tab2)
+    await manager.broadcast("s1", _session_with_two_players())
+    assert len(tab1.sent) == 1 and len(tab2.sent) == 1
+    manager.disconnect("s1", "p1", tab1)
+    await manager.broadcast("s1", _session_with_two_players())
+    assert len(tab1.sent) == 1 and len(tab2.sent) == 2
