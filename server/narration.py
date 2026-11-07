@@ -9,6 +9,7 @@ from narrator.ooc import answer_ooc, is_ooc
 from narrator.risk import INSTRUCTION as RISK_INSTRUCTION, NO_ROLL, assess
 from engine.chrome import change_humanity, usable_overclocks
 from engine.debt import repo_target_name, tick_debt
+from engine.phone import add_contact
 from engine.persistence import JSONFileSessionStore
 from engine.session import Session
 from narrator.client import NarratorClient
@@ -289,7 +290,7 @@ def _is_player_voice(session: Session, speaker: str) -> bool:
     return any(s in (c.name.strip().lower(), c.player_id.strip().lower()) for c in session.characters.values())
 
 
-async def _log_narration(session, response, store, tts_backend) -> str:
+async def _log_narration(session, response, store, tts_backend, player_id) -> str:
     """Logs and voices the response's segments; returns the narration text that was kept."""
     texts: list[str] = []
     for i, segment in enumerate(response.narration):
@@ -297,6 +298,8 @@ async def _log_narration(session, response, store, tts_backend) -> str:
             session.log.append(f"[voice filtered: {segment.speaker}]")
             continue
         line = segment.text if segment.speaker == "narrator" else f"{segment.speaker}: {segment.text}"
+        if segment.speaker != "narrator":
+            add_contact(session, player_id, segment.speaker)
         texts.append(line)  # with the speaker, so the referee can tell narration from what NPCs say
         session.log.append(line)
         log_index = len(session.log)
@@ -398,7 +401,7 @@ async def _run_turn(
         session.log.append(actor_line)
     if refusal is not None:
         session.log.append(f"[redo: {refusal}]")
-    narration_text = await _log_narration(session, response, store, tts_backend)
+    narration_text = await _log_narration(session, response, store, tts_backend, player_id)
     _apply_tool(session, response, player_id, allow_roll, roll_skill)  # a refusal on the redo is only logged
 
     # Referee (Phase 18): not on the setup turn that opened a roll - the outcome

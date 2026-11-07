@@ -1686,3 +1686,16 @@ async def test_the_risk_checks_skill_wins_over_the_narrators(tmp_path):
     await _call(session, client, "p1", {"text": "I kill everyone in the bar."}, tmp_path, tts_backend=FakeTTSBackend())
     assert session.pending_rolls["p1"]["skill"] == "melee"
     assert session.pending_rolls["p1"]["attribute"] in ("body", "reflexes")
+
+
+async def test_npc_speaker_becomes_a_stranger_contact_but_narrator_and_player_voice_do_not(tmp_path):
+    session = _session_with_character()
+    client = _scripted_client([{"narration": [
+        {"speaker": "narrator", "text": "Steam rises."},
+        {"speaker": "Rook", "text": "I'll take the job."},
+        {"speaker": "Mama Sato", "text": "Eat first, child."},
+    ], "tool_call": {"tool": None}}])
+    await _call(session, client, "p1", {"text": "I sit down."}, tmp_path, tts_backend=FakeTTSBackend())
+    contacts = session.phone["p1"]["contacts"]
+    assert list(contacts) == ["Mama Sato"]
+    assert contacts["Mama Sato"]["role"] == "stranger"
