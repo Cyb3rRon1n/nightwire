@@ -1,5 +1,6 @@
 from engine.character import CharacterSheet, is_tsukumogami
 from engine.chrome import SHELL_INSTALLMENTS, STARTING_SELFHOOD, install_chrome, remove_chrome
+from engine.phone import add_contact
 from engine.session import Session
 from engine.turns import advance_turn, end_combat, join, roll_initiative
 from ruleset.attributes import Attribute
@@ -138,6 +139,10 @@ def handle_message(session: Session, message: dict, player_id: str) -> None:
         if is_new and is_tsukumogami(new_character):
             new_character.humanity = STARTING_SELFHOOD
             new_character.installments_owed += SHELL_INSTALLMENTS
+        if is_new:
+            pid = character_data["player_id"]
+            add_contact(session, pid, "Saeko Kirigaya", "creditor", pace=-1)
+            add_contact(session, pid, "Jun Arakawa", "fixer")
         # Reconnects must not re-install; only a fresh sheet gets starting chrome.
         if starting_chrome and is_new:
             session.pending_world_events.extend(install_chrome(new_character, starting_chrome))

@@ -757,3 +757,14 @@ def test_join_rejects_unknown_presentation(bad):
     with pytest.raises(ValueError, match="presentation must be"):
         handle_message(session, {"type": "join", "character": {
             "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid", "presentation": bad}}, "p1")
+
+
+def test_join_gives_a_new_character_saeko_and_jun_once():
+    session = Session(session_id="s1")
+    msg = {"type": "join", "character": {"player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"}}
+    handle_message(session, msg, "p1")
+    handle_message(session, msg, "p1")
+    contacts = session.phone["p1"]["contacts"]
+    assert contacts["Saeko Kirigaya"]["role"] == "creditor" and contacts["Saeko Kirigaya"]["pace"] == -1
+    assert contacts["Jun Arakawa"]["role"] == "fixer"
+    assert len(contacts) == 2
