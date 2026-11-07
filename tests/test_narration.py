@@ -860,6 +860,7 @@ def test_build_messages_puts_scene_and_world_notes_right_before_the_action():
     assert content.endswith(
         "Recent events:\np1: I look around.\n\n"
         "Scene: Ikebe Low - Mama Sato's izakaya · mood: tense · objectives: find the chrome-ya; pay off the torite\n\n"
+        "Crew: Rook: no chrome, owes nothing\n\n"
         f"World notes:\n{ikebe}\n{sato}\n\n"
         "Player action: I order a drink."
     )
@@ -1204,11 +1205,12 @@ def test_overclock_refused_while_gone_too_far_and_roll_stays_pending():
     assert "p1" in session.pending_rolls
 
 
-def test_no_crew_line_for_unchromed_full_humanity():
+def test_an_unchromed_character_is_said_to_owe_nothing():
+    # Playthrough 2026-11-07: with no Crew entry the narrator invented a debt sign for a debt-free character.
     from server.narration import _build_messages
 
     session = _session_with_character()
-    assert "Crew:" not in _build_messages(session, "I wait.", num_ctx=8192)[0]["content"]
+    assert "Crew: Rook: no chrome, owes nothing" in _build_messages(session, "I wait.", num_ctx=8192)[0]["content"]
 
 
 def test_crew_entry_is_capped():
