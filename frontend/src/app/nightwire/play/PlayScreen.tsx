@@ -92,7 +92,7 @@ export function PlayScreen({ view, playerId, send, readyLabel, error, errorSeq, 
   const watchCollapsed = (set: (collapsed: boolean) => void) => (size: { inPixels: number }) => set(size.inPixels <= RAIL_PX + 1);
 
   return (
-    <div className="nw-play flex h-dvh w-full flex-col">
+    <div className="nw-play flex h-dvh w-full flex-col" data-phone-open={!narrow && phoneOpen ? "true" : undefined}>
       <header className="nw-play-header">
         <span style={{ color: "var(--nw-cyan)", fontWeight: 700, letterSpacing: ".22em" }}>NIGHTWIRE</span>
         <span className="flex-1" />
