@@ -220,6 +220,33 @@ Each phase gets its own brainstorming pass (questions → approaches → design 
     - **Play screen**: approved place art behind the conversation (`narrator/place_art.py`, `/place-art/`, `StateView.location_art`) and NPC portraits (`/character-art/`), both exported by tools into `narrator/worlds/`. Server-only bracket lines are hidden from the feed (remember_npc results leaked NPC secrets).
     - **Open**: the narrator still tries a new roll during roll resolutions (refused and hidden); NPC portraits match by name only, so two NPCs sharing a first name would collide.
 
+22. **Playthrough fixes and the story thread** (built 2026-11-07, after a 19-turn UI playthrough with images and voices; issues list in the commits, spec `docs/superpowers/specs/2026-11-07-story-thread-design.md`):
+    - **Narrator fixes from soak tests**:
+      - The engine moves the player before narrating, and only to a known place (`narrator/movement.py`).
+      - Past prose stays in the prompt only for the last 3 turns, minus openings, and a repeated opening is redone.
+      - Reply lines copied from recent turns are dropped.
+      - Narration is capped at 800 tokens, and summaries run with thinking off.
+    - **Fixes from the playthrough**:
+      - ComfyUI frees the GPU after each in-game image. Before this, the narrator ran on the CPU.
+      - Plain talk never opens a roll. Roll results land by outcome, and the roll card names the attempt, not the result.
+      - Stage directions inside a character's line go to the narrator. "Child" stays Mama Sato's word.
+      - Debt-free characters are told to the narrator as owing nothing, so it stops inventing debts.
+      - Only named speakers become phone contacts.
+      - The gallery lists every image in the session.
+      - Voice lines get small play buttons instead of audio players. The join form notes unspent points.
+    - **Story thread (GUMSHOE core clues, the Three Clue Rule)**:
+      - A direct question gets a lead, not a riddle.
+      - The referee's `new_lead` becomes an objective when it names a place or a person from the scene, and `objective_done` clears an objective.
+      - A locals line tells the narrator who lives in the district.
+      - Owner-named places (Old Hara's clinic) get their district and owner cards.
+    - **Opening scene**: a new game starts with an arrival in the lifepath's district. Jun then texts a first courier job (from Hachi at the docks), which becomes the first objective.
+    - **Images**: known places show their approved art. New images come at most once every 6 turns, shown small in the feed.
+    - **Fixer pacing**: Jun answers a work request on the next turn.
+    - **Open**:
+      - Set-up narration sometimes half-resolves an action before its roll.
+      - New in-game images still use plain text-to-image, not the approved place-art recipe.
+      - The player's own line can scroll under the location title.
+
 ### Studio track (candidates, surfaced 2026-10-28)
 Owner interest: if players like the world and story, grow toward an animation-studio-style pipeline. Candidate phases, roughly in order: **19c designs in play** (player design at creation, scenes and portraits reuse saved designs); **19d stronger identity** (per-character LoRA for principals, IPAdapter if it fits 8 GB, two named characters per scene via regional prompting); **props and the chrome catalog** (prop and vehicle sheets); **more character sheets** (pose and action, mouth and lip-sync, hands, height line-up, costume variants); **colour script and FX sheets** (overclock, Yomi static, glitch, bloom); **stage view** (visual-novel-style presentation: location art plus the speaking NPC with a matching expression, over free-text play); **district map** (clickable Kuroshio map from the location designs); **storyboard and animatic export** from session logs.
 
