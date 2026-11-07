@@ -89,3 +89,31 @@ SKILLS: dict[str, Skill] = {
 
 def skill_cap(attribute_score: int) -> int:
     return min(5, modifier(attribute_score) + 3)
+
+
+# Which attributes a roll may pair with each skill. The skill spec (2026-08-24) follows Cyberpunk 2077 2.0's loose
+# binding, so a skill isn't locked to its governing attribute - but live play showed nonsense pairs (Stealth with
+# Presence). These are the governing attribute plus the plausible alternatives, the extra ones from Cyberpunk RED's
+# own pairings (Melee, Athletics and Stealth off DEX = Reflexes) or the spec's example (Perception vs Reflexes).
+ROLL_ATTRIBUTES: dict[str, tuple[Attribute, ...]] = {
+    "melee": (Attribute.BODY, Attribute.REFLEXES),
+    "athletics": (Attribute.BODY, Attribute.REFLEXES),
+    "ranged_combat": (Attribute.REFLEXES,),
+    "stealth": (Attribute.REFLEXES, Attribute.COOL),
+    "piloting": (Attribute.REFLEXES,),
+    "hacking": (Attribute.TECH, Attribute.INTELLECT),
+    "engineering": (Attribute.TECH, Attribute.INTELLECT),
+    "demolitions": (Attribute.TECH,),
+    "intimidation": (Attribute.COOL, Attribute.BODY, Attribute.PRESENCE),
+    "streetwise": (Attribute.COOL, Attribute.PRESENCE),
+    "perception": (Attribute.INTELLECT, Attribute.REFLEXES),
+    "deduction": (Attribute.INTELLECT,),
+    "persuasion": (Attribute.PRESENCE, Attribute.COOL),
+    "performance": (Attribute.PRESENCE, Attribute.COOL),
+}
+
+
+def roll_attribute(skill: str, asked: str) -> Attribute:
+    """The narrator's attribute if it's a sensible pair for the skill, else the skill's governing attribute."""
+    allowed = ROLL_ATTRIBUTES.get(skill, (SKILLS[skill].governing_attribute,))
+    return next((a for a in allowed if a.value == asked), SKILLS[skill].governing_attribute)

@@ -124,7 +124,10 @@ class NarratorBackend(Protocol):
 
 async def _noop_judge(*, model: str, messages: list[dict], format: dict) -> dict:
     # Scripted clients (tests, UI checks) get a referee that never changes state.
-    answer = {k: ("none" if "enum" in v else False) for k, v in format.get("properties", {}).items()}
+    answer = {k: ("none" if "enum" in v else "" if v.get("type") == "string" else False)
+              for k, v in format.get("properties", {}).items()}
+    if "risky" in answer:
+        answer["risky"] = None  # no opinion: the risk check (narrator/risk.py) then neither forces nor blocks a roll
     return {"message": {"content": json.dumps(answer)}}
 
 

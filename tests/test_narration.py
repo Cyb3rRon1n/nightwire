@@ -1645,3 +1645,24 @@ async def test_a_failed_risk_check_never_blocks_the_turn(tmp_path):
     client = _scripted_client([_say("Mama Sato pours your tea.")], judge_answers=[])
     await _call(session, client, "p1", {"text": "I ask for tea."}, tmp_path, tts_backend=FakeTTSBackend())
     assert "Mama Sato pours your tea." in session.log
+
+
+async def test_an_odd_attribute_for_a_skill_falls_back_to_its_own(tmp_path):
+    session = _session_with_character()
+    sneak = {"player_id": "p1", "attribute": "presence", "skill": "stealth", "stakes": "normal", "reason": "past the guard"}
+    client = _scripted_client([_say("You eye the guard.", "request_roll", sneak)], judge_answers=[{"risky_quote": "sneak past", "risky": True}])
+    await _call(session, client, "p1", {"text": "I sneak past the guard."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert session.pending_rolls["p1"]["attribute"] == "reflexes"
+
+
+async def test_a_plain_action_gets_no_roll(tmp_path):
+    # Live 2026-11-06: "what's good tonight?" opened a Persuasion roll.
+    session = _session_with_character()
+    ask = {"player_id": "p1", "attribute": "presence", "skill": "persuasion", "stakes": "normal", "reason": "her answer"}
+    seen = []
+    client = _scripted_client([_say("You lean in, waiting.", "request_roll", ask), _say("Mama Sato points at the karaage.")],
+                              judge_answers=[_SAFE, {"human_moment_quote": "", "human_moment": "none"}], seen=seen)
+    await _call(session, client, "p1", {"text": "I ask Mama Sato what's good tonight."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert "p1" not in session.pending_rolls
+    assert "Mama Sato points at the karaage." in session.log and "You lean in, waiting." not in session.log
+    assert "not risky" in seen[1][-1]["content"]

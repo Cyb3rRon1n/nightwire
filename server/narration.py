@@ -5,7 +5,7 @@ import httpx
 import ollama
 
 from engine.character import is_tsukumogami
-from narrator.risk import INSTRUCTION as RISK_INSTRUCTION, is_risky
+from narrator.risk import INSTRUCTION as RISK_INSTRUCTION, NO_ROLL, is_risky
 from engine.chrome import change_humanity, usable_overclocks
 from engine.debt import repo_target_name, tick_debt
 from engine.persistence import JSONFileSessionStore
@@ -21,7 +21,7 @@ from narrator.world import kuroshio, select_cards
 from ruleset.attributes import Attribute
 from ruleset.cyberware import CHROME, humanity_tier, selfhood_tier
 from ruleset.difficulty import difficulty_for
-from ruleset.skills import SKILLS
+from ruleset.skills import SKILLS, roll_attribute
 
 
 # Verbatim recent narrative gets this fraction of num_ctx (in estimated
@@ -235,6 +235,7 @@ def _hold_roll(session: Session, player_id: str, tool_args: dict) -> str | None:
         session.log.append(f"[tool error: {message}]")
         return message
     pending = request.model_dump()
+    pending["attribute"] = roll_attribute(request.skill, request.attribute).value  # no Stealth (Presence)
     effective, difficulty = difficulty_for(request.stakes, session.recent_stakes)
     session.recent_stakes = (session.recent_stakes + [effective])[-6:]
     pending["difficulty"] = difficulty.name.lower()
@@ -266,11 +267,13 @@ async def handle_action(
         for event in tick_debt(character):
             session.pending_world_events.append(event)
             session.log.append(f"[torite: {event}]")
-    must_roll = character is not None and await is_risky(narrator_client, action_text)
+    risky = await is_risky(narrator_client, action_text) if character is not None else None
+    must_roll = risky is True
     await _run_turn(
         session, narrator_client, store, image_backend, tts_backend, player_id,
         prompt_text=f"{action_text}\n\n{RISK_INSTRUCTION}" if must_roll else action_text,
         actor_line=f"{player_id}: {action_text}", allow_roll=True, referee_action=action_text, must_roll=must_roll,
+        no_roll=risky is False,
     )
 
 
@@ -349,6 +352,7 @@ async def _run_turn(
     allow_roll: bool,
     referee_action: str | None = None,
     must_roll: bool = False,
+    no_roll: bool = False,
 ) -> None:
     # Events are shown once, but only dropped after the narrator actually
     # responded; events queued during the turn survive to the next one.
@@ -363,6 +367,12 @@ async def _run_turn(
         session.pending_world_events[:0] = shown_events
         retry_prompt = f"{prompt_text}\n\nEngine: you resolved it without a roll. Narrate only the set-up and call request_roll."
         messages = _build_messages(session, retry_prompt, narrator_client.num_ctx)
+        response = await narrator_client.respond(messages)
+        del session.pending_world_events[:len(shown_events)]
+    elif refusal is None and no_roll and response.tool == "request_roll":
+        # Plainly not risky but the narrator asked for a roll (live: "what's good tonight?" -> Persuasion): redo once.
+        session.pending_world_events[:0] = shown_events
+        messages = _build_messages(session, f"{prompt_text}\n\n{NO_ROLL}", narrator_client.num_ctx)
         response = await narrator_client.respond(messages)
         del session.pending_world_events[:len(shown_events)]
     if refusal is not None:
