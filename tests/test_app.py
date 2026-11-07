@@ -368,3 +368,8 @@ def test_roll_is_broadcast_before_the_resolution_narration(tmp_path):
 def test_place_art_is_served(tmp_path):
     response = _client(tmp_path).get("/place-art/mama-satos-izakaya.jpg")
     assert response.status_code == 200 and response.headers["content-type"] == "image/jpeg"
+
+
+def test_character_art_is_served(tmp_path):
+    response = _client(tmp_path).get("/character-art/mama-sato.jpg")
+    assert response.status_code == 200 and response.headers["content-type"] == "image/jpeg"

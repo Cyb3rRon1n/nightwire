@@ -26,6 +26,9 @@ def create_app(
     app.mount("/media", StaticFiles(directory=store.directory), name="media")
     if ART_DIR.is_dir():  # approved place art (tools/export_place_art.py), named by StateView.location_art
         app.mount("/place-art", StaticFiles(directory=ART_DIR), name="place-art")
+    character_art = ART_DIR.parent / "character_art"
+    if character_art.is_dir():  # approved NPC portraits (tools/export_character_art.py) for the conversation
+        app.mount("/character-art", StaticFiles(directory=character_art), name="character-art")
     manager = ConnectionManager()
     sessions: dict[str, Session] = {}  # ponytail: single-process; needs a real store if ever multi-worker
 
