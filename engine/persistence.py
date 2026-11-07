@@ -64,4 +64,5 @@ class JSONFileSessionStore:
             pending_chrome_offers=data.get("pending_chrome_offers", {}),
             pending_world_events=data.get("pending_world_events", []),
             recent_stakes=data.get("recent_stakes", []),
+            phone=data.get("phone", {}),
         )
