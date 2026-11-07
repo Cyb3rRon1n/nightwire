@@ -226,5 +226,14 @@ def handle_message(session: Session, message: dict, player_id: str) -> None:
     elif message_type == "end_combat":
         end_combat(session)
 
+    elif message_type == "read":
+        phone = session.phone.get(player_id)
+        contact = message.get("contact")
+        if phone is None or contact not in phone["threads"]:
+            raise ValueError(f"unknown contact: {contact!r}")
+        for m in phone["threads"][contact]:
+            if m["text"] is not None and m["deliver_at"] <= phone["turn"]:
+                m["read"] = True
+
     else:
         raise ValueError(f"unknown message type: {message_type!r}")
