@@ -165,7 +165,9 @@ class NarratorClient:
             model=model,
             messages=messages,
             format=format,
-            options={"temperature": 0.3, "num_ctx": self.num_ctx},
+            # Soak run 6: replies ran 280-1,205 tokens at ~23 tok/s; the long ones hit the 60 s timeout.
+            # The prompt asks for ~120 words; this cap only stops runaways (a cut reply fails as unparsable JSON).
+            options={"temperature": 0.3, "num_ctx": self.num_ctx, "num_predict": 800},
             **kwargs,
         )
 

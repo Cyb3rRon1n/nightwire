@@ -373,3 +373,15 @@ def test_create_narrator_backend_reads_nightwire_think(monkeypatch):
     assert create_narrator_backend().think is True
     monkeypatch.delenv("NIGHTWIRE_THINK")
     assert create_narrator_backend().think is None
+
+
+async def test_default_chat_caps_reply_length():
+    client = NarratorClient()
+    seen = {}
+    class _Fake:
+        async def chat(self, **kw):
+            seen.update(kw)
+            return {"message": {"content": '{"narration": [{"speaker": "narrator", "text": "ok"}], "tool_call": {"tool": null}}'}}
+    client._client = _Fake()
+    await client.respond([{"role": "user", "content": "hi"}])
+    assert seen["options"]["num_predict"] == 800
