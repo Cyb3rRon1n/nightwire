@@ -13,7 +13,7 @@ from engine.debt import repo_target_name, tick_debt
 from engine.phone import add_contact, find_contact, phone_of, post
 from engine.persistence import JSONFileSessionStore
 from engine.session import Session
-from narrator.client import NarratorClient, _NoTool
+from narrator.client import NarrationSegment, NarratorClient, _NoTool
 from narrator.image_backend import ImageBackend
 from narrator.image_prompt import resolve
 from narrator.movement import destination
@@ -149,6 +149,23 @@ def _recent_openings(session: Session) -> set[str]:
             if prose:
                 found.append(_opening_key(prose))
     return set(found[-_RECENT_OPENINGS:])
+
+
+# The quote must open after a space and start a sentence, so "Names in Ikebe don't sell" stays whole.
+_PROSE_THEN_QUOTE = re.compile(r"^(?P<prose>[^\"‘“]{12,}?[.!?,:;—-])\s+['\"‘“](?P<said>[A-Z…].+?)['\"’”]?\s*$", re.S)
+
+
+def _split_prose_from_speech(response) -> None:
+    """A speech line that opens with stage directions and then a quote: the directions go to the narrator
+    (playthrough 2026-11-07: "scarred ganger: The blade is already in his hand... 'You think...'")."""
+    out = []
+    for seg in response.narration:
+        m = _PROSE_THEN_QUOTE.match(seg.text) if seg.speaker != "narrator" else None
+        if m and m["said"].strip():
+            out.append(NarrationSegment(speaker="narrator", text=m["prose"].strip()))
+            seg.text = m["said"].strip()
+        out.append(seg)
+    response.narration[:] = out
 
 
 _RECENT_LINES = 40
@@ -507,6 +524,7 @@ async def _run_turn(
         if _opening(response) in _recent_openings(session):
             _drop_opening(response)
 
+    _split_prose_from_speech(response)
     _drop_repeated_lines(response, session)
 
     if actor_line is not None:
