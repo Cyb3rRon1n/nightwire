@@ -18,7 +18,7 @@ _AMOUNT = {"none": 0, "small": 2, "big": 4}
 _LEVEL_FIELDS = ("human_moment", "acted_as_machine")
 _HARA_OBJECTIVE = "Owe Old Hara a favor"
 _LOCATION_MAX = 60
-_TEXT_FIELDS = ("moved_to", "new_lead")
+_TEXT_FIELDS = ("moved_to", "new_lead", "objective_done")
 _MAX_OBJECTIVES = 5
 _TRUST_FIELDS = {"kept_promise_to": 1, "helped_at_a_cost": 1, "broke_promise_to": -1, "lie_discovered_by": 0}
 _SPEECH = re.compile(r"^[^:\n]{1,30}: ")  # "Mama Sato: ..." lines in the narration text
@@ -45,6 +45,10 @@ def build_questions(session: Session, player_id: str) -> dict[str, str]:
     questions["new_lead"] = (f"text: a concrete next step this scene gave {name}: a named person to see, a place to "
                              "go or a thing to find, in under 8 words (for example: Ask Jun about the Yomi Line data); "
                              "otherwise empty. Warnings, threats and riddles are not leads.")
+    if session.active_objectives:  # kaito3 replay: done objectives stayed listed
+        listed = "; ".join(session.active_objectives)
+        questions["objective_done"] = (f"text: which of these did {name} finish in this scene, copied exactly, or "
+                                       f"empty: {listed}")
     if (p := session.phone.get(player_id)) and p["contacts"]:
         who = "the contact's name exactly as written, or empty"
         questions["kept_promise_to"] = f"text: {name} kept a promise this turn to whom? {who}."
@@ -203,6 +207,9 @@ def apply_verdict(session: Session, player_id: str, verdict: dict) -> None:
             contact["trust"] = max(1.0, contact["trust"] - drop)
             contact["cold_until"] = phone.phone_of(session, player_id)["turn"] + 3
             session.pending_world_events.append(f"{contact['name']} knows {name} lied to them.")
+    done = verdict.get("objective_done")
+    if done in session.active_objectives:
+        session.active_objectives = [o for o in session.active_objectives if o != done]
     lead = verdict.get("new_lead")
     if lead and lead not in session.active_objectives:
         session.active_objectives = [*session.active_objectives, lead][-_MAX_OBJECTIVES:]

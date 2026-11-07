@@ -1922,3 +1922,15 @@ async def test_joining_a_game_under_way_gets_no_opening(tmp_path):
     await open_scene(session, _segments_client([[{"speaker": "narrator", "text": "x"}]], sent),
                      JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(), "p1")
     assert sent == [] and session.active_objectives == []
+
+
+async def test_child_stays_mama_satos_word_and_asterisks_go(tmp_path):
+    session = _session_with_character()
+    client = _segments_client([[{"speaker": "Hachi", "text": "Child, you've come at the right time. It still *wakes*."},
+                                {"speaker": "Old Hara", "text": "You want a name, child? Pay first."},
+                                {"speaker": "Mama Sato", "text": "Sit, child."}]], [])
+    await handle_action(session, client, JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(),
+                        "p1", {"type": "action", "text": "I wait."})
+    assert "Hachi: You've come at the right time. It still wakes." in session.log
+    assert "Old Hara: You want a name? Pay first." in session.log
+    assert "Mama Sato: Sit, child." in session.log
