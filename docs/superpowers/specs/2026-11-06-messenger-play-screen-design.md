@@ -128,6 +128,36 @@ This adds a **Phone** panel, a fourth panel in the right group (and a tab on pho
   later or not at all. Each character can shift it by their own pace (Saeko answers debtors instantly; Old Hara is
   slow). A late reply lands in the thread with an unread badge. Relationships start from how you met and can grow
   through play; the plan decides how.
+
+**Relationship model (owner chose role + trust; researched 2026-11-06).** Prior art uses a banded value plus a
+"what are they to you" label, with thresholds that change behaviour: Cyberpunk RED's lifepath Friends / Enemies /
+Tragic Love Affairs (an enemy carries a cause and a way to retaliate), Persona's confidant ranks (hidden points, later
+ranks harder, ranks unlock content), BioWare approval (high = warmer, low = confrontational or leaving), Cyberpunk 2077's
+phone (calls and texts triggered by quest state; players complained about spam, so rate-limit), Monsterhearts Strings
+(the value is spendable, not just a mood) and SillyTavern tracker extensions (re-inject the state into the prompt).
+Nobody found ties the value to reply time; that part is ours. The engine owns every number; the model only writes
+the words. Sources: rtalsoriangames.com Cyberpunk RED lifepath post; pcgamer.com Persona 4 Golden Social Links guide
+and "Cyberpunk 2077, stop it with all the phone calls and texts"; thegamer.com Dragon Age: Origins approval guide;
+Wikipedia "Monsterhearts"; github.com/prolix-oc/SillyTavern-SimTracker.
+
+- **Roles (11):** family, partner, friend (with a `close` flag for a best friend), crew (includes coworkers), boss,
+  fixer (includes clients), creditor, informant, rival, enemy, stranger. The role sets the *kind* of message.
+- **Trust 0-5**, stored as a float and shown as a whole number: 0 burned, 1 wary, 2 neutral, 3 friendly, 4 trusted,
+  5 ride-or-die. Strangers start at 2, enemies at 0, family and partner at 3. +1 for a kept promise or a finished
+  favour, +1 for help that cost you something, +0.5 for a gift or an on-time reply (passive gains capped at +1 per
+  in-game day), -1 for a broken promise, -2 for a betrayal. Going above 3 needs a big event, not small gains.
+- **Reply delay in your turns:** `base(role) + (5 - trust) + pace + availability`, clamped to 0-6. Base: partner 0;
+  family, friend, crew, creditor 1; boss, fixer, informant 2 (a fixer with your job open: 0); rival 3; enemy 4 and may
+  never answer. Pace is -1, 0 or +1 per character (Saeko -1, Old Hara +1). Availability adds 2 when they are asleep or
+  working the dinner rush, by a simple day schedule.
+- **Tone** is a tag from trust band and role (warm, friendly, curt, guarded, hostile), handed to the model with a
+  length cap and the facts it may use.
+- **Texting first** is engine-triggered and rate-limited (at most one unprompted text every few turns): a job (fixer),
+  a deadline (creditor), a threat (enemy), or a check-in from family or a partner at trust 3+ after you've been
+  silent a while. Trust 5 can bring an unprompted tip or favour.
+- **Lies** cost nothing until discovered. A discovered lie is -1, or -2 for trust 4+ or family and partner (-0.5 for
+  a white lie), then a cold tone for a few turns; repeated lies can't push trust below 1. Rivals and enemies shrug.
+  All numbers are starting values to tune in play.
 - **Being noticed:** the narrator decides. It is told a text was sent (never its words) and may have someone in the
   room notice. No dice.
 
