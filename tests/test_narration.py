@@ -1687,6 +1687,18 @@ async def test_a_plain_action_gets_no_roll(tmp_path):
     assert "not risky" in seen[1][-1]["content"]
 
 
+async def test_a_plain_action_never_opens_a_roll_even_if_the_redo_asks_again(tmp_path):
+    # Playthrough 2026-11-07: "Easy. I just want to know who's selling my name." was judged not risky, the narrator
+    # asked for a roll twice, and the second ask stood: every conversation turn became an Intimidation roll.
+    session = _session_with_character()
+    ask = {"player_id": "p1", "attribute": "presence", "skill": "intimidation", "stakes": "normal", "reason": "a name"}
+    client = _scripted_client([_say("You lean in.", "request_roll", ask), _say("He shrugs, and talks.", "request_roll", ask)],
+                              judge_answers=[_SAFE, {"human_moment_quote": "", "human_moment": "none"}])
+    await _call(session, client, "p1", {"text": "I ask who sells names."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert "p1" not in session.pending_rolls
+    assert "He shrugs, and talks." in session.log
+
+
 async def test_an_out_of_character_question_skips_the_story(tmp_path):
     session = _session_with_character()
     seen = []
@@ -1824,3 +1836,16 @@ async def test_a_fresh_opening_is_not_redone(tmp_path):
                         JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(),
                         "p1", {"type": "action", "text": "I buy noodles."})
     assert len(sent) == 1
+
+
+async def test_a_line_copied_from_recent_turns_is_dropped(tmp_path):
+    # Playthrough 2026-11-07: Old Hara's whole speech came back word for word after the roll, 3 turns running.
+    session = _session_with_character()
+    session.log += ["p1: I ask Hara.", "The clinic hums.", "Old Hara: You want a name, child? Then you'll have to pay for it."]
+    client = _segments_client([[{"speaker": "narrator", "text": "Hara's fingers stop tapping."},
+                                {"speaker": "Old Hara", "text": "You want a name, child? Then you'll have to pay for it."},
+                                {"speaker": "Old Hara", "text": "Fine. Ask at the torite office."}]], [])
+    await handle_action(session, client, JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(),
+                        "p1", {"type": "action", "text": "I wait."})
+    assert session.log.count("Old Hara: You want a name, child? Then you'll have to pay for it.") == 1
+    assert "Old Hara: Fine. Ask at the torite office." in session.log

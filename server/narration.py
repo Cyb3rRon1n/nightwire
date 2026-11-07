@@ -13,7 +13,7 @@ from engine.debt import repo_target_name, tick_debt
 from engine.phone import add_contact, find_contact, phone_of, post
 from engine.persistence import JSONFileSessionStore
 from engine.session import Session
-from narrator.client import NarratorClient
+from narrator.client import NarratorClient, _NoTool
 from narrator.image_backend import ImageBackend
 from narrator.image_prompt import resolve
 from narrator.movement import destination
@@ -149,6 +149,18 @@ def _recent_openings(session: Session) -> set[str]:
             if prose:
                 found.append(_opening_key(prose))
     return set(found[-_RECENT_OPENINGS:])
+
+
+_RECENT_LINES = 40
+
+
+def _drop_repeated_lines(response, session: Session) -> None:
+    """Drops reply lines (prose or speech) that copy a recent story line word for word (playthrough 2026-11-07:
+    Old Hara's whole speech before and after the roll, a ganger's threat across 4 turns). Keeps at least one line."""
+    recent = {_opening_key(line.split(": ", 1)[1] if _SPEECH.match(line) else line)
+              for line in [l for l in session.log if not l.startswith("[")][-_RECENT_LINES:]}
+    kept = [seg for seg in response.narration if _opening_key(seg.text) not in recent]
+    response.narration[:] = kept or response.narration[-1:]
 
 
 def _drop_opening(response) -> None:
@@ -473,6 +485,8 @@ async def _run_turn(
         messages = _build_messages(session, f"{prompt_text}\n\n{NO_ROLL}", narrator_client.num_ctx)
         response = await narrator_client.respond(messages)
         del session.pending_world_events[:len(shown_events)]
+        if response.tool == "request_roll":  # the check said plain: no roll, whatever the narrator wants (playthrough)
+            response.tool_call = _NoTool()
     if refusal is not None:
         # Redo once (Phase 18), decided before anything is logged or voiced: the
         # refused narration is never shown; narrate again with the refusal as fact.
@@ -492,6 +506,8 @@ async def _run_turn(
         del session.pending_world_events[:len(shown_events)]
         if _opening(response) in _recent_openings(session):
             _drop_opening(response)
+
+    _drop_repeated_lines(response, session)
 
     if actor_line is not None:
         session.log.append(actor_line)
