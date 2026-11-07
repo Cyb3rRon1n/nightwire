@@ -4,7 +4,7 @@ from collections.abc import Awaitable, Callable
 
 import httpx
 
-from narrator.design_sheets import _TILED
+from narrator.design_sheets import UPSCALER, _TILED
 from narrator.image_prompt import NEGATIVE
 
 _NEGATIVE_PROMPT = "blurry, deformed, extra limbs, bad anatomy, watermark, text, low quality"
@@ -148,6 +148,12 @@ class ComfyUIBackend:
                                                                      "width": width, "height": height, "crop": "center"}}
             workflow["71"] = {"class_type": "VAEEncodeTiled", "inputs": {"pixels": ["72", 0], "vae": ["4", 2], **_TILED}}
             workflow["3"]["inputs"].update(latent_image=["71", 0], denoise=START_STRENGTH)
+        if self.wants_tags and filename_prefix == "nightwire_scene":
+            # Finished, not a draft (owner 2026-11-07): 2x AnimeSharp in the same job, ~1-6 s on the RTX 2080.
+            workflow["30"] = {"class_type": "UpscaleModelLoader", "inputs": {"model_name": UPSCALER}}
+            workflow["31"] = {"class_type": "ImageUpscaleWithModel", "inputs": {"upscale_model": ["30", 0],
+                                                                               "image": workflow["9"]["inputs"]["images"]}}
+            workflow["9"]["inputs"]["images"] = ["31", 0]
         try:
             return await self.run_workflow(workflow)
         finally:

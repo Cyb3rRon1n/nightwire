@@ -60,6 +60,11 @@ def _keys(slugs: tuple[str, ...]) -> list[tuple[str, str]]:
             if _normalize(name) in entry:
                 names.update(entry)
         keys += [(n, slug) for n in names]
+    # World places with a kept render saved under their own name (owner Keep, World Gallery 2026-11-06/07).
+    for entry in kuroshio().places:
+        slug = re.sub(r"[^a-z0-9]+", "-", _normalize(entry.name)).strip("-")
+        if slug in slugs:
+            keys += [(_normalize(n), slug) for n in (entry.name, *entry.aliases)]
     return sorted(keys, key=lambda k: -len(k[0]))
 
 
