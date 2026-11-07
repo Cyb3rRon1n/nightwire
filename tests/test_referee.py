@@ -272,3 +272,96 @@ def test_gig_paid_out_texts_from_jun_and_raises_trust():
     assert [m["text"] for m in p["threads"]["Jun Arakawa"]] == ["Money's in. Clean work."]
     assert phone.unread(s, "p1")["Jun Arakawa"] == 1
     assert p["contacts"]["Jun Arakawa"]["trust"] == phone.START_TRUST.get("fixer", 2.0) + 0.5
+
+
+# --- trust moves (phone) ---
+
+from engine import phone as _phone
+
+_NONE = {"human_moment_quote": "", "human_moment": "none"}
+
+
+def _phone_session(*contacts):
+    s = _session()
+    for name, role in contacts:
+        _phone.add_contact(s, "p1", name, role)
+    return s
+
+
+async def _trust_turn(s, field, name, narration="Saeko Kirigaya stares at you."):
+    await run_referee(s, _Client({**_NONE, "moved_to": "", field: name}), "p1", "I talk.", narration)
+
+
+def _c(s, name):
+    return _phone.phone_of(s, "p1")["contacts"][name]
+
+
+def test_trust_questions_absent_without_contacts_present_with():
+    assert not {"kept_promise_to", "helped_at_a_cost", "broke_promise_to", "lie_discovered_by"} & set(build_questions(_session(), "p1"))
+    q = build_questions(_phone_session(("Saeko Kirigaya", "fixer")), "p1")
+    assert {"kept_promise_to", "helped_at_a_cost", "broke_promise_to", "lie_discovered_by"} <= set(q)
+    assert build_schema(q)["properties"]["lie_discovered_by"]["type"] == "string"
+
+
+async def test_kept_promise_and_help_raise_trust_broke_lowers():
+    s = _phone_session(("Saeko Kirigaya", "fixer"))
+    t0 = _c(s, "Saeko Kirigaya")["trust"]
+    await _trust_turn(s, "kept_promise_to", "Saeko Kirigaya")
+    await _trust_turn(s, "helped_at_a_cost", "Saeko Kirigaya")
+    assert _c(s, "Saeko Kirigaya")["trust"] > t0
+    t1 = _c(s, "Saeko Kirigaya")["trust"]
+    await _trust_turn(s, "broke_promise_to", "Saeko Kirigaya")
+    assert _c(s, "Saeko Kirigaya")["trust"] == t1 - 1
+
+
+async def test_lie_discovered_lowers_trust_goes_cold_and_tells_narrator():
+    s = _phone_session(("Saeko Kirigaya", "fixer"))
+    c = _c(s, "Saeko Kirigaya"); c["trust"] = 3.0
+    await _trust_turn(s, "lie_discovered_by", "Saeko")
+    assert c["trust"] == 2.0 and c["cold_until"] == 3
+    assert "Saeko Kirigaya knows Rook lied to them." in s.pending_world_events
+
+
+async def test_lie_costs_two_at_high_trust_or_family():
+    s = _phone_session(("Saeko Kirigaya", "fixer"), ("Mom", "family"))
+    _c(s, "Saeko Kirigaya")["trust"] = 4.0
+    await _trust_turn(s, "lie_discovered_by", "Saeko Kirigaya")
+    assert _c(s, "Saeko Kirigaya")["trust"] == 2.0
+    _c(s, "Mom")["trust"] = 3.0
+    await _trust_turn(s, "lie_discovered_by", "Mom", "Mom frowns.")
+    assert _c(s, "Mom")["trust"] == 1.0
+
+
+async def test_lie_never_drops_below_one_and_low_trust_unchanged():
+    s = _phone_session(("Saeko Kirigaya", "fixer"))
+    c = _c(s, "Saeko Kirigaya"); c["trust"] = 1.0
+    await _trust_turn(s, "lie_discovered_by", "Saeko Kirigaya")
+    assert c["trust"] == 1.0
+    c["trust"] = 0.5
+    await _trust_turn(s, "lie_discovered_by", "Saeko Kirigaya")
+    assert c["trust"] == 0.5
+
+
+async def test_rival_unchanged_by_lie_no_cold_spell():
+    s = _phone_session(("Saeko Kirigaya", "rival"))
+    c = _c(s, "Saeko Kirigaya"); before = c["trust"]
+    await _trust_turn(s, "lie_discovered_by", "Saeko Kirigaya")
+    assert c["trust"] == before and c["cold_until"] == -1
+    assert not s.pending_world_events
+
+
+async def test_ungrounded_trust_name_is_ignored_and_logged():
+    s = _phone_session(("Saeko Kirigaya", "fixer"))
+    c = _c(s, "Saeko Kirigaya"); before = c["trust"]
+    await _trust_turn(s, "kept_promise_to", "Saeko Kirigaya", "Rain falls.")
+    assert c["trust"] == before
+    assert "[referee: kept_promise_to had no match in the scene, ignored]" in s.log
+
+
+async def test_short_name_matches_one_contact_but_shared_word_matches_none():
+    s = _phone_session(("Saeko Kirigaya", "fixer"), ("Saeko Mori", "friend"))
+    t = {n: _c(s, n)["trust"] for n in ("Saeko Kirigaya", "Saeko Mori")}
+    await _trust_turn(s, "broke_promise_to", "Saeko", "Saeko glares.")
+    assert {n: _c(s, n)["trust"] for n in t} == t
+    await _trust_turn(s, "broke_promise_to", "Kirigaya", "Kirigaya glares.")
+    assert _c(s, "Saeko Kirigaya")["trust"] == t["Saeko Kirigaya"] - 1
