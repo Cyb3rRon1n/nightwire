@@ -1748,3 +1748,17 @@ async def test_a_move_survives_a_narrator_timeout(tmp_path):
         await handle_action(session, client, JSONFileSessionStore(tmp_path), _UnusedImageBackend(), _UnusedTTSBackend(),
                             "p1", {"type": "action", "text": "I take the Ring Line to Tenjō Heights."})
     assert session.location == "Tenjō Heights"
+
+
+def test_recent_events_keep_actions_and_dialogue_but_only_the_last_three_turns_of_prose_minus_openings():
+    # Soak run 5: the narrator copied its own scene-setting openings ("The narrow corridor of Ikebe Low hums...").
+    from server.narration import _build_messages
+    session = _session_with_character()
+    for n in range(1, 6):
+        session.log += [f"p1: action {n}", f"The corridor hums {n}. Rain taps the glass {n}.", f"Mama Sato: line {n}"]
+    content = _build_messages(session, "next", 8192)[0]["content"]
+    for n in range(1, 6):
+        assert f"p1: action {n}" in content and f"Mama Sato: line {n}" in content
+    assert "Rain taps the glass 1" not in content and "Rain taps the glass 2" not in content
+    for n in (3, 4, 5):
+        assert f"Rain taps the glass {n}." in content and f"The corridor hums {n}." not in content
