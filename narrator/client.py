@@ -183,7 +183,8 @@ class NarratorClient:
         return await self._client.chat(
             model=model,
             messages=messages,
-            options={"temperature": 0.3, "num_ctx": self.num_ctx},
+            think=False,
+            options={"temperature": 0.3, "num_predict": 400, "num_ctx": self.num_ctx},
         )
 
     async def unload(self) -> None:
