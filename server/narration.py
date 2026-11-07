@@ -17,7 +17,7 @@ from narrator.client import NarrationSegment, NarratorClient, _NoTool
 from narrator.image_backend import ImageBackend
 from narrator.image_prompt import resolve
 from narrator.movement import destination
-from narrator.place_art import location_art
+from narrator.place_art import district_art, location_art
 from narrator.referee import run_referee
 from narrator.tools import RequestRoll, execute_tool, roll_check
 from narrator.tts_backend import TTSBackend
@@ -622,7 +622,11 @@ async def _run_turn(
         except (ValueError, TypeError, OSError, httpx.HTTPError, RuntimeError):
             pass
         try:
-            if image_negative is None:
+            start = district_art(session.location) if getattr(image_backend, "wants_tags", False) else None
+            if start is not None:  # a place without its own art starts from its district's (owner 2026-11-07)
+                image_bytes = await image_backend.generate_scene(image_prompt, reference_paths, negative=image_negative,
+                                                                 start_image=start.read_bytes())
+            elif image_negative is None:
                 image_bytes = await image_backend.generate_scene(image_prompt, reference_paths)
             else:
                 image_bytes = await image_backend.generate_scene(image_prompt, reference_paths, negative=image_negative)

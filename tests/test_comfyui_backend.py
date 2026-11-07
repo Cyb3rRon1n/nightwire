@@ -231,3 +231,18 @@ async def test_an_in_game_image_frees_comfyui_afterwards():
     backend = ComfyUIBackend(checkpoint="v1-5-pruned-emaonly-fp16.safetensors", client=client, sleep_fn=_no_sleep)
     await backend.generate_scene("a rainy alley", [])
     assert client.calls[-1] == ("post", "/free", {"unload_models": True, "free_memory": True})
+
+
+@pytest.mark.asyncio
+async def test_a_scene_can_start_from_approved_art():
+    # Owner 2026-11-07: a new place started from its district's approved art at 85% kept Kuroshio's look.
+    class Client(_FakeComfyClient):
+        async def post(self, url, json=None, files=None, data=None):
+            self.calls.append(("post", url, json))
+            return _FakeResponse(json_data={"prompt_id": self.prompt_id, "name": "start.jpg"})
+    client = Client()
+    backend = ComfyUIBackend(client=client, sleep_fn=_no_sleep, profile="noobai")
+    await backend.generate_scene("a train car", [], start_image=b"jpeg-bytes")
+    graph = next(c[2]["prompt"] for c in client.calls if c[1] == "/prompt")
+    assert "5" not in graph and graph["70"]["inputs"]["image"] == "start.jpg"
+    assert graph["3"]["inputs"]["latent_image"] == ["71", 0] and graph["3"]["inputs"]["denoise"] == 0.85
