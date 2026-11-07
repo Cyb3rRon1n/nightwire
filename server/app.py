@@ -5,6 +5,7 @@ from engine.persistence import JSONFileSessionStore
 from engine.session import Session
 from narrator.client import NarratorClient
 from narrator.image_backend import ImageBackend
+from narrator.place_art import ART_DIR
 from narrator.tts_backend import TTSBackend
 from server.connection_manager import ConnectionManager
 from server.dispatch import handle_message
@@ -23,6 +24,8 @@ def create_app(
     # - store.directory always exists (JSONFileSessionStore creates it), the
     # portrait/image subdirs are created lazily on first write.
     app.mount("/media", StaticFiles(directory=store.directory), name="media")
+    if ART_DIR.is_dir():  # approved place art (tools/export_place_art.py), named by StateView.location_art
+        app.mount("/place-art", StaticFiles(directory=ART_DIR), name="place-art")
     manager = ConnectionManager()
     sessions: dict[str, Session] = {}  # ponytail: single-process; needs a real store if ever multi-worker
 

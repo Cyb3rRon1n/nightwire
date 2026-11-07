@@ -88,3 +88,15 @@ const PLAYER_FACING = ["[initiative: ", "[chrome installed: ", "[chrome removed:
 export function isPlayerFacing(line: string): boolean {
   return PLAYER_FACING.some((prefix) => line.startsWith(prefix));
 }
+
+export type Backdrop = { kind: "scene" | "place"; path: string } | null;
+
+// What sits behind the conversation: a scene image generated since the player
+// arrived here wins; before that, the approved art for the place; with neither,
+// the newest scene image from anywhere (or nothing).
+export function pickBackdrop(images: string[], locationArt: string | null, imagesAtArrival: number): Backdrop {
+  const latest = images.at(-1);
+  if (latest && images.length > imagesAtArrival) return { kind: "scene", path: latest };
+  if (locationArt) return { kind: "place", path: locationArt };
+  return latest ? { kind: "scene", path: latest } : null;
+}

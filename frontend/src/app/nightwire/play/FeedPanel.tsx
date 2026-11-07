@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { CharacterSheet, ClientMessage, RedactedCharacter, RollResult, StateView } from "@/lib/nightwire/protocol";
 import { portraitFor } from "@/lib/nightwire/portrait";
-import { mediaUrl } from "@/lib/nightwire/media";
-import { AUDIO_LINE, IMAGE_LINE, ROLL_LINE, ROLL_PENDING_LINE, classifyLine, groupStarts, isPlayerFacing, sceneImages, speakerKey } from "@/lib/nightwire/feed";
+import { mediaUrl, serverUrl } from "@/lib/nightwire/media";
+import { AUDIO_LINE, IMAGE_LINE, ROLL_LINE, ROLL_PENDING_LINE, classifyLine, groupStarts, isPlayerFacing, pickBackdrop, sceneImages, speakerKey } from "@/lib/nightwire/feed";
 import { npcColour } from "@/lib/nightwire/npcColour";
 import { PendingRollCard, RollResultCard } from "../RollCard";
 import { ChromeOfferCard } from "../ChromeOfferCard";
@@ -154,8 +154,12 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, onO
     return speakerKey(entry);
   }));
   const images = sceneImages(view.log);
-  const latest = images.at(-1) ?? null;
-  const backdrop = sceneArt && latest && !compact;
+  // How many scene images existed when the player got here: newer ones replace the place's approved art.
+  const [arrival, setArrival] = useState({ location: view.location, images: images.length });
+  if (arrival.location !== view.location) setArrival({ location: view.location, images: images.length }); // derived state, set during render
+  const pick = pickBackdrop(images, view.location_art ?? null, arrival.images);
+  const art = pick && (pick.kind === "place" ? serverUrl(pick.path) : mediaUrl(pick.path));
+  const backdrop = sceneArt && art && !compact;
   let imageIndex = -1;
 
   function handleSendAction(event: React.FormEvent) {
@@ -176,12 +180,12 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, onO
 
   return (
     <section aria-label="Conversation" className="relative flex h-full min-h-0 flex-col overflow-hidden">
-      {backdrop && <SceneBackdrop src={mediaUrl(latest)} />}
+      {backdrop && <SceneBackdrop src={art} />}
       {backdrop && <div className="nw-scene-scrim" aria-hidden="true" />}
 
-      {compact && sceneArt && latest && (
+      {compact && sceneArt && art && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={mediaUrl(latest)} alt="" className="w-full shrink-0 object-cover" style={{ height: 150, borderBottom: "1.5px solid var(--nw-frame-cool)" }} />
+        <img src={art} alt="" className="w-full shrink-0 object-cover" style={{ height: 150, borderBottom: "1.5px solid var(--nw-frame-cool)" }} />
       )}
       <div className={backdrop ? "nw-scene-title" : "nw-scene-title nw-scene-title-plain"}>
         <h1>{view.location ?? "Kuroshio"}</h1>

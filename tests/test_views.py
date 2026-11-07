@@ -154,3 +154,11 @@ def test_view_exposes_pending_chrome_offers():
     session.pending_chrome_offers["p1"] = "kagerou"
     assert build_view(session, "p1")["pending_chrome_offers"] == {"p1": "kagerou"}
     assert build_view(session, "p2")["pending_chrome_offers"] == {}
+
+
+def test_view_names_the_art_for_the_current_place():
+    session = Session(session_id="s1")
+    session.location = "Mama Sato's izakaya"
+    assert build_view(session, "p1")["location_art"] == "place-art/mama-satos-izakaya.jpg"
+    session.location = None
+    assert build_view(session, "p1")["location_art"] is None
