@@ -75,7 +75,10 @@ def create_app(
                 except WebSocketDisconnect:
                     raise
                 except Exception as e:
-                    await websocket.send_json({"type": "error", "message": f"invalid message: {e}"})
+                    try:
+                        await websocket.send_json({"type": "error", "message": f"invalid message: {e}"})
+                    except RuntimeError:  # the socket already closed (playthrough 2026-11-07 traceback): stop listening
+                        break
                     continue
 
                 if message.get("type") == "join":
@@ -93,11 +96,16 @@ def create_app(
                     try:
                         await _handle(session, player_id, message)
                     except Exception as e:
-                        await websocket.send_json({"type": "error", "message": str(e)})
+                        try:
+                            await websocket.send_json({"type": "error", "message": str(e)})
+                        except RuntimeError:  # closed mid-turn
+                            break
                         continue
                     store.save(session)
                     await manager.broadcast(session_id, session)
         except WebSocketDisconnect:
+            pass
+        finally:
             manager.disconnect(session_id, player_id, websocket)
 
     return app
