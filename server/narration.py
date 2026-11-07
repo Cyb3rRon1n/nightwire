@@ -5,7 +5,8 @@ import httpx
 import ollama
 
 from engine.character import is_tsukumogami
-from narrator.risk import INSTRUCTION as RISK_INSTRUCTION, NO_ROLL, is_risky
+from narrator.ooc import answer_ooc, is_ooc
+from narrator.risk import INSTRUCTION as RISK_INSTRUCTION, NO_ROLL, assess
 from engine.chrome import change_humanity, usable_overclocks
 from engine.debt import repo_target_name, tick_debt
 from engine.persistence import JSONFileSessionStore
@@ -260,20 +261,26 @@ async def handle_action(
         raise ValueError("missing 'text' in action message")
     if len(action_text) > 1000:
         raise ValueError("action text too long")
+    character = session.characters.get(player_id)
+    if is_ooc(action_text):
+        # Out of character (dry run 2026-11-06): a help-desk answer, kept out of the story and the narrator's context.
+        who = character.name if character else player_id
+        session.log.append(f"[ooc question: {who}: {action_text.strip()}]")
+        session.log.append(f"[ooc: {await answer_ooc(narrator_client, action_text)}]")
+        return
     if player_id in session.pending_rolls:
         raise ValueError("roll first")
-    character = session.characters.get(player_id)
     if character is not None:
         for event in tick_debt(character):
             session.pending_world_events.append(event)
             session.log.append(f"[torite: {event}]")
-    risky = await is_risky(narrator_client, action_text) if character is not None else None
+    risky, roll_skill = await assess(narrator_client, action_text) if character is not None else (None, None)
     must_roll = risky is True
     await _run_turn(
         session, narrator_client, store, image_backend, tts_backend, player_id,
         prompt_text=f"{action_text}\n\n{RISK_INSTRUCTION}" if must_roll else action_text,
         actor_line=f"{player_id}: {action_text}", allow_roll=True, referee_action=action_text, must_roll=must_roll,
-        no_roll=risky is False,
+        no_roll=risky is False, roll_skill=roll_skill,
     )
 
 
@@ -289,8 +296,8 @@ async def _log_narration(session, response, store, tts_backend) -> str:
         if segment.speaker != "narrator" and _is_player_voice(session, segment.speaker):
             session.log.append(f"[voice filtered: {segment.speaker}]")
             continue
-        texts.append(segment.text)
         line = segment.text if segment.speaker == "narrator" else f"{segment.speaker}: {segment.text}"
+        texts.append(line)  # with the speaker, so the referee can tell narration from what NPCs say
         session.log.append(line)
         log_index = len(session.log)
         voice = assign_voice(session, segment.speaker, segment.gender, tts_backend.voices)
@@ -303,7 +310,7 @@ async def _log_narration(session, response, store, tts_backend) -> str:
             session.log.append(f"[audio: {relative_path}]")
         except (ValueError, TypeError, OSError) as e:
             session.log.append(f"[audio error: {e}]")
-    return " ".join(texts)
+    return "\n".join(texts)
 
 
 def _in_fiction_refusal(session, response, player_id, allow_roll) -> str | None:
@@ -322,13 +329,15 @@ def _in_fiction_refusal(session, response, player_id, allow_roll) -> str | None:
     return None
 
 
-def _apply_tool(session, response, player_id, allow_roll) -> None:
+def _apply_tool(session, response, player_id, allow_roll, roll_skill: str | None = None) -> None:
     """Runs the narrator's tool call; an engine refusal is logged as a tool error."""
     if response.tool is None:
         return
     tool_args = dict(response.tool_args)
     if response.tool == "request_roll":
         if allow_roll:
+            if roll_skill:
+                tool_args["skill"] = roll_skill  # the risk check's pick (narrator/risk.py)
             _hold_roll(session, player_id, tool_args)
         else:
             session.log.append("[tool error: no new rolls during a roll resolution]")
@@ -353,6 +362,7 @@ async def _run_turn(
     referee_action: str | None = None,
     must_roll: bool = False,
     no_roll: bool = False,
+    roll_skill: str | None = None,
 ) -> None:
     # Events are shown once, but only dropped after the narrator actually
     # responded; events queued during the turn survive to the next one.
@@ -389,7 +399,7 @@ async def _run_turn(
     if refusal is not None:
         session.log.append(f"[redo: {refusal}]")
     narration_text = await _log_narration(session, response, store, tts_backend)
-    _apply_tool(session, response, player_id, allow_roll)  # a refusal on the redo is only logged
+    _apply_tool(session, response, player_id, allow_roll, roll_skill)  # a refusal on the redo is only logged
 
     # Referee (Phase 18): not on the setup turn that opened a roll - the outcome
     # isn't known yet - nor when every segment was voice-filtered.

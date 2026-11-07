@@ -373,3 +373,23 @@ def test_place_art_is_served(tmp_path):
 def test_character_art_is_served(tmp_path):
     response = _client(tmp_path).get("/character-art/mama-sato.jpg")
     assert response.status_code == 200 and response.headers["content-type"] == "image/jpeg"
+
+
+def test_a_known_player_gets_the_game_on_connect(tmp_path):
+    # Dry run 2026-11-06: after a refresh or a server restart the screen waited forever, because nothing was sent
+    # until the player acted.
+    client = _client(tmp_path)
+    with client.websocket_connect("/ws/s1/p1") as ws:
+        ws.send_json({"type": "join", "character": {"player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"}})
+        ws.receive_json()
+    with client.websocket_connect("/ws/s1/p1") as ws:
+        view = ws.receive_json()
+        assert view["type"] == "state" and view["characters"]["p1"]["name"] == "Rook"
+
+
+def test_join_needs_a_name_role_and_lifepath(tmp_path):
+    client = _client(tmp_path)
+    with client.websocket_connect("/ws/s1/p1") as ws:
+        ws.send_json({"type": "join", "character": {"player_id": "p1", "name": "  ", "role": "", "lifepath": ""}})
+        reply = ws.receive_json()
+        assert reply["type"] == "error" and "name" in reply["message"]

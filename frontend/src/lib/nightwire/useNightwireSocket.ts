@@ -25,7 +25,7 @@ export function useNightwireSocket(sessionId: string | null, playerId: string | 
   const [state, dispatch] = useReducer(reducer, initialClientState)
 
   const base = process.env.NEXT_PUBLIC_NIGHTWIRE_WS_URL || DEFAULT_WS_URL
-  const url = sessionId && playerId ? `${base}/ws/${sessionId}/${playerId}` : null
+  const url = sessionId && playerId ? `${base}/ws/${encodeURIComponent(sessionId)}/${encodeURIComponent(playerId)}` : null
 
   const { sendJsonMessage, readyState } = useWebSocket(url, {
     share: true,

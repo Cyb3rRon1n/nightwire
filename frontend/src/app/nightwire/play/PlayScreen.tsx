@@ -23,13 +23,14 @@ function subscribeNarrow(onChange: () => void) {
   return () => query.removeEventListener("change", onChange);
 }
 
-export function PlayScreen({ view, playerId, send, readyLabel, error, errorSeq }: {
+export function PlayScreen({ view, playerId, send, readyLabel, error, errorSeq, onLeave }: {
   view: StateView;
   playerId: string;
   send: (msg: ClientMessage) => void;
   readyLabel: string;
   error: string | null;
   errorSeq: number;
+  onLeave: () => void;
 }) {
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: "nightwire-play", storage: browserStore });
   const groupRef = useRef<GroupImperativeHandle>(null);
@@ -99,6 +100,7 @@ export function PlayScreen({ view, playerId, send, readyLabel, error, errorSeq }
           </>
         )}
         <span className="nw-chip" style={{ cursor: "default" }} role="status">{readyLabel}</span>
+        <button type="button" className="nw-chip" onClick={onLeave} title="Forget this session on this browser and go back to Connect">Leave</button>
       </header>
       {narrow ? (
         <>

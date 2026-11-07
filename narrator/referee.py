@@ -15,6 +15,7 @@ _AMOUNT = {"none": 0, "small": 2, "big": 4}
 _LEVEL_FIELDS = ("human_moment", "acted_as_machine")
 _HARA_OBJECTIVE = "Owe Old Hara a favor"
 _LOCATION_MAX = 60
+_SPEECH = re.compile(r"^[^:\n]{1,30}: ")  # "Mama Sato: ..." lines in the narration text
 _SYSTEM = (
     "You are a strict referee for a tabletop RPG. Read the player's action and the narration, "
     "then answer each question about what actually happened in the narration. "
@@ -124,7 +125,10 @@ def ground(session: Session, verdict: dict, action: str, narration: str) -> dict
             session.log.append(f"[referee: {k} had no quote from {where}, ignored]")
     # A new location counts only if the scene really names it (2026-11-06 live: the narrator never set the izakaya).
     moved = " ".join(str(grounded.get("moved_to", "")).split())[:_LOCATION_MAX]
-    if moved and _squash(moved) not in _squash(f"{action}\n{narration}"):
+    # Only the player or the narrator's own prose moves the player: an NPC naming a place isn't arriving there
+    # (dry run 2026-11-06: "What brings you to Ikebe?" moved the player out of the izakaya).
+    prose = "\n".join(line for line in narration.splitlines() if not _SPEECH.match(line))
+    if moved and _squash(moved) not in _squash(f"{action}\n{prose}"):
         session.log.append("[referee: moved_to had no match in the scene, ignored]")
         moved = ""
     grounded["moved_to"] = moved

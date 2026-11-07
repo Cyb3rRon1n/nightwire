@@ -79,3 +79,7 @@
   .nw-scene-title h1 { font-size: 20px; }
   .nw-composer { padding: 10px 12px; }
 }
+
+/* Out-of-character questions and the help desk's answers: quiet, outside the story's voice */
+.nw-ooc { border-left: 2px solid var(--nw-frame-cool); padding: 4px 10px; font-size: 14px; line-height: 1.5; color: #b8c2cc; background: rgba(11,13,17,.7); }
+.nw-ooc-label { display: block; font: 600 12px var(--font-rajdhani), "Rajdhani", sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--nw-cyan); }

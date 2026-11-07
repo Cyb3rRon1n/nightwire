@@ -83,7 +83,7 @@ export function sceneImages(log: string[]): string[] {
 // Bracket lines are mostly for the server and its logs (tool results, errors,
 // prompts, referee notes), and remember_npc results would even leak NPC
 // secrets. Show only the ones written for players; the rest stay hidden.
-const PLAYER_FACING = ["[initiative: ", "[chrome installed: ", "[chrome removed: ", "[torite: ", "[selfhood: ", "[utsusemi: "];
+const PLAYER_FACING = ["[initiative: ", "[chrome installed: ", "[chrome removed: ", "[torite: ", "[selfhood: ", "[utsusemi: ", "[ooc question: ", "[ooc: "];
 
 export function isPlayerFacing(line: string): boolean {
   return PLAYER_FACING.some((prefix) => line.startsWith(prefix));
