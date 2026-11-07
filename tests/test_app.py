@@ -393,3 +393,29 @@ def test_join_needs_a_name_role_and_lifepath(tmp_path):
         ws.send_json({"type": "join", "character": {"player_id": "p1", "name": "  ", "role": "", "lifepath": ""}})
         reply = ws.receive_json()
         assert reply["type"] == "error" and "name" in reply["message"]
+
+
+def test_text_message_is_routed_and_unknown_contacts_are_refused(tmp_path):
+    from engine import phone
+    from engine.character import CharacterSheet
+    from engine.session import Session
+
+    class Judge:
+        async def judge(self, messages, schema):
+            return {"reply": "On my way."}
+
+    seeded = Session(session_id="s1")
+    seeded.characters["p1"] = CharacterSheet(player_id="p1", name="Rook", role="solo", lifepath="streetkid")
+    phone.add_contact(seeded, "p1", "Mika", "partner")["trust"] = 5.0
+    JSONFileSessionStore(tmp_path).save(seeded)
+
+    client = _client(tmp_path, Judge())
+    with client.websocket_connect("/ws/s1/p1") as ws:
+        ws.receive_json()
+        ws.send_json({"type": "text", "to": "Nobody", "text": "hi"})
+        assert "not in your contacts" in ws.receive_json()["message"]
+        ws.send_json({"type": "text", "to": "Mika", "text": "hi"})
+        ws.receive_json()
+
+    thread = JSONFileSessionStore(tmp_path).load("s1").phone["p1"]["threads"]["Mika"]
+    assert [m["text"] for m in thread] == ["hi", "On my way."]

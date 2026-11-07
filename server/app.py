@@ -12,6 +12,7 @@ from narrator.tts_backend import TTSBackend
 from server.connection_manager import ConnectionManager
 from server.dispatch import handle_message
 from server.narration import handle_action, narrate_roll, resolve_roll
+from server.phone_turns import deliver_due, handle_text
 from server.portrait import handle_approve_character
 from server.views import build_view
 
@@ -40,12 +41,16 @@ def create_app(
     async def _handle(session: Session, player_id: str, message: dict) -> None:
         if message.get("type") == "action":
             await handle_action(session, narrator_client, store, image_backend, tts_backend, player_id, message)
+            await deliver_due(session, narrator_client, player_id)
+        elif message.get("type") == "text":
+            await handle_text(session, narrator_client, player_id, message)
         elif message.get("type") == "roll":
             rolled = resolve_roll(session, player_id, overclock=message.get("overclock"))
             # Show the die landing now; the resolution narration (slow) follows.
             store.save(session)
             await manager.broadcast(session.session_id, session)
             await narrate_roll(session, narrator_client, store, image_backend, tts_backend, player_id, rolled)
+            await deliver_due(session, narrator_client, player_id)
         elif message.get("type") == "approve_character":
             await handle_approve_character(session, store, narrator_client, image_backend, player_id, message,
                                            tts_backend=tts_backend)
