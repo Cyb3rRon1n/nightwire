@@ -122,8 +122,12 @@ This adds a **Phone** panel, a fourth panel in the right group (and a tab on pho
   text any contact privately; each contact remembers what you told them, so a lie can come back. Calls come later.
 - **Contacts:** the people you've met. Saeko's crew and Jun Arakawa from the start, plus anyone you talk to in play,
   added automatically.
-- **Replies:** right away. Sending a text is a quick turn; the contact's reply appears in the thread at once and the
-  scene around you carries on.
+- **Replies:** timing depends on the contact and on your relationship with them (owner, revised 2026-11-06). Each
+  contact has a relationship (best friend, friend, coworker, boss, acquaintance, stranger) that sets how soon they answer,
+  counted in your turns: a best friend answers at once, coworkers and the boss within a turn or two, an acquaintance
+  later or not at all. Each character can shift it by their own pace (Saeko answers debtors instantly; Old Hara is
+  slow). A late reply lands in the thread with an unread badge. Relationships start from how you met and can grow
+  through play; the plan decides how.
 - **Being noticed:** the narrator decides. It is told a text was sent (never its words) and may have someone in the
   room notice. No dice.
 
