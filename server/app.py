@@ -11,7 +11,7 @@ from narrator.place_art import ART_DIR
 from narrator.tts_backend import TTSBackend
 from server.connection_manager import ConnectionManager
 from server.dispatch import handle_message
-from server.narration import handle_action, narrate_roll, resolve_roll
+from server.narration import handle_action, narrate_roll, open_scene, resolve_roll
 from server.phone_turns import deliver_due, handle_text
 from server.portrait import handle_approve_character
 from server.views import build_view
@@ -22,6 +22,7 @@ def create_app(
     narrator_client: NarratorClient,
     image_backend: ImageBackend,
     tts_backend: TTSBackend,
+    opening_scene: bool = True,
 ) -> FastAPI:
     app = FastAPI()
     # Serves generated portraits/scene images (sessions/portraits/..., sessions/images/...)
@@ -54,6 +55,14 @@ def create_app(
         elif message.get("type") == "approve_character":
             await handle_approve_character(session, store, narrator_client, image_backend, player_id, message,
                                            tts_backend=tts_backend)
+        elif message.get("type") == "join":
+            is_new = player_id not in session.characters
+            handle_message(session, message, player_id)
+            if is_new and opening_scene:
+                # Show the sheet straight away; the opening scene (slow) follows.
+                store.save(session)
+                await manager.broadcast(session.session_id, session)
+                await open_scene(session, narrator_client, store, image_backend, tts_backend, player_id)
         else:
             handle_message(session, message, player_id)
 

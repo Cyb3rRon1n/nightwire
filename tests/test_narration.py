@@ -1897,3 +1897,28 @@ def test_new_images_only_where_no_approved_art_and_at_most_every_six_turns():
     assert not _image_allowed(session)
     session.log.append("p1: wait")
     assert _image_allowed(session)
+
+
+async def test_a_new_game_opens_with_a_scene_and_jun_s_first_job(tmp_path):
+    # Playthrough 2026-11-07: a new player joined to an empty feed and no goal.
+    from server.narration import open_scene
+    session = _session_with_character()
+    session.characters["p1"].lifepath = "streetkid"
+    sent = []
+    client = _segments_client([[{"speaker": "narrator", "text": "Rain hammers the tin awning over the noodle stall."}]], sent)
+    await open_scene(session, client, JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(), "p1")
+    assert session.location == "Ikebe Low"
+    assert "Rain hammers the tin awning over the noodle stall." in session.log
+    assert "opening scene" in sent[0][-1]["content"]
+    jun = session.phone["p1"]["threads"]["Jun Arakawa"]
+    assert "Hachi" in jun[-1]["text"] and jun[-1]["deliver_at"] == session.phone["p1"]["turn"] + 1
+    assert session.active_objectives == ["Pick up Jun's case from Hachi at Kuroshio Docks"]
+
+
+async def test_joining_a_game_under_way_gets_no_opening(tmp_path):
+    from server.narration import open_scene
+    session = _session_with_character(); session.log = ["The bar is loud."]
+    sent = []
+    await open_scene(session, _segments_client([[{"speaker": "narrator", "text": "x"}]], sent),
+                     JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(), "p1")
+    assert sent == [] and session.active_objectives == []

@@ -52,7 +52,7 @@ def _client(tmp_path, narrator_client=None, image_backend=None, tts_backend=None
     client = narrator_client or NarratorClient(chat_fn=_unused_chat_fn, generate_fn=_unused_generate_fn)
     backend = image_backend or _UnusedImageBackend()
     tts = tts_backend or _UnusedTTSBackend()
-    return TestClient(create_app(store, client, backend, tts))
+    return TestClient(create_app(store, client, backend, tts, opening_scene=False))  # its narration: test_narration
 
 
 def test_join_broadcasts_a_filtered_view_back_to_the_sender(tmp_path):
@@ -419,3 +419,18 @@ def test_text_message_is_routed_and_unknown_contacts_are_refused(tmp_path):
 
     thread = JSONFileSessionStore(tmp_path).load("s1").phone["p1"]["threads"]["Mika"]
     assert [m["text"] for m in thread] == ["hi", "On my way."]
+
+
+def test_a_new_player_sees_their_sheet_then_the_opening_scene(tmp_path):
+    async def chat_fn(*, model, messages, format):
+        return {"message": {"content": json.dumps({"narration": [{"speaker": "narrator", "text": "Rain on the noodle stall."}],
+                                                    "tool_call": {"tool": None}})}}
+    narrator = NarratorClient(chat_fn=chat_fn, generate_fn=_unused_generate_fn)
+    app = create_app(JSONFileSessionStore(tmp_path), narrator, _UnusedImageBackend(), FakeTTSBackend())
+    with TestClient(app).websocket_connect("/ws/s1/p1") as ws:
+        ws.send_json({"type": "join", "character": {"player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"}})
+        first = ws.receive_json()
+        assert first["characters"]["p1"]["name"] == "Rook" and "Rain on the noodle stall." not in first["log"]
+        then = ws.receive_json()
+    assert "Rain on the noodle stall." in then["log"] and then["location"] == "Ikebe Low"
+    assert then["active_objectives"] == ["Pick up Jun's case from Hachi at Kuroshio Docks"]
