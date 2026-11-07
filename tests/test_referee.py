@@ -262,3 +262,13 @@ async def test_the_narrator_describing_arrival_still_moves_the_player():
     await run_referee(s, _Client({"moved_to": "the docks", "human_moment_quote": "", "human_moment": "none"}),
                       "p1", "I head out.", "You reach the docks as the cranes groan.\nHachi: Late again.")
     assert s.location == "The docks"
+
+
+def test_gig_paid_out_texts_from_jun_and_raises_trust():
+    from engine import phone
+    s = _session(installments_owed=3)
+    apply_verdict(s, "p1", {"human_moment": "none", "gig_paid_out": True})
+    p = phone.phone_of(s, "p1")
+    assert [m["text"] for m in p["threads"]["Jun Arakawa"]] == ["Money's in. Clean work."]
+    assert phone.unread(s, "p1")["Jun Arakawa"] == 1
+    assert p["contacts"]["Jun Arakawa"]["trust"] == phone.START_TRUST.get("fixer", 2.0) + 0.5

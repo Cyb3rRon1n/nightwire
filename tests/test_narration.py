@@ -1699,3 +1699,24 @@ async def test_npc_speaker_becomes_a_stranger_contact_but_narrator_and_player_vo
     contacts = session.phone["p1"]["contacts"]
     assert list(contacts) == ["Mama Sato"]
     assert contacts["Mama Sato"]["role"] == "stranger"
+
+
+@pytest.mark.asyncio
+async def test_final_notice_tick_texts_from_saeko(tmp_path):
+    from engine import phone
+    session = _session_with_character()
+    c = session.characters["p1"]
+    c.chrome, c.installments_owed, c.repo_actions, c.repo_clock = ["kagerou"], 3, 9, 5
+
+    async def chat_fn(*, model, messages, format):
+        payload = {"narration": [{"speaker": "narrator", "text": "ok"}], "tool_call": {"tool": None}}
+        return {"message": {"content": json.dumps(payload)}}
+
+    async def generate_fn(**kwargs):
+        pass
+
+    client = NarratorClient(chat_fn=chat_fn, generate_fn=generate_fn)
+    await _call(session, client, "p1", {"text": "I wait."}, tmp_path, tts_backend=FakeTTSBackend())
+    msgs = phone.phone_of(session, "p1")["threads"]["Saeko Kirigaya"]
+    assert msgs[0]["text"] == "Thursday was yesterday. Don't make me come find you."
+    assert phone.unread(session, "p1")["Saeko Kirigaya"] >= 1

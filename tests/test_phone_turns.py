@@ -84,3 +84,32 @@ async def test_failing_writer_still_posts_the_fallback():
     await handle_text(s, j, "p1", {"to": "Mika", "text": "hi"})
     await deliver_due(s, j, "p1")
     assert _texts(s)[1]["text"] == "Payment's due."
+
+
+def _checkin_session(turn):
+    s = _session("partner", 4)
+    s.phone["p1"]["turn"] = turn
+    s.phone["p1"]["last_unprompted"] = -99
+    return s
+
+
+async def test_close_contact_checks_in_when_quiet_and_rate_limits():
+    s = _checkin_session(10)
+    await deliver_due(s, Judge(), "p1")
+    assert [m["text"] for m in _texts(s)] == ["ok then"]
+    assert _texts(s)[0]["sender"] == "Mika"
+    s.phone["p1"]["turn"] = 13  # 2 turns later (advance +1): rate limit blocks a second one
+    del _texts(s)[0]
+    await deliver_due(s, Judge(), "p1")
+    assert _texts(s) == []
+
+
+async def test_no_checkin_before_8_quiet_turns():
+    s = _checkin_session(5)
+    await deliver_due(s, Judge(), "p1")
+    assert _texts(s) == []
+    s2 = _checkin_session(10)
+    phone.post(s2, "p1", "Mika", "me", "hi", 8)  # last message turn 8 (recent)
+    s2.phone["p1"]["threads"]["Mika"][0]["turn"] = 8
+    await deliver_due(s2, Judge(), "p1")
+    assert len(_texts(s2)) == 1

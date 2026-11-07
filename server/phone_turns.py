@@ -20,6 +20,15 @@ async def deliver_due(session, client, player_id) -> None:
         for m in msgs:
             if m["text"] is None and m["deliver_at"] <= p["turn"]:
                 await _fill(session, client, player_id, m, name)
+    if phone.may_text_first(session, player_id):
+        for name, c in p["contacts"].items():
+            msgs = p["threads"].get(name, [])
+            last = msgs[-1]["turn"] if msgs else 0
+            if c["role"] in ("family", "partner") and c["trust"] >= 3 and last <= p["turn"] - 8:
+                text = await write_reply(client, c, phone.tone(c, p["turn"]), [], session.characters[player_id].name)
+                phone.post(session, player_id, name, name, text, p["turn"])
+                phone.mark_unprompted(session, player_id)
+                break
 
 
 async def handle_text(session, client, player_id, message) -> None:

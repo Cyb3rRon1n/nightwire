@@ -4,6 +4,7 @@ See docs/superpowers/specs/2026-10-28-narrator-reliability-18-design.md."""
 
 import re
 
+from engine import phone
 from engine.character import is_tsukumogami
 from engine.chrome import change_humanity
 from engine.debt import SHELL, new_shell, pay_installment, repo_target_name, repossess, unthrottle
@@ -162,6 +163,10 @@ def apply_verdict(session: Session, player_id: str, verdict: dict) -> None:
         session.log.append(f"[utsusemi: {name} wakes in a new shell]")
     if verdict.get("gig_paid_out") and c.installments_owed > 0:
         pay_installment(c, 1)
+        jun = phone.add_contact(session, player_id, "Jun Arakawa", "fixer")
+        phone.post(session, player_id, "Jun Arakawa", "Jun Arakawa", "Money's in. Clean work.",
+                   phone.phone_of(session, player_id)["turn"])
+        phone.change_trust(jun, 0.5)
 
 
 async def run_referee(session: Session, client, player_id: str, action_text: str, narration_text: str) -> None:
