@@ -16,6 +16,7 @@ _AMOUNT = {"none": 0, "small": 2, "big": 4}
 _LEVEL_FIELDS = ("human_moment", "acted_as_machine")
 _HARA_OBJECTIVE = "Owe Old Hara a favor"
 _LOCATION_MAX = 60
+_TRUST_FIELDS = {"kept_promise_to": 1, "helped_at_a_cost": 1, "broke_promise_to": -1, "lie_discovered_by": 0}
 _SPEECH = re.compile(r"^[^:\n]{1,30}: ")  # "Mama Sato: ..." lines in the narration text
 _SYSTEM = (
     "You are a strict referee for a tabletop RPG. Read the player's action and the narration, "
@@ -36,6 +37,12 @@ def build_questions(session: Session, player_id: str) -> dict[str, str]:
     questions["moved_to"] = (f"text: if {name} arrived somewhere new this turn, the place's name exactly as the action or "
                              "narration writes it (for example: Mama Sato's izakaya); otherwise empty. Only asking about "
                              "or looking at a place is not arriving.")
+    if (p := session.phone.get(player_id)) and p["contacts"]:
+        who = "the contact's name exactly as written, or empty"
+        questions["kept_promise_to"] = f"text: {name} kept a promise this turn to whom? {who}."
+        questions["helped_at_a_cost"] = f"text: {name} helped someone at a real cost to themselves; whom? {who}."
+        questions["broke_promise_to"] = f"text: {name} broke a promise this turn to whom? {who}."
+        questions["lie_discovered_by"] = f"text: someone caught {name} in a lie this turn; who? {who}."
     if is_tsukumogami(c):
         questions["acted_as_machine"] = (f"none/small/big: did {name} act as a pure machine (cold calculation, "
                                          "following an owner's script, treating people as inputs)? Sneaking, climbing, "
@@ -61,7 +68,7 @@ def build_schema(questions: dict[str, str]) -> dict:
         if k in _LEVEL_FIELDS:
             properties[f"{k}_quote"] = {"type": "string"}
             properties[k] = {"type": "string", "enum": _LEVELS}
-        elif k == "moved_to":
+        elif k == "moved_to" or k in _TRUST_FIELDS:
             properties[k] = {"type": "string", "maxLength": _LOCATION_MAX}
         else:
             properties[k] = {"type": "boolean"}
@@ -70,13 +77,15 @@ def build_schema(questions: dict[str, str]) -> dict:
 
 def validate_verdict(verdict: dict, questions: dict[str, str]) -> None:
     expected = set(questions) | {f"{k}_quote" for k in questions if k in _LEVEL_FIELDS}
-    if isinstance(verdict, dict) and "moved_to" in questions:
-        verdict.setdefault("moved_to", "")  # optional: older answers and test fakes leave it out
+    if isinstance(verdict, dict):
+        for k in ("moved_to", *_TRUST_FIELDS):  # optional: older answers and test fakes leave them out
+            if k in questions:
+                verdict.setdefault(k, "")
     if not isinstance(verdict, dict) or set(verdict) != expected:
         raise ValueError(f"referee answered {sorted(verdict) if isinstance(verdict, dict) else verdict!r}, "
                          f"expected {sorted(expected)}")
     for key, value in verdict.items():
-        if key.endswith("_quote") or key == "moved_to":
+        if key.endswith("_quote") or key == "moved_to" or key in _TRUST_FIELDS:
             ok = isinstance(value, str)
         else:
             ok = value in _LEVELS if key in _LEVEL_FIELDS else isinstance(value, bool)
@@ -133,12 +142,43 @@ def ground(session: Session, verdict: dict, action: str, narration: str) -> dict
         session.log.append("[referee: moved_to had no match in the scene, ignored]")
         moved = ""
     grounded["moved_to"] = moved
+    # A contact confronting you in dialogue is the evidence, so these use the full narration, speech included.
+    scene = _squash(f"{action}\n{narration}")
+    for k in _TRUST_FIELDS:
+        who = " ".join(str(grounded.get(k, "")).split())
+        if who and (not _squash(who) or _squash(who) not in scene):
+            session.log.append(f"[referee: {k} had no match in the scene, ignored]")
+            who = ""
+        if k in grounded or who:
+            grounded[k] = who
     return grounded
+
+
+def _find_contact(session: Session, player_id: str, written: str) -> dict | None:
+    """Full name (any case), or one word that belongs to exactly one contact's name."""
+    contacts = phone.phone_of(session, player_id)["contacts"]
+    w = written.strip().lower()
+    for name, contact in contacts.items():
+        if name.lower() == w:
+            return contact
+    hits = [c for n, c in contacts.items() if w in n.lower().split()]
+    return hits[0] if len(hits) == 1 else None
 
 
 def apply_verdict(session: Session, player_id: str, verdict: dict) -> None:
     c = session.characters[player_id]
     name = c.name
+    for field, delta in _TRUST_FIELDS.items():
+        contact = _find_contact(session, player_id, verdict[field]) if verdict.get(field) else None
+        if not contact:
+            continue
+        if field != "lie_discovered_by":
+            phone.change_trust(contact, delta)
+        elif contact["role"] not in ("rival", "enemy") and contact["trust"] >= 1:
+            drop = 2 if contact["trust"] >= 4 or contact["role"] in ("family", "partner") else 1
+            contact["trust"] = max(1.0, contact["trust"] - drop)
+            contact["cold_until"] = phone.phone_of(session, player_id)["turn"] + 3
+            session.pending_world_events.append(f"{contact['name']} knows {name} lied to them.")
     if verdict.get("moved_to"):
         session.location = verdict["moved_to"][0].upper() + verdict["moved_to"][1:]
     delta = _AMOUNT[verdict.get("human_moment", "none")] - _AMOUNT[verdict.get("acted_as_machine", "none")]
