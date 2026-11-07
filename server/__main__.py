@@ -62,7 +62,7 @@ def build_system_prompt() -> str:
         "(a random ganger in a fight, a background vendor)."
         " When you call request_roll, narrate only the lead-up to the moment of risk "
         "and stop before the result - the player rolls next, then you'll be told the "
-        "outcome and narrate it. Example: player sneaks past a guard -> narrate the "
+        "outcome and narrate it. Its reason says what is attempted ('punch the enforcer'), never how it goes. Example: player sneaks past a guard -> narrate the "
         "guard turning toward the curtain, the creak of a floorboard, then request_roll "
         "(stealth, normal stakes). Don't narrate whether they made it. When you're given a roll "
         "result, narrate what happens true to that result; never contradict it."
