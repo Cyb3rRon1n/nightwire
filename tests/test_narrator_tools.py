@@ -123,9 +123,15 @@ def test_apply_character_update_rejects_an_unknown_player_id():
 
 def test_update_world_sets_location_and_mood():
     session = Session(session_id="s1")
-    execute_tool(session, "update_world", {"location": "Watson district", "scene_mood": "tense"})
-    assert session.location == "Watson district"
+    execute_tool(session, "update_world", {"location": "Ikebe Low - Mama Sato's izakaya", "scene_mood": "tense"})
+    assert session.location == "Mama Sato's izakaya"  # a known place, by its own name
     assert session.scene_mood == "tense"
+
+
+def test_update_world_ignores_an_unknown_place():
+    session = Session(session_id="s1"); session.location = "Tenjō Heights"
+    execute_tool(session, "update_world", {"location": "Observation Deck"})
+    assert session.location == "Tenjō Heights"
 
 
 def test_update_world_leaves_unset_fields_unchanged():
