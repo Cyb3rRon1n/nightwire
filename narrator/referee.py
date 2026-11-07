@@ -10,6 +10,7 @@ from engine.chrome import change_humanity
 from engine.debt import SHELL, new_shell, pay_installment, repo_target_name, repossess, unthrottle
 from engine.session import Session
 from narrator.movement import known_place, places_in
+from narrator.world import _mentions, _normalize, kuroshio
 from ruleset.cyberware import CHROME
 
 _LEVELS = ["none", "small", "big"]
@@ -17,6 +18,8 @@ _AMOUNT = {"none": 0, "small": 2, "big": 4}
 _LEVEL_FIELDS = ("human_moment", "acted_as_machine")
 _HARA_OBJECTIVE = "Owe Old Hara a favor"
 _LOCATION_MAX = 60
+_TEXT_FIELDS = ("moved_to", "new_lead")
+_MAX_OBJECTIVES = 5
 _TRUST_FIELDS = {"kept_promise_to": 1, "helped_at_a_cost": 1, "broke_promise_to": -1, "lie_discovered_by": 0}
 _SPEECH = re.compile(r"^[^:\n]{1,30}: ")  # "Mama Sato: ..." lines in the narration text
 _SYSTEM = (
@@ -38,6 +41,10 @@ def build_questions(session: Session, player_id: str) -> dict[str, str]:
     questions["moved_to"] = (f"text: if {name} arrived somewhere new this turn, the place's name exactly as the action or "
                              "narration writes it (for example: Mama Sato's izakaya); otherwise empty. Only asking about "
                              "or looking at a place is not arriving.")
+    # GUMSHOE's core clue / "the players always get the lead" (spec 2026-11-07-story-thread-design.md).
+    questions["new_lead"] = (f"text: a concrete next step this scene gave {name}: a named person to see, a place to "
+                             "go or a thing to find, in under 8 words (for example: Ask Jun about the Yomi Line data); "
+                             "otherwise empty. Warnings, threats and riddles are not leads.")
     if (p := session.phone.get(player_id)) and p["contacts"]:
         who = "the contact's name exactly as written, or empty"
         questions["kept_promise_to"] = f"text: {name} kept a promise this turn to whom? {who}."
@@ -69,7 +76,7 @@ def build_schema(questions: dict[str, str]) -> dict:
         if k in _LEVEL_FIELDS:
             properties[f"{k}_quote"] = {"type": "string"}
             properties[k] = {"type": "string", "enum": _LEVELS}
-        elif k == "moved_to" or k in _TRUST_FIELDS:
+        elif k in _TEXT_FIELDS or k in _TRUST_FIELDS:
             properties[k] = {"type": "string", "maxLength": _LOCATION_MAX}
         else:
             properties[k] = {"type": "boolean"}
@@ -79,14 +86,14 @@ def build_schema(questions: dict[str, str]) -> dict:
 def validate_verdict(verdict: dict, questions: dict[str, str]) -> None:
     expected = set(questions) | {f"{k}_quote" for k in questions if k in _LEVEL_FIELDS}
     if isinstance(verdict, dict):
-        for k in ("moved_to", *_TRUST_FIELDS):  # optional: older answers and test fakes leave them out
+        for k in (*_TEXT_FIELDS, *_TRUST_FIELDS):  # optional: older answers and test fakes leave them out
             if k in questions:
                 verdict.setdefault(k, "")
     if not isinstance(verdict, dict) or set(verdict) != expected:
         raise ValueError(f"referee answered {sorted(verdict) if isinstance(verdict, dict) else verdict!r}, "
                          f"expected {sorted(expected)}")
     for key, value in verdict.items():
-        if key.endswith("_quote") or key == "moved_to" or key in _TRUST_FIELDS:
+        if key.endswith("_quote") or key in _TEXT_FIELDS or key in _TRUST_FIELDS:
             ok = isinstance(value, str)
         else:
             ok = value in _LEVELS if key in _LEVEL_FIELDS else isinstance(value, bool)
@@ -119,6 +126,18 @@ def _squash(text: str) -> str:
     return " ".join(re.sub(r"[^\w\s']", " ", text.lower()).split())
 
 
+def _names_something_in(lead: str, scene: str, session: Session) -> bool:
+    """The lead names a known place or a named person, and the scene names it too (no invented leads)."""
+    if places_in(lead) & places_in(scene):
+        return True
+    world = kuroshio()
+    lead_n, scene_n = _normalize(lead), _normalize(scene)
+    people = [n for n in world.npcs if _mentions(n, lead_n) and _mentions(n, scene_n)]
+    contacts = [c for p in session.phone.values() for c in p["contacts"]
+                if c.split()[0].lower() in lead_n.split() and c.split()[0].lower() in scene_n]
+    return bool(people or contacts)
+
+
 def ground(session: Session, verdict: dict, action: str, narration: str) -> dict:
     """A level answer counts only if its quote really is in the text it may come from
     (Phase 18 live: plain stealth and jump turns earned +2 "human moments"). A human
@@ -147,6 +166,12 @@ def ground(session: Session, verdict: dict, action: str, narration: str) -> dict
     if moved and not known_place(moved):
         session.log.append("[referee: moved_to is not a known place, ignored]")
     grounded["moved_to"] = known_place(moved) or ""
+    lead = " ".join(str(grounded.get("new_lead", "")).split())[:_LOCATION_MAX]
+    if lead and not _names_something_in(lead, f"{action}\n{narration}", session):
+        session.log.append("[referee: new_lead names nothing in the scene, ignored]")
+        lead = ""
+    if "new_lead" in grounded or lead:
+        grounded["new_lead"] = lead
     # A contact confronting you in dialogue is the evidence, so these use the full narration, speech included.
     scene = _squash(f"{action}\n{narration}")
     for k in _TRUST_FIELDS:
@@ -178,6 +203,9 @@ def apply_verdict(session: Session, player_id: str, verdict: dict) -> None:
             contact["trust"] = max(1.0, contact["trust"] - drop)
             contact["cold_until"] = phone.phone_of(session, player_id)["turn"] + 3
             session.pending_world_events.append(f"{contact['name']} knows {name} lied to them.")
+    lead = verdict.get("new_lead")
+    if lead and lead not in session.active_objectives:
+        session.active_objectives = [*session.active_objectives, lead][-_MAX_OBJECTIVES:]
     if verdict.get("moved_to"):
         session.location = verdict["moved_to"]
     delta = _AMOUNT[verdict.get("human_moment", "none")] - _AMOUNT[verdict.get("acted_as_machine", "none")]
