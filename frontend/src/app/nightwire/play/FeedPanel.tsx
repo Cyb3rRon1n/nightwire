@@ -208,7 +208,8 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, onO
           }
           const imageMatch = line.match(IMAGE_LINE);
           if (imageMatch) {
-            const index = ++imageIndex;
+            const counted = ++imageIndex;
+            const index = view.images?.includes(imageMatch[1]) ? view.images.indexOf(imageMatch[1]) : counted;
             return (
               <button key={i} type="button" className="nw-scene-frame" onClick={() => onOpenGallery(index)} aria-label={`Open scene image ${index + 1} in the gallery`}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}

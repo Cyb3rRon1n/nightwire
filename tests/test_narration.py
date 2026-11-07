@@ -354,7 +354,7 @@ async def test_handle_action_suppresses_image_request_two_turns_in_a_row(tmp_pat
     assert session.last_turn_had_image is False
 
     await _call(session, client, "p1", {"text": "I step into another plaza."}, tmp_path, image_backend, tts_backend=FakeTTSBackend())
-    assert CountingImageBackend.calls == 2, "cooldown should only block the immediately-following turn"
+    assert CountingImageBackend.calls == 1, "one new image per 6 player turns (playthrough 2026-11-07)"
 
 
 @pytest.mark.asyncio
@@ -1885,3 +1885,15 @@ def test_locals_line_names_everyone_who_lives_in_the_district():
     session = _session_with_character(); session.location = "Mama Sato's izakaya, Ikebe Low"
     line = locals_line(kuroshio(), session)
     assert line.startswith("Locals in Ikebe Low: ") and "Old Hara is an off-the-books chrome-ya" in line
+
+
+def test_new_images_only_where_no_approved_art_and_at_most_every_six_turns():
+    from server.narration import _image_allowed
+    session = _session_with_character()
+    session.location = "Old Hara's clinic"  # has approved art
+    assert not _image_allowed(session)
+    session.location = "a rooftop nobody designed"
+    session.log = ["[image: images/s/1.png]"] + ["p1: wait"] * 5
+    assert not _image_allowed(session)
+    session.log.append("p1: wait")
+    assert _image_allowed(session)
