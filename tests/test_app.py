@@ -363,3 +363,8 @@ def test_roll_is_broadcast_before_the_resolution_narration(tmp_path):
     assert any(line.startswith("[roll: ") for line in first["log"])
     assert "You slip by." not in first["log"] and len(calls) == 2
     assert "You slip by." in second["log"]
+
+
+def test_place_art_is_served(tmp_path):
+    response = _client(tmp_path).get("/place-art/mama-satos-izakaya.jpg")
+    assert response.status_code == 200 and response.headers["content-type"] == "image/jpeg"

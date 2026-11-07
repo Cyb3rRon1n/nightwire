@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { classifyLine, groupStarts, isPlayerFacing, sceneImages, speakerKey } from "../../src/lib/nightwire/feed.ts";
+import { classifyLine, groupStarts, isPlayerFacing, pickBackdrop, sceneImages, speakerKey } from "../../src/lib/nightwire/feed.ts";
 import type { StateView } from "../../src/lib/nightwire/protocol.ts";
 
 const view = {
@@ -57,4 +57,12 @@ test("only player-facing bracket lines are shown", () => {
 test("lines that render nothing don't break a speaker's run", () => {
   // undefined = skipped (hidden meta, audio): the run carries on across it
   assert.deepEqual(groupStarts(["npc:mama sato", undefined, "npc:mama sato", null, "npc:mama sato"]), [true, false, false, false, true]);
+});
+
+test("place art shows on arrival until a new scene image comes in", () => {
+  // 2 images existed when the player arrived here
+  assert.deepEqual(pickBackdrop(["a.png", "b.png"], "place-art/izakaya.jpg", 2), { kind: "place", path: "place-art/izakaya.jpg" });
+  assert.deepEqual(pickBackdrop(["a.png", "b.png", "c.png"], "place-art/izakaya.jpg", 2), { kind: "scene", path: "c.png" });
+  assert.deepEqual(pickBackdrop(["a.png"], null, 1), { kind: "scene", path: "a.png" });
+  assert.equal(pickBackdrop([], null, 0), null);
 });

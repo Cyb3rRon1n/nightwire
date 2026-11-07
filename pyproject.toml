@@ -27,5 +27,5 @@ asyncio_mode = "auto"
 include = ["ruleset", "engine", "server", "narrator", "tools"]
 
 [tool.setuptools.package-data]
-narrator = ["worlds/*.toml", "worlds/designs/*.toml"]
+narrator = ["worlds/*.toml", "worlds/designs/*.toml", "worlds/place_art/*.jpg"]
 tools = ["design_picker.html", "design_review.html", "image_studio.html", "poses/*.png"]

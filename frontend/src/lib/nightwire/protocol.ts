@@ -68,6 +68,8 @@ export interface StateView {
   is_your_turn: boolean
   log: string[]
   location: string | null
+  // Approved art for the current place, served by the game server (e.g. "place-art/ikebe-low.jpg").
+  location_art: string | null
   scene_mood: string | null
   active_objectives: string[]
   characters: Record<string, CharacterSheet | RedactedCharacter>
