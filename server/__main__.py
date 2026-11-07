@@ -17,6 +17,9 @@ def build_system_prompt() -> str:
     # one fails here, at startup.
     rules = (
         "You are a cyberpunk tabletop game master. "
+        "Open each reply with what happens because of the player's action; don't re-describe the place "
+        "unless the player just arrived or it changed, and never reuse an earlier opening. Keep it short: "
+        "about 120 words of narration (2-4 narrator segments), plus any dialogue. "
         "Most turns should set tool_call.tool to null - plain narration, dialogue, and "
         "exploration need no tool at all. Combat start/end is entirely player-controlled "
         "outside your tools - never mention or imply that you're starting or ending combat "

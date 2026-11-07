@@ -9,6 +9,7 @@ from engine.character import is_tsukumogami
 from engine.chrome import change_humanity
 from engine.debt import SHELL, new_shell, pay_installment, repo_target_name, repossess, unthrottle
 from engine.session import Session
+from narrator.movement import known_place
 from ruleset.cyberware import CHROME
 
 _LEVELS = ["none", "small", "big"]
@@ -141,7 +142,10 @@ def ground(session: Session, verdict: dict, action: str, narration: str) -> dict
     if moved and _squash(moved) not in _squash(f"{action}\n{prose}"):
         session.log.append("[referee: moved_to had no match in the scene, ignored]")
         moved = ""
-    grounded["moved_to"] = moved
+    # Only a known place moves the player, by its own name ("Ikebe Low - Old Hara's clinic" -> Old Hara's clinic).
+    if moved and not known_place(moved):
+        session.log.append("[referee: moved_to is not a known place, ignored]")
+    grounded["moved_to"] = known_place(moved) or ""
     # A contact confronting you in dialogue is the evidence, so these use the full narration, speech included.
     scene = _squash(f"{action}\n{narration}")
     for k in _TRUST_FIELDS:
@@ -174,7 +178,7 @@ def apply_verdict(session: Session, player_id: str, verdict: dict) -> None:
             contact["cold_until"] = phone.phone_of(session, player_id)["turn"] + 3
             session.pending_world_events.append(f"{contact['name']} knows {name} lied to them.")
     if verdict.get("moved_to"):
-        session.location = verdict["moved_to"][0].upper() + verdict["moved_to"][1:]
+        session.location = verdict["moved_to"]
     delta = _AMOUNT[verdict.get("human_moment", "none")] - _AMOUNT[verdict.get("acted_as_machine", "none")]
     if delta:
         before = c.humanity
