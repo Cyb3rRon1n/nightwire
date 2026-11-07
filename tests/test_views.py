@@ -162,3 +162,51 @@ def test_view_names_the_art_for_the_current_place():
     assert build_view(session, "p1")["location_art"] == "place-art/mama-satos-izakaya.jpg"
     session.location = None
     assert build_view(session, "p1")["location_art"] is None
+
+
+def _phone_session():
+    from engine.phone import add_contact, post, phone_of
+    s = Session(session_id="s1")
+    s.characters["p1"] = _character("p1", "Rook")
+    s.characters["p2"] = _character("p2", "Vex")
+    add_contact(s, "p1", "Jun Arakawa", "fixer")
+    add_contact(s, "p2", "Secret Friend", "friend")
+    phone_of(s, "p1")["turn"] = 3
+    post(s, "p1", "Jun Arakawa", "Jun Arakawa", "hello", 2)
+    post(s, "p1", "Jun Arakawa", "me", "hi", 2)
+    post(s, "p1", "Jun Arakawa", "Jun Arakawa", None, 3)
+    post(s, "p1", "Jun Arakawa", "Jun Arakawa", "later", 5)
+    post(s, "p2", "Secret Friend", "Secret Friend", "psst", 0)
+    return s
+
+
+def test_viewer_sees_own_phone_only():
+    view = build_view(_phone_session(), "p1")["phone"]
+    assert [c["name"] for c in view["contacts"]] == ["Jun Arakawa"]
+    assert "Secret Friend" not in view["threads"]
+    jun = view["contacts"][0]
+    assert jun["role"] == "fixer" and jun["trust"] == 2 and isinstance(jun["trust"], int) and jun["unread"] == 1
+    assert jun["portrait"] == "character-art/jun-arakawa.jpg"
+
+
+def test_undelivered_messages_are_hidden_but_typing_shows():
+    view = build_view(_phone_session(), "p1")["phone"]
+    assert view["threads"]["Jun Arakawa"] == [
+        {"sender": "Jun Arakawa", "text": "hello", "turn": 3},
+        {"sender": "me", "text": "hi", "turn": 3},
+    ]
+    assert view["typing"] == ["Jun Arakawa"]
+
+
+def test_no_phone_gets_empty_phone_and_none_is_created():
+    s = Session(session_id="s1")
+    s.characters["p1"] = _character("p1", "Rook")
+    assert build_view(s, "p1")["phone"] == {"contacts": [], "threads": {}, "typing": []}
+    assert s.phone == {}
+
+
+def test_portrait_null_for_unknown_npc():
+    from engine.phone import add_contact
+    s = Session(session_id="s1")
+    add_contact(s, "p1", "Nobody Atall", "stranger")
+    assert build_view(s, "p1")["phone"]["contacts"][0]["portrait"] is None
