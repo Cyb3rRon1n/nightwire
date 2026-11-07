@@ -5,6 +5,7 @@ import httpx
 import ollama
 
 from engine.character import is_tsukumogami
+from narrator.risk import INSTRUCTION as RISK_INSTRUCTION, is_risky
 from engine.chrome import change_humanity, usable_overclocks
 from engine.debt import repo_target_name, tick_debt
 from engine.persistence import JSONFileSessionStore
@@ -265,9 +266,11 @@ async def handle_action(
         for event in tick_debt(character):
             session.pending_world_events.append(event)
             session.log.append(f"[torite: {event}]")
+    must_roll = character is not None and await is_risky(narrator_client, action_text)
     await _run_turn(
         session, narrator_client, store, image_backend, tts_backend, player_id,
-        prompt_text=action_text, actor_line=f"{player_id}: {action_text}", allow_roll=True,
+        prompt_text=f"{action_text}\n\n{RISK_INSTRUCTION}" if must_roll else action_text,
+        actor_line=f"{player_id}: {action_text}", allow_roll=True, referee_action=action_text, must_roll=must_roll,
     )
 
 
@@ -345,6 +348,7 @@ async def _run_turn(
     actor_line: str | None,
     allow_roll: bool,
     referee_action: str | None = None,
+    must_roll: bool = False,
 ) -> None:
     # Events are shown once, but only dropped after the narrator actually
     # responded; events queued during the turn survive to the next one.
@@ -354,6 +358,13 @@ async def _run_turn(
     del session.pending_world_events[:len(shown_events)]
 
     refusal = _in_fiction_refusal(session, response, player_id, allow_roll)
+    if refusal is None and must_roll and response.tool != "request_roll":
+        # Risky (narrator/risk.py) but resolved without a roll: redo once, nothing logged yet. A second miss stands.
+        session.pending_world_events[:0] = shown_events
+        retry_prompt = f"{prompt_text}\n\nEngine: you resolved it without a roll. Narrate only the set-up and call request_roll."
+        messages = _build_messages(session, retry_prompt, narrator_client.num_ctx)
+        response = await narrator_client.respond(messages)
+        del session.pending_world_events[:len(shown_events)]
     if refusal is not None:
         # Redo once (Phase 18), decided before anything is logged or voiced: the
         # refused narration is never shown; narrate again with the refusal as fact.

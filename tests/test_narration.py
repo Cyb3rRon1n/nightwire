@@ -1497,7 +1497,7 @@ async def test_referee_skipped_when_every_segment_is_voice_filtered(tmp_path):
 async def test_referee_runs_on_action_turns_and_applies(tmp_path):
     session = _session_with_character()
     session.characters["p1"].humanity = 50
-    client = _scripted_client([_say("Mama Sato laughs and refills your bowl.")], judge_answers=[{"human_moment_quote": "refills your bowl", "human_moment": "big"}])
+    client = _scripted_client([_say("Mama Sato laughs and refills your bowl.")], judge_answers=[{"risky_quote": "", "risky": False}, {"human_moment_quote": "refills your bowl", "human_moment": "big"}])
     await _call(session, client, "p1", {"text": "I share a meal."}, tmp_path, tts_backend=FakeTTSBackend())
     assert session.characters["p1"].humanity == 54
 
@@ -1604,3 +1604,44 @@ async def test_non_tag_backend_keeps_the_old_scene_path(tmp_path):
                                 "image_request": {"prompt": "a rainy neon alley"}}])
     await _call(session, client, "p1", {"text": "I walk in."}, tmp_path, image_backend=_Plain(), tts_backend=FakeTTSBackend())
     assert calls == ["a rainy neon alley"]
+
+
+_LEAP = {"player_id": "p1", "attribute": "reflexes", "skill": "athletics", "stakes": "normal", "reason": "the jump"}
+_SAFE = {"risky_quote": "", "risky": False}
+
+
+async def test_a_risky_action_must_open_a_roll(tmp_path):
+    # Live 2026-11-06: sneaking behind Mama Sato's counter was narrated straight to the outcome, no roll.
+    session = _session_with_character()
+    seen = []
+    client = _scripted_client([_say("You slip behind the counter and find the ledger."), _say("You eye the gap behind the counter.", "request_roll", _LEAP)],
+                              judge_answers=[{"risky_quote": "slip behind the counter", "risky": True}], seen=seen)
+    await _call(session, client, "p1", {"text": "I slip behind the counter while she's busy."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert "p1" in session.pending_rolls
+    assert "You eye the gap behind the counter." in session.log
+    assert "You slip behind the counter and find the ledger." not in session.log
+    assert "risky" in seen[0][-1]["content"]
+
+
+async def test_a_safe_action_is_narrated_normally(tmp_path):
+    session = _session_with_character()
+    seen = []
+    client = _scripted_client([_say("Mama Sato pours your tea.")], judge_answers=[_SAFE, {"human_moment_quote": "", "human_moment": "none"}], seen=seen)
+    await _call(session, client, "p1", {"text": "I ask for tea."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert "Mama Sato pours your tea." in session.log and "p1" not in session.pending_rolls
+    assert len(seen) == 1 and "risky" not in seen[0][-1]["content"]
+
+
+async def test_a_risk_claim_without_a_quote_from_the_action_is_ignored(tmp_path):
+    session = _session_with_character()
+    seen = []
+    client = _scripted_client([_say("Mama Sato pours your tea.")], judge_answers=[{"risky_quote": "I storm the vault", "risky": True}, {"human_moment_quote": "", "human_moment": "none"}], seen=seen)
+    await _call(session, client, "p1", {"text": "I ask for tea."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert len(seen) == 1 and "p1" not in session.pending_rolls
+
+
+async def test_a_failed_risk_check_never_blocks_the_turn(tmp_path):
+    session = _session_with_character()
+    client = _scripted_client([_say("Mama Sato pours your tea.")], judge_answers=[])
+    await _call(session, client, "p1", {"text": "I ask for tea."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert "Mama Sato pours your tea." in session.log
