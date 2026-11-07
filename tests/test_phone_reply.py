@@ -44,3 +44,10 @@ async def test_failure_or_blank_gives_role_fallback():
     assert await write_reply(Judge({"reply": "  "}), fixer, "t", THREAD, "Kai") == "Busy. Later."
     other = {**CONTACT, "role": "friend"}
     assert await write_reply(Judge({}), other, "t", THREAD, "Kai") == "Can't talk now."
+
+
+async def test_echoed_name_prefix_is_stripped():
+    c = {**CONTACT, "name": "Saeko Kirigaya"}
+    assert await write_reply(Judge({"reply": "Saeko Kirigaya: Not surprising."}), c, "t", THREAD, "Kai") == "Not surprising."
+    assert await write_reply(Judge({"reply": "saeko:   Not surprising."}), c, "t", THREAD, "Kai") == "Not surprising."
+    assert await write_reply(Judge({"reply": "Saeko:"}), c, "t", THREAD, "Kai") == "Payment's due."

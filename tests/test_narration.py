@@ -1720,3 +1720,19 @@ async def test_final_notice_tick_texts_from_saeko(tmp_path):
     msgs = phone.phone_of(session, "p1")["threads"]["Saeko Kirigaya"]
     assert msgs[0]["text"] == "Thursday was yesterday. Don't make me come find you."
     assert phone.unread(session, "p1")["Saeko Kirigaya"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_short_speaker_name_does_not_add_a_duplicate_contact(tmp_path):
+    from engine.phone import add_contact, phone_of
+    session = _session_with_character()
+    add_contact(session, "p1", "Saeko Kirigaya", "creditor")
+    client = _fake_client_with_segments([
+        {"speaker": "Saeko", "gender": "female", "text": "Pay up."},
+        {"speaker": "  ", "gender": "male", "text": "..."},
+        {"speaker": "Mama Sato", "gender": "female", "text": "Eat."},
+    ])
+
+    await _call(session, client, "p1", {"text": "I wait."}, tmp_path, tts_backend=FakeTTSBackend())
+
+    assert sorted(phone_of(session, "p1")["contacts"]) == ["Mama Sato", "Saeko Kirigaya"]

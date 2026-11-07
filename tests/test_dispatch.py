@@ -785,3 +785,16 @@ def test_read_unknown_contact_is_an_error():
     s = Session(session_id="s1")
     with pytest.raises(ValueError):
         handle_message(s, {"type": "read", "contact": "Ghost"}, "p1")
+
+
+def test_join_backfills_starting_contacts_for_a_session_without_a_phone():
+    from engine.phone import phone_of
+    session = Session(session_id="s1")
+    join_message = {"type": "join",
+                    "character": {"player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"}}
+    handle_message(session, join_message, "p1")
+    session.phone.clear()  # a saved session from before the phone existed
+
+    handle_message(session, join_message, "p1")
+
+    assert {"Saeko Kirigaya", "Jun Arakawa"} <= set(phone_of(session, "p1")["contacts"])
