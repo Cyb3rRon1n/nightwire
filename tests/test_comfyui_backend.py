@@ -246,3 +246,12 @@ async def test_a_scene_can_start_from_approved_art():
     graph = next(c[2]["prompt"] for c in client.calls if c[1] == "/prompt")
     assert "5" not in graph and graph["70"]["inputs"]["image"] == "start.jpg"
     assert graph["3"]["inputs"]["latent_image"] == ["71", 0] and graph["3"]["inputs"]["denoise"] == 0.85
+
+
+@pytest.mark.asyncio
+async def test_scenes_come_out_upscaled():
+    client = _FakeComfyClient()
+    backend = ComfyUIBackend(client=client, sleep_fn=_no_sleep, profile="noobai")
+    await backend.generate_scene("an alley", [])
+    graph = next(c[2]["prompt"] for c in client.calls if c[1] == "/prompt")
+    assert graph["31"]["class_type"] == "ImageUpscaleWithModel" and graph["9"]["inputs"]["images"] == ["31", 0]
