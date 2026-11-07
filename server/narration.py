@@ -1,5 +1,6 @@
 import json
 import random
+import re
 
 import httpx
 import ollama
@@ -96,6 +97,33 @@ def _select_verbatim_narrative(narrative: list[str], num_ctx: int) -> list[str]:
     return selected
 
 
+_PROSE_TURNS = 3
+_SPEECH = re.compile(r"^[^:\n]{1,30}: ")
+_ROLL_LINE = re.compile(r" rolls .+ vs .+: ")  # the engine's own dice line (_roll_line): kept whole
+_FIRST_SENTENCE = re.compile(r"^.*?[.!?…](?:\s+|$)")
+
+
+def _trim_prose(lines: list[str], session: Session) -> list[str]:
+    """Actions and dialogue stay; the narrator's own prose stays only for the last few turns, minus each
+    turn's opening sentence, so it has nothing to copy (soak run 5: 10 repeated openings in 33 turns)."""
+    actors = tuple(f"{pid}: " for pid in session.characters)
+    starts = [i for i, line in enumerate(lines) if line.startswith(actors)] if actors else []
+    keep_from = starts[-_PROSE_TURNS] if len(starts) >= _PROSE_TURNS else 0
+    out, opened = [], False
+    for i, line in enumerate(lines):
+        if actors and line.startswith(actors):
+            out.append(line); opened = False
+        elif _SPEECH.match(line) or _ROLL_LINE.search(line):
+            out.append(line)
+        elif i >= keep_from:
+            if not opened:
+                opened = True
+                line = _FIRST_SENTENCE.sub("", line, count=1)
+            if line.strip():
+                out.append(line)
+    return out
+
+
 def _npc_entry(name: str, facts: list[str]) -> str:
     return f"{name}: {'; '.join(facts)}"
 
@@ -189,7 +217,7 @@ def _build_messages(session: Session, action_text: str, num_ctx: int) -> list[di
     # UI, not narrative fact - feeding them back verbatim let the model read
     # its own acknowledgment ("combat start requires...") as evidence combat
     # was actually ongoing, and re-trigger the tool turn after turn.
-    narrative = [line for line in session.log if not line.startswith("[")]
+    narrative = _trim_prose([line for line in session.log if not line.startswith("[")], session)
     verbatim = _select_verbatim_narrative(narrative, num_ctx)
     parts = []
     if session.narrative_summary:
