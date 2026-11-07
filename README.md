@@ -167,6 +167,26 @@ re-run — only touches its own "Nightwire" group.
 
 ## Screenshots
 
+### A real game
+
+From a live playthrough (7 November 2026). Nothing here is staged: the local qwen3:8b narrator wrote every line, and voices were on. Kaito Arai is a streetkid solo on his first night.
+
+<p align="center">
+  <img src="docs/images/playthrough/opening.jpg" alt="The first screen of a new game: Kaito Arai's sheet on the left, Ikebe Low's alley art behind an arrival scene about grilled squid, puddles and an izakaya's noren curtain, Mama Sato calling him in out of the rain, small play buttons for each voiced line, and two objectives already listed" width="820"><br>
+  <sub>A new game opens with an arrival scene and a first objective</sub>
+</p>
+<p align="center">
+  <img src="docs/images/playthrough/first-job.jpg" alt="Inside Mama Sato's izakaya, with the pop-out phone open on Jun Arakawa's thread: a courier job to pick up a sealed case from Hachi at the Kuroshio Docks, cash on delivery, don't open it" width="820"><br>
+  <sub>Jun texts the first job while Mama Sato feeds you</sub>
+</p>
+<p align="center">
+  <img src="docs/images/playthrough/docks.jpg" alt="Kuroshio Docks at night: Hachi, a woken station-announcer AI in a rented shell, says the sealed case is not a case but a voice that won't stop calling; the objectives list tracks the job" width="620">
+  <img src="docs/images/playthrough/phone-width.jpg" alt="The same scene at phone width: the docks art as a banner, the conversation, and Feed, Status, World and Phone tabs" width="190"><br>
+  <sub>At the docks, the job turns strange. The same scene on a phone</sub>
+</p>
+
+### Features
+
 Captures of the live frontend, using hand-written demo sessions and approved Kuroshio art.
 
 <p align="center">

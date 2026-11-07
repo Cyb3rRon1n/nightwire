@@ -354,7 +354,7 @@ async def test_handle_action_suppresses_image_request_two_turns_in_a_row(tmp_pat
     assert session.last_turn_had_image is False
 
     await _call(session, client, "p1", {"text": "I step into another plaza."}, tmp_path, image_backend, tts_backend=FakeTTSBackend())
-    assert CountingImageBackend.calls == 2, "cooldown should only block the immediately-following turn"
+    assert CountingImageBackend.calls == 1, "one new image per 6 player turns (playthrough 2026-11-07)"
 
 
 @pytest.mark.asyncio
@@ -844,7 +844,7 @@ def test_build_messages_omits_known_npcs_when_empty():
 
 
 def test_build_messages_puts_scene_and_world_notes_right_before_the_action():
-    from narrator.world import kuroshio
+    from narrator.world import kuroshio, locals_line
     from server.narration import _build_messages
 
     session = _session_with_character()
@@ -860,7 +860,8 @@ def test_build_messages_puts_scene_and_world_notes_right_before_the_action():
     assert content.endswith(
         "Recent events:\np1: I look around.\n\n"
         "Scene: Ikebe Low - Mama Sato's izakaya · mood: tense · objectives: find the chrome-ya; pay off the torite\n\n"
-        f"World notes:\n{ikebe}\n{sato}\n\n"
+        "Crew: Rook: no chrome, owes nothing\n\n"
+        f"World notes:\n{ikebe}\n{sato}\n{locals_line(kuroshio(), session)}\n\n"
         "Player action: I order a drink."
     )
 
@@ -1036,6 +1037,7 @@ async def test_resolution_prompt_carries_the_players_action(tmp_path, monkeypatc
     await _roll(session, NarratorClient(chat_fn=chat_fn, generate_fn=None), "p1", tmp_path)
     content = sent[0][-1]["content"]
     assert "They tried: I punch the guy who bumps into me." in content and "No new roll this turn." in content
+    assert "It fails, and something changes for the worse." in content  # randint 7 at Hard: a failure
 
 
 @pytest.mark.asyncio
@@ -1051,7 +1053,7 @@ async def test_no_new_roll_during_a_resolution(tmp_path, monkeypatch):
     await _roll(session, client, "p1", tmp_path)
 
     assert session.pending_rolls == {}
-    assert "[tool error: no new rolls during a roll resolution]" in session.log
+    assert "[roll skipped: another roll asked during a roll result]" in session.log
 
 
 @pytest.mark.asyncio
@@ -1203,11 +1205,12 @@ def test_overclock_refused_while_gone_too_far_and_roll_stays_pending():
     assert "p1" in session.pending_rolls
 
 
-def test_no_crew_line_for_unchromed_full_humanity():
+def test_an_unchromed_character_is_said_to_owe_nothing():
+    # Playthrough 2026-11-07: with no Crew entry the narrator invented a debt sign for a debt-free character.
     from server.narration import _build_messages
 
     session = _session_with_character()
-    assert "Crew:" not in _build_messages(session, "I wait.", num_ctx=8192)[0]["content"]
+    assert "Crew: Rook: no chrome, owes nothing" in _build_messages(session, "I wait.", num_ctx=8192)[0]["content"]
 
 
 def test_crew_entry_is_capped():
@@ -1687,6 +1690,18 @@ async def test_a_plain_action_gets_no_roll(tmp_path):
     assert "not risky" in seen[1][-1]["content"]
 
 
+async def test_a_plain_action_never_opens_a_roll_even_if_the_redo_asks_again(tmp_path):
+    # Playthrough 2026-11-07: "Easy. I just want to know who's selling my name." was judged not risky, the narrator
+    # asked for a roll twice, and the second ask stood: every conversation turn became an Intimidation roll.
+    session = _session_with_character()
+    ask = {"player_id": "p1", "attribute": "presence", "skill": "intimidation", "stakes": "normal", "reason": "a name"}
+    client = _scripted_client([_say("You lean in.", "request_roll", ask), _say("He shrugs, and talks.", "request_roll", ask)],
+                              judge_answers=[_SAFE, {"human_moment_quote": "", "human_moment": "none"}])
+    await _call(session, client, "p1", {"text": "I ask who sells names."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert "p1" not in session.pending_rolls
+    assert "He shrugs, and talks." in session.log
+
+
 async def test_an_out_of_character_question_skips_the_story(tmp_path):
     session = _session_with_character()
     seen = []
@@ -1824,3 +1839,98 @@ async def test_a_fresh_opening_is_not_redone(tmp_path):
                         JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(),
                         "p1", {"type": "action", "text": "I buy noodles."})
     assert len(sent) == 1
+
+
+async def test_a_line_copied_from_recent_turns_is_dropped(tmp_path):
+    # Playthrough 2026-11-07: Old Hara's whole speech came back word for word after the roll, 3 turns running.
+    session = _session_with_character()
+    session.log += ["p1: I ask Hara.", "The clinic hums.", "Old Hara: You want a name, child? Then you'll have to pay for it."]
+    client = _segments_client([[{"speaker": "narrator", "text": "Hara's fingers stop tapping."},
+                                {"speaker": "Old Hara", "text": "You want a name, child? Then you'll have to pay for it."},
+                                {"speaker": "Old Hara", "text": "Fine. Ask at the torite office."}]], [])
+    await handle_action(session, client, JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(),
+                        "p1", {"type": "action", "text": "I wait."})
+    assert session.log.count("Old Hara: You want a name, child? Then you'll have to pay for it.") == 1
+    assert "Old Hara: Fine. Ask at the torite office." in session.log
+
+
+async def test_prose_inside_a_speech_line_goes_back_to_the_narrator(tmp_path):
+    # Playthrough 2026-11-07: "scarred ganger: The blade is already in his hand... 'You think you can trace it?'"
+    session = _session_with_character()
+    client = _segments_client([[{"speaker": "Scarred ganger", "text": "The blade is already in his hand, the hilt cool. 'You think you can trace it?'"}]], [])
+    await handle_action(session, client, JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(),
+                        "p1", {"type": "action", "text": "I trace the line."})
+    assert "The blade is already in his hand, the hilt cool." in session.log
+    assert "Scarred ganger: You think you can trace it?" in session.log
+
+
+async def test_an_apostrophe_in_speech_is_not_a_quote(tmp_path):
+    session = _session_with_character()
+    line = "Names in Ikebe don't just sell, child. They're traded like bullets."
+    client = _segments_client([[{"speaker": "Mama Sato", "text": line}]], [])
+    await handle_action(session, client, JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(),
+                        "p1", {"type": "action", "text": "I ask about names."})
+    assert f"Mama Sato: {line}" in session.log
+
+
+def test_only_named_speakers_become_contacts():
+    from server.narration import _is_a_name
+    assert _is_a_name("Kuroda") and _is_a_name("Mama Sato") and _is_a_name("Old Hara")
+    assert not _is_a_name("scarred ganger") and not _is_a_name("Scarred Ganger") and not _is_a_name("The Doorman")
+
+
+def test_locals_line_names_everyone_who_lives_in_the_district():
+    # Playthrough 2026-11-07: the narrator cast Old Hara (the kind chrome-ya) as a debt-sign villain.
+    from narrator.world import kuroshio, locals_line
+    session = _session_with_character(); session.location = "Mama Sato's izakaya, Ikebe Low"
+    line = locals_line(kuroshio(), session)
+    assert line.startswith("Locals in Ikebe Low: ") and "Old Hara is an off-the-books chrome-ya" in line
+
+
+def test_new_images_only_where_no_approved_art_and_at_most_every_six_turns():
+    from server.narration import _image_allowed
+    session = _session_with_character()
+    session.location = "Old Hara's clinic"  # has approved art
+    assert not _image_allowed(session)
+    session.location = "a rooftop nobody designed"
+    session.log = ["[image: images/s/1.png]"] + ["p1: wait"] * 5
+    assert not _image_allowed(session)
+    session.log.append("p1: wait")
+    assert _image_allowed(session)
+
+
+async def test_a_new_game_opens_with_a_scene_and_jun_s_first_job(tmp_path):
+    # Playthrough 2026-11-07: a new player joined to an empty feed and no goal.
+    from server.narration import open_scene
+    session = _session_with_character()
+    session.characters["p1"].lifepath = "streetkid"
+    sent = []
+    client = _segments_client([[{"speaker": "narrator", "text": "Rain hammers the tin awning over the noodle stall."}]], sent)
+    await open_scene(session, client, JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(), "p1")
+    assert session.location == "Ikebe Low"
+    assert "Rain hammers the tin awning over the noodle stall." in session.log
+    assert "opening scene" in sent[0][-1]["content"]
+    jun = session.phone["p1"]["threads"]["Jun Arakawa"]
+    assert "Hachi" in jun[-1]["text"] and jun[-1]["deliver_at"] == session.phone["p1"]["turn"] + 1
+    assert session.active_objectives == ["Pick up Jun's case from Hachi at Kuroshio Docks"]
+
+
+async def test_joining_a_game_under_way_gets_no_opening(tmp_path):
+    from server.narration import open_scene
+    session = _session_with_character(); session.log = ["The bar is loud."]
+    sent = []
+    await open_scene(session, _segments_client([[{"speaker": "narrator", "text": "x"}]], sent),
+                     JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(), "p1")
+    assert sent == [] and session.active_objectives == []
+
+
+async def test_child_stays_mama_satos_word_and_asterisks_go(tmp_path):
+    session = _session_with_character()
+    client = _segments_client([[{"speaker": "Hachi", "text": "Child, you've come at the right time. It still *wakes*."},
+                                {"speaker": "Old Hara", "text": "You want a name, child? Pay first."},
+                                {"speaker": "Mama Sato", "text": "Sit, child."}]], [])
+    await handle_action(session, client, JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(),
+                        "p1", {"type": "action", "text": "I wait."})
+    assert "Hachi: You've come at the right time. It still wakes." in session.log
+    assert "Old Hara: You want a name? Pay first." in session.log
+    assert "Mama Sato: Sit, child." in session.log

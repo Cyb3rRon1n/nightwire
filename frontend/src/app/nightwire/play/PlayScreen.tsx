@@ -45,7 +45,7 @@ export function PlayScreen({ view, playerId, send, readyLabel, error, errorSeq, 
   // The play screen only mounts after a websocket view arrives, so this never runs during server rendering.
   const [sceneArt, setSceneArt] = useState(() => readFlag(browserStore, SCENE_ART_KEY, true));
   const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
-  const images = sceneImages(view.log);
+  const images = view.images ?? sceneImages(view.log);
   const narrow = useSyncExternalStore(subscribeNarrow, () => window.matchMedia(NARROW).matches, () => false);
   const [phoneOpen, setPhoneOpen] = useState(false);
   const unread = totalUnread(view);

@@ -17,16 +17,16 @@ def _session(**kw) -> Session:
     return s
 
 
-def test_human_with_no_debt_is_only_asked_about_human_moments_and_location():
-    assert list(build_questions(_session(), "p1")) == ["human_moment", "moved_to"]
+def test_human_with_no_debt_is_only_asked_about_human_moments_location_and_leads():
+    assert list(build_questions(_session(), "p1")) == ["human_moment", "moved_to", "new_lead"]
 
 
 def test_conditional_questions_follow_state():
     s = _session(lifepath="tsukumogami", installments_owed=4, pending_repo="kagerou", throttled="kagerou")
-    assert set(build_questions(s, "p1")) == {"human_moment", "moved_to", "acted_as_machine", "gave_up_repo_item",
+    assert set(build_questions(s, "p1")) == {"human_moment", "moved_to", "new_lead", "acted_as_machine", "gave_up_repo_item",
                                              "gig_paid_out", "hara_unlocked_chrome"}
     bodiless = _session(lifepath="tsukumogami", installments_owed=4, bodiless=True)
-    assert set(build_questions(bodiless, "p1")) == {"human_moment", "moved_to", "acted_as_machine", "got_new_shell"}
+    assert set(build_questions(bodiless, "p1")) == {"human_moment", "moved_to", "new_lead", "acted_as_machine", "got_new_shell"}
 
 
 def test_schema_requires_every_question():
@@ -373,3 +373,35 @@ async def test_an_unknown_place_does_not_move_the_player():
                       "p1", "I duck into the cramped bathroom.", "The cramped bathroom smells of bleach.")
     assert s.location == "Ikebe Low"
     assert "[referee: moved_to is not a known place, ignored]" in s.log
+
+
+async def test_a_short_name_in_the_scene_still_counts():
+    # Playthrough 2026-11-07: "The izakaya is warm" didn't count for moved_to "Mama Sato's izakaya".
+    s = _session(); s.location = "Ikebe Low"
+    await run_referee(s, _Client({"moved_to": "Mama Sato's izakaya", "human_moment_quote": "", "human_moment": "none"}),
+                      "p1", "I go inside with her.", "The izakaya is warm, the air thick with soy.")
+    assert s.location == "Mama Sato's izakaya"
+
+
+async def test_a_lead_from_the_scene_becomes_an_objective():
+    # Playthrough 2026-11-07: objectives stayed empty through a whole mystery.
+    s = _session(); s.location = "Ikebe Low"
+    await run_referee(s, _Client({"moved_to": "", "new_lead": "Ask Jun about the Yomi Line data", "human_moment_quote": "",
+                                  "human_moment": "none"}),
+                      "p1", "I ask who wants me dead.", "Mama Sato: Talk to Jun. It's about what you found on the Yomi Line.")
+    assert s.active_objectives == ["Ask Jun about the Yomi Line data"]
+
+
+async def test_an_invented_lead_is_ignored():
+    s = _session()
+    await run_referee(s, _Client({"moved_to": "", "new_lead": "Find the safehouse", "human_moment_quote": "",
+                                  "human_moment": "none"}), "p1", "I wait.", "Rain falls.")
+    assert s.active_objectives == [] and "[referee: new_lead names nothing in the scene, ignored]" in s.log
+
+
+async def test_a_finished_objective_is_removed():
+    s = _session(); s.active_objectives = ["Go inside and talk to Mama Sato", "Pick up Jun's case"]
+    await run_referee(s, _Client({"moved_to": "", "new_lead": "", "objective_done": "Go inside and talk to Mama Sato",
+                                  "human_moment_quote": "", "human_moment": "none"}),
+                      "p1", "I go in and talk to Mama Sato.", "Mama Sato: Sit, child.")
+    assert s.active_objectives == ["Pick up Jun's case"]

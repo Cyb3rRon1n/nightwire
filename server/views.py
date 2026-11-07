@@ -51,6 +51,8 @@ def build_view(session: Session, viewer_id: str) -> dict:
         "current_turn": current_turn(session),
         "is_your_turn": is_players_turn(session, viewer_id),
         "log": session.log[-50:],
+        # The whole session's images: the gallery was built from the last 50 lines and lost older ones (playthrough).
+        "images": [line[len("[image: "):-1] for line in session.log if line.startswith("[image: ") and line.endswith("]")],
         "location": session.location,
         # Approved art for the current place, shown behind the conversation until a scene image arrives.
         "location_art": location_art(session.location),

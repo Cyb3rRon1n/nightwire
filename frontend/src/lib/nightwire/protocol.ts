@@ -82,6 +82,7 @@ export interface StateView {
   current_turn: string | null
   is_your_turn: boolean
   log: string[]
+  images?: string[]
   location: string | null
   // Approved art for the current place, served by the game server (e.g. "place-art/ikebe-low.jpg").
   location_art: string | null

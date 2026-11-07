@@ -40,7 +40,9 @@
 .nw-speech { font-size: 17px; line-height: 1.55; white-space: pre-wrap; text-wrap: pretty; }
 .nw-avatar-gap { width: 40px; flex-shrink: 0; }
 .nw-system { border-block: 1px solid #6b2a25; padding: 6px 0; text-align: center; font: 600 13px var(--font-rajdhani), "Rajdhani", sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #ff8a80; }
-.nw-scene-frame { display: block; padding: 0; border: 1.5px solid var(--nw-frame-cool); background: none; cursor: zoom-in; }
+.nw-scene-frame { display: block; max-width: min(100%, 420px); padding: 0; border: 1.5px solid var(--nw-frame-cool); background: none; cursor: zoom-in; }
+/* A new image is a moment in the story, not a wall over it (playthrough 2026-11-07). */
+.nw-scene-frame img { max-height: 240px; object-fit: cover; }
 .nw-typing { display: flex; align-items: center; gap: 6px; font: 13px var(--font-rajdhani), "Rajdhani", sans-serif; letter-spacing: .16em; color: #9aa3ad; }
 .nw-typing span { margin-right: 4px; }
 .nw-typing i { width: 6px; height: 6px; background: var(--nw-prose); animation: nw-pulse 1.2s infinite; }
@@ -108,3 +110,9 @@
 .nw-phone-form input { flex: 1; min-width: 0; background: var(--nw-ink); border: 1.5px solid var(--nw-frame-cool); color: #e6e8ec; font-size: 16px; padding: 0 10px; height: 44px; }
 .nw-phone-form input:focus { border-color: var(--nw-cyan); outline: none; }
 .nw-phone-form .nw-send { height: 44px; padding: 0 14px; }
+
+/* Voice lines: a small play button under the line it voices, not a full audio player. */
+.nw-voice { margin: -4px 0 6px; }
+.nw-voice button { width: 30px; height: 30px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--nw-cyan) 55%, transparent);
+  background: color-mix(in srgb, var(--nw-ink) 70%, transparent); color: var(--nw-cyan); font-size: 11px; cursor: pointer; }
+.nw-voice button:focus-visible { outline: 2px solid var(--nw-cyan); outline-offset: 2px; }
