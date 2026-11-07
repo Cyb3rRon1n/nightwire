@@ -108,3 +108,9 @@
 .nw-phone-form input { flex: 1; min-width: 0; background: var(--nw-ink); border: 1.5px solid var(--nw-frame-cool); color: #e6e8ec; font-size: 16px; padding: 0 10px; height: 44px; }
 .nw-phone-form input:focus { border-color: var(--nw-cyan); outline: none; }
 .nw-phone-form .nw-send { height: 44px; padding: 0 14px; }
+
+/* Voice lines: a small play button under the line it voices, not a full audio player. */
+.nw-voice { margin: -4px 0 6px; }
+.nw-voice button { width: 30px; height: 30px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--nw-cyan) 55%, transparent);
+  background: color-mix(in srgb, var(--nw-ink) 70%, transparent); color: var(--nw-cyan); font-size: 11px; cursor: pointer; }
+.nw-voice button:focus-visible { outline: 2px solid var(--nw-cyan); outline-offset: 2px; }
