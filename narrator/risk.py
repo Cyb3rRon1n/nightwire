@@ -20,11 +20,18 @@ INSTRUCTION = ("Engine: this action is risky. Narrate only the set-up, up to the
                "Do not say how it turns out.")
 
 
-async def is_risky(client, action_text: str) -> bool:
+NO_ROLL = "Engine: this action is not risky. Narrate it through to what happens, without a roll."
+
+
+async def is_risky(client, action_text: str) -> bool | None:
+    """True: risky (with a quote from the action). False: plainly not risky. None: unknown - the check failed or
+    claimed risk without a real quote - and then the engine neither forces nor blocks a roll."""
     try:
         answer = await client.judge([{"role": "system", "content": _SYSTEM},
                                      {"role": "user", "content": f"Action: {action_text}\nQuestion: {_QUESTION}"}], SCHEMA)
-        quote = _squash(str(answer.get("risky_quote", "")))
-        return answer.get("risky") is True and bool(quote) and quote in _squash(action_text)
     except Exception:  # a failed check must never block the turn
+        return None
+    if answer.get("risky") is False:
         return False
+    quote = _squash(str(answer.get("risky_quote", "")))
+    return True if answer.get("risky") is True and quote and quote in _squash(action_text) else None

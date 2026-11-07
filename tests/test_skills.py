@@ -42,3 +42,13 @@ def test_skill_cap_never_exceeds_five():
 
 def test_starting_skill_points_is_eight():
     assert STARTING_SKILL_POINTS == 8
+
+
+def test_roll_attribute_keeps_sensible_pairs_and_fixes_odd_ones():
+    from ruleset.attributes import Attribute
+    from ruleset.skills import roll_attribute
+    assert roll_attribute("perception", "reflexes") == Attribute.REFLEXES   # the skill spec's own example
+    assert roll_attribute("stealth", "cool") == Attribute.COOL
+    assert roll_attribute("stealth", "presence") == Attribute.REFLEXES      # live 2026-11-06: Stealth (Presence)
+    assert roll_attribute("persuasion", "body") == Attribute.PRESENCE
+    assert roll_attribute("hacking", "nonsense") == Attribute.TECH
