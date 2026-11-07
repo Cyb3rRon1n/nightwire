@@ -9,7 +9,7 @@ from engine.character import is_tsukumogami
 from engine.chrome import change_humanity
 from engine.debt import SHELL, new_shell, pay_installment, repo_target_name, repossess, unthrottle
 from engine.session import Session
-from narrator.movement import known_place
+from narrator.movement import known_place, places_in
 from ruleset.cyberware import CHROME
 
 _LEVELS = ["none", "small", "big"]
@@ -139,7 +139,8 @@ def ground(session: Session, verdict: dict, action: str, narration: str) -> dict
     # Only the player or the narrator's own prose moves the player: an NPC naming a place isn't arriving there
     # (dry run 2026-11-06: "What brings you to Ikebe?" moved the player out of the izakaya).
     prose = "\n".join(line for line in narration.splitlines() if not _SPEECH.match(line))
-    if moved and _squash(moved) not in _squash(f"{action}\n{prose}"):
+    named_here = known_place(moved) in places_in(f"{action}\n{prose}")  # "the izakaya" names Mama Sato's izakaya
+    if moved and _squash(moved) not in _squash(f"{action}\n{prose}") and not named_here:
         session.log.append("[referee: moved_to had no match in the scene, ignored]")
         moved = ""
     # Only a known place moves the player, by its own name ("Ikebe Low - Old Hara's clinic" -> Old Hara's clinic).
