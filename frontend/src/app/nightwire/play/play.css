@@ -29,6 +29,9 @@
 .nw-feed { mask-image: linear-gradient(to bottom, transparent 0, #000 28px); display: flex; flex-direction: column; align-items: center; gap: 14px; scrollbar-width: thin; scrollbar-color: var(--nw-red) transparent; }
 .nw-feed > :first-child { margin-top: 20px; }
 .nw-feed > * { width: 100%; max-width: 660px; flex-shrink: 0; }
+@media (min-width: 1024px) {
+  .nw-play[data-phone-open] .nw-feed { padding-right: 346px; }
+}
 .nw-line-narrator { max-width: 62ch; font-family: var(--font-source-serif), Georgia, serif; font-size: 18px; line-height: 1.6; color: var(--nw-prose); white-space: pre-wrap; text-wrap: pretty; }
 .nw-line-npc { display: flex; gap: 12px; }
 .nw-line-own { display: flex; gap: 12px; flex-direction: row-reverse; text-align: right; }
