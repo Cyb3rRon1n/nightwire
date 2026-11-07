@@ -373,3 +373,11 @@ async def test_an_unknown_place_does_not_move_the_player():
                       "p1", "I duck into the cramped bathroom.", "The cramped bathroom smells of bleach.")
     assert s.location == "Ikebe Low"
     assert "[referee: moved_to is not a known place, ignored]" in s.log
+
+
+async def test_a_short_name_in_the_scene_still_counts():
+    # Playthrough 2026-11-07: "The izakaya is warm" didn't count for moved_to "Mama Sato's izakaya".
+    s = _session(); s.location = "Ikebe Low"
+    await run_referee(s, _Client({"moved_to": "Mama Sato's izakaya", "human_moment_quote": "", "human_moment": "none"}),
+                      "p1", "I go inside with her.", "The izakaya is warm, the air thick with soy.")
+    assert s.location == "Mama Sato's izakaya"

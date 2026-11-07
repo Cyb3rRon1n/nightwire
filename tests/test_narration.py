@@ -1871,3 +1871,9 @@ async def test_an_apostrophe_in_speech_is_not_a_quote(tmp_path):
     await handle_action(session, client, JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(),
                         "p1", {"type": "action", "text": "I ask about names."})
     assert f"Mama Sato: {line}" in session.log
+
+
+def test_only_named_speakers_become_contacts():
+    from server.narration import _is_a_name
+    assert _is_a_name("Kuroda") and _is_a_name("Mama Sato") and _is_a_name("Old Hara")
+    assert not _is_a_name("scarred ganger") and not _is_a_name("Scarred Ganger") and not _is_a_name("The Doorman")

@@ -399,6 +399,18 @@ async def handle_action(
     )
 
 
+# Role words that mark an unnamed extra (playthrough 2026-11-07: "scarred ganger" became a phone contact).
+_EXTRAS = {"ganger", "gangers", "guard", "guards", "enforcer", "enforcers", "man", "woman", "boy", "girl", "kid",
+           "vendor", "bartender", "clerk", "doorman", "cop", "officer", "stranger", "worker", "dockworker", "biker",
+           "voice", "crowd", "driver", "thug", "goon", "customer", "patron", "drunk", "nurse", "medic", "bouncer"}
+
+
+def _is_a_name(speaker: str) -> bool:
+    """A named person ("Kuroda", "Mama Sato"), not an extra ("scarred ganger", "The Doorman")."""
+    words = speaker.strip().split()
+    return bool(words) and all(w[:1].isupper() for w in words) and not any(w.lower() in _EXTRAS for w in words)
+
+
 def _is_player_voice(session: Session, speaker: str) -> bool:
     s = speaker.strip().lower()
     return any(s in (c.name.strip().lower(), c.player_id.strip().lower()) for c in session.characters.values())
@@ -412,7 +424,7 @@ async def _log_narration(session, response, store, tts_backend, player_id) -> st
             session.log.append(f"[voice filtered: {segment.speaker}]")
             continue
         line = segment.text if segment.speaker == "narrator" else f"{segment.speaker}: {segment.text}"
-        if segment.speaker != "narrator" and segment.speaker.strip():
+        if segment.speaker != "narrator" and _is_a_name(segment.speaker):
             known = phone_of(session, player_id)["contacts"]
             if not find_contact(known, segment.speaker):  # "Saeko" is Saeko Kirigaya, not a stranger
                 add_contact(session, player_id, segment.speaker.strip())
