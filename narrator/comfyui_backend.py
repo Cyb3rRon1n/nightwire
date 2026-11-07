@@ -4,6 +4,7 @@ from collections.abc import Awaitable, Callable
 
 import httpx
 
+from narrator.design_sheets import _TILED
 from narrator.image_prompt import NEGATIVE
 
 _NEGATIVE_PROMPT = "blurry, deformed, extra limbs, bad anatomy, watermark, text, low quality"
@@ -19,6 +20,9 @@ _NOOBAI_PORTRAIT_SIZE = (832, 1216)
 _NOOBAI_SCENE_SIZE = (1216, 832)
 _NOOBAI_STEPS = 28
 _NOOBAI_RESCALE = 0.6
+
+
+START_STRENGTH = 0.85  # how far a new image may move from its starting art (owner test 2026-11-07)
 
 
 class ComfyUIBackend:
@@ -131,9 +135,19 @@ class ComfyUIBackend:
         }
 
     async def _generate(self, prompt: str, width: int, height: int, filename_prefix: str,
-                        negative: str | None = None) -> bytes:
+                        negative: str | None = None, start_image: bytes | None = None) -> bytes:
         seed = uuid.uuid4().int & 0xFFFFFFFF
         workflow = self._build_workflow(prompt, seed, width, height, filename_prefix, negative)
+        if start_image is not None and self.wants_tags:
+            # Start from approved art instead of noise, so a new place keeps the approved look (owner 2026-11-07
+            # test: 85% from the district art; text-only came out brighter and near-photoreal).
+            name = await self.upload_image(f"nightwire_start_{seed}.jpg", start_image)
+            del workflow["5"]
+            workflow["70"] = {"class_type": "LoadImage", "inputs": {"image": name}}
+            workflow["72"] = {"class_type": "ImageScale", "inputs": {"image": ["70", 0], "upscale_method": "lanczos",
+                                                                     "width": width, "height": height, "crop": "center"}}
+            workflow["71"] = {"class_type": "VAEEncodeTiled", "inputs": {"pixels": ["72", 0], "vae": ["4", 2], **_TILED}}
+            workflow["3"]["inputs"].update(latent_image=["71", 0], denoise=START_STRENGTH)
         try:
             return await self.run_workflow(workflow)
         finally:
@@ -192,6 +206,7 @@ class ComfyUIBackend:
         width, height = _NOOBAI_PORTRAIT_SIZE if self.wants_tags else _PORTRAIT_SIZE
         return await self._generate(description, width, height, "nightwire_portrait", negative)
 
-    async def generate_scene(self, prompt: str, reference_paths: list[str], negative: str | None = None) -> bytes:
+    async def generate_scene(self, prompt: str, reference_paths: list[str], negative: str | None = None,
+                             start_image: bytes | None = None) -> bytes:
         width, height = _NOOBAI_SCENE_SIZE if self.wants_tags else _SCENE_SIZE
-        return await self._generate(prompt, width, height, "nightwire_scene", negative)
+        return await self._generate(prompt, width, height, "nightwire_scene", negative, start_image)

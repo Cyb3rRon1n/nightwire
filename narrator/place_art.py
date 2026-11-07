@@ -71,3 +71,12 @@ def location_art(location: str | None) -> str | None:
         if re.search(rf"\b{re.escape(key)}\b", loc):
             return f"place-art/{slug}.jpg"
     return None
+
+
+def district_art(location: str | None) -> Path | None:
+    """The approved art of the district a place is in, to start a new image from when the place itself has none
+    (owner 2026-11-07: the Ring Line train car started from the Ring Line art kept Kuroshio's look)."""
+    from narrator.world import _where  # late: world imports nothing from here, but keep the module light
+    _, district = _where(kuroshio(), location)
+    art = location_art(district.name) if district else None
+    return ART_DIR / Path(art).name if art else None
