@@ -9,11 +9,18 @@ import urllib.request
 LAB = "http://192.168.10.19:8080/designs/api"
 
 
+def likes(taste: dict, images: dict) -> dict:
+    """id -> (like, at). Keep counts as a like and Reject as a dislike; an explicit thumb wins."""
+    out = {i: (r["verdict"] == "keep", r["at"]) for i, r in images.items() if r.get("verdict") in ("keep", "reject")}
+    out.update({i: (r["like"], r["at"]) for i, r in taste.items()})
+    return out
+
+
 def summary(taste: dict, images: dict) -> str:
     """Liked and disliked image ids, newest first, each with the owner's note when there is one."""
-    out = []
+    out, seen = [], likes(taste, images)
     for like, title in ((True, "Liked"), (False, "Disliked")):
-        rows = sorted((r["at"], i) for i, r in taste.items() if r["like"] is like)
+        rows = sorted((at, i) for i, (l, at) in seen.items() if l is like)
         out.append(f"{title} ({len(rows)}):")
         for _, i in reversed(rows):
             note = images.get(i, {}).get("note")
