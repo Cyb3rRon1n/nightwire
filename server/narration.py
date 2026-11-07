@@ -17,6 +17,7 @@ from narrator.client import NarrationSegment, NarratorClient, _NoTool
 from narrator.image_backend import ImageBackend
 from narrator.image_prompt import resolve
 from narrator.movement import destination
+from narrator.place_art import location_art
 from narrator.referee import run_referee
 from narrator.tools import RequestRoll, execute_tool, roll_check
 from narrator.tts_backend import TTSBackend
@@ -412,6 +413,24 @@ def _is_a_name(speaker: str) -> bool:
     return bool(words) and all(w[:1].isupper() for w in words) and not any(w.lower() in _EXTRAS for w in words)
 
 
+_IMAGE_EVERY = 6
+
+
+def _image_allowed(session: Session) -> bool:
+    """New scene images only where no approved art exists, and at most one per _IMAGE_EVERY player turns
+    (playthrough 2026-11-07: six off-style images in 14 turns, one of them a "clinic" that looked like a spaceship)."""
+    if location_art(session.location):
+        return False
+    actors = tuple(f"{pid}: " for pid in session.characters)
+    turns = 0
+    for line in reversed(session.log):
+        if line.startswith("[image: "):
+            return turns >= _IMAGE_EVERY
+        if actors and line.startswith(actors):
+            turns += 1
+    return True
+
+
 def _is_player_voice(session: Session, speaker: str) -> bool:
     s = speaker.strip().lower()
     return any(s in (c.name.strip().lower(), c.player_id.strip().lower()) for c in session.characters.values())
@@ -561,7 +580,7 @@ async def _run_turn(
     # the rule structurally instead of trusting prompt compliance alone,
     # same pattern as request_roll's forced player_id / apply_character_update's
     # roster grounding.
-    if response.image_request is not None and not session.last_turn_had_image:
+    if response.image_request is not None and not session.last_turn_had_image and _image_allowed(session):
         character = session.characters.get(player_id)
         reference_paths = []
         if character is not None and character.portrait_path is not None:
