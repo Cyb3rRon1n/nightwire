@@ -22,7 +22,8 @@ def _phone_view(session: Session, viewer_id: str) -> dict:
     if phone is None:
         return {"contacts": [], "threads": {}, "typing": []}
     counts = unread(session, viewer_id)
-    threads = {name: [m for m in msgs if m["text"] is not None and m["deliver_at"] <= phone["turn"]]
+    threads = {name: sorted((m for m in msgs if m["text"] is not None and m["deliver_at"] <= phone["turn"]),
+                            key=lambda m: m["deliver_at"])  # stable: ties keep posting order
                for name, msgs in phone["threads"].items()}
     return {
         "contacts": [{"name": c["name"], "role": c["role"], "trust": int(c["trust"]),

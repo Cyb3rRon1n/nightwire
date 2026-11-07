@@ -139,10 +139,9 @@ def handle_message(session: Session, message: dict, player_id: str) -> None:
         if is_new and is_tsukumogami(new_character):
             new_character.humanity = STARTING_SELFHOOD
             new_character.installments_owed += SHELL_INSTALLMENTS
-        if is_new:
-            pid = character_data["player_id"]
-            add_contact(session, pid, "Saeko Kirigaya", "creditor", pace=-1)
-            add_contact(session, pid, "Jun Arakawa", "fixer")
+        pid = character_data["player_id"]  # no-ops when present; backfills sessions saved before the phone
+        add_contact(session, pid, "Saeko Kirigaya", "creditor", pace=-1)
+        add_contact(session, pid, "Jun Arakawa", "fixer")
         # Reconnects must not re-install; only a fresh sheet gets starting chrome.
         if starting_chrome and is_new:
             session.pending_world_events.extend(install_chrome(new_character, starting_chrome))

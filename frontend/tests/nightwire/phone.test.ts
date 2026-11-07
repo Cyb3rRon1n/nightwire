@@ -26,3 +26,12 @@ test("trustLabel names 0..5 and clamps", () => {
   assert.equal(trustLabel(-3), "burned");
   assert.equal(trustLabel(9), "ride-or-die");
 });
+
+test("resolveSelected keeps the picked contact even when the sort order changes", async () => {
+  const { resolveSelected } = await import("../../src/lib/nightwire/phone.ts");
+  const cs = [c("Bo", 1, 3), c("Amy", 5, 0)];
+  assert.equal(resolveSelected(cs, "Amy"), "Amy");
+  assert.equal(resolveSelected(cs, null), "Bo");
+  assert.equal(resolveSelected(cs, "Gone"), "Bo");
+  assert.equal(resolveSelected([], "Amy"), null);
+});

@@ -156,13 +156,7 @@ def ground(session: Session, verdict: dict, action: str, narration: str) -> dict
 
 def _find_contact(session: Session, player_id: str, written: str) -> dict | None:
     """Full name (any case), or one word that belongs to exactly one contact's name."""
-    contacts = phone.phone_of(session, player_id)["contacts"]
-    w = written.strip().lower()
-    for name, contact in contacts.items():
-        if name.lower() == w:
-            return contact
-    hits = [c for n, c in contacts.items() if w in n.lower().split()]
-    return hits[0] if len(hits) == 1 else None
+    return phone.find_contact(phone.phone_of(session, player_id)["contacts"], written)
 
 
 def apply_verdict(session: Session, player_id: str, verdict: dict) -> None:

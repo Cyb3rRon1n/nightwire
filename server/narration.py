@@ -9,7 +9,7 @@ from narrator.ooc import answer_ooc, is_ooc
 from narrator.risk import INSTRUCTION as RISK_INSTRUCTION, NO_ROLL, assess
 from engine.chrome import change_humanity, usable_overclocks
 from engine.debt import repo_target_name, tick_debt
-from engine.phone import add_contact, phone_of, post
+from engine.phone import add_contact, find_contact, phone_of, post
 from engine.persistence import JSONFileSessionStore
 from engine.session import Session
 from narrator.client import NarratorClient
@@ -314,8 +314,10 @@ async def _log_narration(session, response, store, tts_backend, player_id) -> st
             session.log.append(f"[voice filtered: {segment.speaker}]")
             continue
         line = segment.text if segment.speaker == "narrator" else f"{segment.speaker}: {segment.text}"
-        if segment.speaker != "narrator":
-            add_contact(session, player_id, segment.speaker)
+        if segment.speaker != "narrator" and segment.speaker.strip():
+            known = phone_of(session, player_id)["contacts"]
+            if not find_contact(known, segment.speaker):  # "Saeko" is Saeko Kirigaya, not a stranger
+                add_contact(session, player_id, segment.speaker.strip())
         texts.append(line)  # with the speaker, so the referee can tell narration from what NPCs say
         session.log.append(line)
         log_index = len(session.log)

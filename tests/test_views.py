@@ -210,3 +210,18 @@ def test_portrait_null_for_unknown_npc():
     s = Session(session_id="s1")
     add_contact(s, "p1", "Nobody Atall", "stranger")
     assert build_view(s, "p1")["phone"]["contacts"][0]["portrait"] is None
+
+
+def test_thread_is_ordered_by_delivery_turn():
+    from engine.phone import add_contact, post, phone_of
+    s = Session(session_id="s1")
+    s.characters["p1"] = _character("p1", "Rook")
+    add_contact(s, "p1", "Jun Arakawa", "fixer")
+    p = phone_of(s, "p1")
+    p["turn"] = 1
+    post(s, "p1", "Jun Arakawa", "Jun Arakawa", "reply", 4)
+    p["turn"] = 2
+    post(s, "p1", "Jun Arakawa", "Jun Arakawa", "engine text", 2)
+    p["turn"] = 4
+    texts = [m["text"] for m in build_view(s, "p1")["phone"]["threads"]["Jun Arakawa"]]
+    assert texts == ["engine text", "reply"]

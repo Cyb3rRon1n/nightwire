@@ -11,3 +11,7 @@ export function sortedContacts(view: PhoneView): PhoneContact[] {
 }
 
 export const trustLabel = (trust: number): string => TRUST[Math.min(5, Math.max(0, Math.round(trust)))];
+
+// The shown contact stays put once picked; fall back to the first only when nothing is picked or it vanished.
+export const resolveSelected = (contacts: PhoneContact[], picked: string | null): string | null =>
+  contacts.find((c) => c.name === picked)?.name ?? contacts[0]?.name ?? null;

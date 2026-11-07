@@ -22,6 +22,18 @@ def add_contact(session, player_id, name, role="stranger", *, pace=0, close=Fals
     return p["contacts"][name]
 
 
+def find_contact(contacts: dict, written: str) -> dict | None:
+    """Full name (any case), or one word that belongs to exactly one contact's name."""
+    w = written.strip().lower()
+    if not w:
+        return None
+    for name, contact in contacts.items():
+        if name.lower() == w:
+            return contact
+    hits = [c for n, c in contacts.items() if w in n.lower().split()]
+    return hits[0] if len(hits) == 1 else None
+
+
 def delay(contact: dict) -> int:
     raw = ROLE_BASE[contact["role"]] + (5 - int(contact["trust"])) + contact["pace"]
     return max(0, min(6, raw))

@@ -3,16 +3,20 @@
 import { useEffect, useRef, useState } from "react";
 import type { ClientMessage, StateView } from "@/lib/nightwire/protocol";
 import { serverUrl } from "@/lib/nightwire/media";
-import { sortedContacts, trustLabel } from "@/lib/nightwire/phone";
+import { resolveSelected, sortedContacts, trustLabel } from "@/lib/nightwire/phone";
 
 // The phone body: contact chips, thread, typing line, private text input.
 // Floating on wide screens (PlayScreen wraps it), inline in the PHONE tab on narrow ones.
 export function PhonePanel({ view, send, onClose }: { view: StateView; send: (msg: ClientMessage) => void; onClose?: () => void }) {
   const contacts = sortedContacts(view);
   const [picked, setPicked] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
-  const selected = contacts.find((c) => c.name === picked) ?? contacts[0] ?? null;
-  const name = selected?.name ?? null;
+  // Drafts are kept per contact, so switching threads never sends or loses text meant for someone else.
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const name = resolveSelected(contacts, picked);
+  if (name !== picked) setPicked(name); // pin the shown contact so a re-sort (new unread) cannot move it
+  const selected = contacts.find((c) => c.name === name) ?? null;
+  const draft = (name && drafts[name]) || "";
+  const setDraft = (text: string) => name && setDrafts((d) => ({ ...d, [name]: text }));
   const unread = selected?.unread ?? 0;
   const thread = (name && view.phone.threads[name]) || [];
   const typing = !!name && view.phone.typing.includes(name);
