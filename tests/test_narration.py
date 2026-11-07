@@ -349,7 +349,8 @@ async def test_handle_action_suppresses_image_request_two_turns_in_a_row(tmp_pat
 
     await _call(session, client, "p1", {"text": "I look around some more."}, tmp_path, image_backend, tts_backend=FakeTTSBackend())
     assert CountingImageBackend.calls == 1, "image_request fired two turns in a row despite the cooldown"
-    assert not any(line.startswith("[image: ") for line in session.log[-3:])
+    second_turn = session.log[session.log.index("p1: I look around some more."):]
+    assert not any(line.startswith("[image: ") for line in second_turn)
     assert session.last_turn_had_image is False
 
     await _call(session, client, "p1", {"text": "I step into another plaza."}, tmp_path, image_backend, tts_backend=FakeTTSBackend())
@@ -1017,6 +1018,24 @@ async def test_resolution_prompt_contains_the_result(tmp_path, monkeypatch):
     content = sent[0][-1]["content"]
     assert "Roll result for Rook: a failure on slip past the guard." in content
     assert "Rook rolls Stealth (Reflexes) vs Hard: a failure" in content
+
+
+@pytest.mark.asyncio
+async def test_resolution_prompt_carries_the_players_action(tmp_path, monkeypatch):
+    # Soak run 5: without it the narrator re-described the clinic instead of resolving the punch.
+    session = _session_with_character()
+    session.log.append("p1: I punch the guy who bumps into me.")
+    _pending(session)
+    monkeypatch.setattr("narrator.tools.random.randint", lambda a, b: 7)
+    sent = []
+
+    async def chat_fn(*, model, messages, format):
+        sent.append(messages)
+        return {"message": {"content": json.dumps({"narration": [{"speaker": "narrator", "text": "ok"}], "tool_call": {"tool": None}})}}
+
+    await _roll(session, NarratorClient(chat_fn=chat_fn, generate_fn=None), "p1", tmp_path)
+    content = sent[0][-1]["content"]
+    assert "They tried: I punch the guy who bumps into me." in content and "No new roll this turn." in content
 
 
 @pytest.mark.asyncio
@@ -1762,3 +1781,46 @@ def test_recent_events_keep_actions_and_dialogue_but_only_the_last_three_turns_o
     assert "Rain taps the glass 1" not in content and "Rain taps the glass 2" not in content
     for n in (3, 4, 5):
         assert f"Rain taps the glass {n}." in content and f"The corridor hums {n}." not in content
+
+
+def _segments_client(replies: list[list[dict]], sent: list):
+    async def chat_fn(*, model, messages, format):
+        sent.append(messages)
+        segs = replies[min(len(sent), len(replies)) - 1]
+        return {"message": {"content": json.dumps({"narration": segs, "tool_call": {"tool": None}})}}
+    return NarratorClient(chat_fn=chat_fn, generate_fn=None)
+
+
+def _with_past_opening(session):
+    session.log += ["p1: I look around.", "The narrow corridor of Ikebe Low hums with the city. A door creaks."]
+
+
+async def test_a_repeated_opening_is_redone_once(tmp_path):
+    session = _session_with_character(); _with_past_opening(session)
+    sent = []
+    client = _segments_client([[{"speaker": "narrator", "text": "The narrow corridor of Ikebe Low hums with the city. You buy noodles."}],
+                               [{"speaker": "narrator", "text": "The vendor hands you a steaming bowl."}]], sent)
+    await handle_action(session, client, JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(),
+                        "p1", {"type": "action", "text": "I buy noodles."})
+    assert len(sent) == 2 and "already used" in sent[1][-1]["content"]
+    assert "The vendor hands you a steaming bowl." in session.log
+    assert not any(line.startswith("The narrow corridor of Ikebe Low hums with the city. You buy") for line in session.log)
+
+
+async def test_a_second_repeat_loses_its_opening_sentence(tmp_path):
+    session = _session_with_character(); _with_past_opening(session)
+    sent = []
+    same = [{"speaker": "narrator", "text": "The narrow corridor of Ikebe Low hums with the city. You buy noodles."}]
+    await handle_action(session, _segments_client([same, same], sent), JSONFileSessionStore(tmp_path), _UnusedImageBackend(),
+                        FakeTTSBackend(), "p1", {"type": "action", "text": "I buy noodles."})
+    assert len(sent) == 2 and "You buy noodles." in session.log
+    assert session.log.count("The narrow corridor of Ikebe Low hums with the city. A door creaks.") == 1
+
+
+async def test_a_fresh_opening_is_not_redone(tmp_path):
+    session = _session_with_character(); _with_past_opening(session)
+    sent = []
+    await handle_action(session, _segments_client([[{"speaker": "narrator", "text": "Steam rolls off the noodle cart."}]], sent),
+                        JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(),
+                        "p1", {"type": "action", "text": "I buy noodles."})
+    assert len(sent) == 1

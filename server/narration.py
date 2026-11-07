@@ -124,6 +124,40 @@ def _trim_prose(lines: list[str], session: Session) -> list[str]:
     return out
 
 
+_RECENT_OPENINGS = 5
+
+
+def _opening_key(text: str) -> str:
+    return " ".join(text.lower().split())[:40]
+
+
+def _opening(response) -> str | None:
+    """The first 40 characters of the reply's opening narrator prose, or None when it opens with dialogue."""
+    first = next(iter(response.narration), None)
+    return _opening_key(first.text) if first is not None and first.speaker == "narrator" and first.text.strip() else None
+
+
+def _recent_openings(session: Session) -> set[str]:
+    """The opening prose of the last few turns, as _opening keys (the soak test's repeated_opening, per turn)."""
+    actors = tuple(f"{pid}: " for pid in session.characters)
+    lines = [line for line in session.log if not line.startswith("[")]
+    found: list[str] = []
+    for i, line in enumerate(lines):
+        if actors and line.startswith(actors):
+            prose = next((l for l in lines[i + 1:] if not l.startswith(actors) and not _SPEECH.match(l)
+                          and not _ROLL_LINE.search(l)), None)
+            if prose:
+                found.append(_opening_key(prose))
+    return set(found[-_RECENT_OPENINGS:])
+
+
+def _drop_opening(response) -> None:
+    first = response.narration[0]
+    first.text = _FIRST_SENTENCE.sub("", first.text, count=1)
+    if not first.text.strip():
+        response.narration.pop(0)
+
+
 def _npc_entry(name: str, facts: list[str]) -> str:
     return f"{name}: {'; '.join(facts)}"
 
@@ -448,6 +482,17 @@ async def _run_turn(
         response = await narrator_client.respond(messages)
         del session.pending_world_events[:len(shown_events)]
 
+    opening = _opening(response)
+    if opening and opening in _recent_openings(session):
+        # Soak run 5: 10 of 33 turns reused an earlier opening. Redo once; a second repeat loses that sentence.
+        session.pending_world_events[:0] = shown_events
+        redo = (f"{prompt_text}\n\nEngine: don't open with \"{opening}...\" - that opening was already used. "
+                "Start with what the action causes.")
+        response = await narrator_client.respond(_build_messages(session, redo, narrator_client.num_ctx))
+        del session.pending_world_events[:len(shown_events)]
+        if _opening(response) in _recent_openings(session):
+            _drop_opening(response)
+
     if actor_line is not None:
         session.log.append(actor_line)
     if refusal is not None:
@@ -569,15 +614,19 @@ async def narrate_roll(
     player_id: str,
     rolled: dict,
 ) -> None:
+    # Soak run 5: resolutions re-described the place instead of resolving the punch, then asked for another roll.
+    action = _last_action(session, player_id)
+    tried = f" They tried: {action}." if action else ""
     await _run_turn(
         session, narrator_client, store, image_backend, tts_backend, player_id,
         prompt_text=(
             f"Roll result for {rolled['name']}: {_OUTCOME_TEXT[rolled['outcome']]} on "
-            f"{rolled['reason']}. Narrate what happens now, true to that result."
+            f"{rolled['reason']}.{tried} Narrate what happens now, true to that result: start with the "
+            f"outcome itself. No new roll this turn."
         ),
         actor_line=None, allow_roll=False,
         # The prompt is the engine's instruction; the referee judges what the player chose to do.
-        referee_action=_last_action(session, player_id) or rolled["reason"],
+        referee_action=action or rolled["reason"],
     )
 
 
