@@ -9,7 +9,7 @@ from narrator.ooc import answer_ooc, is_ooc
 from narrator.risk import INSTRUCTION as RISK_INSTRUCTION, NO_ROLL, assess
 from engine.chrome import change_humanity, usable_overclocks
 from engine.debt import repo_target_name, tick_debt
-from engine.phone import add_contact
+from engine.phone import add_contact, phone_of, post
 from engine.persistence import JSONFileSessionStore
 from engine.session import Session
 from narrator.client import NarratorClient
@@ -120,6 +120,21 @@ _SCENE_MAX_OBJECTIVES = 5
 
 
 _CREW_ENTRY_MAX_CHARS = 200
+
+
+_SAEKO = (("final notice", "Thursday was yesterday. Don't make me come find you."),
+          ("remote-throttled", "We switched off your {chrome}. Pay and it comes back."),
+          ("comes for", "My crew is on the way."))
+
+
+def _saeko_text(session, player_id, character, event) -> None:
+    for key, template in _SAEKO:
+        if key in event:
+            chrome = CHROME[character.throttled].name if character.throttled else ""
+            add_contact(session, player_id, "Saeko Kirigaya", "creditor", pace=-1)
+            turn = phone_of(session, player_id)["turn"]
+            post(session, player_id, "Saeko Kirigaya", "Saeko Kirigaya", template.format(chrome=chrome), turn)
+            return
 
 
 def _crew_line(session: Session) -> str:
@@ -275,6 +290,7 @@ async def handle_action(
         for event in tick_debt(character):
             session.pending_world_events.append(event)
             session.log.append(f"[torite: {event}]")
+            _saeko_text(session, player_id, character, event)
     risky, roll_skill = await assess(narrator_client, action_text) if character is not None else (None, None)
     must_roll = risky is True
     await _run_turn(
