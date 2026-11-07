@@ -113,3 +113,16 @@ async def test_no_checkin_before_8_quiet_turns():
     s2.phone["p1"]["threads"]["Mika"][0]["turn"] = 8
     await deliver_due(s2, Judge(), "p1")
     assert len(_texts(s2)) == 1
+
+
+async def test_a_fixer_asked_for_work_answers_next_turn():
+    # Playthrough 2026-11-07: Jun answered a request for work 6 turns later.
+    s = _session("fixer", 0)
+    await handle_text(s, Judge(), "p1", {"to": "Mika", "text": "Need work. Got a job for me?"})
+    assert _texts(s)[-1]["deliver_at"] == s.phone["p1"]["turn"] + 1
+
+
+async def test_small_talk_with_a_fixer_keeps_the_usual_delay():
+    s = _session("fixer", 0)
+    await handle_text(s, Judge(), "p1", {"to": "Mika", "text": "how are you"})
+    assert _texts(s)[-1]["deliver_at"] > s.phone["p1"]["turn"] + 1
