@@ -13,15 +13,16 @@ from engine.debt import repo_target_name, tick_debt
 from engine.phone import add_contact, find_contact, phone_of, post
 from engine.persistence import JSONFileSessionStore
 from engine.session import Session
-from narrator.client import NarratorClient
+from narrator.client import NarrationSegment, NarratorClient, _NoTool
 from narrator.image_backend import ImageBackend
 from narrator.image_prompt import resolve
 from narrator.movement import destination
+from narrator.place_art import location_art
 from narrator.referee import run_referee
 from narrator.tools import RequestRoll, execute_tool, roll_check
 from narrator.tts_backend import TTSBackend
 from narrator.voice_assignment import assign_voice
-from narrator.world import kuroshio, select_cards
+from narrator.world import kuroshio, locals_line, select_cards
 from ruleset.attributes import Attribute
 from ruleset.cyberware import CHROME, humanity_tier, selfhood_tier
 from ruleset.difficulty import difficulty_for
@@ -151,6 +152,52 @@ def _recent_openings(session: Session) -> set[str]:
     return set(found[-_RECENT_OPENINGS:])
 
 
+# The quote must open after a space and start a sentence, so "Names in Ikebe don't sell" stays whole.
+_PROSE_THEN_QUOTE = re.compile(r"^(?P<prose>[^\"‘“]{12,}?[.!?,:;—-])\s+['\"‘“](?P<said>[A-Z…].+?)['\"’”]?\s*$", re.S)
+
+
+def _split_prose_from_speech(response) -> None:
+    """A speech line that opens with stage directions and then a quote: the directions go to the narrator
+    (playthrough 2026-11-07: "scarred ganger: The blade is already in his hand... 'You think...'")."""
+    out = []
+    for seg in response.narration:
+        m = _PROSE_THEN_QUOTE.match(seg.text) if seg.speaker != "narrator" else None
+        if m and m["said"].strip():
+            out.append(NarrationSegment(speaker="narrator", text=m["prose"].strip()))
+            seg.text = m["said"].strip()
+        out.append(seg)
+    response.narration[:] = out
+
+
+_EMPHASIS = re.compile(r"\*([^*\n]+)\*")
+_CHILD_FIRST = re.compile(r"^(?:Ah[.…,]*\s*)?Child,\s*")
+_CHILD_AFTER = re.compile(r",\s*child(?=[.?!,…])")
+
+
+def _tidy(response) -> None:
+    """Markdown emphasis shows as asterisks in the feed; "child" is Mama Sato's word, and the prompt rule alone
+    didn't keep it from the ganger, Old Hara and Hachi (playthroughs 2026-11-07)."""
+    for seg in response.narration:
+        seg.text = _EMPHASIS.sub(r"\1", seg.text)
+        if seg.speaker != "narrator" and "sato" not in seg.speaker.lower():
+            seg.text = _CHILD_AFTER.sub("", seg.text)
+            if _CHILD_FIRST.match(seg.text):
+                rest = _CHILD_FIRST.sub("", seg.text)
+                seg.text = rest[:1].upper() + rest[1:]
+
+
+_RECENT_LINES = 40
+
+
+def _drop_repeated_lines(response, session: Session) -> None:
+    """Drops reply lines (prose or speech) that copy a recent story line word for word (playthrough 2026-11-07:
+    Old Hara's whole speech before and after the roll, a ganger's threat across 4 turns). Keeps at least one line."""
+    recent = {_opening_key(line.split(": ", 1)[1] if _SPEECH.match(line) else line)
+              for line in [l for l in session.log if not l.startswith("[")][-_RECENT_LINES:]}
+    kept = [seg for seg in response.narration if _opening_key(seg.text) not in recent]
+    response.narration[:] = kept or response.narration[-1:]
+
+
 def _drop_opening(response) -> None:
     first = response.narration[0]
     first.text = _FIRST_SENTENCE.sub("", first.text, count=1)
@@ -204,6 +251,8 @@ def _crew_line(session: Session) -> str:
     entries = []
     for c in session.characters.values():
         if not c.chrome and c.humanity == 100 and c.installments_owed <= 0 and not is_tsukumogami(c):
+            # Said, not left out: with nothing here the narrator invented a debt (playthrough 2026-11-07).
+            entries.append(f"{c.name}: no chrome, owes nothing")
             continue
         if is_tsukumogami(c):
             tier = selfhood_tier(c.humanity) + (", gone dark" if c.gone_too_far else "")
@@ -276,8 +325,9 @@ def _build_messages(session: Session, action_text: str, num_ctx: int) -> list[di
     world_budget = int(num_ctx * _WORLD_BUDGET_FRACTION * _CHARS_PER_TOKEN_ESTIMATE)
     scan_text = " ".join([action_text, *session.pending_world_events])
     cards = select_cards(kuroshio(), session, scan_text, world_budget)
-    if cards:
-        parts.append("World notes:\n" + "\n".join(cards))
+    locals_ = locals_line(kuroshio(), session)
+    if cards or locals_:
+        parts.append("World notes:\n" + "\n".join([*cards, *([locals_] if locals_ else [])]))
     context = "\n\n".join(parts) + "\n\n" if parts else ""
     return [{"role": "user", "content": f"{party}{context}Player action: {action_text}"}]
 
@@ -368,6 +418,36 @@ async def handle_action(
     )
 
 
+# Role words that mark an unnamed extra (playthrough 2026-11-07: "scarred ganger" became a phone contact).
+_EXTRAS = {"ganger", "gangers", "guard", "guards", "enforcer", "enforcers", "man", "woman", "boy", "girl", "kid",
+           "vendor", "bartender", "clerk", "doorman", "cop", "officer", "stranger", "worker", "dockworker", "biker",
+           "voice", "crowd", "driver", "thug", "goon", "customer", "patron", "drunk", "nurse", "medic", "bouncer"}
+
+
+def _is_a_name(speaker: str) -> bool:
+    """A named person ("Kuroda", "Mama Sato"), not an extra ("scarred ganger", "The Doorman")."""
+    words = speaker.strip().split()
+    return bool(words) and all(w[:1].isupper() for w in words) and not any(w.lower() in _EXTRAS for w in words)
+
+
+_IMAGE_EVERY = 6
+
+
+def _image_allowed(session: Session) -> bool:
+    """New scene images only where no approved art exists, and at most one per _IMAGE_EVERY player turns
+    (playthrough 2026-11-07: six off-style images in 14 turns, one of them a "clinic" that looked like a spaceship)."""
+    if location_art(session.location):
+        return False
+    actors = tuple(f"{pid}: " for pid in session.characters)
+    turns = 0
+    for line in reversed(session.log):
+        if line.startswith("[image: "):
+            return turns >= _IMAGE_EVERY
+        if actors and line.startswith(actors):
+            turns += 1
+    return True
+
+
 def _is_player_voice(session: Session, speaker: str) -> bool:
     s = speaker.strip().lower()
     return any(s in (c.name.strip().lower(), c.player_id.strip().lower()) for c in session.characters.values())
@@ -381,7 +461,7 @@ async def _log_narration(session, response, store, tts_backend, player_id) -> st
             session.log.append(f"[voice filtered: {segment.speaker}]")
             continue
         line = segment.text if segment.speaker == "narrator" else f"{segment.speaker}: {segment.text}"
-        if segment.speaker != "narrator" and segment.speaker.strip():
+        if segment.speaker != "narrator" and _is_a_name(segment.speaker):
             known = phone_of(session, player_id)["contacts"]
             if not find_contact(known, segment.speaker):  # "Saeko" is Saeko Kirigaya, not a stranger
                 add_contact(session, player_id, segment.speaker.strip())
@@ -428,7 +508,7 @@ def _apply_tool(session, response, player_id, allow_roll, roll_skill: str | None
                 tool_args["skill"] = roll_skill  # the risk check's pick (narrator/risk.py)
             _hold_roll(session, player_id, tool_args)
         else:
-            session.log.append("[tool error: no new rolls during a roll resolution]")
+            session.log.append("[roll skipped: another roll asked during a roll result]")
         return
     try:
         result = execute_tool(session, response.tool, tool_args)
@@ -473,6 +553,8 @@ async def _run_turn(
         messages = _build_messages(session, f"{prompt_text}\n\n{NO_ROLL}", narrator_client.num_ctx)
         response = await narrator_client.respond(messages)
         del session.pending_world_events[:len(shown_events)]
+        if response.tool == "request_roll":  # the check said plain: no roll, whatever the narrator wants (playthrough)
+            response.tool_call = _NoTool()
     if refusal is not None:
         # Redo once (Phase 18), decided before anything is logged or voiced: the
         # refused narration is never shown; narrate again with the refusal as fact.
@@ -493,6 +575,10 @@ async def _run_turn(
         if _opening(response) in _recent_openings(session):
             _drop_opening(response)
 
+    _split_prose_from_speech(response)
+    _tidy(response)
+    _drop_repeated_lines(response, session)
+
     if actor_line is not None:
         session.log.append(actor_line)
     if refusal is not None:
@@ -512,7 +598,7 @@ async def _run_turn(
     # the rule structurally instead of trusting prompt compliance alone,
     # same pattern as request_roll's forced player_id / apply_character_update's
     # roster grounding.
-    if response.image_request is not None and not session.last_turn_had_image:
+    if response.image_request is not None and not session.last_turn_had_image and _image_allowed(session):
         character = session.characters.get(player_id)
         reference_paths = []
         if character is not None and character.portrait_path is not None:
@@ -553,6 +639,12 @@ async def _run_turn(
         await _maybe_compact(session, narrator_client)
 
 
+# Playthrough 2026-11-07: a natural-10 punch read as "he's not down, just shaken".
+_OUTCOME_GUIDE = {
+    "clean_success": "It works, fully and visibly: show what the character gets.",
+    "complication": "It works, but at a cost: show both.",
+    "failure": "It fails, and something changes for the worse.",
+}
 _OUTCOME_TEXT = {
     "clean_success": "a clean success",
     "complication": "success with a complication",
@@ -605,6 +697,34 @@ def resolve_roll(session: Session, player_id: str, overclock: str | None = None)
     return rolled
 
 
+# Where a new character starts, by lifepath (spec 2026-11-07-story-thread-design.md, section 2).
+_START = {"streetkid": "Ikebe Low", "corpo": "Tenjō Heights", "nomad": "Kuroshio Docks", "tsukumogami": "Ring Line"}
+_FIRST_JOB = ("{first}, it's Jun. Heard you're new on the board. Courier job tonight: pick up a sealed case from Hachi "
+              "at the Kuroshio Docks and bring it to my karaoke box in Hanabira-chō. Cash on delivery. Don't open it.")
+_FIRST_OBJECTIVE = "Pick up Jun's case from Hachi at Kuroshio Docks"
+
+
+async def open_scene(session: Session, narrator_client: NarratorClient, store: JSONFileSessionStore,
+                     image_backend: ImageBackend, tts_backend: TTSBackend, player_id: str) -> None:
+    """A new character's first scene, so the game never starts on an empty screen (playthrough 2026-11-07): an
+    arrival in their lifepath's district, then Jun's first job by text, which becomes the first objective. Players
+    who join a game already under way just join the scene."""
+    if any(not line.startswith("[") for line in session.log):
+        return
+    c = session.characters[player_id]
+    session.location = session.location or _START.get(c.lifepath, "Ikebe Low")
+    prompt = (f"Engine: opening scene. {c.name}, a {c.lifepath} {c.role}, is in {session.location} at night. In about "
+              "150 words, start them in the middle of something small and sensory - no recap, no backstory - and end "
+              "on a moment where they can act. No roll.")
+    await _run_turn(session, narrator_client, store, image_backend, tts_backend, player_id, prompt_text=prompt,
+                    actor_line=None, allow_roll=False, no_roll=True)
+    add_contact(session, player_id, "Jun Arakawa", "fixer")
+    post(session, player_id, "Jun Arakawa", "Jun Arakawa", _FIRST_JOB.format(first=c.name.split()[0]),
+         phone_of(session, player_id)["turn"] + 1)
+    if _FIRST_OBJECTIVE not in session.active_objectives:
+        session.active_objectives = [*session.active_objectives, _FIRST_OBJECTIVE]
+
+
 async def narrate_roll(
     session: Session,
     narrator_client: NarratorClient,
@@ -622,7 +742,7 @@ async def narrate_roll(
         prompt_text=(
             f"Roll result for {rolled['name']}: {_OUTCOME_TEXT[rolled['outcome']]} on "
             f"{rolled['reason']}.{tried} Narrate what happens now, true to that result: start with the "
-            f"outcome itself. No new roll this turn."
+            f"outcome itself. {_OUTCOME_GUIDE[rolled['outcome']]} No new roll this turn."
         ),
         actor_line=None, allow_roll=False,
         # The prompt is the engine's instruction; the referee judges what the player chose to do.

@@ -13,7 +13,7 @@ from narrator.world import _normalize, kuroshio
 
 # "I head to", "I take the Ring Line to", "I walk back toward": a movement verb, then the place after it.
 _MOVE = re.compile(r"\b(?:go|goes|going|head|heads|heading|walk|walks|run|runs|drive|ride|rides|travel|return|returns"
-                   r"|enter|enters|step (?:into|inside)|make (?:my|our|his|her|their) way|take the (?:ring|yomi) line)\b")
+                   r"|enter|enters|follow|follows|step (?:into|inside)|make (?:my|our|his|her|their) way|take the (?:ring|yomi) line)\b")
 _TOWARD = re.compile(r"\b(?:to|toward|towards|into|for)\b")
 
 
@@ -39,6 +39,12 @@ def known_place(text: str | None) -> str | None:
     """The known place named in the text, longest name first ("Ikebe Low - Old Hara's clinic" -> the clinic)."""
     t = _norm(text or "")
     return next((name for key, name in _keys() if re.search(rf"(?<!\w){re.escape(key)}(?!\w)", t)), None)
+
+
+def places_in(text: str | None) -> set[str]:
+    """Every known place the text names, by any of its names ("the izakaya" -> Mama Sato's izakaya)."""
+    t = _norm(text or "")
+    return {name for key, name in _keys() if re.search(rf"(?<!\w){re.escape(key)}(?!\w)", t)}
 
 
 def destination(action: str) -> str | None:

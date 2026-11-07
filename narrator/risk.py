@@ -16,7 +16,7 @@ _SYSTEM = ("You are a strict referee for a tabletop RPG. Decide whether the play
 _QUESTION = ("Does this action try something whose outcome is uncertain and could fail with consequences: sneaking past "
              "or stealing from someone, climbing or jumping somewhere dangerous, hacking, fighting, lying to or pressuring "
              "someone unwilling? Talking, walking somewhere, looking around, eating, asking questions or other plain "
-             "actions are false.")
+             "actions are false. Words the player rules out ('I am not here to threaten you') don't count.")
 _SKILL_QUESTION = ("If risky, the skill it tests: melee (fists, blades, any close attack), ranged_combat (guns, "
                    "throwing), stealth, athletics (climbing, jumping, running), piloting, hacking, engineering, "
                    "demolitions, intimidation, streetwise, perception, deduction, persuasion (including lying), "

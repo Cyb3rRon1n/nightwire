@@ -12,6 +12,7 @@ from narrator.movement import destination, known_place
     ("i walk over to the izakaya", "Mama Sato's izakaya"),
     ("I ride out to the junkyard", "Junkyard workshop"),
     ("I enter the precinct.", "Ōgane precinct"),
+    ("I follow Mama Sato into her izakaya and sit at the counter.", "Mama Sato's izakaya"),
 ])
 def test_moves_to_a_known_place(action, place):
     assert destination(action) == place

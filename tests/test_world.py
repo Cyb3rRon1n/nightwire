@@ -330,3 +330,12 @@ def test_a_low_table_is_not_ikebe_low():
     cards = select_cards(kuroshio(), Session(session_id="s"), "I kneel at the low table.", budget_chars=10_000)
 
     assert _card(kuroshio(), "Ikebe Low") not in cards
+
+
+def test_a_place_named_after_its_owner_gets_its_district_and_its_owner():
+    # 2026-11-07: canonical locations like "Old Hara's clinic" lost the Ikebe Low card and showed Mama Sato instead.
+    from engine.session import Session
+    from narrator.world import kuroshio, select_cards
+    s = Session(session_id="x"); s.location = "Old Hara's clinic"
+    cards = select_cards(kuroshio(), s, "", 4000)
+    assert cards[0].startswith("Ikebe Low") and cards[1].startswith("Old Hara")
