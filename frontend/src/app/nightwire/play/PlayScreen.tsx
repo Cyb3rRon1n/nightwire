@@ -5,8 +5,10 @@ import { Group, Panel, Separator, useDefaultLayout, type GroupImperativeHandle, 
 import type { ClientMessage, StateView } from "@/lib/nightwire/protocol";
 import { browserStore, readFlag, writeFlag } from "@/lib/nightwire/safeStorage";
 import { sceneImages } from "@/lib/nightwire/feed";
+import { totalUnread } from "@/lib/nightwire/phone";
 import { FeedPanel } from "./FeedPanel";
 import { GalleryOverlay } from "./GalleryOverlay";
+import { PhonePanel } from "./PhonePanel";
 import { Rail } from "./Rail";
 import { StatusPanel } from "./StatusPanel";
 import { WorldPanel } from "./WorldPanel";
@@ -15,7 +17,7 @@ import "./play.css";
 const RAIL_PX = 28;
 const SCENE_ART_KEY = "nightwire-scene-art";
 const NARROW = "(max-width: 1023.98px)";
-const TABS = ["feed", "status", "world"] as const;
+const TABS = ["feed", "status", "world", "phone"] as const;
 
 function subscribeNarrow(onChange: () => void) {
   const query = window.matchMedia(NARROW);
@@ -45,6 +47,8 @@ export function PlayScreen({ view, playerId, send, readyLabel, error, errorSeq, 
   const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
   const images = sceneImages(view.log);
   const narrow = useSyncExternalStore(subscribeNarrow, () => window.matchMedia(NARROW).matches, () => false);
+  const [phoneOpen, setPhoneOpen] = useState(false);
+  const unread = totalUnread(view);
   const [tab, setTab] = useState<(typeof TABS)[number]>("feed");
 
   function toggleSceneArt() {
@@ -73,6 +77,7 @@ export function PlayScreen({ view, playerId, send, readyLabel, error, errorSeq, 
   // Ctrl/Cmd+K used to open the sheet pop-over; the sheet now lives in the Status panel.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setPhoneOpen(false);
       if (event.key === "k" && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
         const panel = statusRef.current;
@@ -92,6 +97,11 @@ export function PlayScreen({ view, playerId, send, readyLabel, error, errorSeq, 
         <span style={{ color: "var(--nw-cyan)", fontWeight: 700, letterSpacing: ".22em" }}>NIGHTWIRE</span>
         <span className="flex-1" />
         <button type="button" className="nw-chip" aria-pressed={sceneArt} onClick={toggleSceneArt}>Scene art {sceneArt ? "on" : "off"}</button>
+        {!narrow && (
+          <button type="button" className="nw-chip" aria-pressed={phoneOpen} aria-label={unread ? `Phone, ${unread} unread` : "Phone"} onClick={() => setPhoneOpen(!phoneOpen)}>
+            Phone{unread > 0 && <b className="nw-badge" aria-hidden="true">{unread}</b>}
+          </button>
+        )}
         <button type="button" className="nw-chip" disabled={images.length === 0} onClick={() => setGalleryIndex(images.length - 1)}>Gallery · {images.length}</button>
         {!narrow && (
           <>
@@ -108,10 +118,13 @@ export function PlayScreen({ view, playerId, send, readyLabel, error, errorSeq, 
             {tab === "feed" && <FeedPanel view={view} playerId={playerId} send={send} error={error} errorSeq={errorSeq} sceneArt={sceneArt} onOpenGallery={setGalleryIndex} compact />}
             {tab === "status" && <StatusPanel view={view} playerId={playerId} send={send} />}
             {tab === "world" && <WorldPanel view={view} playerId={playerId} />}
+            {tab === "phone" && <PhonePanel view={view} send={send} />}
           </div>
           <nav aria-label="Panels" className="nw-tabs">
             {TABS.map((t) => (
-              <button key={t} type="button" aria-current={tab === t ? "page" : undefined} onClick={() => setTab(t)}>{t.toUpperCase()}</button>
+              <button key={t} type="button" aria-current={tab === t ? "page" : undefined} aria-label={t === "phone" && unread ? `Phone, ${unread} unread` : undefined} onClick={() => setTab(t)}>
+                {t.toUpperCase()}{t === "phone" && unread > 0 && <b className="nw-badge" aria-hidden="true">{unread}</b>}
+              </button>
             ))}
           </nav>
         </>
@@ -133,6 +146,11 @@ export function PlayScreen({ view, playerId, send, readyLabel, error, errorSeq, 
             : <WorldPanel view={view} playerId={playerId} />}
         </Panel>
       </Group>
+      )}
+      {!narrow && phoneOpen && (
+        <div className="nw-phone-float">
+          <PhonePanel view={view} send={send} onClose={() => setPhoneOpen(false)} />
+        </div>
       )}
       <GalleryOverlay images={images} openIndex={galleryIndex} onClose={() => setGalleryIndex(null)} />
     </div>

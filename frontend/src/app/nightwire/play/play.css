@@ -69,7 +69,7 @@
 @media (prefers-reduced-motion: reduce) { .nw-scene-bg { transition: none; } }
 
 /* Phones and narrow windows: one column with a tab bar */
-.nw-tabs { flex-shrink: 0; height: 60px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid #1d2128; background: #0b0d11; }
+.nw-tabs { flex-shrink: 0; height: 60px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid #1d2128; background: #0b0d11; }
 .nw-tabs button { background: none; border: 0; color: #9aa3ad; font: 14px var(--font-rajdhani), "Rajdhani", sans-serif; letter-spacing: .14em; cursor: pointer; }
 .nw-tabs button[aria-current="page"] { color: var(--nw-cyan); font-weight: 700; border-top: 2px solid var(--nw-cyan); }
 @media (max-width: 1023.98px) {
@@ -83,3 +83,25 @@
 /* Out-of-character questions and the help desk's answers: quiet, outside the story's voice */
 .nw-ooc { border-left: 2px solid var(--nw-frame-cool); padding: 4px 10px; font-size: 14px; line-height: 1.5; color: #b8c2cc; background: rgba(11,13,17,.7); }
 .nw-ooc-label { display: block; font: 600 12px var(--font-rajdhani), "Rajdhani", sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--nw-cyan); }
+
+/* Phone: floats over the right of the scene on wide screens, inline in the PHONE tab on narrow ones */
+.nw-badge { margin-left: 6px; min-width: 18px; height: 18px; padding: 0 4px; background: var(--nw-red); color: var(--nw-ink); font-weight: 700; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; }
+.nw-phone-float { position: fixed; top: 64px; right: 16px; width: 330px; height: min(620px, calc(100dvh - 80px)); z-index: 20; border: 1.5px solid var(--nw-frame); background: #0b0d11; box-shadow: 0 8px 32px rgba(0,0,0,.6); }
+.nw-phone-body { height: 100%; display: flex; flex-direction: column; gap: 8px; padding: 12px; background: #0b0d11; font-family: var(--font-rajdhani), "Rajdhani", sans-serif; }
+.nw-phone-top { display: flex; align-items: center; justify-content: space-between; }
+.nw-phone-x { width: 32px; height: 32px; border: 1px solid var(--nw-frame-cool); background: none; color: #c9ced6; font-size: 20px; cursor: pointer; }
+.nw-phone-chips { display: flex; gap: 6px; overflow-x: auto; flex-shrink: 0; scrollbar-width: thin; }
+.nw-phone-chip { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 56px; padding: 4px; border: 1px solid var(--nw-frame-cool); background: none; color: #c9ced6; font-size: 12px; letter-spacing: .08em; cursor: pointer; }
+.nw-phone-chip[aria-selected="true"] { border-color: var(--nw-cyan); color: var(--nw-cyan); }
+.nw-phone-chip img, .nw-phone-initial { width: 36px; height: 36px; object-fit: cover; display: flex; align-items: center; justify-content: center; background: #1d2128; font-weight: 700; }
+.nw-phone-dot { position: absolute; top: 3px; right: 3px; width: 9px; height: 9px; background: var(--nw-red); }
+.nw-phone-meta { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: #9aa3ad; }
+.nw-phone-empty { font-size: 14px; color: #9aa3ad; }
+.nw-phone-thread { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; scrollbar-width: thin; scrollbar-color: var(--nw-red) transparent; }
+.nw-bubble { max-width: 82%; align-self: flex-start; padding: 6px 10px; border: 1px solid var(--nw-frame-cool); background: #12161c; font-size: 15px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+.nw-bubble-me { align-self: flex-end; border-color: var(--nw-cyan); background: rgba(122,234,238,.12); }
+.nw-phone-typing { font-size: 13px; letter-spacing: .12em; color: #9aa3ad; }
+.nw-phone-form { display: flex; gap: 6px; flex-shrink: 0; }
+.nw-phone-form input { flex: 1; min-width: 0; background: var(--nw-ink); border: 1.5px solid var(--nw-frame-cool); color: #e6e8ec; font-size: 16px; padding: 0 10px; height: 44px; }
+.nw-phone-form input:focus { border-color: var(--nw-cyan); outline: none; }
+.nw-phone-form .nw-send { height: 44px; padding: 0 14px; }
