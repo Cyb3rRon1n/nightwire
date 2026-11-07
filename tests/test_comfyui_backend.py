@@ -73,7 +73,7 @@ async def test_generate_portrait_builds_correct_workflow_graph():
 
     await backend.generate_portrait("a lean netrunner")
 
-    submit_calls = [c for c in client.calls if c[0] == "post"]
+    submit_calls = [c for c in client.calls if c[:2] == ("post", "/prompt")]
     assert len(submit_calls) == 1
     _, url, payload = submit_calls[0]
     assert url == "/prompt"
@@ -221,3 +221,13 @@ async def test_run_workflow_submits_any_graph_and_returns_image_bytes():
     backend = ComfyUIBackend(base_url="http://x", client=client, sleep_fn=_no_sleep)
     out = await backend.run_workflow({"9": {"class_type": "SaveImage", "inputs": {}}})
     assert out == b"design-png"
+
+
+@pytest.mark.asyncio
+async def test_an_in_game_image_frees_comfyui_afterwards():
+    # Playthrough 2026-11-07: ComfyUI kept its models in VRAM after a scene image, so qwen3:8b reloaded with
+    # 0.6 of 6 GB on the 8 GB card and turns crawled on the CPU.
+    client = _FakeComfyClient()
+    backend = ComfyUIBackend(checkpoint="v1-5-pruned-emaonly-fp16.safetensors", client=client, sleep_fn=_no_sleep)
+    await backend.generate_scene("a rainy alley", [])
+    assert client.calls[-1] == ("post", "/free", {"unload_models": True, "free_memory": True})

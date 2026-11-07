@@ -134,7 +134,15 @@ class ComfyUIBackend:
                         negative: str | None = None) -> bytes:
         seed = uuid.uuid4().int & 0xFFFFFFFF
         workflow = self._build_workflow(prompt, seed, width, height, filename_prefix, negative)
-        return await self.run_workflow(workflow)
+        try:
+            return await self.run_workflow(workflow)
+        finally:
+            # In play the narrator needs the card next: without this, qwen3:8b reloaded with 0.6 of 6 GB in VRAM
+            # (playthrough 2026-11-07). Batch tools call run_workflow directly and keep their models loaded.
+            try:
+                await self._client.post("/free", json={"unload_models": True, "free_memory": True})
+            except Exception:  # noqa: BLE001 - best effort; a failed free must not lose the image
+                pass
 
     async def upload_image(self, name: str, png: bytes) -> str:
         """Put an image in ComfyUI's input folder; returns the name a LoadImage node should use."""
