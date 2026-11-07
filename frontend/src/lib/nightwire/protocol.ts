@@ -60,6 +60,21 @@ export interface RollResult extends Omit<PendingRoll, 'overclocks'> {
   humanity_loss?: number
 }
 
+export interface PhoneContact {
+  name: string
+  role: string
+  trust: number
+  unread: number
+  // Approved portrait served by the game server (e.g. "character-art/mama-sato.jpg"), or null.
+  portrait: string | null
+}
+
+export interface PhoneMessage {
+  sender: string
+  text: string
+  turn: number
+}
+
 export interface StateView {
   type: 'state'
   session_id: string
@@ -73,6 +88,7 @@ export interface StateView {
   scene_mood: string | null
   active_objectives: string[]
   characters: Record<string, CharacterSheet | RedactedCharacter>
+  phone: { contacts: PhoneContact[]; threads: Record<string, PhoneMessage[]>; typing: string[] }
   pending_rolls: Record<string, PendingRoll>
   pending_chrome_offers: Record<string, string>
 }
@@ -159,6 +175,17 @@ export interface AllocateAttributePointsMessage {
   amount: number
 }
 
+export interface TextMessage {
+  type: 'text'
+  to: string
+  text: string
+}
+
+export interface ReadMessage {
+  type: 'read'
+  contact: string
+}
+
 export type ClientMessage =
   | JoinMessage
   | ActionMessage
@@ -172,3 +199,5 @@ export type ClientMessage =
   | AcceptChromeMessage
   | DeclineChromeMessage
   | RemoveChromeMessage
+  | TextMessage
+  | ReadMessage

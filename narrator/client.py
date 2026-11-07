@@ -172,7 +172,7 @@ class NarratorClient:
     async def _default_judge(self, *, model: str, messages: list[dict], format: dict) -> dict:
         return await self._client.chat(
             model=model, messages=messages, format=format, think=False,
-            options={"temperature": 0, "num_predict": 200, "num_ctx": self.num_ctx},
+            options={"temperature": 0, "num_predict": 320, "num_ctx": self.num_ctx},
         )
 
     async def judge(self, messages: list[dict], schema: dict) -> dict:
@@ -183,7 +183,8 @@ class NarratorClient:
         return await self._client.chat(
             model=model,
             messages=messages,
-            options={"temperature": 0.3, "num_ctx": self.num_ctx},
+            think=False,
+            options={"temperature": 0.3, "num_predict": 400, "num_ctx": self.num_ctx},
         )
 
     async def unload(self) -> None:

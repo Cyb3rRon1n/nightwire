@@ -30,3 +30,5 @@ class Session:
     pending_world_events: list[str] = field(default_factory=list)
     # Phase 18: effective stakes of recent rolls, for the "high" cap.
     recent_stakes: list[str] = field(default_factory=list)
+    # Phone: per-player contacts, threads and timing (engine/phone.py).
+    phone: dict[str, dict] = field(default_factory=dict)

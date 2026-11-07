@@ -1686,3 +1686,53 @@ async def test_the_risk_checks_skill_wins_over_the_narrators(tmp_path):
     await _call(session, client, "p1", {"text": "I kill everyone in the bar."}, tmp_path, tts_backend=FakeTTSBackend())
     assert session.pending_rolls["p1"]["skill"] == "melee"
     assert session.pending_rolls["p1"]["attribute"] in ("body", "reflexes")
+
+
+async def test_npc_speaker_becomes_a_stranger_contact_but_narrator_and_player_voice_do_not(tmp_path):
+    session = _session_with_character()
+    client = _scripted_client([{"narration": [
+        {"speaker": "narrator", "text": "Steam rises."},
+        {"speaker": "Rook", "text": "I'll take the job."},
+        {"speaker": "Mama Sato", "text": "Eat first, child."},
+    ], "tool_call": {"tool": None}}])
+    await _call(session, client, "p1", {"text": "I sit down."}, tmp_path, tts_backend=FakeTTSBackend())
+    contacts = session.phone["p1"]["contacts"]
+    assert list(contacts) == ["Mama Sato"]
+    assert contacts["Mama Sato"]["role"] == "stranger"
+
+
+@pytest.mark.asyncio
+async def test_final_notice_tick_texts_from_saeko(tmp_path):
+    from engine import phone
+    session = _session_with_character()
+    c = session.characters["p1"]
+    c.chrome, c.installments_owed, c.repo_actions, c.repo_clock = ["kagerou"], 3, 9, 5
+
+    async def chat_fn(*, model, messages, format):
+        payload = {"narration": [{"speaker": "narrator", "text": "ok"}], "tool_call": {"tool": None}}
+        return {"message": {"content": json.dumps(payload)}}
+
+    async def generate_fn(**kwargs):
+        pass
+
+    client = NarratorClient(chat_fn=chat_fn, generate_fn=generate_fn)
+    await _call(session, client, "p1", {"text": "I wait."}, tmp_path, tts_backend=FakeTTSBackend())
+    msgs = phone.phone_of(session, "p1")["threads"]["Saeko Kirigaya"]
+    assert msgs[0]["text"] == "Thursday was yesterday. Don't make me come find you."
+    assert phone.unread(session, "p1")["Saeko Kirigaya"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_short_speaker_name_does_not_add_a_duplicate_contact(tmp_path):
+    from engine.phone import add_contact, phone_of
+    session = _session_with_character()
+    add_contact(session, "p1", "Saeko Kirigaya", "creditor")
+    client = _fake_client_with_segments([
+        {"speaker": "Saeko", "gender": "female", "text": "Pay up."},
+        {"speaker": "  ", "gender": "male", "text": "..."},
+        {"speaker": "Mama Sato", "gender": "female", "text": "Eat."},
+    ])
+
+    await _call(session, client, "p1", {"text": "I wait."}, tmp_path, tts_backend=FakeTTSBackend())
+
+    assert sorted(phone_of(session, "p1")["contacts"]) == ["Mama Sato", "Saeko Kirigaya"]
