@@ -397,3 +397,11 @@ async def test_an_invented_lead_is_ignored():
     await run_referee(s, _Client({"moved_to": "", "new_lead": "Find the safehouse", "human_moment_quote": "",
                                   "human_moment": "none"}), "p1", "I wait.", "Rain falls.")
     assert s.active_objectives == [] and "[referee: new_lead names nothing in the scene, ignored]" in s.log
+
+
+async def test_a_finished_objective_is_removed():
+    s = _session(); s.active_objectives = ["Go inside and talk to Mama Sato", "Pick up Jun's case"]
+    await run_referee(s, _Client({"moved_to": "", "new_lead": "", "objective_done": "Go inside and talk to Mama Sato",
+                                  "human_moment_quote": "", "human_moment": "none"}),
+                      "p1", "I go in and talk to Mama Sato.", "Mama Sato: Sit, child.")
+    assert s.active_objectives == ["Pick up Jun's case"]

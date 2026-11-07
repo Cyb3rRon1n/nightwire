@@ -169,6 +169,23 @@ def _split_prose_from_speech(response) -> None:
     response.narration[:] = out
 
 
+_EMPHASIS = re.compile(r"\*([^*\n]+)\*")
+_CHILD_FIRST = re.compile(r"^(?:Ah[.…,]*\s*)?Child,\s*")
+_CHILD_AFTER = re.compile(r",\s*child(?=[.?!,…])")
+
+
+def _tidy(response) -> None:
+    """Markdown emphasis shows as asterisks in the feed; "child" is Mama Sato's word, and the prompt rule alone
+    didn't keep it from the ganger, Old Hara and Hachi (playthroughs 2026-11-07)."""
+    for seg in response.narration:
+        seg.text = _EMPHASIS.sub(r"\1", seg.text)
+        if seg.speaker != "narrator" and "sato" not in seg.speaker.lower():
+            seg.text = _CHILD_AFTER.sub("", seg.text)
+            if _CHILD_FIRST.match(seg.text):
+                rest = _CHILD_FIRST.sub("", seg.text)
+                seg.text = rest[:1].upper() + rest[1:]
+
+
 _RECENT_LINES = 40
 
 
@@ -559,6 +576,7 @@ async def _run_turn(
             _drop_opening(response)
 
     _split_prose_from_speech(response)
+    _tidy(response)
     _drop_repeated_lines(response, session)
 
     if actor_line is not None:
