@@ -116,7 +116,18 @@ This adds a **Phone** panel, a fourth panel in the right group (and a tab on pho
 - **Who knows what:** the narrator is told which lines were aloud and which were texts. NPCs in the room never hear texts, but may notice you on your phone ("Mama Sato saw you typing under the counter"). A lie told by text is remembered per contact, so it can come back later.
 - **Starting contact:** from the phone you can text or call any contact, which starts a scene with them. Calls play in the feed like a normal conversation, marked as a call.
 
-Step 2 gets its own short plan once step 1 is reviewed.
+**Owner decisions for step 2 (2026-11-06):**
+
+- **Scope of version 1:** texts plus secrets. Engine texts from Saeko's crew and the fixer when debt or gigs change; you
+  text any contact privately; each contact remembers what you told them, so a lie can come back. Calls come later.
+- **Contacts:** the people you've met. Saeko's crew and Jun Arakawa from the start, plus anyone you talk to in play,
+  added automatically.
+- **Replies:** right away. Sending a text is a quick turn; the contact's reply appears in the thread at once and the
+  scene around you carries on.
+- **Being noticed:** the narrator decides. It is told a text was sent (never its words) and may have someone in the
+  room notice. No dice.
+
+Step 2 gets its own short plan.
 
 ## Out of scope
 
