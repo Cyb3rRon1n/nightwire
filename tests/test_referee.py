@@ -261,7 +261,7 @@ async def test_the_narrator_describing_arrival_still_moves_the_player():
     s = _session(); s.location = "Ikebe Low"
     await run_referee(s, _Client({"moved_to": "the docks", "human_moment_quote": "", "human_moment": "none"}),
                       "p1", "I head out.", "You reach the docks as the cranes groan.\nHachi: Late again.")
-    assert s.location == "The docks"
+    assert s.location == "Kuroshio Docks"  # the known place, by its own name
 
 
 def test_gig_paid_out_texts_from_jun_and_raises_trust():
@@ -365,3 +365,11 @@ async def test_short_name_matches_one_contact_but_shared_word_matches_none():
     assert {n: _c(s, n)["trust"] for n in t} == t
     await _trust_turn(s, "broke_promise_to", "Kirigaya", "Kirigaya glares.")
     assert _c(s, "Saeko Kirigaya")["trust"] == t["Saeko Kirigaya"] - 1
+
+
+async def test_an_unknown_place_does_not_move_the_player():
+    s = _session(); s.location = "Ikebe Low"
+    await run_referee(s, _Client({"moved_to": "the cramped bathroom", "human_moment_quote": "", "human_moment": "none"}),
+                      "p1", "I duck into the cramped bathroom.", "The cramped bathroom smells of bleach.")
+    assert s.location == "Ikebe Low"
+    assert "[referee: moved_to is not a known place, ignored]" in s.log

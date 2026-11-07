@@ -1736,3 +1736,15 @@ async def test_short_speaker_name_does_not_add_a_duplicate_contact(tmp_path):
     await _call(session, client, "p1", {"text": "I wait."}, tmp_path, tts_backend=FakeTTSBackend())
 
     assert sorted(phone_of(session, "p1")["contacts"]) == ["Mama Sato", "Saeko Kirigaya"]
+
+
+async def test_a_move_survives_a_narrator_timeout(tmp_path):
+    # Soak run 5 (2026-11-07): two timed-out turns lost the moves home and to Tenjō; the engine now moves first.
+    async def chat_fn(*, model, messages, format):
+        raise httpx.ReadTimeout("slow")
+    client = NarratorClient(chat_fn=chat_fn, generate_fn=None)
+    session = _session_with_character(); session.location = "Ikebe Low"
+    with pytest.raises(httpx.ReadTimeout):
+        await handle_action(session, client, JSONFileSessionStore(tmp_path), _UnusedImageBackend(), _UnusedTTSBackend(),
+                            "p1", {"type": "action", "text": "I take the Ring Line to Tenjō Heights."})
+    assert session.location == "Tenjō Heights"

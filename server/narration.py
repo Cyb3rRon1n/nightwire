@@ -15,6 +15,7 @@ from engine.session import Session
 from narrator.client import NarratorClient
 from narrator.image_backend import ImageBackend
 from narrator.image_prompt import resolve
+from narrator.movement import destination
 from narrator.referee import run_referee
 from narrator.tools import RequestRoll, execute_tool, roll_check
 from narrator.tts_backend import TTSBackend
@@ -291,6 +292,10 @@ async def handle_action(
             session.pending_world_events.append(event)
             session.log.append(f"[torite: {event}]")
             _saeko_text(session, player_id, character, event)
+    # The engine moves the player before the narrator runs, so a narrator timeout can't lose the move (soak run 5).
+    moved_to = destination(action_text)
+    if moved_to:
+        session.location = moved_to
     risky, roll_skill = await assess(narrator_client, action_text) if character is not None else (None, None)
     must_roll = risky is True
     await _run_turn(
