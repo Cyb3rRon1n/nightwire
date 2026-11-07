@@ -844,7 +844,7 @@ def test_build_messages_omits_known_npcs_when_empty():
 
 
 def test_build_messages_puts_scene_and_world_notes_right_before_the_action():
-    from narrator.world import kuroshio
+    from narrator.world import kuroshio, locals_line
     from server.narration import _build_messages
 
     session = _session_with_character()
@@ -861,7 +861,7 @@ def test_build_messages_puts_scene_and_world_notes_right_before_the_action():
         "Recent events:\np1: I look around.\n\n"
         "Scene: Ikebe Low - Mama Sato's izakaya · mood: tense · objectives: find the chrome-ya; pay off the torite\n\n"
         "Crew: Rook: no chrome, owes nothing\n\n"
-        f"World notes:\n{ikebe}\n{sato}\n\n"
+        f"World notes:\n{ikebe}\n{sato}\n{locals_line(kuroshio(), session)}\n\n"
         "Player action: I order a drink."
     )
 
@@ -1877,3 +1877,11 @@ def test_only_named_speakers_become_contacts():
     from server.narration import _is_a_name
     assert _is_a_name("Kuroda") and _is_a_name("Mama Sato") and _is_a_name("Old Hara")
     assert not _is_a_name("scarred ganger") and not _is_a_name("Scarred Ganger") and not _is_a_name("The Doorman")
+
+
+def test_locals_line_names_everyone_who_lives_in_the_district():
+    # Playthrough 2026-11-07: the narrator cast Old Hara (the kind chrome-ya) as a debt-sign villain.
+    from narrator.world import kuroshio, locals_line
+    session = _session_with_character(); session.location = "Mama Sato's izakaya, Ikebe Low"
+    line = locals_line(kuroshio(), session)
+    assert line.startswith("Locals in Ikebe Low: ") and "Old Hara is an off-the-books chrome-ya" in line

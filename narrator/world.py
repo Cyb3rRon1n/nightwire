@@ -17,6 +17,7 @@ _MAX_CARD_CHARS = 400
 _MAX_SYSTEM_BLOCK_CHARS = 1900
 _MAX_CARDS = 4
 _SCAN_LINES = 6
+_FIRST = re.compile(r"^.*?[.:](?:\s|$)")
 
 
 @dataclass(frozen=True)
@@ -117,16 +118,27 @@ def _mentions(entry: WorldEntry, normalized_text: str) -> bool:
     )
 
 
+def _where(world: World, location: str | None) -> tuple[WorldEntry | None, WorldEntry | None]:
+    """The world place and district for a location. A place named after its owner ("Mama Sato's izakaya", an
+    approved design rather than a world place) is in the owner's home district."""
+    loc = _normalize(location or "")
+    if not loc:
+        return None, None
+    place = next((p for p in world.places if _mentions(p, loc)), None)
+    if place:
+        return place, next((d for d in world.districts if d.name == place.home), None)
+    district = next((d for d in world.districts if _mentions(d, loc)), None)
+    owner = next((n for n in world.npcs if n.home and _mentions(n, loc)), None)
+    return None, district or (next((d for d in world.districts if d.name == owner.home), None) if owner else None)
+
+
 def select_cards(world: World, session: Session, action_text: str, budget_chars: int) -> list[str]:
     """Cards for this turn, in priority order: the current location's place, if any;
     the current location's district;
     then one NPC who lives there (skipped if a local NPC is already mentioned);
     then districts/factions/NPCs mentioned in the action or recent narrative,
     most recent first. Capped by count and by budget_chars."""
-    location = _normalize(session.location or "")
-    place = next((p for p in world.places if location and _mentions(p, location)), None)
-    district = next((d for d in world.districts if d.name == place.home) if place
-                    else (d for d in world.districts if location and _mentions(d, location)), None)
+    place, district = _where(world, session.location)
     # [image: ...]-style lines are UI annotations, not narrative (same filter
     # server/narration.py applies).
     narrative = [line for line in session.log if not line.startswith("[")][-_SCAN_LINES:]
@@ -143,7 +155,9 @@ def select_cards(world: World, session: Session, action_text: str, budget_chars:
     # One local face per scene: skip if a local NPC is already mentioned.
     resident = None
     if district and not any(e.home == district.name for e in mentions):
-        resident = next((n for n in world.npcs if n.home == district.name), None)
+        loc = _normalize(session.location or "")  # the place's owner first: Old Hara in Old Hara's clinic
+        resident = next((n for n in world.npcs if loc and _mentions(n, loc)), None) or \
+            next((n for n in world.npcs if n.home == district.name), None)
     ordered = [e for e in (place, district, resident) if e] + mentions
     cards: list[str] = []
     total = 0
@@ -153,3 +167,12 @@ def select_cards(world: World, session: Session, action_text: str, budget_chars:
             break
         cards.append(entry.card)
     return cards
+
+
+def locals_line(world: World, session: Session) -> str:
+    """Who else lives in the current district, one sentence each, so a local the narrator brings up keeps their
+    real role (playthrough 2026-11-07: before anyone had named him, the narrator made Old Hara a villain who runs
+    debt signs)."""
+    _, district = _where(world, session.location)
+    people = [n for n in world.npcs if district and n.home == district.name]
+    return f"Locals in {district.name}: " + " ".join(_FIRST.match(n.card)[0].strip() for n in people) if people else ""

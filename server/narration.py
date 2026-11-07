@@ -21,7 +21,7 @@ from narrator.referee import run_referee
 from narrator.tools import RequestRoll, execute_tool, roll_check
 from narrator.tts_backend import TTSBackend
 from narrator.voice_assignment import assign_voice
-from narrator.world import kuroshio, select_cards
+from narrator.world import kuroshio, locals_line, select_cards
 from ruleset.attributes import Attribute
 from ruleset.cyberware import CHROME, humanity_tier, selfhood_tier
 from ruleset.difficulty import difficulty_for
@@ -307,8 +307,9 @@ def _build_messages(session: Session, action_text: str, num_ctx: int) -> list[di
     world_budget = int(num_ctx * _WORLD_BUDGET_FRACTION * _CHARS_PER_TOKEN_ESTIMATE)
     scan_text = " ".join([action_text, *session.pending_world_events])
     cards = select_cards(kuroshio(), session, scan_text, world_budget)
-    if cards:
-        parts.append("World notes:\n" + "\n".join(cards))
+    locals_ = locals_line(kuroshio(), session)
+    if cards or locals_:
+        parts.append("World notes:\n" + "\n".join([*cards, *([locals_] if locals_ else [])]))
     context = "\n\n".join(parts) + "\n\n" if parts else ""
     return [{"role": "user", "content": f"{party}{context}Player action: {action_text}"}]
 
