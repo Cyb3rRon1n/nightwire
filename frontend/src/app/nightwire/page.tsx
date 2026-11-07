@@ -281,7 +281,7 @@ export default function NightwirePage() {
                 const skillLeft = STARTING_SKILL_POINTS - Object.values(skills).reduce((a, b) => a + b, 0);
                 return attrLeft > 0 || skillLeft > 0 ? (
                   <p className="text-sm nw-text-warn" role="note">
-                    {`Unspent: ${attrLeft} attribute and ${skillLeft} skill points. They are what your rolls add to the die; skill points can also be spent later on your sheet.`}
+                    {`Unspent: ${[attrLeft > 0 && `${attrLeft} attribute`, skillLeft > 0 && `${skillLeft} skill`].filter(Boolean).join(" and ")} points. They are what your rolls add to the die; skill points can also be spent later on your sheet.`}
                   </p>
                 ) : null;
               })()}
