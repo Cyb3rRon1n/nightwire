@@ -5,7 +5,7 @@ import type { CharacterSheet, ClientMessage, RedactedCharacter, RollResult, Stat
 import { portraitFor } from "@/lib/nightwire/portrait";
 import { mediaUrl, serverUrl } from "@/lib/nightwire/media";
 import { AUDIO_LINE, IMAGE_LINE, ROLL_LINE, ROLL_PENDING_LINE, classifyLine, groupStarts, isPlayerFacing, pickBackdrop, sceneImages, speakerKey } from "@/lib/nightwire/feed";
-import { npcColour } from "@/lib/nightwire/npcColour";
+import { npcColour, npcPortrait } from "@/lib/nightwire/npcColour";
 import { PendingRollCard, RollResultCard } from "../RollCard";
 import { ChromeOfferCard } from "../ChromeOfferCard";
 
@@ -41,10 +41,12 @@ const reducedMotion = () => typeof window !== "undefined" && window.matchMedia("
 // initials otherwise. NPCs have no CharacterSheet, so they always get initials.
 function SpeakerAvatar({ name, character, colour }: { name: string; character?: CharacterSheet | RedactedCharacter | null; colour: string }) {
   const portraitPath = character && "portrait_path" in character ? character.portrait_path : null;
+  // NPCs have no sheet: an approved design's portrait if there is one, served by the game server.
+  const npcArt = character ? null : npcPortrait(name);
   const frame = { border: `1.5px solid ${colour}` };
-  if (portraitPath) {
+  if (portraitPath || npcArt) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={mediaUrl(portraitPath)} alt="" className="size-10 shrink-0 object-cover" style={frame} />;
+    return <img src={portraitPath ? mediaUrl(portraitPath) : serverUrl(npcArt!)} alt="" className="size-10 shrink-0 object-cover" style={frame} />;
   }
   const { initials } = portraitFor(character?.role ?? name, name);
   return (

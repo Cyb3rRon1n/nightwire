@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { GOLD, WORST_BG, contrast, npcColour } from "../../src/lib/nightwire/npcColour.ts";
+import { GOLD, WORST_BG, contrast, npcColour, npcPortrait } from "../../src/lib/nightwire/npcColour.ts";
 import { NPC_PALETTES } from "../../src/lib/nightwire/npcPalettes.ts";
 
 test("contrast matches WCAG reference values", () => {
@@ -21,4 +21,10 @@ test("unknown names fall back to gold", () => {
 test("a first or last name alone finds the design, case-insensitively", () => {
   assert.equal(npcColour("saeko"), npcColour("Saeko Kirigaya"));
   assert.notEqual(npcColour("Mama Sato"), GOLD); // her palette is all reds
+});
+
+test("named NPCs get their approved portrait, strangers none", () => {
+  assert.equal(npcPortrait("Mama Sato"), "character-art/mama-sato.jpg");
+  assert.equal(npcPortrait("saeko"), "character-art/saeko-kirigaya.jpg");
+  assert.equal(npcPortrait("A Stranger"), null);
 });

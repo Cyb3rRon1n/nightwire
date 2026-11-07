@@ -1,4 +1,4 @@
-import { NPC_PALETTES } from "./npcPalettes.ts";
+import { NPC_PALETTES, NPC_SLUGS } from "./npcPalettes.ts";
 
 export const GOLD = "#f9d066";
 // 86% ink over pure white: the brightest background the scene scrim lets text sit on.
@@ -23,13 +23,24 @@ function towardWhite(hex: string, t: number): string {
 }
 
 // The palette's most vivid colour, lifted toward white until it is readable on the scrim.
-export function npcColour(name: string): string {
+// The approved design a speaker's name refers to: the full name, or a first or last name alone, any case.
+function designName(name: string): string | null {
   const key = name.trim().toLowerCase();
-  const match = Object.entries(NPC_PALETTES).find(([full]) => {
+  return Object.keys(NPC_PALETTES).find((full) => {
     const f = full.toLowerCase();
     return f === key || f.split(" ").includes(key);
-  });
-  const vivid = match?.[1].filter((c) => chroma(c) >= 0.25).sort((a, b) => chroma(b) - chroma(a))[0];
+  }) ?? null;
+}
+
+// Path of the NPC's approved portrait on the game server, or null for someone without a design.
+export function npcPortrait(name: string): string | null {
+  const full = designName(name);
+  return full && NPC_SLUGS[full] ? `character-art/${NPC_SLUGS[full]}.jpg` : null;
+}
+
+export function npcColour(name: string): string {
+  const full = designName(name);
+  const vivid = (full ? NPC_PALETTES[full] : undefined)?.filter((c) => chroma(c) >= 0.25).sort((a, b) => chroma(b) - chroma(a))[0];
   if (!vivid) return GOLD;
   for (let t = 0; t <= 1; t += 0.05) {
     const c = towardWhite(vivid, t);

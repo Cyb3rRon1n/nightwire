@@ -168,3 +168,27 @@ export const NPC_PALETTES: Record<string, string[]> = {
     "#444f56"
   ]
 };
+// Design slug per name: the portrait the game server serves at /character-art/<slug>.jpg.
+export const NPC_SLUGS: Record<string, string> = {
+  "Akira Sendo": "akira-sendo",
+  "Ayame Tsuda": "ayame-tsuda",
+  "Captain Ide": "captain-ide",
+  "Daichi Tanabe": "daichi-tanabe",
+  "Goro Bessho": "goro-bessho",
+  "Hachi": "hachi",
+  "Hoshikawa Rei": "hoshikawa-rei",
+  "Hoshikawa Tadamori": "hoshikawa-tadamori",
+  "Jun Arakawa": "jun-arakawa",
+  "Kaede Mori": "kaede-mori",
+  "Kenji Moro": "kenji-moro",
+  "Mama Sato": "mama-sato",
+  "Mei Lan": "mei-lan",
+  "Mitsu": "mitsu",
+  "Nagi Sumida": "nagi-sumida",
+  "Old Hara": "old-hara",
+  "Rin Kageyama": "rin-kageyama",
+  "Saeko Kirigaya": "saeko-kirigaya",
+  "Shinji Okubo": "shinji-okubo",
+  "Wataru Ono": "wataru-ono",
+  "Yuki Shirasagi": "yuki-shirasagi"
+};
