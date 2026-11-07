@@ -1036,6 +1036,7 @@ async def test_resolution_prompt_carries_the_players_action(tmp_path, monkeypatc
     await _roll(session, NarratorClient(chat_fn=chat_fn, generate_fn=None), "p1", tmp_path)
     content = sent[0][-1]["content"]
     assert "They tried: I punch the guy who bumps into me." in content and "No new roll this turn." in content
+    assert "It fails, and something changes for the worse." in content  # randint 7 at Hard: a failure
 
 
 @pytest.mark.asyncio
@@ -1051,7 +1052,7 @@ async def test_no_new_roll_during_a_resolution(tmp_path, monkeypatch):
     await _roll(session, client, "p1", tmp_path)
 
     assert session.pending_rolls == {}
-    assert "[tool error: no new rolls during a roll resolution]" in session.log
+    assert "[roll skipped: another roll asked during a roll result]" in session.log
 
 
 @pytest.mark.asyncio

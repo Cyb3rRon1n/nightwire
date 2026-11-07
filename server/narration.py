@@ -440,7 +440,7 @@ def _apply_tool(session, response, player_id, allow_roll, roll_skill: str | None
                 tool_args["skill"] = roll_skill  # the risk check's pick (narrator/risk.py)
             _hold_roll(session, player_id, tool_args)
         else:
-            session.log.append("[tool error: no new rolls during a roll resolution]")
+            session.log.append("[roll skipped: another roll asked during a roll result]")
         return
     try:
         result = execute_tool(session, response.tool, tool_args)
@@ -569,6 +569,12 @@ async def _run_turn(
         await _maybe_compact(session, narrator_client)
 
 
+# Playthrough 2026-11-07: a natural-10 punch read as "he's not down, just shaken".
+_OUTCOME_GUIDE = {
+    "clean_success": "It works, fully and visibly: show what the character gets.",
+    "complication": "It works, but at a cost: show both.",
+    "failure": "It fails, and something changes for the worse.",
+}
 _OUTCOME_TEXT = {
     "clean_success": "a clean success",
     "complication": "success with a complication",
@@ -638,7 +644,7 @@ async def narrate_roll(
         prompt_text=(
             f"Roll result for {rolled['name']}: {_OUTCOME_TEXT[rolled['outcome']]} on "
             f"{rolled['reason']}.{tried} Narrate what happens now, true to that result: start with the "
-            f"outcome itself. No new roll this turn."
+            f"outcome itself. {_OUTCOME_GUIDE[rolled['outcome']]} No new roll this turn."
         ),
         actor_line=None, allow_roll=False,
         # The prompt is the engine's instruction; the referee judges what the player chose to do.
