@@ -679,6 +679,34 @@ def resolve_roll(session: Session, player_id: str, overclock: str | None = None)
     return rolled
 
 
+# Where a new character starts, by lifepath (spec 2026-11-07-story-thread-design.md, section 2).
+_START = {"streetkid": "Ikebe Low", "corpo": "Tenjō Heights", "nomad": "Kuroshio Docks", "tsukumogami": "Ring Line"}
+_FIRST_JOB = ("{first}, it's Jun. Heard you're new on the board. Courier job tonight: pick up a sealed case from Hachi "
+              "at the Kuroshio Docks and bring it to my karaoke box in Hanabira-chō. Cash on delivery. Don't open it.")
+_FIRST_OBJECTIVE = "Pick up Jun's case from Hachi at Kuroshio Docks"
+
+
+async def open_scene(session: Session, narrator_client: NarratorClient, store: JSONFileSessionStore,
+                     image_backend: ImageBackend, tts_backend: TTSBackend, player_id: str) -> None:
+    """A new character's first scene, so the game never starts on an empty screen (playthrough 2026-11-07): an
+    arrival in their lifepath's district, then Jun's first job by text, which becomes the first objective. Players
+    who join a game already under way just join the scene."""
+    if any(not line.startswith("[") for line in session.log):
+        return
+    c = session.characters[player_id]
+    session.location = session.location or _START.get(c.lifepath, "Ikebe Low")
+    prompt = (f"Engine: opening scene. {c.name}, a {c.lifepath} {c.role}, is in {session.location} at night. In about "
+              "150 words, start them in the middle of something small and sensory - no recap, no backstory - and end "
+              "on a moment where they can act. No roll.")
+    await _run_turn(session, narrator_client, store, image_backend, tts_backend, player_id, prompt_text=prompt,
+                    actor_line=None, allow_roll=False, no_roll=True)
+    add_contact(session, player_id, "Jun Arakawa", "fixer")
+    post(session, player_id, "Jun Arakawa", "Jun Arakawa", _FIRST_JOB.format(first=c.name.split()[0]),
+         phone_of(session, player_id)["turn"] + 1)
+    if _FIRST_OBJECTIVE not in session.active_objectives:
+        session.active_objectives = [*session.active_objectives, _FIRST_OBJECTIVE]
+
+
 async def narrate_roll(
     session: Session,
     narrator_client: NarratorClient,
