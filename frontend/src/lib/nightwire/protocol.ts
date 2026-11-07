@@ -175,6 +175,17 @@ export interface AllocateAttributePointsMessage {
   amount: number
 }
 
+export interface TextMessage {
+  type: 'text'
+  to: string
+  text: string
+}
+
+export interface ReadMessage {
+  type: 'read'
+  contact: string
+}
+
 export type ClientMessage =
   | JoinMessage
   | ActionMessage
@@ -188,3 +199,5 @@ export type ClientMessage =
   | AcceptChromeMessage
   | DeclineChromeMessage
   | RemoveChromeMessage
+  | TextMessage
+  | ReadMessage
