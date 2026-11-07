@@ -203,7 +203,14 @@ Each phase gets its own brainstorming pass (questions → approaches → design 
       - The feed now re-pins to the newest line when a scene image finishes loading, because reconnecting used to land on old lines.
       - The conversation's top edge fades out under the place name.
     - **Repo refresh (2026-11-06)**: a new banner, social preview and Homepage icon made from approved Kuroshio art; cast and places grids; new screenshots of every feature in the new play screen. The old SVG branding and violet-theme screenshots were deleted.
-    - **Next — step 2, the Phone**: engine-sent texts, a pop-out phone for texting one character while talking to another, private texts in the feed, and per-contact memory of what you told them.
+20b. **Messenger play screen, step 2: the Phone** (built 2026-11-07) — spec `docs/superpowers/specs/2026-11-06-messenger-play-screen-design.md` ("Phone"), plan `docs/superpowers/plans/2026-11-06-phone.md`.
+    - **Built**:
+      - Each player has a private phone: contacts with a role and trust 0–5, one thread per contact (`engine/phone.py`). Anyone who speaks to you becomes a contact; Saeko Kirigaya (creditor) and Jun Arakawa (fixer) are added on join.
+      - Texting one character while talking aloud to another (`server/phone_turns.py`, `narrator/phone_reply.py`). Reply delay is the role's base plus (5 − trust) plus the contact's pace, clamped 0–6 turns; tone follows trust; unprompted texts are rate-limited.
+      - Saeko texts on debt events and Jun on paid gigs. The referee moves trust on kept or broken promises, help at a cost and discovered lies (a cold spell after a lie). Each contact remembers what you told them.
+      - The view sends each player only their own phone. The play screen has a Phone chip that floats a 330×620 phone over the scene, and a PHONE tab on narrow screens.
+      - `tools/soak_test.py` now texts mid-run and reports texts sent, replies delivered and any text words found in the shared log (must be 0).
+    - **Deferred**: calls, availability by time of day (there is no game clock yet), and white lies; the private "only <contact> sees this" line in the feed (spec l.115); Jun's paid-gig text fires only while the player owes installments; family/partner check-ins can't fire yet (no such contacts are created in play); the spec's instant replies (Saeko answering debtors, a fixer with your job open, close friends), trust-5 tips and betrayal -2 aren't modelled; the player's own texts aren't rate-limited.
 
 21. **Narrator in live play** (built and live-verified 2026-11-06, after the first real games on the new play screen), with qwen3:8b and think off:
     - **Referee judges the player, not the engine.** Every level answer needs a quote from the scene. "Acted as a machine" must quote the player's own words, and roll resolutions pass the player's real action instead of the engine's instruction. A plain roof climb no longer costs selfhood; washing Mama Sato's pot still earns a human moment (5/5 each).

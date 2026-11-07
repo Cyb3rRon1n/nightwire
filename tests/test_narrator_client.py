@@ -334,7 +334,20 @@ async def test_default_judge_sends_think_false_and_zero_temperature():
     client._client = _Fake()
     await client.judge([], {"type": "object", "properties": {}, "required": []})
     assert seen["think"] is False
-    assert seen["options"]["temperature"] == 0 and seen["options"]["num_predict"] == 200
+    assert seen["options"]["temperature"] == 0 and seen["options"]["num_predict"] == 320
+
+
+async def test_default_summarize_sends_think_false_and_length_cap():
+    client = NarratorClient()
+    seen = {}
+    class _Fake:
+        async def chat(self, **kw):
+            seen.update(kw)
+            return {"message": {"content": "summary"}}
+    client._client = _Fake()
+    await client.summarize("p1: I approach the fixer.")
+    assert seen["think"] is False
+    assert seen["options"]["temperature"] == 0.3 and seen["options"]["num_predict"] == 400
 
 
 async def test_think_option_reaches_narrator_chat_only_when_set():

@@ -757,3 +757,44 @@ def test_join_rejects_unknown_presentation(bad):
     with pytest.raises(ValueError, match="presentation must be"):
         handle_message(session, {"type": "join", "character": {
             "player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid", "presentation": bad}}, "p1")
+
+
+def test_join_gives_a_new_character_saeko_and_jun_once():
+    session = Session(session_id="s1")
+    msg = {"type": "join", "character": {"player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"}}
+    handle_message(session, msg, "p1")
+    handle_message(session, msg, "p1")
+    contacts = session.phone["p1"]["contacts"]
+    assert contacts["Saeko Kirigaya"]["role"] == "creditor" and contacts["Saeko Kirigaya"]["pace"] == -1
+    assert contacts["Jun Arakawa"]["role"] == "fixer"
+    assert len(contacts) == 2
+
+
+def test_read_marks_a_thread_read():
+    from engine.phone import add_contact, phone_of, post, unread
+    s = Session(session_id="s1")
+    add_contact(s, "p1", "Jun Arakawa", "fixer")
+    phone_of(s, "p1")["turn"] = 2
+    post(s, "p1", "Jun Arakawa", "Jun Arakawa", "hello", 1)
+    assert unread(s, "p1") == {"Jun Arakawa": 1}
+    handle_message(s, {"type": "read", "contact": "Jun Arakawa"}, "p1")
+    assert unread(s, "p1") == {}
+
+
+def test_read_unknown_contact_is_an_error():
+    s = Session(session_id="s1")
+    with pytest.raises(ValueError):
+        handle_message(s, {"type": "read", "contact": "Ghost"}, "p1")
+
+
+def test_join_backfills_starting_contacts_for_a_session_without_a_phone():
+    from engine.phone import phone_of
+    session = Session(session_id="s1")
+    join_message = {"type": "join",
+                    "character": {"player_id": "p1", "name": "Rook", "role": "solo", "lifepath": "streetkid"}}
+    handle_message(session, join_message, "p1")
+    session.phone.clear()  # a saved session from before the phone existed
+
+    handle_message(session, join_message, "p1")
+
+    assert {"Saeko Kirigaya", "Jun Arakawa"} <= set(phone_of(session, "p1")["contacts"])
