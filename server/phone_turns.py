@@ -1,5 +1,7 @@
 """Sending a text and delivering replies on the contact's schedule. The words of a text never reach session.log."""
 
+import re
+
 from engine import phone
 from narrator.phone_reply import write_reply
 
@@ -31,6 +33,9 @@ async def deliver_due(session, client, player_id) -> None:
                 break
 
 
+_WORK = re.compile(r"\b(work|job|jobs|gig|gigs|cash|money|pay|paid|eddies|yen)\b", re.I)
+
+
 async def handle_text(session, client, player_id, message) -> None:
     p = phone.phone_of(session, player_id)
     contact = p["contacts"].get(message.get("to"))
@@ -47,6 +52,8 @@ async def handle_text(session, client, player_id, message) -> None:
     if contact["role"] == "enemy" and contact["trust"] < 1:
         return
     d = phone.delay(contact)
+    if contact["role"] == "fixer" and _WORK.search(text):
+        d = min(d, 1)  # a fixer asked for work answers next turn (playthrough 2026-11-07: Jun took 6)
     msg = phone.post(session, player_id, name, name, None, p["turn"] + d)
     if d == 0:
         await _fill(session, client, player_id, msg, name)
