@@ -233,6 +233,8 @@ def _crew_line(session: Session) -> str:
     entries = []
     for c in session.characters.values():
         if not c.chrome and c.humanity == 100 and c.installments_owed <= 0 and not is_tsukumogami(c):
+            # Said, not left out: with nothing here the narrator invented a debt (playthrough 2026-11-07).
+            entries.append(f"{c.name}: no chrome, owes nothing")
             continue
         if is_tsukumogami(c):
             tier = selfhood_tier(c.humanity) + (", gone dark" if c.gone_too_far else "")
