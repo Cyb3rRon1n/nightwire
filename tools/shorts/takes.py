@@ -2,6 +2,7 @@
 
 import datetime as dt
 import json
+import re
 import shutil
 from pathlib import Path
 
@@ -47,7 +48,8 @@ class Ledger:
 
 
 def next_take_id(shot_dir: Path) -> str:
-    return f"t{len(list((shot_dir / 'takes').glob('t*.mp4'))) + 1:03d}"
+    nums = [int(p.stem[1:]) for p in (shot_dir / "takes").glob("t*.mp4") if p.stem[1:].isdigit()]
+    return f"t{max(nums, default=0) + 1:03d}"
 
 
 def file_take(shot_dir: Path, video: Path, meta: dict) -> str:
@@ -59,16 +61,27 @@ def file_take(shot_dir: Path, video: Path, meta: dict) -> str:
     return tid
 
 
+SLUG = re.compile(r"[a-z0-9][a-z0-9-]*")
+
+
 def take_image_id(slug: str, shot: str, take: str) -> str:
+    if "--" in slug or not SLUG.fullmatch(slug):
+        raise ValueError(f"slug {slug!r} must match [a-z0-9][a-z0-9-]* and must not contain '--'")
     return f"short--{slug}--{shot.lower()}--{take}"
 
 
 def apply_verdicts(short_dir: Path, slug: str, api: dict) -> dict[str, dict]:
     prefix = f"short--{slug}--"
-    mine = {k: v for k, v in api.items() if k.startswith(prefix)}
+    mine: dict[str, dict] = {}
     per_shot: dict[str, dict] = {}
-    for key, v in mine.items():
-        shot, take = key[len(prefix):].split("--")
+    for key, v in api.items():
+        if not key.startswith(prefix):
+            continue
+        parts = key[len(prefix):].split("--")
+        if len(parts) != 2:
+            continue  # malformed id from the shared picks API; skip it, do not fail the whole sync
+        mine[key] = v
+        shot, take = parts
         shot = shot.upper()
         per_shot.setdefault(shot, {})[take] = {k: v[k] for k in ("verdict", "note") if k in v}
     for shot, verdicts in per_shot.items():

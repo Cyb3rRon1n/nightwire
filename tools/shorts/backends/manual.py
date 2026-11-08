@@ -21,9 +21,11 @@ def import_inbox(short_dir: Path, shot_id: str, cost: float, model: str, ledger:
     done.mkdir(parents=True, exist_ok=True)
     ids = []
     for video in sorted(inbox.glob("*.mp4")):
-        tid = file_take(short_dir / "shots" / shot_id, video,
+        # Move first: a file that is no longer in inbox/ can never be filed or charged twice.
+        moved = done / video.name
+        shutil.move(video, moved)
+        tid = file_take(short_dir / "shots" / shot_id, moved,
                         {"model": model, "cost": cost, "backend": "manual", "source": video.name})
         ledger.add(shot_id, tid, model, cost)
-        shutil.move(video, done / video.name)
         ids.append(tid)
     return ids

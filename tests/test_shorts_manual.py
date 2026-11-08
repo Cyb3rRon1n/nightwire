@@ -22,3 +22,36 @@ def test_inbox_files_takes_and_records_cost(tmp_path):
     assert (tmp_path / "shots" / "S01" / "takes" / "t001.mp4").exists()
     assert (tmp_path / "inbox" / "done" / "dreamina_123.mp4").exists()
     assert led.total() == 0.35
+
+
+def test_second_import_files_nothing(tmp_path):
+    (tmp_path / "inbox").mkdir()
+    (tmp_path / "inbox" / "a.mp4").write_bytes(b"v")
+    led = Ledger(tmp_path / "costs.json")
+    assert import_inbox(tmp_path, "S01", 0.35, "seedance-2.5", led) == ["t001"]
+    assert import_inbox(tmp_path, "S01", 0.35, "seedance-2.5", led) == []
+    assert led.total() == 0.35
+
+
+def test_failed_move_does_not_double_charge(tmp_path, monkeypatch):
+    import shutil
+
+    import pytest
+
+    real_move = shutil.move
+    calls = []
+
+    def flaky_move(src, dst):
+        calls.append(src)
+        if len(calls) == 1:
+            raise OSError("disk hiccup")
+        return real_move(src, dst)
+
+    (tmp_path / "inbox").mkdir()
+    (tmp_path / "inbox" / "a.mp4").write_bytes(b"v")
+    led = Ledger(tmp_path / "costs.json")
+    monkeypatch.setattr(shutil, "move", flaky_move)
+    with pytest.raises(OSError):
+        import_inbox(tmp_path, "S01", 0.35, "seedance-2.5", led)
+    assert import_inbox(tmp_path, "S01", 0.35, "seedance-2.5", led) == ["t001"]
+    assert led.total() == 0.35
