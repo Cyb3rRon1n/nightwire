@@ -32,13 +32,14 @@ def test_load_key_reads_env_file_and_hides_contents(tmp_path):
 
 
 def test_build_input_uses_model_field_names(tmp_path):
+    from PIL import Image
     img = tmp_path / "a.png"
-    img.write_bytes(b"\x89PNG")
+    Image.new("RGB", (8, 8)).save(img)
     model = next(iter(fal.MODELS))
     body = fal.build_input(model, "hello", [("C1_turnaround.png", img)], 5)
     spec = fal.MODELS[model]
     assert body[spec["prompt"]] == "hello"
-    assert body[spec["images"]][0].startswith("data:image/png;base64,")
+    assert body[spec["images"]][0].startswith("data:image/jpeg;base64,")
 
 
 def test_fal_enum_durations_are_strings():
@@ -122,3 +123,16 @@ def test_run_take_bills_the_rounded_seconds(tmp_path):
     fal.run_take(tmp_path, "S02", model, "p", [], 7.5, 25, key="k", client=httpx.Client(transport=transport([])))
     assert Ledger(tmp_path / "costs.json").total() == estimate(model, 8)
     assert json.loads((tmp_path / "shots/S02/takes/t001.json").read_text())["seconds"] == 8
+
+
+def test_images_are_sent_as_small_jpegs(tmp_path):
+    import base64, io
+    from PIL import Image
+    from tools.shorts.backends import fal
+    Image.new("RGB", (4896, 2496), (120, 30, 40)).save(tmp_path / "big.png")
+    uri = fal.data_uri(tmp_path / "big.png")
+    assert uri.startswith("data:image/jpeg;base64,")
+    im = Image.open(io.BytesIO(base64.b64decode(uri.split(",", 1)[1])))
+    assert max(im.size) == fal.MAX_SIDE and im.size[0] / im.size[1] == pytest.approx(4896 / 2496, rel=0.01)
+    (tmp_path / "clip.mp4").write_bytes(b"vid")
+    assert fal.data_uri(tmp_path / "clip.mp4") == "data:video/mp4;base64," + base64.b64encode(b"vid").decode()
