@@ -1,6 +1,6 @@
 import pytest
 
-from test_shorts_model import designs, write
+from test_shorts_model import SHOT, designs, write
 from tools.shorts.model import load_short
 from tools.shorts.prompt import build_prompt, layers, position_problems, ref_files
 
@@ -56,3 +56,13 @@ def test_ref_files_lists_existing_refs_in_order(tmp_path):
     (shot_dir / "greybox.mp4").write_bytes(b"x")
     labels = [label for label, _ in ref_files(s, dd, shot_dir)]
     assert labels == ["C1_turnaround.png", "C1_expressions.png", "C2_turnaround.png", "place.png", "greybox.mp4"]
+
+
+def test_l5_times_are_relative_to_shot_start(tmp_path):
+    shifted = (SHOT.replace("start = 0.0", "start = 8.0").replace("end = 5.0", "end = 13.0")
+               .replace("t = [0.0, 2.5]", "t = [8.0, 10.5]").replace("t = [1.0, 3.5]", "t = [9.0, 11.5]")
+               .replace("t = 1.2", "t = 9.2").replace("t = 0.0,", "t = 0.0,"))
+    s = load_short(write(tmp_path / "pilot", shot=shifted))
+    L5 = layers(s, s.shots[0], designs())["L5"]
+    assert "0.0-2.5s" in L5 and "1.0-3.5s" in L5 and "1.2s C2 says" in L5
+    assert "8.0" not in L5 and "9.2" not in L5

@@ -1,5 +1,5 @@
 from test_shorts_model import write
-from tools.shorts.greybox.scene import BONES, FPS, POSES, scene_json, tint
+from tools.shorts.greybox.scene import BONES, FPS, POSE_DROP, POSES, scene_json, tint
 from tools.shorts.model import load_short
 
 
@@ -25,3 +25,11 @@ def test_tint_is_mostly_grey():
     assert tint(None) == [0.6, 0.6, 0.6]
     r, g, b = tint("#ff0000")
     assert 0.65 < r < 0.7 and g < 0.6
+
+
+def test_scene_json_exports_pose_drop(tmp_path):
+    sj = scene_json(load_short(write(tmp_path / "pilot")))
+    drops = {f["id"]: f["drop"] for f in sj["figures"]}
+    assert drops["C1"] == POSE_DROP["sit"] == 0.5  # hips 0.95 -> 0.45 = thigh-long seat, shins reach the floor
+    assert drops["C2"] == 0.0
+    assert POSE_DROP["kneel"] == 0.45
