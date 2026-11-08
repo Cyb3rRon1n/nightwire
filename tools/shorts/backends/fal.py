@@ -21,14 +21,14 @@ QUEUE = "https://queue.fal.run"
 # "duration_str": fal's duration is a string enum ("5"), not an int. Default (absent) = int.
 MODELS = {
     "seedance-2.0-fast": {"endpoint": "bytedance/seedance-2.0/fast/reference-to-video", "prompt": "prompt", "images": "image_urls",
-                          "video": "video_urls", "duration": "duration", "duration_str": True, "extra": {"resolution": "720p"}},
+                          "video": "video_urls", "duration": "duration", "duration_str": True, "min_s": 4, "extra": {"resolution": "720p"}},
     "seedance-2.0": {"endpoint": "bytedance/seedance-2.0/reference-to-video", "prompt": "prompt", "images": "image_urls",
-                     "video": "video_urls", "duration": "duration", "duration_str": True, "extra": {"resolution": "720p"}},
+                     "video": "video_urls", "duration": "duration", "duration_str": True, "min_s": 4, "extra": {"resolution": "720p"}},
     "seedance-2.5": {"endpoint": "bytedance/seedance-2.5/reference-to-video", "prompt": "prompt", "images": "image_urls",
-                     "video": "video_urls", "duration": "duration", "duration_str": True, "extra": {"resolution": "720p"}},
+                     "video": "video_urls", "duration": "duration", "duration_str": True, "min_s": 4, "extra": {"resolution": "720p"}},
     # Kling has no top-level reference-video field (only elements[].video_url), so video=None.
     "kling-3": {"endpoint": "fal-ai/kling-video/o3/pro/reference-to-video", "prompt": "prompt", "images": "image_urls",
-                "video": None, "duration": "duration", "duration_str": True, "extra": {}},
+                "video": None, "duration": "duration", "duration_str": True, "min_s": 3, "extra": {}},
 }
 
 
@@ -49,6 +49,9 @@ def build_input(model: str, prompt: str, refs: list[tuple[str, Path]], seconds: 
     spec = MODELS[model]
     secs = int(round(seconds))
     body = {spec["prompt"]: prompt, spec["duration"]: str(secs) if spec.get("duration_str") else secs, **spec["extra"]}
+    dropped = [label for label, _ in refs if not label.endswith(".png") and not (label.endswith(".mp4") and spec["video"])]
+    if dropped:
+        raise ValueError(f"{model} cannot send these refs: {dropped}")
     images = [data_uri(p) for label, p in refs if label.endswith(".png")]
     videos = [data_uri(p) for label, p in refs if label.endswith(".mp4")]
     if images:
@@ -58,11 +61,14 @@ def build_input(model: str, prompt: str, refs: list[tuple[str, Path]], seconds: 
     return body
 
 
-def submit(model, prompt, refs, seconds, *, key: str, client: httpx.Client, poll_s: float = 5.0,
-           timeout_s: float = 900) -> bytes:
+def start(model, prompt, refs, seconds, *, key: str, client: httpx.Client) -> dict:
+    """POST the job (this is the paid step); returns the queue job dict."""
+    return client.post(f"{QUEUE}/{MODELS[model]['endpoint']}", json=build_input(model, prompt, refs, seconds),
+                       headers={"Authorization": f"Key {key}"}, timeout=120).raise_for_status().json()
+
+
+def fetch(job: dict, *, key: str, client: httpx.Client, poll_s: float = 5.0, timeout_s: float = 900) -> bytes:
     headers = {"Authorization": f"Key {key}"}
-    job = client.post(f"{QUEUE}/{MODELS[model]['endpoint']}", json=build_input(model, prompt, refs, seconds),
-                      headers=headers, timeout=120).raise_for_status().json()
     deadline = time.monotonic() + timeout_s
     while client.get(job["status_url"], headers=headers, timeout=30).raise_for_status().json()["status"] != "COMPLETED":
         if time.monotonic() > deadline:
@@ -72,16 +78,25 @@ def submit(model, prompt, refs, seconds, *, key: str, client: httpx.Client, poll
     return client.get(result["video"]["url"], timeout=300).raise_for_status().content
 
 
+def submit(model, prompt, refs, seconds, *, key: str, client: httpx.Client, poll_s: float = 5.0,
+           timeout_s: float = 900) -> bytes:
+    job = start(model, prompt, refs, seconds, key=key, client=client)
+    return fetch(job, key=key, client=client, poll_s=poll_s, timeout_s=timeout_s)
+
+
 def run_take(short_dir: Path, shot_id: str, model: str, prompt: str, refs, seconds: float, budget: float, *,
              key: str, client: httpx.Client) -> str:
+    if seconds < MODELS[model]["min_s"]:
+        raise ValueError(f"{model} needs at least {MODELS[model]['min_s']}s, got {seconds}")
     ledger, cost = Ledger(short_dir / "costs.json"), estimate(model, seconds)
     ledger.check(budget, cost)
-    video = submit(model, prompt, refs, seconds, key=key, client=client)
+    job = start(model, prompt, refs, seconds, key=key, client=client)
+    ledger.add(shot_id, f"req-{job['request_id']}", model, cost)  # money is spent once the POST succeeds
+    video = fetch(job, key=key, client=client)
     tmp = short_dir / "shots" / shot_id / "incoming.mp4"
     tmp.parent.mkdir(parents=True, exist_ok=True)
     tmp.write_bytes(video)
-    tid = file_take(short_dir / "shots" / shot_id, tmp, {"model": model, "cost": cost, "backend": "fal",
-                                                          "seconds": seconds, "refs": [label for label, _ in refs]})
+    tid = file_take(short_dir / "shots" / shot_id, tmp, {"model": model, "cost": cost, "backend": "fal", "seconds": seconds,
+                                                          "request_id": job["request_id"], "refs": [label for label, _ in refs]})
     tmp.unlink()
-    ledger.add(shot_id, tid, model, cost)
     return tid
