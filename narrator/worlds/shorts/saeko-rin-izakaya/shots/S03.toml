@@ -4,8 +4,8 @@ end = 24.0
 summary = "reverse: over C2's shoulder on C1, medium close-up, from across the counter; slow push in"
 lens = 50.0
 camera = [
-  { t = 0.0, at = [2.6, 0.35, 1.5], look = [0.95, -0.75, 1.5] },
-  { t = 8.5, at = [2.45, 0.3, 1.5], look = [0.95, -0.72, 1.52] },
+  { t = 0.0, at = [2.3, 0.25, 1.4], look = [0.86, -0.72, 0.98] },
+  { t = 8.5, at = [2.2, 0.2, 1.38], look = [0.86, -0.72, 0.99] },
 ]
 
 [state]
@@ -30,8 +30,8 @@ t = [15.5, 24.0]
 goal = "learn the price without owing more than she can pay"
 emotion = "polite control, a crack of fear as the blink quickens, settling into cold amusement on 'I know'"
 trigger = "list"
-face = "AU4 brow lowerer B (onset 17.0 s, peak 17.6 s) at the quickening blink; AU14 one-sided dimpler C on 'I know' (peak 20.5 s), released by 22.0 s"
-gaze = "eyes on C2, drop to the wrist at 17.0 s, back to C2 on 'list', down to the plug at 21.5 s, up to C2 at 23.0 s"
+face = "AU4 brow lowerer B (onset 1.5 s, peak 2.1 s) at the quickening blink; AU14 one-sided dimpler C on 'I know' (peak 5.0 s), released by 6.5 s"
+gaze = "eyes on C2, drop to the wrist at 1.5 s, back to C2 on 'list', down to the plug at 6.0 s, up to C2 at 7.5 s"
 voice = "unhurried, apologetic courtesy; half a breath held before 'I know'"
 end = "plug turned over in her fingers, eyes on C2, no answer"
 
