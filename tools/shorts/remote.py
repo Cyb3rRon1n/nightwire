@@ -1,6 +1,7 @@
 """Blender runs on the GPU box: push scene.json, render there, pull the results back."""
 
 import os
+import shlex
 import subprocess
 from pathlib import Path
 
@@ -14,7 +15,7 @@ def commands(short_dir: Path, slug: str) -> list[list[str]]:
     remote_dir = f"{REMOTE_ROOT}/{slug}"
     up = ["rsync", "-a", "--mkpath", str(short_dir / "scene.json"), str(SCRIPT), f"{BLENDER_HOST}:{remote_dir}/"]
     run = ["ssh", BLENDER_HOST,
-           f"cd {remote_dir} && {BLENDER} -b -P blender_build.py -- scene.json . > blender.log 2>&1 || (tail -30 blender.log; exit 1)"]
+           f"cd {shlex.quote(remote_dir)} && {BLENDER} -b -P blender_build.py -- scene.json . > blender.log 2>&1 || (tail -30 blender.log; exit 1)"]
     down = ["rsync", "-a", "--exclude", "blender_build.py", f"{BLENDER_HOST}:{remote_dir}/", f"{short_dir}/"]
     return [up, run, down]
 
