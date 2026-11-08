@@ -89,7 +89,7 @@ for f in S["figures"]:
     colour = (*f["tint"], 1)
     obj = mannequin(f["id"], colour, f["rotations"]) if f["tier"] in ("mannequin", "rigged") else capsule(f["id"], colour)
     for frame, x, y, facing in f["keys"]:
-        obj.location = (x, y, 0)
+        obj.location = (x, y, -f.get("drop", 0.0))
         obj.rotation_euler = (0, 0, math.radians(facing - 90))
         obj.keyframe_insert("location", frame=frame)
         obj.keyframe_insert("rotation_euler", frame=frame)

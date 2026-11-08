@@ -16,6 +16,9 @@ POSES = {
     "kneel": {"thigh.L": (90, 0, 0), "shin.L": (-90, 0, 0), "thigh.R": (0, 0, 0), "shin.R": (-90, 0, 0)},
     "arm_raised": {"upper_arm.R": (170, 0, 0)},
 }
+# Armature root drop (m) per pose: hips sit at 0.95 m; thigh and shin are 0.45 m each (blender_build.LAYOUT).
+# sit: hips 0.45 m with thighs horizontal, shins reach the floor. kneel: hips 0.5 m, back knee and front foot at 0.05 m.
+POSE_DROP = {"sit": 0.5, "kneel": 0.45}
 GREY = 0.6
 
 
@@ -37,7 +40,7 @@ def scene_json(short: Short, palettes: dict[str, str] | None = None) -> dict:
         "fps": FPS, "res": list(RES),
         "frames": max((_f(s.end) for s in short.shots), default=0),
         "blocks": [{"name": b.name, "size": list(b.size), "at": list(b.at), "rot": b.rot} for b in short.blocks],
-        "figures": [{"id": f.id, "tier": f.tier, "pose": f.pose, "rotations": POSES.get(f.pose, {}),
+        "figures": [{"id": f.id, "tier": f.tier, "pose": f.pose, "rotations": POSES.get(f.pose, {}), "drop": POSE_DROP.get(f.pose, 0.0),
                      "tint": tint(palettes.get(f.id)),
                      "keys": [[_f(t), x, y, facing] for t, x, y, facing in f.keys]} for f in short.figures.values()],
         "shots": [{"id": s.id, "start_frame": _f(s.start), "end_frame": _f(s.end), "lens": s.lens,

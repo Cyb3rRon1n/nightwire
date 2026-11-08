@@ -23,12 +23,13 @@ def layers(short: Short, shot: Shot, designs: dict) -> dict[str, str]:
     l2 = "\n".join(f"{cid} = {designs[slug].name} (refs {cid}_*)" for cid, slug in short.cast.items())
     l3 = short.style
     l4 = "\n".join(f"{cid}: {state}" for cid, state in shot.state.items())
-    rows: list[tuple[float, str]] = [(b.t[0], f"{_t(*b.t)} {b.text}") for b in shot.beats]
+    o = shot.start  # each shot is generated as its own clip from 0; TOML times are absolute
+    rows: list[tuple[float, str]] = [(b.t[0], f"{_t(b.t[0] - o, b.t[1] - o)} {b.text}") for b in shot.beats]
     for a in shot.acting:
         parts = [f"goal: {a.goal}", f"emotion: {a.emotion}"]
         parts += [f"{k}: {v}" for k, v in (("trigger word", a.trigger), ("face", a.face), ("gaze/body", a.gaze),
                                           ("voice/breath", a.voice), ("ends", a.end)) if v]
-        rows.append((a.t[0], f"{_t(*a.t)} {a.who} acting - " + "; ".join(parts)))
+        rows.append((a.t[0], f"{_t(a.t[0] - o, a.t[1] - o)} {a.who} acting - " + "; ".join(parts)))
     for ln in shot.lines:
         extra = []
         if ln.early_s:
@@ -37,7 +38,7 @@ def layers(short: Short, shot: Shot, designs: dict) -> dict[str, str]:
             extra.append(f"overlaps {ln.overlap_s:.1f}s")
         if ln.disfluency:
             extra.append(f'{ln.disfluency} on "{ln.on_word}"' if ln.on_word else ln.disfluency)
-        rows.append((ln.t, f'{ln.t:.1f}s {ln.who} says: "{ln.text}"' + (f" ({', '.join(extra)})" if extra else "")))
+        rows.append((ln.t, f'{ln.t - o:.1f}s {ln.who} says: "{ln.text}"' + (f" ({', '.join(extra)})" if extra else "")))
     rows.sort(key=lambda r: r[0])
     l5 = "\n".join(r for _, r in rows)
     l5 += "\nNo turn-by-turn reading; do not finish interrupted lines."
