@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shorts</title>
+<style>
+:root{--bg:#0d0f14;--card:#171a22;--fg:#e8e8ee;--dim:#9aa0ad;--keep:#3fb37f;--rej:#d9534f;--fix:#e0a030}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 system-ui,sans-serif;padding:16px}
+h1{font-size:22px;margin:0 0 12px} h2{font-size:18px;margin:24px 0 8px} h3{font-size:15px;margin:16px 0 6px;color:var(--dim)}
+.row{display:flex;gap:12px;flex-wrap:wrap} .card{background:var(--card);border-radius:10px;padding:10px;max-width:100%}
+video,img{max-width:min(560px,100%);border-radius:6px;display:block} .previews img{max-width:180px}
+button{border:0;border-radius:6px;padding:6px 10px;margin:6px 4px 0 0;cursor:pointer;color:#fff}
+.keep{background:var(--keep)} .reject{background:var(--rej)} .fix{background:var(--fix)}
+.v{font-size:13px;color:var(--dim)} .err{font-size:13px;color:var(--rej)}
+textarea{width:100%;background:#0b0d12;color:var(--fg);border:1px solid #333;border-radius:6px}
+</style></head><body>
+<h1>Shorts</h1><div id="app">Loading…</div>
+<script>
+const API = "/designs/api/images/";
+async function setVerdict(id, verdict, note, errBox) {
+  const body = note ? {verdict, note} : {verdict};
+  errBox.textContent = "";
+  try {
+    const r = await fetch(API + encodeURIComponent(id), {method: "PUT", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+    if (!r.ok) { errBox.textContent = "Saving failed (" + r.status + "): " + (await r.text()).slice(0, 200); return; }
+  } catch (e) { errBox.textContent = "Saving failed: " + e; return; }
+  load();
+}
+function el(tag, attrs = {}, ...kids) { const e = document.createElement(tag); Object.assign(e, attrs); kids.forEach(k => e.append(k)); return e; }
+async function load() {
+  const [shorts, verdicts] = await Promise.all([fetch("shorts.json", {cache: "no-store"}).then(r => r.json()),
+                                                fetch(API, {cache: "no-store"}).then(r => r.json()).catch(() => ({}))]);
+  const app = document.getElementById("app"); app.textContent = "";
+  for (const s of shorts) {
+    app.append(el("h2", {textContent: `${s.title} — $${s.spent.toFixed(2)} of $${s.budget}`}));
+    if (s.draft) app.append(el("div", {className: "card"}, el("div", {className: "v", textContent: "rough cut"}),
+                               el("video", {src: s.draft, controls: true})));
+    if (s.floorplan) app.append(el("div", {className: "card"}, el("img", {src: s.floorplan, alt: "floor plan"})));
+    for (const shot of s.shots) {
+      app.append(el("h3", {textContent: shot.id}));
+      const row = el("div", {className: "row"});
+      if (shot.greybox) row.append(el("div", {className: "card"}, el("div", {className: "v", textContent: "grey-box"}),
+                                       el("video", {src: shot.greybox, controls: true, loop: true, muted: true})));
+      if (shot.previews.length) row.append(el("div", {className: "card previews"}, ...shot.previews.map(p => el("img", {src: p}))));
+      for (const t of shot.takes) {
+        const v = verdicts[t.image_id] || {};
+        const note = el("textarea", {rows: 2, placeholder: "what to fix (e.g. C2 flips side at 3s)"});
+        const err = el("div", {className: "err"});
+        row.append(el("div", {className: "card"},
+          el("div", {className: "v", textContent: `${t.id} · ${t.model} · $${(t.cost || 0).toFixed(2)} · ${v.verdict || "not reviewed"}${v.note ? " — " + v.note : ""}`}),
+          el("video", {src: t.src, controls: true, loop: true}),
+          el("button", {className: "keep", textContent: "Keep", onclick: () => setVerdict(t.image_id, "keep", "", err)}),
+          el("button", {className: "reject", textContent: "Reject", onclick: () => setVerdict(t.image_id, "reject", "", err)}),
+          note, el("button", {className: "fix", textContent: "Needs a fix", onclick: () => setVerdict(t.image_id, "fix", note.value, err)}), err));
+      }
+      app.append(row);
+    }
+  }
+}
+load();
+</script></body></html>
