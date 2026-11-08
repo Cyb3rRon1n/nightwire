@@ -45,16 +45,19 @@ def _quality() -> list[str]:
 
 
 def concat_cmd(takes: list[Path], listfile: Path, music: Path | None, srt_path: Path, out: Path) -> list[str]:
-    listfile.write_text("".join(f"file '{t}'\n" for t in takes))
-    argv = ["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(listfile)]
+    # absolute entries: the concat demuxer resolves relative ones against the list file's directory;
+    # `'` is escaped per the demuxer's quoting rules. srt_path is used verbatim in the filter graph, so
+    # the caller runs ffmpeg with cwd=work and passes a bare name (no path ever enters the filter).
+    listfile.write_text("".join("file '{}'\n".format(str(t.resolve()).replace("'", "'\\''")) for t in takes))
+    argv = ["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(listfile.resolve())]
     vf = f"subtitles={srt_path}"
     if music:
-        argv += ["-stream_loop", "-1", "-i", str(music),
-                 "-filter_complex", f"[0:v]{vf}[v];[1:a]volume=0.25[m];[0:a][m]amix=inputs=2:duration=first[a]",
+        argv += ["-stream_loop", "-1", "-i", str(music.resolve()),
+                 "-filter_complex", f"[0:v]{vf}[v];[1:a]volume=0.25[m];[0:a][m]amix=inputs=2:duration=first:normalize=0[a]",
                  "-map", "[v]", "-map", "[a]"]
     else:
         argv += ["-vf", vf]
-    return argv + [*_quality(), "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", str(out)]
+    return argv + [*_quality(), "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", str(out.resolve())]
 
 
 def probe(path: Path) -> dict:
