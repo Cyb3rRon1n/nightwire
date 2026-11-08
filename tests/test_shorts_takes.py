@@ -49,3 +49,27 @@ def test_apply_verdicts_writes_per_shot_files(tmp_path):
     assert len(mine) == 2
     v = json.loads((tmp_path / "shots" / "S01" / "verdicts.json").read_text())
     assert v == {"t001": {"verdict": "keep"}, "t002": {"verdict": "fix", "note": "C2 flips side at 3s"}}
+
+
+def test_take_ids_follow_highest_existing_number(tmp_path):
+    shot = tmp_path / "S01"
+    (shot / "takes").mkdir(parents=True)
+    for n in (1, 2):
+        (shot / "takes" / f"t{n:03d}.mp4").write_bytes(b"v")
+    (shot / "takes" / "t001.mp4").unlink()
+    assert next_take_id(shot) == "t003"
+
+
+def test_take_image_id_rejects_bad_slugs():
+    for bad in ("bad--slug", "Bad", "-lead", "under_score", ""):
+        with pytest.raises(ValueError):
+            take_image_id(bad, "S01", "t001")
+
+
+def test_apply_verdicts_skips_malformed_keys(tmp_path):
+    (tmp_path / "shots" / "S01").mkdir(parents=True)
+    api = {take_image_id("pilot", "S01", "t001"): {"verdict": "keep"},
+           "short--pilot--s01--t002--extra": {"verdict": "fix"}}
+    mine = apply_verdicts(tmp_path, "pilot", api)
+    assert list(mine) == [take_image_id("pilot", "S01", "t001")]
+    assert json.loads((tmp_path / "shots" / "S01" / "verdicts.json").read_text()) == {"t001": {"verdict": "keep"}}
