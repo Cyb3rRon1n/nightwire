@@ -31,7 +31,7 @@ def box(name, size, at, rot=0.0, colour=(0.92, 0.92, 0.92, 1)):
     o.name, o.scale, o.rotation_euler[2], o.color = name, size, math.radians(rot), colour
     return o
 
-box("floor", (12, 12, 0.02), (0, 0, -0.02))
+box("floor", (12, 12, 0.02), (0, 0, -0.02), colour=(0.18, 0.19, 0.21, 1))
 for b in S["blocks"]:
     box(b["name"], b["size"], b["at"], b.get("rot", 0))
 
@@ -112,16 +112,17 @@ for shot in S["shots"]:
         cam.keyframe_insert("location", frame=frame)
         cam.keyframe_insert("rotation_euler", frame=frame)
     sc.camera = cam
-    sc.frame_start, sc.frame_end = shot["start_frame"], shot["end_frame"]
+    start, end = shot["start_frame"], shot["end_frame"]
     frames = out / "shots" / shot["id"] / "frames"
     shutil.rmtree(frames, ignore_errors=True)
-    sc.render.filepath = str(frames / "####")
-    sc.render.image_settings.file_format = "PNG"
-    bpy.ops.render.render(animation=True)
+    # Exclusive end; frames are numbered from 0000 per shot so ffmpeg's %04d works for every shot.
+    for frame in range(start, end):
+        sc.frame_set(frame)
+        render_still(frames / f"{frame - start:04d}.png")
     preview = out / "shots" / shot["id"] / "preview"
     preview.mkdir(parents=True, exist_ok=True)
-    mid = (shot["start_frame"] + shot["end_frame"]) // 2
-    for label, frame in (("start", shot["start_frame"]), ("middle", mid), ("end", shot["end_frame"])):
+    last = max(end - 1, start)
+    for label, frame in (("start", start), ("middle", (start + last) // 2), ("end", last)):
         sc.frame_set(frame)
         render_still(preview / f"{label}.png")
 
@@ -129,12 +130,26 @@ for shot in S["shots"]:
 sc.frame_set(0)
 top = bpy.data.objects.new("plan", bpy.data.cameras.new("plan"))
 sc.collection.objects.link(top)
-top.data.type, top.data.ortho_scale = "ORTHO", 8
-top.location, top.rotation_euler = (0, 0, 12), (0, 0, 0)
+xs, ys = [], []
+for b in S["blocks"]:
+    r = math.radians(b.get("rot", 0))
+    for dx in (-0.5, 0.5):
+        for dy in (-0.5, 0.5):
+            lx, ly = dx * b["size"][0], dy * b["size"][1]
+            xs.append(b["at"][0] + lx * math.cos(r) - ly * math.sin(r))
+            ys.append(b["at"][1] + lx * math.sin(r) + ly * math.cos(r))
+for f in S["figures"]:
+    for _t, x, y, _facing in f["keys"]:
+        xs.append(x)
+        ys.append(y)
+cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+span = max(max(xs) - min(xs), max(ys) - min(ys), 2.0) + 2.0  # 1 m margin each side
+top.data.type, top.data.ortho_scale = "ORTHO", span
+top.location, top.rotation_euler = (cx, cy, 12), (0, 0, 0)
 for fid, obj in figures.items():
-    bpy.ops.object.text_add(location=(obj.location.x, obj.location.y, 2.2))
+    bpy.ops.object.text_add(location=(obj.location.x, obj.location.y + span * 0.09, 2.2))
     t = bpy.context.object
-    t.data.body, t.data.size, t.data.align_x, t.color = fid, 0.45, "CENTER", (0.9, 0.1, 0.1, 1)
+    t.data.body, t.data.size, t.data.align_x, t.data.align_y, t.color = fid, span * 0.07, "CENTER", "CENTER", (1.0, 0.9, 0.2, 1)
 sc.camera = top
 sc.render.resolution_x = sc.render.resolution_y = 1024
 render_still(out / "floorplan.png")

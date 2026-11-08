@@ -6,13 +6,15 @@ FPS = 24
 RES = (1280, 720)
 BONES = ("hips", "spine", "head", "upper_arm.L", "forearm.L", "upper_arm.R", "forearm.R",
          "thigh.L", "shin.L", "thigh.R", "shin.R")
+# Rotations are about each bone's local X. Bones hang along -Z (arms, legs), so a positive angle swings them
+# forward (+Y at rest); the spine points up, so a negative angle leans it forward.
 POSES = {
     "stand": {},
-    "sit": {"thigh.L": (-90, 0, 0), "thigh.R": (-90, 0, 0), "shin.L": (90, 0, 0), "shin.R": (90, 0, 0)},
-    "lean_counter": {"spine": (-25, 0, 0), "upper_arm.L": (-60, 0, 10), "upper_arm.R": (-60, 0, -10),
-                     "forearm.L": (-30, 0, 0), "forearm.R": (-30, 0, 0)},
-    "kneel": {"thigh.L": (-90, 0, 0), "shin.L": (90, 0, 0), "thigh.R": (0, 0, 0), "shin.R": (90, 0, 0)},
-    "arm_raised": {"upper_arm.R": (-170, 0, 0)},
+    "sit": {"thigh.L": (90, 0, 0), "thigh.R": (90, 0, 0), "shin.L": (-90, 0, 0), "shin.R": (-90, 0, 0)},
+    "lean_counter": {"spine": (-25, 0, 0), "upper_arm.L": (60, 0, 10), "upper_arm.R": (60, 0, -10),
+                     "forearm.L": (30, 0, 0), "forearm.R": (30, 0, 0)},
+    "kneel": {"thigh.L": (90, 0, 0), "shin.L": (-90, 0, 0), "thigh.R": (0, 0, 0), "shin.R": (-90, 0, 0)},
+    "arm_raised": {"upper_arm.R": (170, 0, 0)},
 }
 GREY = 0.6
 
