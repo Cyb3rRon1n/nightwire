@@ -10,9 +10,35 @@ video,img{max-width:min(560px,100%);border-radius:6px;display:block} .previews i
 button{border:0;border-radius:6px;padding:6px 10px;margin:6px 4px 0 0;cursor:pointer;color:#fff}
 .keep{background:var(--keep)} .reject{background:var(--rej)} .fix{background:var(--fix)}
 .v{font-size:13px;color:var(--dim)} .err{font-size:13px;color:var(--rej)}
+.guide{background:var(--card);border-radius:10px;padding:4px 14px;max-width:760px;margin-bottom:8px}
+.guide summary{cursor:pointer;font-weight:600;padding:8px 0} .guide li{margin:4px 0} .guide p{margin:8px 0}
+.shotinfo{max-width:760px;margin:0 0 8px} .shotinfo ul{margin:4px 0;padding-left:20px;color:var(--dim);font-size:14px}
 textarea{width:100%;background:#0b0d12;color:var(--fg);border:1px solid #333;border-radius:6px}
 </style></head><body>
-<h1>Shorts</h1><div id="app">Loading…</div>
+<h1>Shorts</h1>
+<details class="guide" open><summary>How to review (read this first)</summary>
+<p>A short is made in two rounds. You are looking at whichever round has videos below.</p>
+<p><b>Round 1: grey-box (what you see now).</b> This is a rough 3D blocking of the scene, like a storyboard that moves.
+The grey dolls stand in for the characters. Later, the AI video model copies the <i>camera and the positions</i>
+from this video and paints the real characters over it. So the only question is: <b>is this the shot you want?</b></p>
+<p>Judge these:</p>
+<ul>
+<li><b>Camera:</b> how close it is, from which side, and how it moves. Too far? Too close? Wrong angle?</li>
+<li><b>Who is where:</b> C1 and C2 (names under each title) are in the right places, and you can see both when you should.</li>
+<li><b>Nobody blocked:</b> a face or the important hand is not hidden behind a doll, the counter or the camera edge.</li>
+<li><b>Timing:</b> things happen at about the times listed under each shot (seconds into that clip), and the shot isn't too slow or too rushed.</li>
+<li><b>Flow:</b> watch the shots in order. Each one should follow on from the last without a jump in who sits where.</li>
+</ul>
+<p>"Resting" appears twice. In the first version each doll has a faint colour so you can tell C1 from C2; in the "grey version" both dolls are plain grey. Tell Claude which one is easier to follow.</p>
+<p>Ignore these: the grey colour, the plain dolls, missing faces and clothes, stiff movement, no sound, no lighting.
+The AI adds all of that.</p>
+<p><b>How to send notes:</b> tell Claude in chat. Name the shot and the second, for example
+"S01 at 3 s: Rin is hidden behind Saeko" or "S02: camera closer". "All fine" is a useful answer too.</p>
+<p><b>Round 2: AI takes (later).</b> Takes are the AI videos and appear next to each grey-box. Each take has buttons:
+<b>Keep</b> it, <b>Reject</b> it, or write what is wrong and press <b>Needs a fix</b>. In this round, check that the characters look like
+themselves, nothing changes between frames (hands, outfit, extra people), and left and right don't swap between shots.</p>
+</details>
+<div id="app">Loading…</div>
 <script>
 const API = "/designs/api/images/";  // PUT API+id; the list GET must be the exact path below (no trailing slash)
 async function setVerdict(id, verdict, note, errBox) {
@@ -33,11 +59,15 @@ async function load() {
   if (!(vr && vr.ok)) app.append(el("div", {className: "err", textContent: "Could not load saved verdicts (" + (vr ? vr.status : "no connection") + "); takes below may show as not reviewed."}));
   for (const s of shorts) {
     app.append(el("h2", {textContent: `${s.title} — $${s.spent.toFixed(2)} of $${s.budget}`}));
+    const cast = Object.entries(s.cast || {}).map(([k, v]) => `${k} = ${v}`).join(", ");
+    if (s.logline || cast) app.append(el("div", {className: "shotinfo v", textContent: [s.logline, cast].filter(Boolean).join(" · ")}));
     if (s.draft) app.append(el("div", {className: "card"}, el("div", {className: "v", textContent: "rough cut"}),
                                el("video", {src: s.draft, controls: true})));
-    if (s.floorplan) app.append(el("div", {className: "card"}, el("img", {src: s.floorplan, alt: "floor plan"})));
+    if (s.floorplan) app.append(el("div", {className: "card"}, el("div", {className: "v", textContent: "floor plan, seen from above: the counter, stools and door, and where C1 and C2 start"}), el("img", {src: s.floorplan, alt: "floor plan"})));
     for (const shot of s.shots) {
-      app.append(el("h3", {textContent: shot.id}));
+      app.append(el("h3", {textContent: shot.time ? `${shot.id} (${shot.time})` : shot.id}));
+      if (shot.summary) app.append(el("div", {className: "shotinfo"}, el("div", {textContent: "Shot: " + shot.summary}),
+        el("ul", {}, ...(shot.beats || []).map(b => el("li", {textContent: b})))));
       const row = el("div", {className: "row"});
       if (shot.greybox) row.append(el("div", {className: "card"}, el("div", {className: "v", textContent: "grey-box"}),
                                        el("video", {src: shot.greybox, controls: true, loop: true, muted: true})));

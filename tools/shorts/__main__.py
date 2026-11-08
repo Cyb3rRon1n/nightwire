@@ -149,12 +149,20 @@ def cmd_idcheck(a) -> int:
 
 def cmd_page(a) -> int:
     from tools.shorts.page import build
-    titles = {}
+    titles, notes = {}, {}
     for folder in SHORTS_DIR.iterdir():
         if (folder / "short.toml").exists():
             s = load_short(folder)
             titles[s.slug] = (s.title, s.budget_usd)
-    site = build(data_dir(), data_dir() / "_site", titles)
+            notes[s.slug] = {"logline": s.logline,
+                             "cast": {cid: slug.split("-")[0].title() for cid, slug in s.cast.items()},
+                             "shots": {sh.id: {"time": f"{sh.duration:g} s clip, {sh.start:g}–{sh.end:g} s of the short", "summary": sh.summary,
+                                               "beats": [f"{b.t[0] - sh.start:g}–{b.t[1] - sh.start:g} s: {b.text}" for b in sh.beats]}
+                                       for sh in s.shots}}
+            for variant in data_dir().glob(f"{s.slug}-*"):  # e.g. the all-grey doll copy made for comparison
+                titles[variant.name] = (f"{s.title} ({variant.name.removeprefix(s.slug + '-')} version)", s.budget_usd)
+                notes[variant.name] = notes[s.slug]
+    site = build(data_dir(), data_dir() / "_site", titles, notes)
     print(f"rsync -a --delete {site}/ 192.168.10.19:anvil-deploy/stack/dashboard/shorts/")
     return 0
 
