@@ -1,0 +1,97 @@
+# Pilot short: Saeko Kirigaya (C1) and Rin Kageyama (C2) at Mama Sato's izakaya, night, ~24 s.
+# Room in metres from design-data/mama-satos-izakaya/play.png: the counter runs along X, guests sit on the
+# -Y side facing +Y (facing 90), the bottle shelf is +Y behind the counter, the door (noren) is in the -X wall.
+# Block `at` is the bottom centre. Figure keys are [t, x, y, facing] on the shared timeline.
+title = "Resting"
+logline = "Saeko's chrome hand locks at Mama Sato's counter. Rin can open it, for a price."
+place = "mama-satos-izakaya"
+style = "anime screenshot coloring, cel shading, thick outlines, night, warm paper-lantern light with pink rim light and cyan backlight, high contrast, bloom, steam, rain heard beyond the noren, mature gritty cyberpunk"
+budget_usd = 25.0
+beats = [
+  "strange event: C1's chrome hand locks shut around a sake cup, an amber light blinking on its wrist (S01)",
+  "immediate goal: C1 covers the hand before the newcomer sees it; C2 walks straight to her (S01)",
+  "unbreakable rule: nobody names a status light - C2 says 'stuck', C1 says 'resting' (S02)",
+  "ticking clock: the amber blink quickens while C1 bargains (S03)",
+  "reveal: C2's price is her own name off C1's repo list, and C1 already knew (S03)",
+  "open question: C1 turns the cable plug over and does not plug it in (S03)",
+]
+
+[cast]
+C1 = "saeko-kirigaya"
+C2 = "rin-kageyama"
+
+[[room.blocks]]
+name = "counter_body"
+size = [5.4, 0.35, 1.05]
+at = [0.5, 0.125, 0.0]
+
+[[room.blocks]]
+name = "counter_top"
+size = [5.4, 0.6, 0.06]
+at = [0.5, 0.0, 1.05]
+
+[[room.blocks]]
+name = "back_shelf"
+size = [5.4, 0.4, 2.3]
+at = [0.5, 1.45, 0.0]
+
+[[room.blocks]]
+name = "wall_door_front"
+size = [0.15, 1.2, 2.6]
+at = [-3.3, -2.4, 0.0]
+
+[[room.blocks]]
+name = "wall_door_back"
+size = [0.15, 2.7, 2.6]
+at = [-3.3, 0.45, 0.0]
+
+[[room.blocks]]
+name = "door_lintel"
+size = [0.15, 0.9, 0.5]
+at = [-3.3, -1.35, 2.1]
+
+[[room.blocks]]
+name = "noren"
+size = [0.04, 0.9, 0.5]
+at = [-3.3, -1.35, 1.6]
+
+[[room.blocks]]
+name = "lantern"
+size = [0.35, 0.35, 0.55]
+at = [-0.6, -0.1, 2.0]
+
+[[room.blocks]]
+name = "stool_1"
+size = [0.38, 0.38, 0.84]
+at = [-1.6, -0.6, 0.0]
+
+[[room.blocks]]
+name = "stool_2"
+size = [0.38, 0.38, 0.84]
+at = [-0.8, -0.6, 0.0]
+
+[[room.blocks]]
+name = "stool_3"
+size = [0.38, 0.38, 0.84]
+at = [0.0, -0.6, 0.0]
+
+[[room.blocks]]
+name = "stool_4_c1"
+size = [0.38, 0.38, 0.84]
+at = [0.8, -0.6, 0.0]
+
+[[room.blocks]]
+name = "stool_5"
+size = [0.38, 0.38, 0.84]
+at = [2.4, -0.6, 0.0]
+
+[figures.C1]
+tier = "mannequin"
+pose = "sit"
+keys = [[0.0, 0.8, -0.62, 90.0], [8.4, 0.8, -0.62, 90.0], [9.4, 0.8, -0.62, 65.0]]
+
+[figures.C2]
+tier = "capsule"
+pose = "stand"
+keys = [[0.0, -4.2, -1.35, 0.0], [1.8, -4.2, -1.35, 0.0], [2.6, -3.3, -1.35, 0.0],
+        [6.0, 0.6, -1.3, 0.0], [7.2, 1.75, -0.55, 165.0]]

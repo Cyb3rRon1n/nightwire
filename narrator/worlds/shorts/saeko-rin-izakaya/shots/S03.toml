@@ -1,0 +1,65 @@
+id = "S03"
+start = 15.5
+end = 24.0
+summary = "reverse: over C2's shoulder on C1, medium close-up, from across the counter; slow push in"
+lens = 50.0
+camera = [
+  { t = 0.0, at = [2.6, 0.35, 1.5], look = [0.95, -0.75, 1.5] },
+  { t = 8.5, at = [2.45, 0.3, 1.5], look = [0.95, -0.72, 1.52] },
+]
+
+[state]
+C1 = "calm voice over a fast pulse, pride losing to need"
+C2 = "braced, hiding how much the answer matters"
+
+[[beats]]
+t = [15.5, 24.0]
+text = "C1 MCU three-quarter, screen right of centre; C2's hood and shoulder as blurred foreground screen left; C1 looks at C2. Slow push in"
+
+[[beats]]
+t = [17.0, 18.5]
+text = "The amber blink on C1's chrome wrist quickens, its glow pulsing on her face from below frame"
+
+[[beats]]
+t = [21.5, 24.0]
+text = "C1's human fingers turn the cable plug over once at the bottom of frame and do not plug it in; C1 looks up at C2. Hold"
+
+[[acting]]
+who = "C1"
+t = [15.5, 24.0]
+goal = "learn the price without owing more than she can pay"
+emotion = "polite control, a crack of fear as the blink quickens, settling into cold amusement on 'I know'"
+trigger = "list"
+face = "AU4 brow lowerer B (onset 17.0 s, peak 17.6 s) at the quickening blink; AU14 one-sided dimpler C on 'I know' (peak 20.5 s), released by 22.0 s"
+gaze = "eyes on C2, drop to the wrist at 17.0 s, back to C2 on 'list', down to the plug at 21.5 s, up to C2 at 23.0 s"
+voice = "unhurried, apologetic courtesy; half a breath held before 'I know'"
+end = "plug turned over in her fingers, eyes on C2, no answer"
+
+[[acting]]
+who = "C2"
+t = [17.6, 24.0]
+goal = "name the price before her nerve goes"
+emotion = "deadpan breaking into nerves, then frozen"
+trigger = "list"
+gaze = "shoulder stiffens, hood dips during the silence"
+voice = "voice drops on 'list', breath caught after it"
+end = "does not move after 'I know'"
+
+[[lines]]
+who = "C1"
+t = 16.2
+text = "What do you want for it?"
+
+[[lines]]
+who = "C2"
+t = 17.8
+text = "Take my name off your list."
+disfluency = "silence"
+on_word = "list"
+
+[[lines]]
+who = "C1"
+t = 20.1
+text = "I know."
+early_s = 0.1
+overlap_s = 0.2
