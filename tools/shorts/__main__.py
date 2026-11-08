@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import urllib.request
@@ -67,7 +68,7 @@ def cmd_greybox(a) -> int:
     work.mkdir(parents=True, exist_ok=True)
     (work / "scene.json").write_text(json.dumps(scene_json(s, palettes), indent=1))
     if a.local:
-        subprocess.run([remote.BLENDER, "-b", "-P", str(remote.SCRIPT), "--", str(work / "scene.json"), str(work)], check=True)
+        subprocess.run([os.path.expanduser(remote.BLENDER), "-b", "-P", str(remote.SCRIPT), "--", str(work / "scene.json"), str(work)], check=True)
     else:
         remote.run(work, a.slug)
     for shot in s.shots:
@@ -103,7 +104,11 @@ def cmd_submit(a) -> int:
     seconds = a.seconds or shot.duration
     cost = estimate(a.model, seconds)
     print(f"{a.model} {seconds}s ≈ ${cost:.2f}; spent ${Ledger(work / 'costs.json').total():.2f} of ${s.budget_usd:.0f}")
-    if not a.yes and input("submit? [y/N] ").strip().lower() != "y":
+    try:
+        if not a.yes and input("submit? [y/N] ").strip().lower() != "y":
+            return 1
+    except EOFError:
+        print("no answer on stdin; pass --yes to submit non-interactively", file=sys.stderr)
         return 1
     shot_dir = work / "shots" / a.shot
     try:
@@ -111,7 +116,7 @@ def cmd_submit(a) -> int:
             tid = fal.run_take(work, a.shot, a.model, build_prompt(s, shot, load_designs()),
                                ref_files(s, data_dir().parent, shot_dir), seconds, s.budget_usd,
                                key=fal.load_key(), client=client)
-    except (ValueError, BudgetError) as e:
+    except (ValueError, BudgetError, RuntimeError) as e:
         print(e, file=sys.stderr)
         return 1
     print(shot_dir / "takes" / f"{tid}.mp4")
