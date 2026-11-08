@@ -1,5 +1,6 @@
 """Blender runs on the GPU box: push scene.json, render there, pull the results back."""
 
+import functools
 import os
 import shlex
 import subprocess
@@ -25,6 +26,17 @@ def run(short_dir: Path, slug: str) -> None:
         subprocess.run(argv, check=True)
 
 
+@functools.cache
+def h264_encoder() -> str:
+    listing = subprocess.run(["ffmpeg", "-hide_banner", "-encoders"], capture_output=True, text=True, check=True).stdout
+    for name in ("libx264", "libopenh264"):
+        if name in listing:
+            return name
+    raise RuntimeError("no H.264 encoder in ffmpeg; install ffmpeg with libx264 or libopenh264")
+
+
 def encode(frames_dir: Path, out: Path, fps: int) -> list[str]:
+    enc = h264_encoder()
+    quality = ["-crf", "20"] if enc == "libx264" else ["-b:v", "4M"]
     return ["ffmpeg", "-y", "-framerate", str(fps), "-i", str(frames_dir / "%04d.png"),
-            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20", str(out)]
+            "-c:v", enc, "-pix_fmt", "yuv420p", *quality, str(out)]
