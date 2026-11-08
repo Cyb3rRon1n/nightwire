@@ -47,3 +47,11 @@ def test_border_brightness_reads_the_background_not_the_subject():
     im = Image.new("L", (100, 100), 128)
     im.paste(0, (10, 10, 90, 90))
     assert dc.border_brightness(im) == 128
+
+
+def test_scene_dir_and_out_options_parse(monkeypatch, tmp_path):
+    import tools.design_check as dc
+    seen = {}
+    monkeypatch.setattr(dc, "check_scenes", lambda args: seen.update(vars(args)) or 0)
+    dc.main(["--scenes", "--scenes-dir", str(tmp_path), "--out", str(tmp_path / "r.json")])
+    assert seen["scenes_dir"] == tmp_path and seen["out"] == tmp_path / "r.json"
