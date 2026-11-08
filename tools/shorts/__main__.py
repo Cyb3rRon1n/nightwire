@@ -132,6 +132,18 @@ def cmd_idcheck(a) -> int:
     return 0
 
 
+def cmd_page(a) -> int:
+    from tools.shorts.page import build
+    titles = {}
+    for folder in SHORTS_DIR.iterdir():
+        if (folder / "short.toml").exists():
+            s = load_short(folder)
+            titles[s.slug] = (s.title, s.budget_usd)
+    site = build(data_dir(), data_dir() / "_site", titles)
+    print(f"rsync -a --delete {site}/ 192.168.10.19:anvil-deploy/stack/dashboard/shorts/")
+    return 0
+
+
 def cmd_status(a) -> int:
     s, work = _short(a.slug), _work(a.slug)
     for shot in s.shots:
@@ -156,6 +168,7 @@ def main(argv=None) -> int:
     q = sub.add_parser("submit"); q.add_argument("slug"); q.add_argument("shot"); q.add_argument("--model", required=True)
     q.add_argument("--seconds", type=float); q.add_argument("--yes", action="store_true")
     q = sub.add_parser("idcheck"); q.add_argument("slug"); q.add_argument("shot"); q.add_argument("take")
+    sub.add_parser("page")
     a = p.parse_args(argv)
     try:
         return globals()[f"cmd_{a.cmd}"](a)
