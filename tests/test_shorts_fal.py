@@ -1,10 +1,8 @@
-import json
-
 import httpx
 import pytest
 
 from tools.shorts.backends import fal
-from tools.shorts.takes import RATES, BudgetError, Ledger
+from tools.shorts.takes import RATES, BudgetError, Ledger, estimate
 
 
 def transport(calls):
@@ -75,4 +73,43 @@ def test_run_take_refuses_over_budget_before_any_request(tmp_path):
     client = httpx.Client(transport=transport(calls))
     with pytest.raises(BudgetError):
         fal.run_take(tmp_path, "S01", next(iter(fal.MODELS)), "p", [], 30, 1, key="k", client=client)
+    assert calls == []
+
+
+def test_failed_download_after_post_still_records_spend(tmp_path):
+    def handler(request):
+        if request.method == "POST":
+            return httpx.Response(200, json={"request_id": "r1", "status_url": "https://q/s/status", "response_url": "https://q/r"})
+        if request.url.path.endswith("/status"):
+            return httpx.Response(200, json={"status": "COMPLETED"})
+        if request.url.host == "cdn.example":
+            return httpx.Response(500)
+        return httpx.Response(200, json={"video": {"url": "https://cdn.example/v.mp4"}})
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    model = next(iter(fal.MODELS))
+    with pytest.raises(httpx.HTTPStatusError):
+        fal.run_take(tmp_path, "S01", model, "p", [], 5, 25, key="k", client=client)
+    assert Ledger(tmp_path / "costs.json").total() == estimate(model, 5)
+
+
+def test_success_writes_exactly_one_ledger_row(tmp_path):
+    client = httpx.Client(transport=transport([]))
+    fal.run_take(tmp_path, "S01", next(iter(fal.MODELS)), "p", [], 5, 25, key="k", client=client)
+    assert len(Ledger(tmp_path / "costs.json")._rows()) == 1
+
+
+def test_unsendable_refs_raise(tmp_path):
+    f = tmp_path / "a.mp4"
+    f.write_bytes(b"x")
+    with pytest.raises(ValueError, match="notes.txt"):
+        fal.build_input("seedance-2.0-fast", "p", [("notes.txt", f)], 5)
+    with pytest.raises(ValueError, match="clip.mp4"):
+        fal.build_input("kling-3", "p", [("clip.mp4", f)], 5)
+
+
+def test_short_duration_refused_before_request(tmp_path):
+    calls = []
+    client = httpx.Client(transport=transport(calls))
+    with pytest.raises(ValueError):
+        fal.run_take(tmp_path, "S01", "kling-3", "p", [], 2, 25, key="k", client=client)
     assert calls == []
