@@ -42,3 +42,14 @@ def test_page_lists_verdicts_from_exact_path_and_checks_ok(tmp_path):
     assert 'fetch("/designs/api/images",' in html  # exact path: the picks API 404s on a trailing slash
     assert 'fetch(API + encodeURIComponent(id)' in html and 'API = "/designs/api/images/"' in html
     assert "vr.ok" in html
+
+
+def test_collect_carries_reviewer_notes(tmp_path):
+    make_work(tmp_path)
+    notes = {"pilot": {"logline": "L", "cast": {"C1": "Saeko"},
+                       "shots": {"S01": {"time": "8 s clip", "summary": "push in", "beats": ["0–2 s: x"]}}}}
+    [entry] = collect(tmp_path, {"pilot": ("Last orders", 25.0)}, notes)
+    assert entry["logline"] == "L" and entry["cast"] == {"C1": "Saeko"}
+    shot = entry["shots"][0]
+    assert shot["summary"] == "push in" and shot["beats"] == ["0–2 s: x"] and shot["greybox"]
+    assert "How to review" in (build(tmp_path, tmp_path / "site", {}, notes) / "index.html").read_text()
