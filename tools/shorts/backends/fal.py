@@ -86,6 +86,7 @@ def submit(model, prompt, refs, seconds, *, key: str, client: httpx.Client, poll
 
 def run_take(short_dir: Path, shot_id: str, model: str, prompt: str, refs, seconds: float, budget: float, *,
              key: str, client: httpx.Client) -> str:
+    seconds = int(round(seconds))  # fal bills and receives whole seconds
     if seconds < MODELS[model]["min_s"]:
         raise ValueError(f"{model} needs at least {MODELS[model]['min_s']}s, got {seconds}")
     ledger, cost = Ledger(short_dir / "costs.json"), estimate(model, seconds)

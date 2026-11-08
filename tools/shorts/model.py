@@ -143,6 +143,9 @@ def validate_short(s: Short, designs: dict) -> list[str]:
             problems.append(f"{where}: {shot.duration}s is empty or longer than 30 s")
         if len(shot.camera) < 1:
             problems.append(f"{where}: needs at least one camera key")
+        for k in shot.camera:
+            if not 0 <= k.t <= shot.duration:
+                problems.append(f"{where}: camera key at {k.t}s is outside 0..{shot.duration}s (camera times are relative to the shot start)")
         ids = [ln.who for ln in shot.lines] + [a.who for a in shot.acting] + list(shot.state)
         for cid in ids:
             if cid not in s.cast:

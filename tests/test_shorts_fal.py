@@ -1,3 +1,5 @@
+import json
+
 import httpx
 import pytest
 
@@ -113,3 +115,10 @@ def test_short_duration_refused_before_request(tmp_path):
     with pytest.raises(ValueError):
         fal.run_take(tmp_path, "S01", "kling-3", "p", [], 2, 25, key="k", client=client)
     assert calls == []
+
+
+def test_run_take_bills_the_rounded_seconds(tmp_path):
+    model = "seedance-2.5"
+    fal.run_take(tmp_path, "S02", model, "p", [], 7.5, 25, key="k", client=httpx.Client(transport=transport([])))
+    assert Ledger(tmp_path / "costs.json").total() == estimate(model, 8)
+    assert json.loads((tmp_path / "shots/S02/takes/t001.json").read_text())["seconds"] == 8
