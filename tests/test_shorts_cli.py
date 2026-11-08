@@ -72,3 +72,21 @@ def test_unknown_slug_is_clear_error(tmp_path, monkeypatch, capsys):
     setup(tmp_path, monkeypatch)
     assert main(["check", "nonexistent"]) == 1
     assert "nonexistent" in capsys.readouterr().err
+
+
+def test_submit_missing_key_and_closed_stdin_are_clean_errors(tmp_path, monkeypatch, capsys):
+    setup(tmp_path, monkeypatch)
+    from tools.shorts.backends import fal
+
+    def no_key(*a):
+        raise RuntimeError("FAL_KEY missing")
+    monkeypatch.setattr("tools.shorts.backends.fal.load_key", no_key)
+    model = next(iter(fal.MODELS))
+    assert main(["submit", "pilot", "S01", "--model", model, "--yes"]) == 1
+    assert "FAL_KEY" in capsys.readouterr().err
+
+    def eof(_):
+        raise EOFError
+    monkeypatch.setattr("builtins.input", eof)
+    assert main(["submit", "pilot", "S01", "--model", model]) == 1
+    assert "--yes" in capsys.readouterr().err
