@@ -168,7 +168,8 @@ def cmd_assemble(a) -> int:
             subprocess.run(norm_cmd(t, dst, info["audio"]), check=True)
             normed.append(dst)
         takes = normed
-    subprocess.run(concat_cmd(takes, work / "draft.txt", a.music, work / "draft.srt", work / "draft.mp4"), check=True)
+    # cwd=work + bare subtitle name keeps every path out of the ffmpeg filter graph
+    subprocess.run(concat_cmd(takes, work / "draft.txt", a.music, Path("draft.srt"), work / "draft.mp4"), check=True, cwd=work)
     print(work / "draft.mp4")
     return 0
 
