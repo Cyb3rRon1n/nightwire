@@ -116,7 +116,8 @@ def check_scenes(args) -> int:
         if d.kind == "character" and sheet.exists():
             panels[p.stem] = [ccip_extract_feature(c) for c in panels_of(sheet)]
     report = {}
-    for scene in sorted((args.design_dir / "scenes").glob("*.png")):
+    scenes_dir = getattr(args, "scenes_dir", None) or args.design_dir / "scenes"
+    for scene in sorted(scenes_dir.glob("*.png")):
         im = Image.open(scene).convert("RGB")
         people = scene_people(scene.name)
         heads = sorted(detect_heads(im), key=lambda h: h[2], reverse=True)[:len(people)]
@@ -134,7 +135,7 @@ def check_scenes(args) -> int:
             entry["people"][slug] = {"rank": rank_of(slug, medians), "of": len(medians), "difference": medians[slug],
                                      "closest": min(medians, key=medians.get), "missing": list(verdict["missing"])}
         report[scene.name] = entry
-    out = args.design_dir / "qa" / "scenes.json"
+    out = getattr(args, "out", None) or args.design_dir / "qa" / "scenes.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=1, sort_keys=True))
     for name, entry in report.items():
@@ -198,6 +199,8 @@ def main(argv=None) -> int:
     parser.add_argument("--designs-dir", type=Path, default=Path("narrator/worlds/designs"))
     parser.add_argument("--design-dir", type=Path, default=Path("design-data"))
     parser.add_argument("--scenes", action="store_true", help="check design-data/scenes instead of the expression sheets")
+    parser.add_argument("--scenes-dir", type=Path, default=None, help="folder of scene images (default design-data/scenes)")
+    parser.add_argument("--out", type=Path, default=None, help="report path (default design-data/qa/scenes.json)")
     args = parser.parse_args(argv)
     if args.scenes:
         return check_scenes(args)
