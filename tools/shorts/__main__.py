@@ -5,6 +5,7 @@ import json
 import subprocess
 import sys
 import urllib.request
+from pathlib import Path
 
 from narrator import designs as _designs
 from tools.shorts import SHORTS_DIR, data_dir, remote
@@ -144,6 +145,29 @@ def cmd_page(a) -> int:
     return 0
 
 
+def cmd_assemble(a) -> int:
+    from tools.shorts.assemble import concat_cmd, kept_takes, needs_normalise, norm_cmd, probe, srt
+    s, work = _short(a.slug), _work(a.slug)
+    takes = kept_takes(s, work)
+    if not takes:
+        print("no kept takes yet — run verdicts first", file=sys.stderr)
+        return 1
+    (work / "draft.srt").write_text(srt(s, [t.parent.parent.name for t in takes]))
+    infos = [probe(t) for t in takes]
+    if needs_normalise(infos):
+        norm = work / "norm"
+        norm.mkdir(exist_ok=True)
+        normed = []
+        for t, info in zip(takes, infos):
+            dst = norm / f"{t.parent.parent.name}-{t.name}"
+            subprocess.run(norm_cmd(t, dst, info["audio"]), check=True)
+            normed.append(dst)
+        takes = normed
+    subprocess.run(concat_cmd(takes, work / "draft.txt", a.music, work / "draft.srt", work / "draft.mp4"), check=True)
+    print(work / "draft.mp4")
+    return 0
+
+
 def cmd_status(a) -> int:
     s, work = _short(a.slug), _work(a.slug)
     for shot in s.shots:
@@ -169,6 +193,7 @@ def main(argv=None) -> int:
     q.add_argument("--seconds", type=float); q.add_argument("--yes", action="store_true")
     q = sub.add_parser("idcheck"); q.add_argument("slug"); q.add_argument("shot"); q.add_argument("take")
     sub.add_parser("page")
+    q = sub.add_parser("assemble"); q.add_argument("slug"); q.add_argument("--music", type=Path)
     a = p.parse_args(argv)
     try:
         return globals()[f"cmd_{a.cmd}"](a)
