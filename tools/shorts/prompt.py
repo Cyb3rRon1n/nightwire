@@ -9,7 +9,8 @@ from tools.shorts.model import Short, Shot
 POSITION_WORDS = re.compile(
     r"\b(left|right|behind|beside|next to|in front of|across from|opposite|near|corner|at the (?:counter|door|bar|table|window))\b",
     re.IGNORECASE)
-CHARACTER_SHEETS = ("turnaround.png", "expressions.png", "colorguide.png")
+# colorguide.png repeats the turnaround, so a short sends the prop close-ups instead (Seedance 2.0 takes 9 images)
+CHARACTER_SHEETS = ("turnaround.png", "expressions.png", "props.png")
 
 
 def _t(a: float, b: float) -> str:

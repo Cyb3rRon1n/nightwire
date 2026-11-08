@@ -4,11 +4,14 @@ Endpoint ids and field names verified on fal.ai model API pages on 2026-11-08 (h
   bytedance/seedance-2.5/reference-to-video, bytedance/seedance-2.0/reference-to-video,
   bytedance/seedance-2.0/fast/reference-to-video, fal-ai/kling-video/o3/pro/reference-to-video.
 Result JSON: {"video": {"url": ...}} on all of them. generate_audio defaults to true (Seedance, Veo).
-Prices (https://fal.ai/pricing): only Kling O3 pro ($0.14/s) confirmed; Seedance rates in takes.RATES are unconfirmed.
+Prices (fal model pages, 2026-11-08, 720p): Seedance 2.5 $0.473/s, 2.0 $0.3024/s, 2.0 fast $0.2419/s (about 0.6x with a
+reference video); Kling O3 pro $0.14/s. Image limits: Seedance 2.0 takes 9 images, 2.5 takes 30. fal advises against
+large data: URIs, so images go as JPEGs of at most MAX_SIDE px.
 Not included: veo-3.1-fast (fal-ai/veo3.1/fast/reference-to-video is slated for removal 2026-11-17, durations unclear).
 """
 
 import base64
+import io
 import mimetypes
 import time
 from pathlib import Path
@@ -40,9 +43,20 @@ def load_key(path: Path = Path.home() / ".config" / "nightwire" / "secrets.env")
     raise RuntimeError(f"FAL_KEY missing in {path}; the owner adds it (FAL_KEY=...)")
 
 
+MAX_SIDE, JPEG_QUALITY = 2048, 90  # the sheets are 3-9 MB PNGs; full size would make a ~60 MB request
+
+
 def data_uri(path: Path) -> str:
+    """Images go as a JPEG no longer than MAX_SIDE on either side; other files go as they are."""
     mime = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
-    return f"data:{mime};base64," + base64.b64encode(path.read_bytes()).decode()
+    if not mime.startswith("image/"):
+        return f"data:{mime};base64," + base64.b64encode(path.read_bytes()).decode()
+    from PIL import Image
+    im = Image.open(path).convert("RGB")
+    im.thumbnail((MAX_SIDE, MAX_SIDE))
+    buf = io.BytesIO()
+    im.save(buf, "JPEG", quality=JPEG_QUALITY)
+    return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
 def build_input(model: str, prompt: str, refs: list[tuple[str, Path]], seconds: float) -> dict:
