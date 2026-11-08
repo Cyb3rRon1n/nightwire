@@ -24,8 +24,8 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 
 [tool.setuptools.packages.find]
-include = ["ruleset", "engine", "server", "narrator", "tools"]
+include = ["ruleset", "engine", "server", "narrator", "tools", "tools.*"]
 
 [tool.setuptools.package-data]
 narrator = ["worlds/*.toml", "worlds/designs/*.toml", "worlds/place_art/*.jpg", "worlds/character_art/*.jpg"]
-tools = ["design_picker.html", "design_review.html", "image_studio.html", "poses/*.png"]
+tools = ["design_picker.html", "design_review.html", "image_studio.html", "poses/*.png", "shorts/page.html"]
