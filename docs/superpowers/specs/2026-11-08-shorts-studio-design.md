@@ -80,8 +80,8 @@ Rules:
   Plain bpy scripts, no agent add-on.
 - `room`: white walls, floor and only occluding / path-defining blocks (doors, counter, stairs, pillars)
   from `short.toml`; camera framing matched to the approved place art.
-- `figures`: three tiers — capsule (position/path), procedural jointed mannequin built from Blender's
-  bundled Rigify human metarig with named poses (`sit`, `lean_counter`, `kneel`, `arm_raised`, …),
+- `figures`: three tiers — capsule (position/path), procedural jointed mannequin (our own 11-bone
+  armature with capsule limbs; no add-on) with named poses (`sit`, `lean_counter`, `kneel`, `arm_raised`, …),
   rigged clip import (e.g. Mixamo, owner's account) only when an action shot needs it.
   Experiment: faint per-character tint from the colour guide vs plain grey (A/B in Phase 0).
 - `camera`: keyframed path from shot.toml — start, via points, end, lens, timing — described in film
@@ -98,7 +98,9 @@ Rules:
 Backends, one small module each behind a common `submit(shot, refs, prompt) -> take` shape:
 - `manual`: writes `bundle/` with `prompt.txt` and clearly named refs (`C1_front.png`,
   `C1_expressions.png`, `place.png`, `greybox.mp4`, `floorplan.png`) for pasting into Dreamina or LibTV;
-  the owner uploads the result on `/shorts/` and it is filed as a take with cost entered by hand.
+  the owner saves the result into `design-data/shorts/<slug>/inbox/` in the nightwire checkout (copy or scp; the
+  design-picks service is read-only, so the page has no upload) and `python -m tools.shorts inbox <slug>`
+  files it as a take with the cost entered on the command line.
 - `fal`: Seedance 2.5 / 2.0, Kling, Veo via fal's API. Key in `~/.config/nightwire/secrets.env`,
   entered by the owner; never logged.
 - Later: ComfyUI partner nodes (if Vidu or Veo Lite wins the test) and `local` Wan 2.2 / AniSora
