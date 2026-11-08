@@ -136,11 +136,11 @@ export const NPC_PALETTES: Record<string, string[]> = {
     "#3d4244"
   ],
   "Saeko Kirigaya": [
-    "#06070b",
     "#252934",
+    "#06070b",
     "#f6e2d3",
     "#16161e",
-    "#65141f",
+    "#641520",
     "#33414e"
   ],
   "Shinji Okubo": [
