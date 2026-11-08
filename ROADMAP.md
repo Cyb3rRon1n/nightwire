@@ -247,6 +247,13 @@ Each phase gets its own brainstorming pass (questions → approaches → design 
       - New in-game images still use plain text-to-image, not the approved place-art recipe.
       - The player's own line can scroll under the location title.
 
+23. **Shorts studio** (Phase 0 built 2026-11-08) — spec `docs/superpowers/specs/2026-11-08-shorts-studio-design.md`, research `docs/superpowers/research/2026-11-08-foyege-method.md`, guide `docs/shorts-guide.md`. Foyege-style AI shorts: a written short (TOML) drives a Blender grey-box, a five-layer prompt and a video model, with owner review on a page.
+    - **Built**: `tools/shorts/` (`check`, `prompt`, `greybox`, `page`, `bundle`/`inbox`, `submit`, `verdicts`, `idcheck`, `assemble`, `status`). Blender 4.5.15 LTS on the GPU box, rendered over rsync+ssh. Review page at `http://192.168.10.19:8080/shorts/` with a dashboard tile (config in homelab-ops `gpubox/`). fal backend: seedance-2.5, seedance-2.0, seedance-2.0-fast, kling-3 (Veo 3.1 Fast left out; fal removes it 2026-11-17). Spend guard against `budget_usd` (default $25), cost logged when fal accepts a job.
+    - **Owner decisions**: promotion and personal use only; NoobAI-XL designs stay the source of truth; no daytime scenes; `FAL_KEY` entered by the owner; every paid run and download needs the owner's go-ahead.
+    - **Pilot**: "Resting" (Saeko + Rin at Mama Sato's, 3 shots, 24 s). Grey-box built; awaiting owner review.
+    - **Open**: anime A/B paid test (needs the owner's fal account); only Kling's rate confirmed on fal's pricing page, re-check Seedance rates before the first paid run; `idcheck` not yet run on a real take; one pose per figure per short.
+    - **Next**: Phase 1 voices and music (IndexTTS2, ACE-Step); Phase 2 local Wan on a 24 GB card. Each needs its own plan.
+
 ### Studio track (candidates, surfaced 2026-10-28)
 Owner interest: if players like the world and story, grow toward an animation-studio-style pipeline. Candidate phases, roughly in order: **19c designs in play** (player design at creation, scenes and portraits reuse saved designs); **19d stronger identity** (per-character LoRA for principals, IPAdapter if it fits 8 GB, two named characters per scene via regional prompting); **props and the chrome catalog** (prop and vehicle sheets); **more character sheets** (pose and action, mouth and lip-sync, hands, height line-up, costume variants); **colour script and FX sheets** (overclock, Yomi static, glitch, bloom); **stage view** (visual-novel-style presentation: location art plus the speaking NPC with a matching expression, over free-text play); **district map** (clickable Kuroshio map from the location designs); **storyboard and animatic export** from session logs.
 
