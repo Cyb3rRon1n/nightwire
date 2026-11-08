@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import urllib.request
@@ -66,6 +67,8 @@ def cmd_greybox(a) -> int:
     s, work, designs = _short(a.slug), _work(a.slug), load_designs()
     palettes = {cid: designs[slug].palette[0] for cid, slug in s.cast.items() if a.tint and designs[slug].palette}
     work.mkdir(parents=True, exist_ok=True)
+    for shot in s.shots:  # stale frames from a longer earlier run would be encoded too; only frames, never takes/costs/verdicts
+        shutil.rmtree(work / "shots" / shot.id / "frames", ignore_errors=True)
     (work / "scene.json").write_text(json.dumps(scene_json(s, palettes), indent=1))
     if a.local:
         subprocess.run([os.path.expanduser(remote.BLENDER), "-b", "-P", str(remote.SCRIPT), "--", str(work / "scene.json"), str(work)], check=True)
@@ -101,7 +104,7 @@ def cmd_submit(a) -> int:
         raise CliError(f"unknown model {a.model!r}; choose from: {', '.join(fal.MODELS)}")
     s, work = _short(a.slug), _work(a.slug)
     shot = _shot(s, a.shot)
-    seconds = a.seconds or shot.duration
+    seconds = int(round(a.seconds or shot.duration))  # fal bills whole seconds
     cost = estimate(a.model, seconds)
     print(f"{a.model} {seconds}s ≈ ${cost:.2f}; spent ${Ledger(work / 'costs.json').total():.2f} of ${s.budget_usd:.0f}")
     try:
@@ -111,10 +114,16 @@ def cmd_submit(a) -> int:
         print("no answer on stdin; pass --yes to submit non-interactively", file=sys.stderr)
         return 1
     shot_dir = work / "shots" / a.shot
+    refs = ref_files(s, data_dir().parent, shot_dir)
+    if fal.MODELS[a.model]["video"] is None:
+        left_out = [label for label, _ in refs if label.endswith(".mp4")]
+        refs = [r for r in refs if r[0] not in left_out]
+        if left_out:
+            print(f"{a.model} takes no reference video; left out: {', '.join(left_out)}")
     try:
         with httpx.Client() as client:
             tid = fal.run_take(work, a.shot, a.model, build_prompt(s, shot, load_designs()),
-                               ref_files(s, data_dir().parent, shot_dir), seconds, s.budget_usd,
+                               refs, seconds, s.budget_usd,
                                key=fal.load_key(), client=client)
     except (ValueError, BudgetError, RuntimeError) as e:
         print(e, file=sys.stderr)

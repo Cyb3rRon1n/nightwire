@@ -34,3 +34,11 @@ def test_build_copies_media_and_writes_page(tmp_path):
     assert json.loads((site / "shorts.json").read_text())[0]["slug"] == "pilot"
     html = (site / "index.html").read_text()
     assert "/designs/api/images/" in html and "shorts.json" in html and "alert(" not in html
+
+
+def test_page_lists_verdicts_from_exact_path_and_checks_ok(tmp_path):
+    w = make_work(tmp_path / "work")
+    html = (build(tmp_path / "work", tmp_path / "site", {"pilot": ("x", 25.0)}) / "index.html").read_text()
+    assert 'fetch("/designs/api/images",' in html  # exact path: the picks API 404s on a trailing slash
+    assert 'fetch(API + encodeURIComponent(id)' in html and 'API = "/designs/api/images/"' in html
+    assert "vr.ok" in html

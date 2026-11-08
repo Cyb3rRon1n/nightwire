@@ -102,6 +102,7 @@ def test_valid_short_has_no_problems(tmp_path):
     (SHOT.replace("end = 5.0", "end = 31.0"), "longer than 30"),
     (SHOT.replace('disfluency = "block"', 'disfluency = "stutter"'), "disfluency"),
     (SHOT.replace("t = 1.2", "t = 9.0"), "outside the shot"),
+    (SHOT.replace("{ t = 5.0, at", "{ t = 9.0, at"), "shot S01: camera key at 9.0s is outside 0..5.0s (camera times are relative to the shot start)"),
 ])
 def test_validate_short_reports_problems(tmp_path, bad, expected):
     problems = validate_short(load_short(write(tmp_path, shot=bad)), designs())

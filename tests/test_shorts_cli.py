@@ -90,3 +90,45 @@ def test_submit_missing_key_and_closed_stdin_are_clean_errors(tmp_path, monkeypa
     monkeypatch.setattr("builtins.input", eof)
     assert main(["submit", "pilot", "S01", "--model", model]) == 1
     assert "--yes" in capsys.readouterr().err
+
+
+def test_submit_kling_drops_video_refs_and_says_so(tmp_path, monkeypatch, capsys):
+    setup(tmp_path, monkeypatch)
+    sd = tmp_path / "design-data" / "shorts" / "pilot" / "shots" / "S01"
+    sd.mkdir(parents=True)
+    (sd / "greybox.mp4").write_bytes(b"g")
+    got = {}
+    monkeypatch.setattr("tools.shorts.backends.fal.load_key", lambda *a: "k")
+    monkeypatch.setattr("tools.shorts.backends.fal.run_take", lambda *a, **k: got.update(refs=a[4], seconds=a[5]) or "t001")
+    assert main(["submit", "pilot", "S01", "--model", "kling-3", "--yes"]) == 0
+    assert not [l for l, _ in got["refs"] if l.endswith(".mp4")]
+    assert "greybox.mp4" in capsys.readouterr().out
+    got.clear()
+    assert main(["submit", "pilot", "S01", "--model", "seedance-2.5", "--yes"]) == 0
+    assert "greybox.mp4" in [l for l, _ in got["refs"]]
+
+
+def test_submit_estimate_uses_rounded_seconds(tmp_path, monkeypatch, capsys):
+    setup(tmp_path, monkeypatch)
+    monkeypatch.setattr("tools.shorts.backends.fal.load_key", lambda *a: "k")
+    monkeypatch.setattr("tools.shorts.backends.fal.run_take", lambda *a, **k: "t001")
+    assert main(["submit", "pilot", "S01", "--model", "seedance-2.5", "--seconds", "7.5", "--yes"]) == 0
+    assert "8s" in capsys.readouterr().out
+
+
+def test_greybox_clears_stale_frames_but_not_takes(tmp_path, monkeypatch):
+    setup(tmp_path, monkeypatch)
+    sd = tmp_path / "design-data" / "shorts" / "pilot" / "shots" / "S01"
+    (sd / "frames").mkdir(parents=True)
+    (sd / "frames" / "0099.png").write_bytes(b"old")
+    (sd / "takes").mkdir()
+    (sd / "takes" / "t001.mp4").write_bytes(b"t")
+    seen = []
+    def fake_run(work, slug):
+        seen.append((sd / "frames").exists())
+    monkeypatch.setattr("tools.shorts.remote.run", fake_run)
+    monkeypatch.setattr("tools.shorts.__main__.subprocess.run", lambda *a, **k: seen.append("run"))
+    monkeypatch.setattr("tools.shorts.remote.encode", lambda *a: ["x"])
+    assert main(["greybox", "pilot"]) == 0
+    assert seen[0] is False and not (sd / "frames").exists()
+    assert (sd / "takes" / "t001.mp4").read_bytes() == b"t"

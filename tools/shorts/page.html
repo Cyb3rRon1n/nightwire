@@ -14,7 +14,7 @@ textarea{width:100%;background:#0b0d12;color:var(--fg);border:1px solid #333;bor
 </style></head><body>
 <h1>Shorts</h1><div id="app">Loading…</div>
 <script>
-const API = "/designs/api/images/";
+const API = "/designs/api/images/";  // PUT API+id; the list GET must be the exact path below (no trailing slash)
 async function setVerdict(id, verdict, note, errBox) {
   const body = note ? {verdict, note} : {verdict};
   errBox.textContent = "";
@@ -26,9 +26,11 @@ async function setVerdict(id, verdict, note, errBox) {
 }
 function el(tag, attrs = {}, ...kids) { const e = document.createElement(tag); Object.assign(e, attrs); kids.forEach(k => e.append(k)); return e; }
 async function load() {
-  const [shorts, verdicts] = await Promise.all([fetch("shorts.json", {cache: "no-store"}).then(r => r.json()),
-                                                fetch(API, {cache: "no-store"}).then(r => r.json()).catch(() => ({}))]);
+  const [shorts, vr] = await Promise.all([fetch("shorts.json", {cache: "no-store"}).then(r => r.json()),
+                                          fetch("/designs/api/images", {cache: "no-store"}).catch(() => null)]);
+  const verdicts = vr && vr.ok ? await vr.json() : {};
   const app = document.getElementById("app"); app.textContent = "";
+  if (!(vr && vr.ok)) app.append(el("div", {className: "err", textContent: "Could not load saved verdicts (" + (vr ? vr.status : "no connection") + "); takes below may show as not reviewed."}));
   for (const s of shorts) {
     app.append(el("h2", {textContent: `${s.title} — $${s.spent.toFixed(2)} of $${s.budget}`}));
     if (s.draft) app.append(el("div", {className: "card"}, el("div", {className: "v", textContent: "rough cut"}),

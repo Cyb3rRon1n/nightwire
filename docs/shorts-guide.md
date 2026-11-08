@@ -51,7 +51,7 @@ Each fact is stated once. `prompt` assembles them in order:
 - L4 character state: one line per cast id from the shot `[state]`.
 - L5 timecodes: beats, acting blocks and spoken lines merged by time.
 
-Rules: L2 and L4 reject position words (left, right, behind, beside, near, at the counter...); positions belong to the floor plan, grey-box and L5 camera terms. L5 times are relative to each shot's start, while shot TOML times are absolute on the short's timeline. Disfluency is one of `block`, `repeat`, `silence`, `self-correct`; lines may set `early_s`, `overlap_s`, `on_word`.
+Rules: L2 and L4 reject position words (left, right, behind, beside, near, at the counter...); positions belong to the floor plan, grey-box and L5 camera terms. L5 times are relative to each shot's start. In shot TOML, `beats`, `acting` and `lines` times are absolute on the short's timeline, but camera key `t` is seconds from the shot's start (`check` rejects keys outside 0..duration). Disfluency is one of `block`, `repeat`, `silence`, `self-correct`; lines may set `early_s`, `overlap_s`, `on_word`.
 
 ## Acting block (8 dimensions)
 
