@@ -295,3 +295,15 @@ async def test_gallery_shows_a_characters_city_scene(studio):
     assert await ds.main(_args(studio, "gallery")) == 0
     assert "in the city" in (data / "gallery" / "index.html").read_text()
     assert (data / "gallery" / "img" / "mama-sato" / "city.jpg").exists()
+
+
+async def test_gallery_and_review_show_a_hand_made_props_sheet(studio):
+    designs, data = studio
+    backend = FakeBackend()
+    await ds.main(_args(studio, "candidates", "mama-sato"), backend=backend)
+    await ds.main(_args(studio, "approve", "mama-sato", "1"))
+    await ds.main(_args(studio, "sheets", "mama-sato"), backend=backend)
+    (data / "mama-sato" / "props.png").write_bytes((data / "mama-sato" / "portrait.png").read_bytes())
+    assert await ds.main(_args(studio, "gallery")) == 0
+    assert (data / "gallery" / "img" / "mama-sato" / "props.jpg").exists()
+    assert "Hands and props: now" in (data / "gallery" / "review" / "index.html").read_text()

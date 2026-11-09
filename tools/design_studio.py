@@ -393,7 +393,7 @@ def _review_page(designs, args, out: Path) -> dict[str, str]:
         won = _approved_candidate(d, slug_dir)
         if won and won[2]:
             figures.append(("Approved design", f"r{won[0]}-c{won[1]}.jpg", won[2]))
-        for s, title in (("portrait", "Portrait"), ("expressions", "Expressions"), ("turnaround", "Turnaround"), ("colorguide", "Colour guide")):
+        for s, title in (("portrait", "Portrait"), ("expressions", "Expressions"), ("turnaround", "Turnaround"), ("colorguide", "Colour guide"), ("props", "Hands and props")):
             if (slug_dir / f"{s}-old.png").exists():
                 figures.append((f"{title}: before", f"{s}-old.jpg", slug_dir / f"{s}-old.png"))
             if (slug_dir / f"{s}.png").exists():
@@ -447,7 +447,8 @@ def cmd_gallery(designs, args) -> int:
             button = f'<button type="button" class="pick">Pick #{n}</button>' if pick else f"#{n}" + (" ✓ approved" if won else "")
             figs.append(f'<figure data-n="{n}"><button type="button" class="zoom" aria-label="Enlarge {name} candidate {n}">'
                         f'<img src="{rel}" data-full="{_full_name(rel)}" alt="{name} candidate {n}" loading="lazy"></button><figcaption>{button}</figcaption></figure>')
-        sheets = CHARACTER_SHEETS if d.kind == "character" else LOCATION_SHEETS
+        # props.png is made by hand (crops of approved images), so it's shown but not rendered here.
+        sheets = (*CHARACTER_SHEETS, "props") if d.kind == "character" else LOCATION_SHEETS
         for s in sheets:
             if (slug_dir / f"{s}.png").exists():
                 rel = f"img/{slug}/{s}.jpg"
