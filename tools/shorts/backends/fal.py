@@ -115,7 +115,7 @@ def run_take(short_dir: Path, shot_id: str, model: str, prompt: str, refs, secon
     ledger, cost = Ledger(short_dir / "costs.json"), estimate(model, seconds)
     ledger.check(budget, cost)
     job = start(model, prompt, refs, seconds, key=key, client=client)
-    ledger.add(shot_id, f"req-{job['request_id']}", model, cost, note=note)  # money is spent once the POST succeeds
+    ledger.add(shot_id, f"req-{job['request_id']}", model, cost, note=note, fp=(meta or {}).get("fp", ""))  # money is spent once the POST succeeds
     video = fetch(job, key=key, client=client)
     tmp = short_dir / "shots" / shot_id / "incoming.mp4"
     tmp.parent.mkdir(parents=True, exist_ok=True)
