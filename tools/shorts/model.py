@@ -124,7 +124,7 @@ def _shot(d: dict) -> Shot:
         model=d.get("model", ""),
         size=d.get("size", ""), angle=d.get("angle", ""), move=d.get("move", ""), action=d.get("action", ""),
         frame=dict(d.get("frame", {})), at_start=dict(d.get("at_start", {})), at_end=dict(d.get("at_end", {})),
-        props=dict(d.get("props", {})), prop_change=list(d.get("prop_change", [])), cross_ok=bool(d.get("cross_ok", False)),
+        props=dict(d.get("props", {})), prop_change=list(d.get("prop_change", [])), cross_ok=d.get("cross_ok", False),  # raw: validate_short rejects non-bools ("false" would be truthy)
     )
 
 
@@ -173,6 +173,8 @@ def validate_short(s: Short, designs: dict) -> list[str]:
         for cid in ids:
             if cid not in s.cast:
                 problems.append(f"{where}: unknown cast id {cid}")
+        if not isinstance(shot.cross_ok, bool):
+            problems.append(f"{where}: cross_ok must be true or false")
         if shot.size and shot.size not in SIZES:
             problems.append(f"{where}: size {shot.size!r} not in {SIZES}")
         for ln in shot.lines:

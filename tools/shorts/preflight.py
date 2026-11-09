@@ -67,7 +67,7 @@ def continuity(prev: Shot | None, shot: Shot) -> list[str]:
                        f"add {cid} to prop_change if that is on purpose")
     for cid in sorted(set(prev.frame) & set(shot.frame)):
         a, b = _side(prev.frame[cid]), _side(shot.frame[cid])
-        if a and b and a != b and not shot.cross_ok:
+        if a and b and a != b and shot.cross_ok is not True:
             out.append(f"{cid} swaps screen side ({prev.id} {a} -> {shot.id} {b}); set cross_ok = true if that is on purpose")
     return out
 

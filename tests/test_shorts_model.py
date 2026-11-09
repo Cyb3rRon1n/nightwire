@@ -171,6 +171,7 @@ def test_short_plan_fields_load(tmp_path):
     (PLANNED.replace('size = "MCU"', 'size = "closeish"'), "size 'closeish' not in"),
     (PLANNED.replace('[frame]\nC2', '[frame]\nC7'), "unknown cast id C7"),
     (PLANNED.replace('[props]\nC1', '[props]\nC8'), "unknown cast id C8"),
+    (PLANNED.replace('cross_ok = false', 'cross_ok = "false"'), "shot S01: cross_ok must be true or false"),
 ])
 def test_plan_field_values_are_checked(tmp_path, bad, expected):
     problems = validate_short(load_short(write(tmp_path, shot=bad)), designs())
