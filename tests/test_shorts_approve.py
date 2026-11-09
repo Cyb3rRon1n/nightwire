@@ -11,11 +11,12 @@ def refs(tmp_path, content=b"a"):
 
 
 def test_fingerprint_is_stable_and_sensitive(tmp_path):
-    fp = approve.fingerprint("seedance-2.0-fast", "prompt", refs(tmp_path))
-    assert len(fp) == 10 and fp == approve.fingerprint("seedance-2.0-fast", "prompt", refs(tmp_path))
-    assert fp != approve.fingerprint("seedance-2.0-fast", "prompt!", refs(tmp_path))
-    assert fp != approve.fingerprint("seedance-2.0", "prompt", refs(tmp_path))
-    assert fp != approve.fingerprint("seedance-2.0-fast", "prompt", refs(tmp_path, b"b"))
+    fp = approve.fingerprint("seedance-2.0-fast", "prompt", refs(tmp_path), 5)
+    assert len(fp) == 10 and fp == approve.fingerprint("seedance-2.0-fast", "prompt", refs(tmp_path), 5)
+    assert fp != approve.fingerprint("seedance-2.0-fast", "prompt!", refs(tmp_path), 5)
+    assert fp != approve.fingerprint("seedance-2.0", "prompt", refs(tmp_path), 5)
+    assert fp != approve.fingerprint("seedance-2.0-fast", "prompt", refs(tmp_path, b"b"), 5)
+    assert fp != approve.fingerprint("seedance-2.0-fast", "prompt", refs(tmp_path), 6)  # a new length needs a new approval
 
 
 def test_plan_image_id_and_bad_slug():

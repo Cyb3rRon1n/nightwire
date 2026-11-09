@@ -95,7 +95,7 @@ with the existing rsync. Sections, top to bottom:
 ## 4. Approval and the money gate
 
 - The sheet's buttons call the existing review API (`PUT /designs/api/images/<id>`) with id
-  `plan--<slug>--<shot>--<fp>`, where `fp` = first 10 hex of SHA-256 over the exact prompt text plus each reference's
+  `plan--<slug>--<shot>--<fp>`, where `fp` = first 10 hex of SHA-256 over the model, the exact prompt text, the length in whole seconds (so `submit --seconds` other than the shot length needs a new approval) plus each reference's
   label and file hash. Verdicts: `keep` = approved, `fix` = change (note goes to Claude like image notes), `reject`.
 - `tools.shorts verdicts` (existing) also syncs plan verdicts into `design-data/shorts/<slug>/approvals.json`.
 - Editing a shot changes `fp`, so the old approval no longer matches; the sheet shows "changed since approval".
