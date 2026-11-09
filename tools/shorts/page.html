@@ -61,7 +61,7 @@ async function load() {
     app.append(el("h2", {textContent: `${s.title} — $${s.spent.toFixed(2)} of $${s.budget}`}));
     const cast = Object.entries(s.cast || {}).map(([k, v]) => `${k} = ${v}`).join(", ");
     if (s.logline || cast) app.append(el("div", {className: "shotinfo v", textContent: [s.logline, cast].filter(Boolean).join(" · ")}));
-    if (s.draft) app.append(el("div", {className: "card"}, el("div", {className: "v", textContent: "rough cut"}),
+    if (s.draft) app.append(el("div", {className: "card"}, el("div", {className: "v", textContent: "full cut: the kept take of every shot, start to finish"}),
                                el("video", {src: s.draft, controls: true})));
     if (s.floorplan) app.append(el("div", {className: "card"}, el("div", {className: "v", textContent: "floor plan, seen from above: the counter, stools and door, and where C1 and C2 start"}), el("img", {src: s.floorplan, alt: "floor plan"})));
     for (const shot of s.shots) {
