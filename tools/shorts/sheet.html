@@ -77,6 +77,7 @@ async function load() {
         ["Checks", s.problems.length ? "" : "all passed"]].map(([k, v]) => el("tr", {}, el("td", {textContent: k}), el("td", {textContent: v})))),
       ...s.problems.map(p => el("div", {className: "bad", textContent: "✗ " + p})),
       ...s.warnings.map(w => el("div", {className: "warn", textContent: "! " + w})),
+      ...(s.overrides || []).map(n => el("div", {className: "warn", textContent: "Paid without approval: " + n})),
       el("details", {}, el("summary", {className: "dim", textContent: "Exact prompt that will be paid for"}), el("pre", {textContent: s.prompt})),
       el("button", {className: "b-keep", textContent: "Approve", disabled: s.problems.length > 0,
                     title: s.problems.length ? "Fix the failed checks first" : "", onclick: () => setVerdict(s.image_id, "keep", "", err)}),
