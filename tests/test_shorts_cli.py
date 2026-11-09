@@ -15,6 +15,19 @@ def setup(tmp_path, monkeypatch, shot=PLANNED, approved=True):
     monkeypatch.setattr("tools.shorts.__main__.load_designs", lambda: designs())
     if approved:
         monkeypatch.setattr("tools.shorts.approve.approval", lambda *a: {"verdict": "keep"})
+    # Placeholder references so planned shots pass pre-flight's "every expected ref exists" check.
+    from PIL import Image
+    from tools.shorts.prompt import CHARACTER_SHEETS
+    dd = tmp_path / "design-data"
+    for slug in ("saeko-kirigaya", "rin-kageyama"):
+        (dd / slug).mkdir(parents=True, exist_ok=True)
+        for f in CHARACTER_SHEETS:
+            Image.new("RGB", (8, 8)).save(dd / slug / f)
+    (dd / "mama-satos-izakaya").mkdir(parents=True, exist_ok=True)
+    Image.new("RGB", (8, 8)).save(dd / "mama-satos-izakaya" / "play.png")
+    sd = dd / "shorts" / "pilot" / "shots" / "S01"
+    sd.mkdir(parents=True, exist_ok=True)
+    (sd / "greybox.mp4").write_bytes(b"g")
 
 
 def test_check_ok_and_prompt_prints_layers(tmp_path, monkeypatch, capsys):
@@ -98,9 +111,6 @@ def test_submit_missing_key_and_closed_stdin_are_clean_errors(tmp_path, monkeypa
 
 def test_submit_kling_drops_video_refs_and_says_so(tmp_path, monkeypatch, capsys):
     setup(tmp_path, monkeypatch)
-    sd = tmp_path / "design-data" / "shorts" / "pilot" / "shots" / "S01"
-    sd.mkdir(parents=True)
-    (sd / "greybox.mp4").write_bytes(b"g")
     got = {}
     monkeypatch.setattr("tools.shorts.backends.fal.load_key", lambda *a: "k")
     monkeypatch.setattr("tools.shorts.backends.fal.run_take", lambda *a, **k: got.update(refs=a[4], seconds=a[5]) or "t001")
@@ -206,3 +216,12 @@ def test_sheet_unknown_model_rejected(tmp_path, monkeypatch, capsys):
     setup(tmp_path, monkeypatch)
     assert main(["sheet", "pilot", "--model", "veo"]) == 1
     assert "unknown model 'veo'" in capsys.readouterr().err
+
+
+def test_preflight_reports_missing_cast_sheet(tmp_path, monkeypatch, capsys):
+    setup(tmp_path, monkeypatch)
+    assert main(["preflight", "pilot", "--model", "seedance-2.0-fast"]) == 0
+    (tmp_path / "design-data" / "rin-kageyama" / "portrait.png").unlink()
+    assert main(["preflight", "pilot", "--model", "seedance-2.0-fast"]) == 1
+    out = capsys.readouterr().out
+    assert "C2_portrait.png: file missing" in out and "floorplan" not in out  # floor plan is optional

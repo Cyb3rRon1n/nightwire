@@ -73,3 +73,20 @@ def test_usable_refs_applies_skip_and_video(tmp_path):
     assert [l for l, _ in kept] == ["C1_turnaround.png", "greybox.mp4"] and out == ["floorplan.png"]
     kept, out = fal.usable_refs("kling-3", refs)
     assert "greybox.mp4" in out
+
+
+def test_missing_expected_ref_is_a_problem_but_floorplan_is_optional(tmp_path):
+    from tools.shorts.prompt import expected_refs, ref_files
+    s = shot(tmp_path)
+    dd, sd = tmp_path / "dd", tmp_path / "dd" / "shorts" / s.slug / "shots" / "S01"
+    sd.mkdir(parents=True)
+    for label, p in expected_refs(s, dd, sd):
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(b"x")
+    (dd / "saeko-kirigaya" / "expressions.png").unlink()
+    (dd / "shorts" / s.slug / "floorplan.png").unlink()
+    expected = expected_refs(s, dd, sd)
+    assert [l for l, _ in expected][-3:] == ["place.png", "floorplan.png", "greybox.mp4"]
+    assert "C1_expressions.png" not in [l for l, _ in ref_files(s, dd, sd)]
+    p = preflight.run(s, s.shots[0], None, "p", expected, "seedance-2.5", 0).problems
+    assert any("C1_expressions.png: file missing" in x for x in p) and not any("floorplan" in x for x in p)

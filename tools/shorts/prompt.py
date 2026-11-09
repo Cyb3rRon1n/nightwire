@@ -65,7 +65,8 @@ def build_prompt(short: Short, shot: Shot, designs: dict, has_still: bool = Fals
     return "\n\n".join(L[k] for k in ("L1", "L2", "L3", "L4", "L5"))
 
 
-def ref_files(short: Short, design_dir: Path, shot_dir: Path) -> list[tuple[str, Path]]:
+def expected_refs(short: Short, design_dir: Path, shot_dir: Path) -> list[tuple[str, Path]]:
+    """Every reference a shot should send, whether or not the file exists yet (pre-flight reports the missing ones)."""
     out = []
     for cid, slug in short.cast.items():
         out += [(f"{cid}_{f}", design_dir / slug / f) for f in CHARACTER_SHEETS]
@@ -73,4 +74,8 @@ def ref_files(short: Short, design_dir: Path, shot_dir: Path) -> list[tuple[str,
     out.append(("start_frame.png", still) if still.exists() else ("place.png", design_dir / short.place / "play.png"))
     out.append(("floorplan.png", shot_dir.parent.parent / "floorplan.png"))
     out.append(("greybox.mp4", shot_dir / "greybox.mp4"))
-    return [(label, p) for label, p in out if p.exists()]
+    return out
+
+
+def ref_files(short: Short, design_dir: Path, shot_dir: Path) -> list[tuple[str, Path]]:
+    return [(label, p) for label, p in expected_refs(short, design_dir, shot_dir) if p.exists()]

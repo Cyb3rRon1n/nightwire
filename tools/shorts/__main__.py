@@ -14,7 +14,7 @@ from tools.shorts import SHORTS_DIR, approve, data_dir, remote
 from tools.shorts.backends import manual
 from tools.shorts.greybox.scene import FPS, scene_json
 from tools.shorts.model import load_short, validate_short
-from tools.shorts.prompt import build_prompt, ref_files
+from tools.shorts.prompt import build_prompt, expected_refs, ref_files
 from tools.shorts.takes import BudgetError, Ledger, apply_verdicts, estimate
 
 PICKS_API = "http://192.168.10.19:8080/designs/api/images"
@@ -161,8 +161,9 @@ def _preflight(s, shot, model, designs):
     work = _work(s.slug)
     shot_dir = work / "shots" / shot.id
     prompt = build_prompt(s, shot, designs, has_still=(shot_dir / "still.png").exists())
-    refs = ref_files(s, data_dir().parent, shot_dir)
-    return preflight.run(s, shot, _prev(s, shot), prompt, refs, model, Ledger(work / "costs.json").total()), prompt, refs
+    expected = expected_refs(s, data_dir().parent, shot_dir)
+    refs = [(label, p) for label, p in expected if p.exists()]  # what is sent and fingerprinted
+    return preflight.run(s, shot, _prev(s, shot), prompt, expected, model, Ledger(work / "costs.json").total()), prompt, refs
 
 
 def cmd_preflight(a) -> int:
