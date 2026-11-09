@@ -3,6 +3,11 @@ start = 15.5
 end = 24.0
 summary = "reverse: over C2's shoulder on C1, medium close-up, from across the counter; slow push in"
 lens = 50.0
+size = "MCU"
+angle = "eye level, reverse over C2's shoulder"
+move = "slow push-in"
+action = "Saeko hears Rin's price, turns the data jack over and does not connect it."
+prop_change = ["C1"]
 camera = [
   { t = 0.0, at = [2.3, 0.25, 1.4], look = [0.86, -0.72, 0.98] },
   { t = 8.5, at = [2.2, 0.2, 1.38], look = [0.86, -0.72, 0.99] },
@@ -22,7 +27,7 @@ text = "The amber blink on C1's chrome wrist quickens, its glow pulsing on her f
 
 [[beats]]
 t = [21.5, 24.0]
-text = "C1's human fingers turn the cable plug over once at the bottom of frame and do not plug it in; C1 looks up at C2. Hold"
+text = "C1's human fingers turn the data jack over once at the bottom of frame and do not connect it; C1 looks up at C2. Hold"
 
 [[acting]]
 who = "C1"
@@ -31,9 +36,9 @@ goal = "learn the price without owing more than she can pay"
 emotion = "polite control, a crack of fear as the blink quickens, settling into cold amusement on 'I know'"
 trigger = "list"
 face = "AU4 brow lowerer B (onset 1.5 s, peak 2.1 s) at the quickening blink; AU14 one-sided dimpler C on 'I know' (peak 5.0 s), released by 6.5 s"
-gaze = "eyes on C2, drop to the wrist at 1.5 s, back to C2 on 'list', down to the plug at 6.0 s, up to C2 at 7.5 s"
+gaze = "eyes on C2, drop to the wrist at 1.5 s, back to C2 on 'list', down to the data jack at 6.0 s, up to C2 at 7.5 s"
 voice = "unhurried, apologetic courtesy; half a breath held before 'I know'"
-end = "plug turned over in her fingers, eyes on C2, no answer"
+end = "data jack turned over in her fingers, eyes on C2, no answer"
 
 [[acting]]
 who = "C2"
@@ -63,3 +68,19 @@ t = 20.1
 text = "I know."
 early_s = 0.1
 overlap_s = 0.2
+
+[frame]
+C1 = "screen-right of centre, three-quarter"
+C2 = "foreground screen-left, hood and shoulder"
+
+[at_start]
+C1 = "eyes on C2, chrome hand on the cup"
+C2 = "two fingers on the data jack"
+
+[at_end]
+C1 = "data jack turned over in her human left fingers, eyes on C2"
+C2 = "frozen"
+
+[props]
+C1 = "sake cup locked in the chrome right hand; the data jack in her human left fingers"
+C2 = "cyberdeck on a strap across her chest"

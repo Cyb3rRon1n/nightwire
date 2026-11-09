@@ -3,6 +3,10 @@ start = 8.0
 end = 15.5
 summary = "over C1's shoulder on C2, medium close-up, from across the counter; near-static"
 lens = 40.0
+size = "MCU"
+angle = "eye level, over C1's shoulder from across the counter"
+move = "static"
+action = "Rin offers to unlock the hand and slides her cable toward it."
 camera = [
   { t = 0.0, at = [-0.08, -0.35, 1.15], look = [1.6, -0.8, 1.4] },
   { t = 7.5, at = [-0.03, -0.36, 1.15], look = [1.6, -0.8, 1.4] },
@@ -45,3 +49,19 @@ text = "It's resting."
 who = "C2"
 t = 12.4
 text = "I can unlock it."
+
+[frame]
+C2 = "screen-left of centre, facing camera"
+C1 = "foreground screen-right, shoulder and back of head"
+
+[at_start]
+C1 = "left hand covering the chrome hand on the cup"
+C2 = "seated across, hands near her cyberdeck"
+
+[at_end]
+C1 = "still, shoulder only"
+C2 = "two fingers on the cable's data jack on the counter"
+
+[props]
+C1 = "sake cup locked in the chrome right hand"
+C2 = "cyberdeck on a strap across her chest"

@@ -8,6 +8,9 @@ logline = "Saeko's chrome hand locks at Mama Sato's counter. Rin can unlock it, 
 place = "mama-satos-izakaya"
 style = "anime screenshot coloring, cel shading, thick outlines, night, warm paper-lantern light with pink rim light and cyan backlight, high contrast, bloom, steam, rain heard beyond the noren, mature gritty cyberpunk"
 budget_usd = 25.0
+model = "seedance-2.0-fast"
+line_rule = "C1 (Saeko) is screen-right of C2 (Rin) in every shot from S01's two-shot on"
+retry_cap = 2
 beats = [
   "strange event: C1's chrome hand locks shut around a sake cup, an amber light blinking on its wrist (S01)",
   "immediate goal: C1 covers the hand before the newcomer sees it; C2 walks straight to her (S01)",
@@ -96,3 +99,7 @@ tier = "mannequin"
 pose = "stand"
 keys = [[0.0, -4.2, -1.35, 0.0], [1.8, -4.2, -1.35, 0.0], [2.6, -3.3, -1.35, 0.0],
         [6.0, 0.6, -1.3, 0.0], [6.6, 1.3, -1.2, 30.0], [7.4, 1.6, -0.6, 175.0]]
+
+[locks]
+C1 = "chrome right hand with an amber ring light on the wrist, red trim on the black outfit, long straight black hair"
+C2 = "black undercut with pink tips, black lips, white hoodie, white-silver cyberdeck on a strap"
