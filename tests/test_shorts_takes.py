@@ -79,6 +79,7 @@ def test_ledger_note_is_saved(tmp_path):
     from tools.shorts.takes import Ledger
     led = Ledger(tmp_path / "costs.json")
     led.add("S01", "t001", "m", 1.0, note="override: owner said go")
-    led.add("S01", "t002", "m", 1.0)
+    led.add("S01", "t002", "m", 1.0, fp="abc")
     rows = json.loads((tmp_path / "costs.json").read_text())
     assert rows[0]["note"] == "override: owner said go" and "note" not in rows[1]
+    assert "fp" not in rows[0] and rows[1]["fp"] == "abc"

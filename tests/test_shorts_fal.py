@@ -144,3 +144,18 @@ def test_each_model_stays_within_its_image_limit(model, limit):
     labels = [f"{c}_{f}" for c in ("C1", "C2") for f in CHARACTER_SHEETS] + ["place.png", "floorplan.png"]
     kept = [label for label in labels if label not in fal.MODELS[model].get("skip", ())]
     assert len(kept) <= limit
+
+
+def test_failed_fetch_after_post_counts_as_paid_attempt(tmp_path, monkeypatch):
+    from tools.shorts import approve
+    model = next(iter(fal.MODELS))
+    monkeypatch.setattr(fal, "start", lambda *a, **k: {"request_id": "r1"})
+
+    def boom(*a, **k):
+        raise RuntimeError("timeout")
+    monkeypatch.setattr(fal, "fetch", boom)
+    with pytest.raises(RuntimeError):
+        fal.run_take(tmp_path, "S01", model, "p", [], 5, 25, key="k", client=None, meta={"fp": "abc"}, note="override: x")
+    rows = json.loads((tmp_path / "costs.json").read_text())
+    assert rows[0]["fp"] == "abc" and rows[0]["note"] == "override: x"
+    assert approve.attempts(tmp_path, "S01", "abc") == 1

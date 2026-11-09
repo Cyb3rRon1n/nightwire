@@ -34,10 +34,8 @@ def test_apply_and_read_approvals(tmp_path):
     assert json.loads((tmp_path / "approvals.json").read_text())["S02"]["def"]["note"] == "closer"
 
 
-def test_takes_under_counts_matching_fp(tmp_path):
-    t = tmp_path / "takes"
-    t.mkdir()
-    (t / "t001.json").write_text(json.dumps({"model": "x"}))
-    (t / "t002.json").write_text(json.dumps({"fp": "abc"}))
-    (t / "t003.json").write_text(json.dumps({"fp": "abc"}))
-    assert approve.takes_under(tmp_path, "abc") == 2 and approve.takes_under(tmp_path, "zzz") == 0
+def test_attempts_counts_paid_ledger_rows(tmp_path):
+    assert approve.attempts(tmp_path, "S01", "abc") == 0
+    rows = [{"shot": "S01", "fp": "abc"}, {"shot": "S01", "fp": "abc"}, {"shot": "S01"}, {"shot": "S02", "fp": "abc"}]
+    (tmp_path / "costs.json").write_text(json.dumps(rows))
+    assert approve.attempts(tmp_path, "S01", "abc") == 2

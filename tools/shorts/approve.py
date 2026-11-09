@@ -44,5 +44,8 @@ def approval(short_dir: Path, shot_id: str, fp: str) -> dict | None:
     return data.get(shot_id, {}).get(fp)
 
 
-def takes_under(shot_dir: Path, fp: str) -> int:
-    return sum(1 for m in (shot_dir / "takes").glob("t*.json") if json.loads(m.read_text()).get("fp") == fp)
+def attempts(short_dir: Path, shot_id: str, fp: str) -> int:
+    """Paid attempts for this approval, from the ledger (a take that failed after the POST still cost money)."""
+    path = short_dir / "costs.json"
+    rows = json.loads(path.read_text()) if path.exists() else []
+    return sum(1 for r in rows if r.get("shot") == shot_id and r.get("fp") == fp)

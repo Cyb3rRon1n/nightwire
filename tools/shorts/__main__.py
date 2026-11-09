@@ -124,9 +124,9 @@ def cmd_submit(a) -> int:
                   "approve it on the production sheet, run `verdicts`, or pass --override \"<reason>\"", file=sys.stderr)
             return 1
         print(f"override: {a.override}")
-    made = approve.takes_under(shot_dir, fp)
+    made = approve.attempts(work, a.shot, fp)
     if made >= 1 + s.retry_cap:
-        print(f"{a.shot} already has {made} takes for this approval (cap {1 + s.retry_cap}); raise retry_cap in short.toml",
+        print(f"{a.shot} already has {made} paid attempts for this approval (cap {1 + s.retry_cap}); raise retry_cap in short.toml",
               file=sys.stderr)
         return 1
     seconds = int(round(a.seconds or shot.duration))  # fal bills whole seconds

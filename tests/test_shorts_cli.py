@@ -175,7 +175,7 @@ def test_submit_blocked_by_preflight_spends_nothing(tmp_path, monkeypatch, capsy
 def test_submit_retry_cap(tmp_path, monkeypatch, capsys):
     setup(tmp_path, monkeypatch)
     monkeypatch.setattr("tools.shorts.backends.fal.load_key", lambda *a: "k")
-    monkeypatch.setattr("tools.shorts.approve.takes_under", lambda *a: 3)
+    monkeypatch.setattr("tools.shorts.approve.attempts", lambda *a: 3)
     monkeypatch.setattr("tools.shorts.backends.fal.run_take", lambda *a, **k: "t004")
     assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--yes"]) == 1
     assert "cap 3" in capsys.readouterr().err
