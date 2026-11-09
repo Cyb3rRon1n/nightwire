@@ -150,6 +150,10 @@ def cmd_submit(a) -> int:
     except (ValueError, BudgetError, RuntimeError) as e:
         print(e, file=sys.stderr)
         return 1
+    except (httpx.HTTPError, TimeoutError) as e:  # after the POST the job is paid; the ledger row is written at POST
+        print(f"network error talking to fal ({type(e).__name__}: {e}); the money may already be spent — "
+              f"check {work / 'costs.json'} for this shot's row before retrying", file=sys.stderr)
+        return 1
     print(shot_dir / "takes" / f"{tid}.mp4")
     return 0
 
