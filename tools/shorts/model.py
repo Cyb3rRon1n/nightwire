@@ -7,6 +7,9 @@ from pathlib import Path
 TIERS = ("capsule", "mannequin", "rigged")
 DISFLUENCIES = ("", "block", "repeat", "silence", "self-correct")
 MAX_SHOT_S = 30.0
+# Shot sizes, closest first. ECU extreme close-up, CU close-up, MCU medium close-up (chest up), MS medium (waist up),
+# MWS medium wide (knees up), WS wide (whole body), EWS extreme wide (the place dominates).
+SIZES = ("ECU", "CU", "MCU", "MS", "MWS", "WS", "EWS")
 
 
 @dataclass
@@ -59,6 +62,16 @@ class Shot:
     acting: list[Acting] = field(default_factory=list)
     lines: list[Line] = field(default_factory=list)
     model: str = ""
+    size: str = ""
+    angle: str = ""
+    move: str = ""
+    action: str = ""
+    frame: dict[str, str] = field(default_factory=dict)      # who is in frame and where, at the cut
+    at_start: dict[str, str] = field(default_factory=dict)   # pose / gaze / hands when the shot opens
+    at_end: dict[str, str] = field(default_factory=dict)     # ... and when it cuts
+    props: dict[str, str] = field(default_factory=dict)      # what each character holds, and in which hand
+    prop_change: list[str] = field(default_factory=list)     # cast ids whose props change on purpose in this shot
+    cross_ok: bool = False                                   # a deliberate crossing of the screen-direction line
 
     @property
     def duration(self) -> float:
@@ -94,6 +107,10 @@ class Short:
     blocks: list[Block]
     figures: dict[str, Figure]
     shots: list[Shot]
+    line_rule: str = ""
+    model: str = ""
+    locks: dict[str, str] = field(default_factory=dict)
+    retry_cap: int = 2
 
 
 def _shot(d: dict) -> Shot:
@@ -105,6 +122,9 @@ def _shot(d: dict) -> Shot:
         acting=[Acting(**{**a, "t": tuple(a["t"])}) for a in d.get("acting", [])],
         lines=[Line(**ln) for ln in d.get("lines", [])],
         model=d.get("model", ""),
+        size=d.get("size", ""), angle=d.get("angle", ""), move=d.get("move", ""), action=d.get("action", ""),
+        frame=dict(d.get("frame", {})), at_start=dict(d.get("at_start", {})), at_end=dict(d.get("at_end", {})),
+        props=dict(d.get("props", {})), prop_change=list(d.get("prop_change", [])), cross_ok=bool(d.get("cross_ok", False)),
     )
 
 
@@ -118,6 +138,8 @@ def load_short(folder: Path) -> Short:
         figures={cid: Figure(cid, f["tier"], f.get("pose", "stand"), [tuple(map(float, k)) for k in f["keys"]])
                  for cid, f in d.get("figures", {}).items()},
         shots=[_shot(tomllib.loads(p.read_text())) for p in sorted((folder / "shots").glob("*.toml"))],
+        line_rule=d.get("line_rule", ""), model=d.get("model", ""), locks=dict(d.get("locks", {})),
+        retry_cap=int(d.get("retry_cap", 2)),
     )
 
 
@@ -146,10 +168,13 @@ def validate_short(s: Short, designs: dict) -> list[str]:
         for k in shot.camera:
             if not 0 <= k.t <= shot.duration:
                 problems.append(f"{where}: camera key at {k.t}s is outside 0..{shot.duration}s (camera times are relative to the shot start)")
-        ids = [ln.who for ln in shot.lines] + [a.who for a in shot.acting] + list(shot.state)
+        ids = ([ln.who for ln in shot.lines] + [a.who for a in shot.acting] + list(shot.state) + list(shot.frame)
+               + list(shot.at_start) + list(shot.at_end) + list(shot.props) + list(shot.prop_change))
         for cid in ids:
             if cid not in s.cast:
                 problems.append(f"{where}: unknown cast id {cid}")
+        if shot.size and shot.size not in SIZES:
+            problems.append(f"{where}: size {shot.size!r} not in {SIZES}")
         for ln in shot.lines:
             if ln.disfluency not in DISFLUENCIES:
                 problems.append(f"{where}: disfluency {ln.disfluency!r} not in {DISFLUENCIES}")

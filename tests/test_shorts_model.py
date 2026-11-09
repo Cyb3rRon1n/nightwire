@@ -116,3 +116,62 @@ def test_unapproved_or_missing_design_is_a_problem(tmp_path):
     problems = validate_short(load_short(write(tmp_path)), d)
     assert any("rin-kageyama is not approved" in p for p in problems)
     assert any("place mama-satos-izakaya" in p for p in problems)
+
+
+# Top-level keys must come before the first [table] in TOML, so the plan keys go right after `lens`
+# and the plan tables go at the end.
+PLAN_KEYS = '''lens = 35.0
+size = "MCU"
+angle = "eye level, over C1's right shoulder"
+move = "slow push-in"
+action = "C2 asks who paid her tab."
+prop_change = ["C1"]
+cross_ok = false'''
+PLAN_TABLES = '''
+[frame]
+C2 = "screen-left, facing camera"
+C1 = "foreground screen-right, back of head"
+
+[at_start]
+C1 = "seated, cup in right hand"
+
+[at_end]
+C2 = "leaning on the counter"
+
+[props]
+C1 = "sake cup in right hand"
+'''
+PLANNED = SHOT.replace("lens = 35.0", PLAN_KEYS) + PLAN_TABLES
+
+
+def test_planned_fields_load(tmp_path):
+    shot = load_short(write(tmp_path, shot=PLANNED)).shots[0]
+    assert shot.size == "MCU" and shot.move == "slow push-in"
+    assert shot.action == "C2 asks who paid her tab."
+    assert shot.frame["C2"].startswith("screen-left")
+    assert shot.at_start["C1"] == "seated, cup in right hand" and shot.at_end["C2"] == "leaning on the counter"
+    assert shot.props == {"C1": "sake cup in right hand"} and shot.prop_change == ["C1"] and shot.cross_ok is False
+
+
+def test_old_shots_still_load_with_empty_plan_fields(tmp_path):
+    s = load_short(write(tmp_path))
+    assert s.shots[0].size == "" and s.shots[0].frame == {} and s.retry_cap == 2 and s.locks == {}
+    assert validate_short(s, designs()) == []
+
+
+def test_short_plan_fields_load(tmp_path):
+    short = SHORT.replace('budget_usd = 25.0', 'budget_usd = 25.0\nline_rule = "C1 is screen-right of C2"\nmodel = "seedance-2.0-fast"\nretry_cap = 3')
+    short += '\n[locks]\nC1 = "chrome right hand"\n'  # a table goes at the end, after every top-level key
+    s = load_short(write(tmp_path, short=short))
+    assert s.line_rule.startswith("C1") and s.model == "seedance-2.0-fast" and s.retry_cap == 3
+    assert s.locks == {"C1": "chrome right hand"}
+
+
+@pytest.mark.parametrize("bad, expected", [
+    (PLANNED.replace('size = "MCU"', 'size = "closeish"'), "size 'closeish' not in"),
+    (PLANNED.replace('[frame]\nC2', '[frame]\nC7'), "unknown cast id C7"),
+    (PLANNED.replace('[props]\nC1', '[props]\nC8'), "unknown cast id C8"),
+])
+def test_plan_field_values_are_checked(tmp_path, bad, expected):
+    problems = validate_short(load_short(write(tmp_path, shot=bad)), designs())
+    assert any(expected in p for p in problems), problems
