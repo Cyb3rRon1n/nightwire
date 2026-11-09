@@ -247,3 +247,15 @@ def test_stills_skips_shot_without_frame_with_clear_message(tmp_path, monkeypatc
     monkeypatch.setattr("tools.shorts.stills.run", lambda jobs, url: seen.append(jobs) or [])
     assert main(["stills", "pilot"]) == 1
     assert "shot S01 has no [frame]; fill it before rendering a still" in capsys.readouterr().err and seen == [[]]
+
+
+def test_submit_blank_override_is_refused(tmp_path, monkeypatch, capsys):
+    setup(tmp_path, monkeypatch, approved=False)
+    monkeypatch.setattr("tools.shorts.backends.fal.load_key", lambda *a: "k")
+    called = []
+    monkeypatch.setattr("tools.shorts.backends.fal.run_take", lambda *a, **k: called.append(k) or "t001")
+    for blank in ("", "   "):
+        assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--yes", "--override", blank]) == 1
+        assert "--override needs a reason" in capsys.readouterr().err and called == []
+    assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--yes", "--override", "  owner said go  "]) == 0
+    assert called[0]["note"] == "override: owner said go"
