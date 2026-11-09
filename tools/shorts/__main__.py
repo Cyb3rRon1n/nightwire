@@ -115,11 +115,12 @@ def cmd_submit(a) -> int:
         return 1
     shot_dir = work / "shots" / a.shot
     refs = ref_files(s, data_dir().parent, shot_dir)
-    if fal.MODELS[a.model]["video"] is None:
-        left_out = [label for label, _ in refs if label.endswith(".mp4")]
+    spec = fal.MODELS[a.model]
+    if spec["video"] is None or spec.get("skip"):
+        left_out = [label for label, _ in refs if (label.endswith(".mp4") and spec["video"] is None) or label in spec.get("skip", ())]
         refs = [r for r in refs if r[0] not in left_out]
         if left_out:
-            print(f"{a.model} takes no reference video; left out: {', '.join(left_out)}")
+            print(f"{a.model} can't take every reference; left out: {', '.join(left_out)}")
     try:
         with httpx.Client() as client:
             tid = fal.run_take(work, a.shot, a.model, build_prompt(s, shot, load_designs()),
