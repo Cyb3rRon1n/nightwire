@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Production sheet</title>
+<style>
+:root{--bg:#0d0f14;--card:#171a22;--fg:#e8e8ee;--dim:#9aa0ad;--ok:#3fb37f;--bad:#d9534f;--warn:#e0a030;--line:#2a2f3b}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,sans-serif;padding:16px}
+h1{font-size:22px;margin:0 0 4px} h2{font-size:18px;margin:28px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+.dim{color:var(--dim);font-size:13px} .card{background:var(--card);border-radius:10px;padding:12px;margin:8px 0}
+.row{display:flex;gap:12px;flex-wrap:wrap} img,video{max-width:min(420px,100%);border-radius:6px;display:block}
+.cast img{max-width:200px} table{border-collapse:collapse;width:100%} td{vertical-align:top;padding:3px 8px 3px 0}
+td:first-child{color:var(--dim);white-space:nowrap;width:110px}
+.ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+button{border:0;border-radius:6px;padding:7px 12px;margin:6px 6px 0 0;cursor:pointer;color:#fff}
+.b-keep{background:var(--ok)} .b-fix{background:var(--warn)} .b-reject{background:var(--bad)}
+textarea{width:100%;background:#0b0d12;color:var(--fg);border:1px solid #333;border-radius:6px}
+pre{white-space:pre-wrap;background:#0b0d12;padding:8px;border-radius:6px;font-size:12px}
+.status{font-weight:600} .tl{position:relative;height:auto} .tl div{padding:2px 0;font-size:14px}
+</style></head><body>
+<div id="app">Loading…</div>
+<script>
+const API = "/designs/api/images/";
+function el(tag, attrs = {}, ...kids) { const e = document.createElement(tag); Object.assign(e, attrs); kids.forEach(k => e.append(k)); return e; }
+function kv(obj) { return Object.entries(obj || {}).map(([k, v]) => `${k}: ${v}`).join(" · ") || "—"; }
+async function setVerdict(id, verdict, note, err) {
+  err.textContent = "";
+  try {
+    const r = await fetch(API + encodeURIComponent(id), {method: "PUT", headers: {"Content-Type": "application/json"},
+                          body: JSON.stringify(note ? {verdict, note} : {verdict})});
+    if (!r.ok) { err.textContent = "Saving failed (" + r.status + ")"; return; }
+  } catch (e) { err.textContent = "Saving failed: " + e; return; }
+  load();
+}
+function status(shot, verdicts) {
+  const now = verdicts[shot.image_id];
+  if (now) return {keep: ["Approved", "ok"], fix: ["Change requested: " + (now.note || ""), "warn"], reject: ["Rejected", "bad"]}[now.verdict] || ["Not reviewed", "dim"];
+  const old = Object.keys(verdicts).some(k => k.startsWith(shot.prefix) && verdicts[k].verdict === "keep");
+  return old ? ["Changed since approval: please review again", "warn"] : ["Not reviewed yet", "dim"];
+}
+async function load() {
+  const [d, vr] = await Promise.all([fetch("sheet.json", {cache: "no-store"}).then(r => r.json()),
+                                     fetch("/designs/api/images", {cache: "no-store"}).catch(() => null)]);
+  const verdicts = vr && vr.ok ? await vr.json() : {};
+  const app = document.getElementById("app"); app.textContent = "";
+  app.append(el("h1", {textContent: `Production sheet: ${d.title}`}),
+    el("div", {className: "dim", textContent: `${d.logline} · ${d.runtime} s · model ${d.model} · ` +
+      `estimate $${d.shots.reduce((a, s) => a + s.cost, 0).toFixed(2)} · spent $${d.spent.toFixed(2)} of $${d.budget}`}));
+  if (!(vr && vr.ok)) app.append(el("div", {className: "bad", textContent: "Could not load saved approvals; buttons still work."}));
+  app.append(el("div", {className: "card"}, el("b", {textContent: "How this works: "}),
+    "Read each shot. Approve it if it is what you want, or write what to change and press Change. Nothing is paid for until a shot is approved, " +
+    "and if Claude edits a shot after you approve it, it shows as changed and needs your approval again."));
+  app.append(el("h2", {textContent: "1. Cast lock: who must always look like this"}));
+  for (const c of d.cast) app.append(el("div", {className: "card"}, el("b", {textContent: `${c.id} = ${c.name}`}),
+    el("div", {className: "dim", textContent: "Never changes: " + c.lock}),
+    el("div", {className: "row cast"}, ...c.sheets.map(n => el("img", {src: `cast/${c.slug}-${n}.jpg`, alt: n, title: n})))));
+  app.append(el("h2", {textContent: "2. Location and look"}),
+    el("div", {className: "row"}, el("img", {src: "place.jpg", alt: "place"}), el("img", {src: "floorplan.jpg", alt: "floor plan"})),
+    el("div", {className: "card"}, el("div", {textContent: "Screen direction: " + (d.line_rule || "—")}),
+       el("div", {className: "dim", textContent: "Style sent on every shot: " + d.style})));
+  app.append(el("h2", {textContent: "3. Story beats"}),
+    el("ol", {}, ...d.beats.map(b => el("li", {textContent: b.text}))));
+  app.append(el("h2", {textContent: "4. Shot list"}));
+  for (const s of d.shots) {
+    const [label, cls] = status(s, verdicts);
+    const note = el("textarea", {rows: 2, placeholder: "what to change, e.g. closer on Rin, Saeko's hand must stay on the cup"});
+    const err = el("div", {className: "bad"});
+    const pics = el("div", {className: "row"});
+    if (s.still) pics.append(el("img", {src: `shots/${s.id}-still.jpg`, alt: "opening frame"}));
+    if (s.greybox) pics.append(el("video", {src: `shots/${s.id}-greybox.mp4`, controls: true, loop: true, muted: true}));
+    app.append(el("div", {className: "card"},
+      el("div", {}, el("b", {textContent: `${s.id} · ${s.time} · `}), el("span", {className: `status ${cls}`, textContent: label})),
+      pics,
+      el("table", {}, ...[["Shot", `${s.size} · ${s.angle} · ${s.lens} mm · ${s.move}`], ["Action", s.action], ["In frame", kv(s.frame)],
+        ["Opens on", kv(s.at_start)], ["Cuts on", kv(s.at_end)], ["Holding", kv(s.props)],
+        ["Dialogue", s.lines.map(l => `${l.t}s ${l.who}: "${l.text}"`).join("  ") || "none"],
+        ["References", s.refs.join(", ") + (s.left_out.length ? ` (left out: ${s.left_out.join(", ")})` : "")],
+        ["Cost", `about $${s.cost.toFixed(2)}`],
+        ["Checks", s.problems.length ? "" : "all passed"]].map(([k, v]) => el("tr", {}, el("td", {textContent: k}), el("td", {textContent: v})))),
+      ...s.problems.map(p => el("div", {className: "bad", textContent: "✗ " + p})),
+      ...s.warnings.map(w => el("div", {className: "warn", textContent: "! " + w})),
+      el("details", {}, el("summary", {className: "dim", textContent: "Exact prompt that will be paid for"}), el("pre", {textContent: s.prompt})),
+      el("button", {className: "b-keep", textContent: "Approve", disabled: s.problems.length > 0,
+                    title: s.problems.length ? "Fix the failed checks first" : "", onclick: () => setVerdict(s.image_id, "keep", "", err)}),
+      note,
+      el("button", {className: "b-fix", textContent: "Change", onclick: () => setVerdict(s.image_id, "fix", note.value, err)}),
+      el("button", {className: "b-reject", textContent: "Reject", onclick: () => setVerdict(s.image_id, "reject", "", err)}), err));
+  }
+  app.append(el("h2", {textContent: "5. Dialogue timeline (whole short)"}),
+    el("div", {className: "card tl"}, ...d.lines.map(l => el("div", {textContent: `${l.t.toFixed(1)} s · ${l.shot} · ${l.who}: "${l.text}"`}))));
+  app.append(el("h2", {textContent: "6. Continuity: how each shot hands over to the next"}));
+  for (const c of d.continuity) app.append(el("div", {className: "card"},
+    el("b", {textContent: `${c.from} → ${c.to}`}),
+    el("div", {className: "dim", textContent: `${c.from} cuts on: ${kv(c.end)}`}),
+    el("div", {className: "dim", textContent: `${c.to} opens on: ${kv(c.start)}`}),
+    ...(c.flags.length ? c.flags.map(f => el("div", {className: "bad", textContent: "✗ " + f})) : [el("div", {className: "ok", textContent: "matches"})])));
+}
+load();
+</script></body></html>
