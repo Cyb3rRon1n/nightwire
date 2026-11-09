@@ -50,7 +50,7 @@ Shot TOML (`narrator/worlds/shorts/<slug>/shots/Sxx.toml`), all strings unless n
 | `move` | `"static"` or one move (`"slow push-in"`) | yes |
 | `action` | one sentence: the one main thing that happens | yes |
 | `[frame]` | `C2 = "screen-left, facing camera"`, `C1 = "foreground screen-right, back of head"` | yes |
-| `[start]` / `[end]` | per character: pose, gaze, what is in which hand | yes |
+| `[at_start]` / `[at_end]` | per character: pose, gaze, what is in which hand | yes |
 | `[props]` | `C1 = "sake cup in chrome right hand"` | when anyone holds something |
 
 Existing `summary` stays (it feeds L1). Short TOML gains `line_rule` (screen direction in words, e.g.
@@ -58,8 +58,7 @@ Existing `summary` stays (it feeds L1). Short TOML gains `line_rule` (screen dir
 Character locks are not typed again: they come from each design's `required` tags plus a short `lock` line per cast
 member in `short.toml` `[locks]` for things the tags miss (e.g. `C1 = "chrome right hand, amber wrist light, red trim"`).
 
-`validate_short` reports a missing required field per shot. Old shorts without the fields still load; they just
-fail pre-flight.
+Missing new fields are reported by pre-flight; `validate_short` only checks values that are present (size in the list, cast ids), so old shorts still pass `check`.
 
 ## 2. The production sheet page
 
