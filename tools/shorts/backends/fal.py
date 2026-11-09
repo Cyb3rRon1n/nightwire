@@ -24,17 +24,24 @@ QUEUE = "https://queue.fal.run"
 # "duration_str": fal's duration is a string enum ("5"), not an int. Default (absent) = int.
 MODELS = {
     "seedance-2.0-fast": {"endpoint": "bytedance/seedance-2.0/fast/reference-to-video", "prompt": "prompt", "images": "image_urls",
-                          "video": "video_urls", "duration": "duration", "duration_str": True, "min_s": 4, "extra": {"resolution": "720p"}, "skip": ("floorplan.png",)},
+                          "video": "video_urls", "duration": "duration", "duration_str": True, "min_s": 4, "max_images": 9, "extra": {"resolution": "720p"}, "skip": ("floorplan.png",)},
     "seedance-2.0": {"endpoint": "bytedance/seedance-2.0/reference-to-video", "prompt": "prompt", "images": "image_urls",
-                     "video": "video_urls", "duration": "duration", "duration_str": True, "min_s": 4, "extra": {"resolution": "720p"}, "skip": ("floorplan.png",)},
+                     "video": "video_urls", "duration": "duration", "duration_str": True, "min_s": 4, "max_images": 9, "extra": {"resolution": "720p"}, "skip": ("floorplan.png",)},
     "seedance-2.5": {"endpoint": "bytedance/seedance-2.5/reference-to-video", "prompt": "prompt", "images": "image_urls",
-                     "video": "video_urls", "duration": "duration", "duration_str": True, "min_s": 4, "extra": {"resolution": "720p"}},
+                     "video": "video_urls", "duration": "duration", "duration_str": True, "min_s": 4, "max_images": 30, "extra": {"resolution": "720p"}},
     # "skip": refs a model can't take (image limits); left out with a note. Kling has no top-level reference-video field (only elements[].video_url), so video=None.
     "kling-3": {"endpoint": "fal-ai/kling-video/o3/pro/reference-to-video", "prompt": "prompt", "images": "image_urls",
-                "video": None, "duration": "duration", "duration_str": True, "min_s": 3, "extra": {},
+                "video": None, "duration": "duration", "duration_str": True, "min_s": 3, "max_images": 7, "extra": {},
                 # Kling takes at most 7 images: drop the portraits and Rin's deck (already on her turnaround).
                 "skip": ("C1_portrait.png", "C2_portrait.png", "C2_props.png")},
 }
+
+
+def usable_refs(model: str, refs: list[tuple[str, Path]]) -> tuple[list[tuple[str, Path]], list[str]]:
+    """The refs this model can take, and the labels left out (its skip list, and videos when it takes none)."""
+    spec = MODELS[model]
+    out = [label for label, _ in refs if label in spec.get("skip", ()) or (label.endswith(".mp4") and spec["video"] is None)]
+    return [r for r in refs if r[0] not in out], out
 
 
 def load_key(path: Path = Path.home() / ".config" / "nightwire" / "secrets.env") -> str:

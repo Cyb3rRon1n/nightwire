@@ -132,3 +132,9 @@ def test_greybox_clears_stale_frames_but_not_takes(tmp_path, monkeypatch):
     assert main(["greybox", "pilot"]) == 0
     assert seen[0] is False and not (sd / "frames").exists()
     assert (sd / "takes" / "t001.mp4").read_bytes() == b"t"
+
+
+def test_preflight_reports_missing_fields(tmp_path, monkeypatch, capsys):
+    setup(tmp_path, monkeypatch, shot=SHOT)
+    assert main(["preflight", "pilot", "--model", "seedance-2.0-fast"]) == 1
+    assert "missing size" in capsys.readouterr().out

@@ -115,12 +115,9 @@ def cmd_submit(a) -> int:
         return 1
     shot_dir = work / "shots" / a.shot
     refs = ref_files(s, data_dir().parent, shot_dir)
-    spec = fal.MODELS[a.model]
-    if spec["video"] is None or spec.get("skip"):
-        left_out = [label for label, _ in refs if (label.endswith(".mp4") and spec["video"] is None) or label in spec.get("skip", ())]
-        refs = [r for r in refs if r[0] not in left_out]
-        if left_out:
-            print(f"{a.model} can't take every reference; left out: {', '.join(left_out)}")
+    refs, left_out = fal.usable_refs(a.model, refs)
+    if left_out:
+        print(f"{a.model} can't take every reference; left out: {', '.join(left_out)}")
     try:
         with httpx.Client() as client:
             tid = fal.run_take(work, a.shot, a.model, build_prompt(s, shot, load_designs()),
@@ -131,6 +128,37 @@ def cmd_submit(a) -> int:
         return 1
     print(shot_dir / "takes" / f"{tid}.mp4")
     return 0
+
+
+def _prev(short, shot):
+    i = [s.id for s in short.shots].index(shot.id)
+    return short.shots[i - 1] if i else None
+
+
+def _preflight(s, shot, model, designs):
+    from tools.shorts import preflight
+    work = _work(s.slug)
+    shot_dir = work / "shots" / shot.id
+    prompt = build_prompt(s, shot, designs)  # Task 5 adds has_still=
+    refs = ref_files(s, data_dir().parent, shot_dir)
+    return preflight.run(s, shot, _prev(s, shot), prompt, refs, model, Ledger(work / "costs.json").total()), prompt, refs
+
+
+def cmd_preflight(a) -> int:
+    s, designs = _short(a.slug), load_designs()
+    model = a.model or s.model
+    if not model:
+        raise CliError("no model: pass --model or set model in short.toml")
+    bad = 0
+    for shot in [_shot(s, a.shot)] if a.shot else s.shots:
+        report = _preflight(s, shot, model, designs)[0]
+        print(f"{shot.id}: {'ok' if report.ok else 'FAIL'}")
+        for p in report.problems:
+            print(f"  problem: {p}")
+        for w in report.warnings:
+            print(f"  warning: {w}")
+        bad += not report.ok
+    return 1 if bad else 0
 
 
 def cmd_verdicts(a) -> int:
@@ -215,6 +243,7 @@ def main(argv=None) -> int:
     q = sub.add_parser("inbox"); q.add_argument("slug"); q.add_argument("shot"); q.add_argument("--cost", type=float, required=True); q.add_argument("--model", required=True)
     q = sub.add_parser("submit"); q.add_argument("slug"); q.add_argument("shot"); q.add_argument("--model", required=True)
     q.add_argument("--seconds", type=float); q.add_argument("--yes", action="store_true")
+    q = sub.add_parser("preflight"); q.add_argument("slug"); q.add_argument("shot", nargs="?"); q.add_argument("--model")
     q = sub.add_parser("idcheck"); q.add_argument("slug"); q.add_argument("shot"); q.add_argument("take")
     sub.add_parser("page")
     q = sub.add_parser("assemble"); q.add_argument("slug"); q.add_argument("--music", type=Path)
