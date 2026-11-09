@@ -183,6 +183,20 @@ def cmd_preflight(a) -> int:
     return 1 if bad else 0
 
 
+def cmd_sheet(a) -> int:
+    from tools.shorts import sheet
+    s, designs = _short(a.slug), load_designs()
+    model = a.model or s.model
+    if not model:
+        raise CliError("no model: pass --model or set model in short.toml")
+    plans = {shot.id: _preflight(s, shot, model, designs) for shot in s.shots}
+    data = sheet.collect(s, designs, data_dir().parent, _work(a.slug), model, plans)
+    site = sheet.build(data, data_dir().parent, _work(a.slug), data_dir() / "_site")
+    print(site)
+    print(f"rsync -a {data_dir() / '_site'}/ 192.168.10.19:anvil-deploy/stack/dashboard/shorts/")
+    return 0
+
+
 def cmd_verdicts(a) -> int:
     with urllib.request.urlopen(PICKS_API, timeout=10) as r:
         api = json.load(r)
@@ -269,6 +283,7 @@ def main(argv=None) -> int:
     q.add_argument("--override", default="")
     q = sub.add_parser("preflight"); q.add_argument("slug"); q.add_argument("shot", nargs="?"); q.add_argument("--model")
     q = sub.add_parser("idcheck"); q.add_argument("slug"); q.add_argument("shot"); q.add_argument("take")
+    q = sub.add_parser("sheet"); q.add_argument("slug"); q.add_argument("--model")
     sub.add_parser("page")
     q = sub.add_parser("assemble"); q.add_argument("slug"); q.add_argument("--music", type=Path)
     a = p.parse_args(argv)
