@@ -22,14 +22,21 @@ def in_frame_order(shot) -> list[str]:
 
 
 def still_workflow(short, shot, designs, seed: int) -> dict:
-    who = [short.cast[c] for c in in_frame_order(shot)]
+    """Two characters at most: more than two in frame uses the first two by frame order (cmd_stills says so)."""
+    if not shot.frame:
+        raise ValueError(f"shot {shot.id} has no [frame]; fill it before rendering a still")
+    cids = in_frame_order(shot)[:2]
+    who = [short.cast[c] for c in cids]
+    locks = [f", {short.locks[c]}" if c in short.locks else "" for c in cids]
     place = designs[short.place]
     words = f"{SIZE_WORDS.get(shot.size, '')}, {shot.angle}, night"
-    if len(who) >= 2:
+    if len(who) == 2:
         wf = pair_workflow(designs[who[0]], designs[who[1]], place, seed)
+        for node, lock in zip(("50", "53"), locks):  # pair_workflow's left / right area prompts, in that order
+            wf[node]["inputs"]["text"] += lock
     else:
         d = designs[who[0]]
-        wf = build(f"{_region_tags(d)}, {place.tags}", "subject", False, d.negative or "", "base", seed, subject=_subject(d))
+        wf = build(f"{_region_tags(d)}{locks[0]}, {place.tags}", "subject", False, d.negative or "", "base", seed, subject=_subject(d))
     wf["6"]["inputs"]["text"] = f"{words}, " + wf["6"]["inputs"]["text"]
     wf["9"]["inputs"]["filename_prefix"] = f"nightwire_shorts/{short.slug}-{shot.id}"
     return wf
@@ -48,6 +55,8 @@ async def render(jobs, backend) -> list[str]:
 
 
 def run(jobs, url: str) -> list[str]:
+    if not jobs:
+        return []  # nothing to render: leave the GPU and Ollama alone
     from narrator.comfyui_backend import ComfyUIBackend
     from tools.design_studio import _gpu_etiquette
     _gpu_etiquette(url, before=True)
