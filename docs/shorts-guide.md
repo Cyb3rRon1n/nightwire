@@ -41,6 +41,30 @@ Commands are `python -m tools.shorts <command> <slug> ...`. Pilot slug: `saeko-r
 - `submit` refuses when spent + estimate would pass `budget_usd` in `short.toml` (default 25). To continue, raise `budget_usd` there; that is the owner's call.
 - Anything that spends money or downloads software needs the owner's go-ahead at that step.
 
+## Plan, approve, shoot (production sheet)
+
+Nothing paid is generated until the owner approves the exact shot on its production sheet.
+
+1. Plan each shot in its TOML: `size` (ECU, CU, MCU, MS, MWS, WS, EWS), `angle`, `move` (one move or "static"),
+   `action` (one sentence), `[frame]` (who is where, `screen-left`/`screen-right`), `[at_start]`, `[at_end]`,
+   `[props]` (what is in which hand). In `short.toml`: `model`, `line_rule`, `retry_cap`, and `[locks]` per cast id.
+   Locks and plan fields are sent in the prompt (L2 and L1).
+2. `python -m tools.shorts preflight <slug>`: required fields, dialogue pace (2.5 words/s with 1 s of air), one action
+   and one camera move, continuity (props and screen side vs the previous shot; `prop_change` / `cross_ok = true` when
+   on purpose), every expected reference present and within the model's image limit, budget. Filter-word hits are
+   warnings only.
+3. Optional: `python -m tools.shorts stills <slug>` renders opening-frame stills (run `python -m tools.taste` first; GPU
+   etiquette applies). An existing `shots/Sxx/still.png` replaces `place.png` as `start_frame.png`. The current
+   renderer frames two people standing side by side and uses the place's exterior tags, so check stills at full
+   size beside the sheets; set bad ones aside rather than sending them.
+4. `python -m tools.shorts sheet <slug>` then `page`, and publish with the printed rsync. The owner opens AI Lab →
+   Approve shots and presses Approve / Change / Reject per shot.
+5. `python -m tools.shorts verdicts <slug>` syncs take and plan verdicts.
+6. `python -m tools.shorts submit <slug> <shot> --model <model>` runs pre-flight, then requires an approval for the exact
+   prompt + references + model + seconds (any edit after approval needs a new approval), then the retry cap
+   (paid attempts per approval, `1 + retry_cap`), then the budget. `--override "<reason>"` skips only the approval;
+   the reason is logged in costs.json and shown on the sheet.
+
 ## Prompt layers
 
 Each fact is stated once. `prompt` assembles them in order:
