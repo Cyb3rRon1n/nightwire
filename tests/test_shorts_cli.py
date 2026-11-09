@@ -259,3 +259,16 @@ def test_submit_blank_override_is_refused(tmp_path, monkeypatch, capsys):
         assert "--override needs a reason" in capsys.readouterr().err and called == []
     assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--yes", "--override", "  owner said go  "]) == 0
     assert called[0]["note"] == "override: owner said go"
+
+
+def test_submit_network_error_is_clean_and_says_money_may_be_spent(tmp_path, monkeypatch, capsys):
+    import httpx
+    setup(tmp_path, monkeypatch)
+    monkeypatch.setattr("tools.shorts.backends.fal.load_key", lambda *a: "secret-key-value")
+    for exc in (TimeoutError("fal took too long"), httpx.ConnectError("refused")):
+        def boom(*a, **k):
+            raise exc
+        monkeypatch.setattr("tools.shorts.backends.fal.run_take", boom)
+        assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--yes"]) == 1
+        out = capsys.readouterr()
+        assert "may already be spent" in out.err and "costs.json" in out.err and "secret-key-value" not in out.err + out.out
