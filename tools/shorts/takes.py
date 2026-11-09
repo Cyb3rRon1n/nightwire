@@ -35,9 +35,12 @@ class Ledger:
     def total(self) -> float:
         return round(sum(r["cost"] for r in self._rows()), 4)
 
-    def add(self, shot: str, take: str, model: str, cost: float) -> None:
-        rows = self._rows() + [{"shot": shot, "take": take, "model": model, "cost": cost,
-                                "at": dt.datetime.now().isoformat(timespec="seconds")}]
+    def add(self, shot: str, take: str, model: str, cost: float, note: str = "") -> None:
+        row = {"shot": shot, "take": take, "model": model, "cost": cost,
+               "at": dt.datetime.now().isoformat(timespec="seconds")}
+        if note:
+            row["note"] = note
+        rows = self._rows() + [row]
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(json.dumps(rows, indent=1))
 
