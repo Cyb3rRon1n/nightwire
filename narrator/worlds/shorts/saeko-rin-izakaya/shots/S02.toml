@@ -18,23 +18,23 @@ text = "C2 MCU facing camera, screen left of centre; C1's shoulder and the back 
 
 [[beats]]
 t = [11.5, 13.0]
-text = "C2 draws a thin data cable from her cyberdeck and lays the plug on the counter top, sliding it out of the bottom of frame toward C1"
+text = "C2 draws a thin data cable from her cyberdeck and lays the cable's metal data jack on the counter top, sliding it out of the bottom of frame toward C1's chrome prosthetic hand"
 
 [[acting]]
 who = "C2"
 t = [8.0, 15.5]
 goal = "make C1 ask for help without saying the word"
 emotion = "deadpan, then a flicker of nerves as she makes the offer"
-trigger = "open"
-face = "AU12 small one-sided lip-corner pull B on 'stuck' (peak 1.0 s, offset 1.6 s); AU1+AU2 brow raise A at 'resting'; AU17 chin raiser B after 'open it' (peak 5.4 s)"
-gaze = "holds C1's eyes, drops to the hand at 3.0 s, back up on 'open'"
+trigger = "unlock"
+face = "AU12 small one-sided lip-corner pull B on 'stuck' (peak 1.0 s, offset 1.6 s); AU1+AU2 brow raise A at 'resting'; AU17 chin raiser B after 'unlock it' (peak 5.4 s)"
+gaze = "holds C1's eyes, drops to the hand at 3.0 s, back up on 'unlock'"
 voice = "flat and low; a small dry exhale before 'I can'"
 end = "waits, two fingers on the cable plug; C1's shoulder stays still"
 
 [[lines]]
 who = "C2"
 t = 8.6
-text = "Your hand's stuck."
+text = "Your chrome hand's stuck."
 
 [[lines]]
 who = "C1"
@@ -44,4 +44,4 @@ text = "It's resting."
 [[lines]]
 who = "C2"
 t = 12.4
-text = "I can open it."
+text = "I can unlock it."

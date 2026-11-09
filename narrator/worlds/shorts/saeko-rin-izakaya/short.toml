@@ -4,7 +4,7 @@
 # Low counter (top 0.85 m), 0.4 m box stools; seated C1 has hips at stool height (tool drops `sit`).
 # Block `at` is the bottom centre. Figure keys are [t, x, y, facing] on the shared timeline.
 title = "Resting"
-logline = "Saeko's chrome hand locks at Mama Sato's counter. Rin can open it, for a price."
+logline = "Saeko's chrome hand locks at Mama Sato's counter. Rin can unlock it, for a price."
 place = "mama-satos-izakaya"
 style = "anime screenshot coloring, cel shading, thick outlines, night, warm paper-lantern light with pink rim light and cyan backlight, high contrast, bloom, steam, rain heard beyond the noren, mature gritty cyberpunk"
 budget_usd = 25.0
