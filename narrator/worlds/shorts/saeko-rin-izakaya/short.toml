@@ -17,7 +17,7 @@ beats = [
   "unbreakable rule: nobody names a status light - C2 says 'stuck', C1 says 'resting' (S02)",
   "ticking clock: the amber blink quickens while C1 bargains (S03)",
   "reveal: C2's price is her own name off C1's repo list, and C1 already knew (S03)",
-  "open question: C1 turns the cable plug over and does not plug it in (S03)",
+  "open question: C1 turns the data jack over and does not connect it (S03)",
 ]
 
 [cast]
