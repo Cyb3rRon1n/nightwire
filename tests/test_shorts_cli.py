@@ -238,3 +238,12 @@ def test_submit_with_other_seconds_than_approved_is_refused(tmp_path, monkeypatc
     assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--seconds", "8", "--yes"]) == 1
     assert "not approved" in capsys.readouterr().err and called == []
     assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--seconds", "5", "--yes"]) == 0 and called == [5]
+
+
+def test_stills_skips_shot_without_frame_with_clear_message(tmp_path, monkeypatch, capsys):
+    setup(tmp_path, monkeypatch, shot=SHOT)  # old shot: no [frame]
+    monkeypatch.setattr("tools.design_scenes.gpu_busy", lambda url: False)
+    seen = []
+    monkeypatch.setattr("tools.shorts.stills.run", lambda jobs, url: seen.append(jobs) or [])
+    assert main(["stills", "pilot"]) == 1
+    assert "shot S01 has no [frame]; fill it before rendering a still" in capsys.readouterr().err and seen == [[]]

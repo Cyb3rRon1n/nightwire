@@ -211,14 +211,22 @@ def cmd_stills(a) -> int:
     if gpu_busy(url):
         print("ComfyUI is busy; wait for the current job to finish.", file=sys.stderr)
         return 1
-    jobs = []
+    jobs, errors = [], []
     for shot in [_shot(s, a.shot)] if a.shot else s.shots:
         out = work / "shots" / shot.id / "still.png"
         if out.exists() and not a.redo:
             continue
+        try:
+            wf = stills.still_workflow(s, shot, designs, a.seed)
+        except ValueError as e:  # no [frame] yet: skip this shot, render the rest
+            errors.append(str(e))
+            continue
+        if len(shot.frame) > 2:
+            print(f"note: {shot.id} has {len(shot.frame)} characters in frame; the still shows the first two "
+                  f"({', '.join(stills.in_frame_order(shot)[:2])})")
         out.parent.mkdir(parents=True, exist_ok=True)
-        jobs.append((out, stills.still_workflow(s, shot, designs, a.seed)))
-    errors = stills.run(jobs, url)
+        jobs.append((out, wf))
+    errors += stills.run(jobs, url)
     for e in errors:
         print(e, file=sys.stderr)
     return 1 if errors else 0
