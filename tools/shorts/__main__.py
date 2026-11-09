@@ -10,7 +10,7 @@ import urllib.request
 from pathlib import Path
 
 from narrator import designs as _designs
-from tools.shorts import SHORTS_DIR, data_dir, remote
+from tools.shorts import SHORTS_DIR, approve, data_dir, remote
 from tools.shorts.backends import manual
 from tools.shorts.greybox.scene import FPS, scene_json
 from tools.shorts.model import load_short, validate_short
@@ -102,8 +102,33 @@ def cmd_submit(a) -> int:
     from tools.shorts.backends import fal
     if a.model not in fal.MODELS:
         raise CliError(f"unknown model {a.model!r}; choose from: {', '.join(fal.MODELS)}")
-    s, work = _short(a.slug), _work(a.slug)
+    s, work, designs = _short(a.slug), _work(a.slug), load_designs()
     shot = _shot(s, a.shot)
+    shot_dir = work / "shots" / a.shot
+    report, prompt, refs = _preflight(s, shot, a.model, designs)
+    for w in report.warnings:
+        print(f"warning: {w}")
+    if not report.ok:
+        for p in report.problems:
+            print(f"problem: {p}", file=sys.stderr)
+        print("pre-flight failed: nothing was spent", file=sys.stderr)
+        return 1
+    refs, left_out = fal.usable_refs(a.model, refs)
+    if left_out:
+        print(f"{a.model} can't take every reference; left out: {', '.join(left_out)}")
+    fp = approve.fingerprint(a.model, prompt, refs)
+    ok = approve.approval(work, a.shot, fp)
+    if not (ok and ok.get("verdict") == "keep"):
+        if not a.override:
+            print(f"{a.shot} is not approved for this exact prompt and references (fingerprint {fp}); "
+                  "approve it on the production sheet, run `verdicts`, or pass --override \"<reason>\"", file=sys.stderr)
+            return 1
+        print(f"override: {a.override}")
+    made = approve.takes_under(shot_dir, fp)
+    if made >= 1 + s.retry_cap:
+        print(f"{a.shot} already has {made} takes for this approval (cap {1 + s.retry_cap}); raise retry_cap in short.toml",
+              file=sys.stderr)
+        return 1
     seconds = int(round(a.seconds or shot.duration))  # fal bills whole seconds
     cost = estimate(a.model, seconds)
     print(f"{a.model} {seconds}s ≈ ${cost:.2f}; spent ${Ledger(work / 'costs.json').total():.2f} of ${s.budget_usd:.0f}")
@@ -113,16 +138,10 @@ def cmd_submit(a) -> int:
     except EOFError:
         print("no answer on stdin; pass --yes to submit non-interactively", file=sys.stderr)
         return 1
-    shot_dir = work / "shots" / a.shot
-    refs = ref_files(s, data_dir().parent, shot_dir)
-    refs, left_out = fal.usable_refs(a.model, refs)
-    if left_out:
-        print(f"{a.model} can't take every reference; left out: {', '.join(left_out)}")
     try:
         with httpx.Client() as client:
-            tid = fal.run_take(work, a.shot, a.model, build_prompt(s, shot, load_designs()),
-                               refs, seconds, s.budget_usd,
-                               key=fal.load_key(), client=client)
+            tid = fal.run_take(work, a.shot, a.model, prompt, refs, seconds, s.budget_usd, key=fal.load_key(), client=client,
+                               meta={"fp": fp}, note=f"override: {a.override}" if a.override else "")
     except (ValueError, BudgetError, RuntimeError) as e:
         print(e, file=sys.stderr)
         return 1
@@ -149,6 +168,9 @@ def cmd_preflight(a) -> int:
     model = a.model or s.model
     if not model:
         raise CliError("no model: pass --model or set model in short.toml")
+    from tools.shorts.backends import fal
+    if model not in fal.MODELS:
+        raise CliError(f"unknown model {model!r}; choose from: {', '.join(fal.MODELS)}")
     bad = 0
     for shot in [_shot(s, a.shot)] if a.shot else s.shots:
         report = _preflight(s, shot, model, designs)[0]
@@ -164,7 +186,8 @@ def cmd_preflight(a) -> int:
 def cmd_verdicts(a) -> int:
     with urllib.request.urlopen(PICKS_API, timeout=10) as r:
         api = json.load(r)
-    print(f"{len(apply_verdicts(_work(a.slug), a.slug, api))} verdict(s)")
+    print(f"{len(apply_verdicts(_work(a.slug), a.slug, api))} take verdict(s), "
+          f"{len(approve.apply_approvals(_work(a.slug), a.slug, api))} plan verdict(s)")
     return 0
 
 
@@ -243,6 +266,7 @@ def main(argv=None) -> int:
     q = sub.add_parser("inbox"); q.add_argument("slug"); q.add_argument("shot"); q.add_argument("--cost", type=float, required=True); q.add_argument("--model", required=True)
     q = sub.add_parser("submit"); q.add_argument("slug"); q.add_argument("shot"); q.add_argument("--model", required=True)
     q.add_argument("--seconds", type=float); q.add_argument("--yes", action="store_true")
+    q.add_argument("--override", default="")
     q = sub.add_parser("preflight"); q.add_argument("slug"); q.add_argument("shot", nargs="?"); q.add_argument("--model")
     q = sub.add_parser("idcheck"); q.add_argument("slug"); q.add_argument("shot"); q.add_argument("take")
     sub.add_parser("page")

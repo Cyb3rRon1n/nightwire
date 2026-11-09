@@ -1,8 +1,8 @@
-from test_shorts_model import SHORT, SHOT
+from test_shorts_model import PLANNED, SHORT, SHOT
 from tools.shorts.__main__ import main
 
 
-def setup(tmp_path, monkeypatch, shot=SHOT):
+def setup(tmp_path, monkeypatch, shot=PLANNED, approved=True):
     script = tmp_path / "script" / "pilot"
     (script / "shots").mkdir(parents=True)
     (script / "short.toml").write_text(SHORT)
@@ -11,6 +11,8 @@ def setup(tmp_path, monkeypatch, shot=SHOT):
     monkeypatch.setenv("NIGHTWIRE_DESIGN_DIR", str(tmp_path / "design-data"))
     from test_shorts_model import designs
     monkeypatch.setattr("tools.shorts.__main__.load_designs", lambda: designs())
+    if approved:
+        monkeypatch.setattr("tools.shorts.approve.approval", lambda *a: {"verdict": "keep"})
 
 
 def test_check_ok_and_prompt_prints_layers(tmp_path, monkeypatch, capsys):
@@ -138,3 +140,48 @@ def test_preflight_reports_missing_fields(tmp_path, monkeypatch, capsys):
     setup(tmp_path, monkeypatch, shot=SHOT)
     assert main(["preflight", "pilot", "--model", "seedance-2.0-fast"]) == 1
     assert "missing size" in capsys.readouterr().out
+
+
+def test_submit_refuses_unapproved_and_stale(tmp_path, monkeypatch, capsys):
+    setup(tmp_path, monkeypatch, approved=False)
+    monkeypatch.setattr("tools.shorts.backends.fal.load_key", lambda *a: "k")
+    called = []
+    monkeypatch.setattr("tools.shorts.backends.fal.run_take", lambda *a, **k: called.append(k) or "t001")
+    assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--yes"]) == 1
+    assert "not approved" in capsys.readouterr().err and called == []
+    work = tmp_path / "design-data" / "shorts" / "pilot"
+    work.mkdir(parents=True, exist_ok=True)
+    (work / "approvals.json").write_text('{"S01": {"0000000000": {"verdict": "keep"}}}')  # an old fingerprint
+    assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--yes"]) == 1 and called == []
+
+
+def test_submit_override_is_logged(tmp_path, monkeypatch, capsys):
+    setup(tmp_path, monkeypatch, approved=False)
+    monkeypatch.setattr("tools.shorts.backends.fal.load_key", lambda *a: "k")
+    got = {}
+    monkeypatch.setattr("tools.shorts.backends.fal.run_take", lambda *a, **k: got.update(k) or "t001")
+    assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--yes", "--override", "owner said go"]) == 0
+    assert got["note"] == "override: owner said go" and len(got["meta"]["fp"]) == 10
+
+
+def test_submit_blocked_by_preflight_spends_nothing(tmp_path, monkeypatch, capsys):
+    setup(tmp_path, monkeypatch, shot=SHOT)  # the unplanned shot fails pre-flight
+    called = []
+    monkeypatch.setattr("tools.shorts.backends.fal.run_take", lambda *a, **k: called.append(1))
+    assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--yes"]) == 1
+    assert "pre-flight failed" in capsys.readouterr().err and called == []
+
+
+def test_submit_retry_cap(tmp_path, monkeypatch, capsys):
+    setup(tmp_path, monkeypatch)
+    monkeypatch.setattr("tools.shorts.backends.fal.load_key", lambda *a: "k")
+    monkeypatch.setattr("tools.shorts.approve.takes_under", lambda *a: 3)
+    monkeypatch.setattr("tools.shorts.backends.fal.run_take", lambda *a, **k: "t004")
+    assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--yes"]) == 1
+    assert "cap 3" in capsys.readouterr().err
+
+
+def test_preflight_unknown_model_rejected(tmp_path, monkeypatch, capsys):
+    setup(tmp_path, monkeypatch)
+    assert main(["preflight", "pilot", "--model", "veo"]) == 1
+    assert "unknown model 'veo'" in capsys.readouterr().err

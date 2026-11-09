@@ -108,19 +108,19 @@ def submit(model, prompt, refs, seconds, *, key: str, client: httpx.Client, poll
 
 
 def run_take(short_dir: Path, shot_id: str, model: str, prompt: str, refs, seconds: float, budget: float, *,
-             key: str, client: httpx.Client) -> str:
+             key: str, client: httpx.Client, meta: dict | None = None, note: str = "") -> str:
     seconds = int(round(seconds))  # fal bills and receives whole seconds
     if seconds < MODELS[model]["min_s"]:
         raise ValueError(f"{model} needs at least {MODELS[model]['min_s']}s, got {seconds}")
     ledger, cost = Ledger(short_dir / "costs.json"), estimate(model, seconds)
     ledger.check(budget, cost)
     job = start(model, prompt, refs, seconds, key=key, client=client)
-    ledger.add(shot_id, f"req-{job['request_id']}", model, cost)  # money is spent once the POST succeeds
+    ledger.add(shot_id, f"req-{job['request_id']}", model, cost, note=note)  # money is spent once the POST succeeds
     video = fetch(job, key=key, client=client)
     tmp = short_dir / "shots" / shot_id / "incoming.mp4"
     tmp.parent.mkdir(parents=True, exist_ok=True)
     tmp.write_bytes(video)
-    tid = file_take(short_dir / "shots" / shot_id, tmp, {"model": model, "cost": cost, "backend": "fal", "seconds": seconds,
+    tid = file_take(short_dir / "shots" / shot_id, tmp, {**(meta or {}), "model": model, "cost": cost, "backend": "fal", "seconds": seconds,
                                                           "request_id": job["request_id"], "refs": [label for label, _ in refs]})
     tmp.unlink()
     return tid

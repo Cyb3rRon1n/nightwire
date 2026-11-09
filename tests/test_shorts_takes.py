@@ -73,3 +73,12 @@ def test_apply_verdicts_skips_malformed_keys(tmp_path):
     mine = apply_verdicts(tmp_path, "pilot", api)
     assert list(mine) == [take_image_id("pilot", "S01", "t001")]
     assert json.loads((tmp_path / "shots" / "S01" / "verdicts.json").read_text()) == {"t001": {"verdict": "keep"}}
+
+
+def test_ledger_note_is_saved(tmp_path):
+    from tools.shorts.takes import Ledger
+    led = Ledger(tmp_path / "costs.json")
+    led.add("S01", "t001", "m", 1.0, note="override: owner said go")
+    led.add("S01", "t002", "m", 1.0)
+    rows = json.loads((tmp_path / "costs.json").read_text())
+    assert rows[0]["note"] == "override: owner said go" and "note" not in rows[1]
