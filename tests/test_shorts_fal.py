@@ -138,8 +138,9 @@ def test_images_are_sent_as_small_jpegs(tmp_path):
     assert fal.data_uri(tmp_path / "clip.mp4") == "data:video/mp4;base64," + base64.b64encode(b"vid").decode()
 
 
-def test_kling_stays_within_its_seven_image_limit():
+@pytest.mark.parametrize("model,limit", [("kling-3", 7), ("seedance-2.0", 9), ("seedance-2.0-fast", 9), ("seedance-2.5", 30)])
+def test_each_model_stays_within_its_image_limit(model, limit):
     from tools.shorts.prompt import CHARACTER_SHEETS
     labels = [f"{c}_{f}" for c in ("C1", "C2") for f in CHARACTER_SHEETS] + ["place.png", "floorplan.png"]
-    kept = [label for label in labels if label not in fal.MODELS["kling-3"].get("skip", ())]
-    assert len(kept) <= 7
+    kept = [label for label in labels if label not in fal.MODELS[model].get("skip", ())]
+    assert len(kept) <= limit

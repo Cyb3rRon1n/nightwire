@@ -9,8 +9,10 @@ from tools.shorts.model import Short, Shot
 POSITION_WORDS = re.compile(
     r"\b(left|right|behind|beside|next to|in front of|across from|opposite|near|corner|at the (?:counter|door|bar|table|window))\b",
     re.IGNORECASE)
-# colorguide.png repeats the turnaround, so a short sends the prop close-ups instead (Seedance 2.0 takes 9 images)
-CHARACTER_SHEETS = ("turnaround.png", "expressions.png", "props.png")
+# colorguide.png repeats the turnaround, so a short sends the prop close-ups instead.
+# portrait.png is the head close-up that holds hair and face. That makes 8 sheets + place + floor plan = 10 images,
+# so models with a 9-image limit (Seedance 2.0) skip the floor plan; the grey-box video carries positions.
+CHARACTER_SHEETS = ("turnaround.png", "expressions.png", "props.png", "portrait.png")
 
 
 def _t(a: float, b: float) -> str:
@@ -21,7 +23,9 @@ def layers(short: Short, shot: Shot, designs: dict) -> dict[str, str]:
     l1 = ("The grey-box reference video provides camera path, character positions, silhouettes and timing. "
           "Replace each grey mannequin with its character, keep no grey material. "
           f"Camera: {shot.summary}. Floor plan: C1..C{len(short.cast)} as marked.")
-    l2 = "\n".join(f"{cid} = {designs[slug].name} (refs {cid}_*)" for cid, slug in short.cast.items())
+    # The design's required tags name what must not drift (hair, eyes, signature clothes).
+    l2 = "\n".join(f"{cid} = {designs[slug].name} (refs {cid}_*; {cid}_portrait is the face close-up; always: "
+                   f"{', '.join(designs[slug].required)})" for cid, slug in short.cast.items())
     l3 = short.style
     l4 = "\n".join(f"{cid}: {state}" for cid, state in shot.state.items())
     o = shot.start  # each shot is generated as its own clip from 0; TOML times are absolute
