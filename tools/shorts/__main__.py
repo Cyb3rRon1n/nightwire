@@ -118,15 +118,18 @@ def cmd_submit(a) -> int:
     refs, left_out = fal.usable_refs(a.model, refs)
     if left_out:
         print(f"{a.model} can't take every reference; left out: {', '.join(left_out)}")
+    if a.override is not None and not a.override.strip():
+        raise CliError('--override needs a reason, e.g. --override "owner approved in chat"; nothing was spent')
+    override = (a.override or "").strip()
     seconds = int(round(a.seconds or shot.duration))  # fal bills whole seconds; the approval covers this length
     fp = approve.fingerprint(a.model, prompt, refs, seconds)
     ok = approve.approval(work, a.shot, fp)
     if not (ok and ok.get("verdict") == "keep"):
-        if not a.override:
+        if not override:
             print(f"{a.shot} is not approved for this exact prompt and references (fingerprint {fp}); "
                   "approve it on the production sheet, run `verdicts`, or pass --override \"<reason>\"", file=sys.stderr)
             return 1
-        print(f"override: {a.override}")
+        print(f"override: {override}")
     made = approve.attempts(work, a.shot, fp)
     if made >= 1 + s.retry_cap:
         print(f"{a.shot} already has {made} paid attempts for this approval (cap {1 + s.retry_cap}); raise retry_cap in short.toml",
@@ -143,7 +146,7 @@ def cmd_submit(a) -> int:
     try:
         with httpx.Client() as client:
             tid = fal.run_take(work, a.shot, a.model, prompt, refs, seconds, s.budget_usd, key=fal.load_key(), client=client,
-                               meta={"fp": fp}, note=f"override: {a.override}" if a.override else "")
+                               meta={"fp": fp}, note=f"override: {override}" if override else "")
     except (ValueError, BudgetError, RuntimeError) as e:
         print(e, file=sys.stderr)
         return 1
@@ -315,7 +318,7 @@ def main(argv=None) -> int:
     q = sub.add_parser("inbox"); q.add_argument("slug"); q.add_argument("shot"); q.add_argument("--cost", type=float, required=True); q.add_argument("--model", required=True)
     q = sub.add_parser("submit"); q.add_argument("slug"); q.add_argument("shot"); q.add_argument("--model", required=True)
     q.add_argument("--seconds", type=float); q.add_argument("--yes", action="store_true")
-    q.add_argument("--override", default="")
+    q.add_argument("--override")
     q = sub.add_parser("preflight"); q.add_argument("slug"); q.add_argument("shot", nargs="?"); q.add_argument("--model")
     q = sub.add_parser("idcheck"); q.add_argument("slug"); q.add_argument("shot"); q.add_argument("take")
     q = sub.add_parser("sheet"); q.add_argument("slug"); q.add_argument("--model")
