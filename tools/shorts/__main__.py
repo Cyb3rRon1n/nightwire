@@ -56,7 +56,8 @@ def cmd_check(a) -> int:
 def cmd_prompt(a) -> int:
     s = _short(a.slug)
     try:
-        print(build_prompt(s, _shot(s, a.shot), load_designs()))
+        shot = _shot(s, a.shot)
+        print(build_prompt(s, shot, load_designs(), has_still=(_work(s.slug) / "shots" / shot.id / "still.png").exists()))
     except ValueError as e:
         print(e, file=sys.stderr)
         return 1
@@ -84,7 +85,8 @@ def cmd_greybox(a) -> int:
 def cmd_bundle(a) -> int:
     s, work = _short(a.slug), _work(a.slug)
     shot_dir = work / "shots" / a.shot
-    out = manual.write_bundle(shot_dir, build_prompt(s, _shot(s, a.shot), load_designs()),
+    shot = _shot(s, a.shot)
+    out = manual.write_bundle(shot_dir, build_prompt(s, shot, load_designs(), has_still=(shot_dir / "still.png").exists()),
                               ref_files(s, data_dir().parent, shot_dir))
     print(out)
     return 0
@@ -158,7 +160,7 @@ def _preflight(s, shot, model, designs):
     from tools.shorts import preflight
     work = _work(s.slug)
     shot_dir = work / "shots" / shot.id
-    prompt = build_prompt(s, shot, designs)  # Task 5 adds has_still=
+    prompt = build_prompt(s, shot, designs, has_still=(shot_dir / "still.png").exists())
     refs = ref_files(s, data_dir().parent, shot_dir)
     return preflight.run(s, shot, _prev(s, shot), prompt, refs, model, Ledger(work / "costs.json").total()), prompt, refs
 
@@ -189,12 +191,36 @@ def cmd_sheet(a) -> int:
     model = a.model or s.model
     if not model:
         raise CliError("no model: pass --model or set model in short.toml")
+    from tools.shorts.backends import fal
+    if model not in fal.MODELS:
+        raise CliError(f"unknown model {model!r}; choose from: {', '.join(fal.MODELS)}")
     plans = {shot.id: _preflight(s, shot, model, designs) for shot in s.shots}
     data = sheet.collect(s, designs, data_dir().parent, _work(a.slug), model, plans)
     site = sheet.build(data, data_dir().parent, _work(a.slug), data_dir() / "_site")
     print(site)
     print(f"rsync -a {data_dir() / '_site'}/ 192.168.10.19:anvil-deploy/stack/dashboard/shorts/")
     return 0
+
+
+def cmd_stills(a) -> int:
+    from tools.design_scenes import gpu_busy
+    from tools.shorts import stills
+    s, designs, work = _short(a.slug), load_designs(), _work(a.slug)
+    url = os.environ.get("COMFYUI_URL", "http://192.168.10.19:8188")
+    if gpu_busy(url):
+        print("ComfyUI is busy; wait for the current job to finish.", file=sys.stderr)
+        return 1
+    jobs = []
+    for shot in [_shot(s, a.shot)] if a.shot else s.shots:
+        out = work / "shots" / shot.id / "still.png"
+        if out.exists() and not a.redo:
+            continue
+        out.parent.mkdir(parents=True, exist_ok=True)
+        jobs.append((out, stills.still_workflow(s, shot, designs, a.seed)))
+    errors = stills.run(jobs, url)
+    for e in errors:
+        print(e, file=sys.stderr)
+    return 1 if errors else 0
 
 
 def cmd_verdicts(a) -> int:
@@ -284,6 +310,8 @@ def main(argv=None) -> int:
     q = sub.add_parser("preflight"); q.add_argument("slug"); q.add_argument("shot", nargs="?"); q.add_argument("--model")
     q = sub.add_parser("idcheck"); q.add_argument("slug"); q.add_argument("shot"); q.add_argument("take")
     q = sub.add_parser("sheet"); q.add_argument("slug"); q.add_argument("--model")
+    q = sub.add_parser("stills"); q.add_argument("slug"); q.add_argument("shot", nargs="?")
+    q.add_argument("--seed", type=int, default=703); q.add_argument("--redo", action="store_true")
     sub.add_parser("page")
     q = sub.add_parser("assemble"); q.add_argument("slug"); q.add_argument("--music", type=Path)
     a = p.parse_args(argv)

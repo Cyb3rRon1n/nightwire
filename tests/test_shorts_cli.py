@@ -153,7 +153,6 @@ def test_submit_refuses_unapproved_and_stale(tmp_path, monkeypatch, capsys):
     assert "not approved" in capsys.readouterr().err and called == []
     work = tmp_path / "design-data" / "shorts" / "pilot"
     work.mkdir(parents=True, exist_ok=True)
-    work.mkdir(parents=True, exist_ok=True)
     (work / "approvals.json").write_text('{"S01": {"0000000000": {"verdict": "keep"}}}')  # an old fingerprint
     assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--yes"]) == 1 and called == []
 
@@ -201,3 +200,9 @@ def test_sheet_fingerprint_matches_submit(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr("tools.shorts.backends.fal.load_key", lambda *a: "k")
     monkeypatch.setattr("tools.shorts.backends.fal.run_take", lambda *a, **k: "t001")
     assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--yes"]) == 0
+
+
+def test_sheet_unknown_model_rejected(tmp_path, monkeypatch, capsys):
+    setup(tmp_path, monkeypatch)
+    assert main(["sheet", "pilot", "--model", "veo"]) == 1
+    assert "unknown model 'veo'" in capsys.readouterr().err

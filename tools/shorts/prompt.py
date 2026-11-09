@@ -19,10 +19,12 @@ def _t(a: float, b: float) -> str:
     return f"{a:.1f}-{b:.1f}s"
 
 
-def layers(short: Short, shot: Shot, designs: dict) -> dict[str, str]:
+def layers(short: Short, shot: Shot, designs: dict, has_still: bool = False) -> dict[str, str]:
     l1 = ("The grey-box reference video provides camera path, character positions, silhouettes and timing. "
           "Replace each grey mannequin with its character, keep no grey material. "
           f"Camera: {shot.summary}. Floor plan: C1..C{len(short.cast)} as marked.")
+    if has_still:
+        l1 += " start_frame.png is the approved opening frame: match its composition, characters and light at 0 s."
     # The design's required tags name what must not drift (hair, eyes, signature clothes).
     l2 = "\n".join(f"{cid} = {designs[slug].name} (refs {cid}_*; {cid}_portrait is the face close-up; always: "
                    f"{', '.join(designs[slug].required)})" for cid, slug in short.cast.items())
@@ -55,8 +57,8 @@ def position_problems(L: dict[str, str]) -> list[str]:
             for k in ("L2", "L4") for m in POSITION_WORDS.finditer(L[k])]
 
 
-def build_prompt(short: Short, shot: Shot, designs: dict) -> str:
-    L = layers(short, shot, designs)
+def build_prompt(short: Short, shot: Shot, designs: dict, has_still: bool = False) -> str:
+    L = layers(short, shot, designs, has_still)
     problems = position_problems(L)
     if problems:
         raise ValueError("; ".join(problems))
@@ -67,7 +69,8 @@ def ref_files(short: Short, design_dir: Path, shot_dir: Path) -> list[tuple[str,
     out = []
     for cid, slug in short.cast.items():
         out += [(f"{cid}_{f}", design_dir / slug / f) for f in CHARACTER_SHEETS]
-    out.append(("place.png", design_dir / short.place / "play.png"))
+    still = shot_dir / "still.png"
+    out.append(("start_frame.png", still) if still.exists() else ("place.png", design_dir / short.place / "play.png"))
     out.append(("floorplan.png", shot_dir.parent.parent / "floorplan.png"))
     out.append(("greybox.mp4", shot_dir / "greybox.mp4"))
     return [(label, p) for label, p in out if p.exists()]

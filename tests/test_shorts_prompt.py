@@ -66,3 +66,21 @@ def test_l5_times_are_relative_to_shot_start(tmp_path):
     L5 = layers(s, s.shots[0], designs())["L5"]
     assert "0.0-2.5s" in L5 and "1.0-3.5s" in L5 and "1.2s C2 says" in L5
     assert "8.0" not in L5 and "9.2" not in L5
+
+
+def test_still_replaces_place_and_l1_says_so(tmp_path):
+    from test_shorts_model import designs, write
+    from tools.shorts.model import load_short
+    from tools.shorts.prompt import build_prompt, ref_files
+    s = load_short(write(tmp_path / "script"))
+    dd = tmp_path / "dd"
+    (dd / "mama-satos-izakaya").mkdir(parents=True)
+    (dd / "mama-satos-izakaya" / "play.png").write_bytes(b"p")
+    shot_dir = dd / "shorts" / s.slug / "shots" / "S01"
+    shot_dir.mkdir(parents=True)
+    assert "place.png" in [l for l, _ in ref_files(s, dd, shot_dir)]
+    (shot_dir / "still.png").write_bytes(b"s")
+    labels = [l for l, _ in ref_files(s, dd, shot_dir)]
+    assert "start_frame.png" in labels and "place.png" not in labels
+    assert "start_frame.png" in build_prompt(s, s.shots[0], designs(), has_still=True)
+    assert "start_frame.png" not in build_prompt(s, s.shots[0], designs())
