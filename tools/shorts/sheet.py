@@ -18,6 +18,7 @@ THUMB = 1024
 
 
 def collect(short, designs, design_dir: Path, work: Path, model: str, plans: dict) -> dict:
+    costs = json.loads((work / "costs.json").read_text()) if (work / "costs.json").exists() else []
     shots = []
     for shot in short.shots:
         report, prompt, refs = plans[shot.id]
@@ -33,6 +34,7 @@ def collect(short, designs, design_dir: Path, work: Path, model: str, plans: dic
             "image_id": approve.plan_image_id(short.slug, shot.id, fp), "prefix": f"plan--{short.slug}--{shot.id.lower()}--",
             "still": (work / "shots" / shot.id / "still.png").exists(),
             "greybox": (work / "shots" / shot.id / "greybox.mp4").exists(),
+            "overrides": [r["note"] for r in costs if r.get("shot") == shot.id and r.get("note")],
         })
     continuity = [{"from": a["id"], "to": b["id"], "end": a["at_end"], "start": b["at_start"],
                    "flags": [p for p in b["problems"] if "props change" in p or "screen side" in p]}
@@ -43,8 +45,7 @@ def collect(short, designs, design_dir: Path, work: Path, model: str, plans: dic
             for cid, slug in short.cast.items()]
     return {"slug": short.slug, "title": short.title, "logline": short.logline, "model": model,
             "runtime": round(sum(s.duration for s in short.shots), 1), "budget": short.budget_usd,
-            "spent": round(sum(r["cost"] for r in json.loads((work / "costs.json").read_text())), 2)
-            if (work / "costs.json").exists() else 0.0,
+            "spent": round(sum(r["cost"] for r in costs), 2),
             "line_rule": short.line_rule, "style": short.style, "place": short.place,
             "beats": [{"text": b, "shot": (re.findall(r"\((S\d+)\)", b) or [""])[0]} for b in short.beats],
             "cast": cast, "shots": shots, "continuity": continuity,
