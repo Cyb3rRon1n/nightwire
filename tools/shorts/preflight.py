@@ -14,6 +14,7 @@ AIR_S = 1.0
 # Phrases that tripped ByteDance's content filter on the pilot (S02, 2026-11-08); a warning, not a block.
 FILTER_WORDS = ("plug it in", "plug in", "open it", "stuck", "jack in")
 REQUIRED = ("size", "angle", "move", "action")
+OPTIONAL_REFS = ("floorplan.png",)  # nice to have; 9-image models skip it anyway
 SIDE = re.compile(r"screen[- ]?(left|right)", re.IGNORECASE)
 
 
@@ -72,7 +73,8 @@ def continuity(prev: Shot | None, shot: Shot) -> list[str]:
 
 
 def refs(model: str, ref_list: list[tuple[str, Path]]) -> list[str]:
-    out = [f"{label}: file missing ({p})" for label, p in ref_list if not p.exists()]
+    out = [f"{label}: file missing ({p})" for label, p in ref_list if not p.exists() and label not in OPTIONAL_REFS]
+    ref_list = [(label, p) for label, p in ref_list if p.exists()]
     images = sum(1 for label, _ in ref_list if label.endswith(".png"))
     limit = fal.MODELS[model]["max_images"]
     if images > limit:
