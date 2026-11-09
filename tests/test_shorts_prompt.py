@@ -1,8 +1,10 @@
 import pytest
 
-from test_shorts_model import SHOT, designs, write
+from test_shorts_model import SHORT, SHOT, designs, write
 from tools.shorts.model import load_short
 from tools.shorts.prompt import build_prompt, layers, position_problems, ref_files
+
+SHORT_WITH_LOCKS = SHORT + '\n[locks]\nC1 = "chrome right hand, silver ring"\n'
 
 
 def short_and_shot(tmp_path):
@@ -84,3 +86,28 @@ def test_still_replaces_place_and_l1_says_so(tmp_path):
     assert "start_frame.png" in labels and "place.png" not in labels
     assert "start_frame.png" in build_prompt(s, s.shots[0], designs(), has_still=True)
     assert "start_frame.png" not in build_prompt(s, s.shots[0], designs())
+
+
+def test_locks_and_plan_fields_reach_the_prompt(tmp_path):
+    from test_shorts_model import PLANNED
+    short = SHORT_WITH_LOCKS
+    s = load_short(write(tmp_path / "pilot", short=short, shot=PLANNED))
+    L = layers(s, s.shots[0], designs())
+    assert "C1 = Saeko Kirigaya" in L["L2"] and "; locks: chrome right hand, silver ring" in L["L2"]
+    assert "C2 = Rin Kageyama" in L["L2"] and L["L2"].count("locks:") == 1
+    assert "Shot: MCU eye level, over C1's right shoulder, camera slow push-in." in L["L1"]
+    assert "Main action: C2 asks who paid her tab." in L["L1"]
+    assert position_problems(L) == []  # "right hand" in a lock is not a position
+    build_prompt(s, s.shots[0], designs())
+
+
+def test_old_shot_l1_has_no_plan_line(tmp_path):
+    s, shot = short_and_shot(tmp_path)
+    assert "Shot:" not in layers(s, shot, designs())["L1"] and "Main action" not in layers(s, shot, designs())["L1"]
+
+
+def test_position_word_before_locks_still_fails():
+    L = {"L1": "", "L2": "C1 = Saeko (always: x); locks: chrome right hand", "L3": "", "L4": "C1: sits left of C2", "L5": ""}
+    assert [p for p in position_problems(L) if p.startswith("L4")] and not [p for p in position_problems(L) if p.startswith("L2")]
+    L["L2"] = "C1 = Saeko, left of C2 (always: x); locks: chrome right hand"
+    assert [p for p in position_problems(L) if p.startswith("L2")]

@@ -12,6 +12,7 @@ POSITION_WORDS = re.compile(
 # colorguide.png repeats the turnaround, so a short sends the prop close-ups instead.
 # portrait.png is the head close-up that holds hair and face. That makes 8 sheets + place + floor plan = 10 images,
 # so models with a 9-image limit (Seedance 2.0) skip the floor plan; the grey-box video carries positions.
+LOCKS = "; locks: "
 CHARACTER_SHEETS = ("turnaround.png", "expressions.png", "props.png", "portrait.png")
 
 
@@ -23,11 +24,19 @@ def layers(short: Short, shot: Shot, designs: dict, has_still: bool = False) -> 
     l1 = ("The grey-box reference video provides camera path, character positions, silhouettes and timing. "
           "Replace each grey mannequin with its character, keep no grey material. "
           f"Camera: {shot.summary}. Floor plan: C1..C{len(short.cast)} as marked.")
+    plan = [f"{shot.size} {shot.angle}".strip(), f"camera {shot.move}" if shot.move else ""]
+    if any(plan):
+        l1 += " Shot: " + ", ".join(x for x in plan if x) + "."
+    if shot.action:
+        l1 += f" Main action: {shot.action}"
     if has_still:
         l1 += " start_frame.png is the approved opening frame: match its composition, characters and light at 0 s."
     # The design's required tags name what must not drift (hair, eyes, signature clothes).
+    # Locks (short.toml) are the owner's "never changes" notes; they may name hands ("chrome right hand"), so
+    # position_problems checks L2 only up to LOCKS.
     l2 = "\n".join(f"{cid} = {designs[slug].name} (refs {cid}_*; {cid}_portrait is the face close-up; always: "
-                   f"{', '.join(designs[slug].required)})" for cid, slug in short.cast.items())
+                   f"{', '.join(designs[slug].required)})" + (f"{LOCKS}{short.locks[cid]}" if cid in short.locks else "")
+                   for cid, slug in short.cast.items())
     l3 = short.style
     l4 = "\n".join(f"{cid}: {state}" for cid, state in shot.state.items())
     o = shot.start  # each shot is generated as its own clip from 0; TOML times are absolute
@@ -53,8 +62,9 @@ def layers(short: Short, shot: Shot, designs: dict, has_still: bool = False) -> 
 
 
 def position_problems(L: dict[str, str]) -> list[str]:
+    checked = {"L2": "\n".join(row.split(LOCKS)[0] for row in L["L2"].splitlines()), "L4": L["L4"]}
     return [f"{k}: position word {m.group(0)!r} (positions belong to the floor plan and L5)"
-            for k in ("L2", "L4") for m in POSITION_WORDS.finditer(L[k])]
+            for k in ("L2", "L4") for m in POSITION_WORDS.finditer(checked[k])]
 
 
 def build_prompt(short: Short, shot: Shot, designs: dict, has_still: bool = False) -> str:
