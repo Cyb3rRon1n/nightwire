@@ -225,3 +225,16 @@ def test_preflight_reports_missing_cast_sheet(tmp_path, monkeypatch, capsys):
     assert main(["preflight", "pilot", "--model", "seedance-2.0-fast"]) == 1
     out = capsys.readouterr().out
     assert "C2_portrait.png: file missing" in out and "floorplan" not in out  # floor plan is optional
+
+
+def test_submit_with_other_seconds_than_approved_is_refused(tmp_path, monkeypatch, capsys):
+    setup(tmp_path, monkeypatch, approved=False)
+    assert main(["sheet", "pilot", "--model", "seedance-2.0-fast"]) == 0
+    fp = json.loads((tmp_path / "design-data" / "shorts" / "_site" / "pilot" / "sheet" / "sheet.json").read_text())["shots"][0]["fp"]
+    (tmp_path / "design-data" / "shorts" / "pilot" / "approvals.json").write_text(json.dumps({"S01": {fp: {"verdict": "keep"}}}))
+    monkeypatch.setattr("tools.shorts.backends.fal.load_key", lambda *a: "k")
+    called = []
+    monkeypatch.setattr("tools.shorts.backends.fal.run_take", lambda *a, **k: called.append(a[5]) or "t001")
+    assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--seconds", "8", "--yes"]) == 1
+    assert "not approved" in capsys.readouterr().err and called == []
+    assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--seconds", "5", "--yes"]) == 0 and called == [5]

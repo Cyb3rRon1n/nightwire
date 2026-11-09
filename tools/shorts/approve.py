@@ -1,4 +1,4 @@
-"""Owner sign-off per shot. An approval belongs to one exact prompt + reference set (its fingerprint), so any edit
+"""Owner sign-off per shot. An approval belongs to one exact model + prompt + reference set + length in seconds (its fingerprint), so any edit
 after approval needs a new approval. Verdicts travel through the existing /designs/api/images review API under the
 id plan--<slug>--<shot>--<fp> (keep = approved, fix = change with a note, reject)."""
 
@@ -9,8 +9,8 @@ from pathlib import Path
 from tools.shorts.takes import SLUG
 
 
-def fingerprint(model: str, prompt: str, refs: list[tuple[str, Path]]) -> str:
-    h = hashlib.sha256(model.encode() + b"\0" + prompt.encode())
+def fingerprint(model: str, prompt: str, refs: list[tuple[str, Path]], seconds: int) -> str:
+    h = hashlib.sha256(model.encode() + b"\0" + prompt.encode() + b"\0" + str(seconds).encode())
     for label, path in refs:
         h.update(b"\0" + label.encode() + b"\0" + hashlib.sha256(path.read_bytes()).digest())
     return h.hexdigest()[:10]

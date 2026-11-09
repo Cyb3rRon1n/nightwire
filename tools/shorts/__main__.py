@@ -118,7 +118,8 @@ def cmd_submit(a) -> int:
     refs, left_out = fal.usable_refs(a.model, refs)
     if left_out:
         print(f"{a.model} can't take every reference; left out: {', '.join(left_out)}")
-    fp = approve.fingerprint(a.model, prompt, refs)
+    seconds = int(round(a.seconds or shot.duration))  # fal bills whole seconds; the approval covers this length
+    fp = approve.fingerprint(a.model, prompt, refs, seconds)
     ok = approve.approval(work, a.shot, fp)
     if not (ok and ok.get("verdict") == "keep"):
         if not a.override:
@@ -131,7 +132,6 @@ def cmd_submit(a) -> int:
         print(f"{a.shot} already has {made} paid attempts for this approval (cap {1 + s.retry_cap}); raise retry_cap in short.toml",
               file=sys.stderr)
         return 1
-    seconds = int(round(a.seconds or shot.duration))  # fal bills whole seconds
     cost = estimate(a.model, seconds)
     print(f"{a.model} {seconds}s ≈ ${cost:.2f}; spent ${Ledger(work / 'costs.json').total():.2f} of ${s.budget_usd:.0f}")
     try:
