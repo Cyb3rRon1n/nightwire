@@ -162,4 +162,46 @@ def test_bible_words(tmp_path):
     shot = shot.replace('text = "Who paid it?"', 'text = "Still raining?"')
     s = load_short(write(tmp_path, short=SCENE_SHORT, shot=shot))
     problems, warnings = preflight.bible_words(s, s.shots[0])
-    assert any("'rain' in action" in x for x in problems) and any("'raining'" in w for w in warnings)
+    assert any("'rain' in action" in x for x in problems) and any("'rain'" in w for w in warnings)  # 'raining' now matches the 'rain' ban
+
+
+def _bible(tmp_path, weather, action="C2 looks up.", not_visible='["street"]', motion=None):
+    sc = SCENE_SHORT.replace('weather = "indoors; no windows"', f'weather = "{weather}"').replace('["rain", "street"]', not_visible)
+    s = load_short(write(tmp_path, short=sc, shot=PLANNED.replace("C2 asks who paid her tab.", action)))
+    return preflight.bible_words(s, s.shots[0])[0]
+
+
+def test_bible_no_rain_or_snow_bans_snow(tmp_path):
+    assert any("'snow'" in x for x in _bible(tmp_path, "indoors, no rain or snow", "snow falls on C2."))
+
+
+def test_bible_rain_on_windows_allows_raining(tmp_path):
+    p = _bible(tmp_path, "rain on the windows", "It is raining on C2.")
+    assert not any("rain" in x for x in p)
+
+
+def test_bible_inflections_and_no_false_hits(tmp_path):
+    assert any("'window'" in x for x in _bible(tmp_path / "a", "indoors", "C2 looks through the windows."))
+    assert not any("in action" in x for x in _bible(tmp_path / "b", "indoors", "C2 is training a drain."))
+
+
+def test_package_end_keyframe_present_needs_approval_even_if_not_required(tmp_path):
+    from tools.shorts.plates import Plate
+    s = load_short(write(tmp_path, short=SCENE_SHORT, shot=_planned('plate = "door"\nmotion = "C2 turns."')))
+    sh = s.shots[0]
+    sh.at_end = dict(sh.at_start)  # same cast at both ends
+    sd = tmp_path / "sd"; sd.mkdir()
+    (sd / "keyframe-start.png").write_bytes(b"x"); (sd / "keyframe-end.png").write_bytes(b"x")
+    ap = {"images": {f"key--{s.slug}--s01--start": {"verdict": "keep"}}, "SCENE": {}}
+    p = preflight.package(s, sh, None, {"door": Plate("door", "v")}, sd, ap, tmp_path / "dd")
+    assert "end keyframe not approved" in p and "start keyframe not approved" not in p
+
+
+def test_package_no_plate_and_unknown_plate(tmp_path):
+    from tools.shorts.plates import Plate
+    s = load_short(write(tmp_path, short=SCENE_SHORT, shot=PLANNED))
+    ap = {"images": {}, "SCENE": {}}
+    assert "no plate" in preflight.package(s, s.shots[0], None, {}, tmp_path, ap, tmp_path)
+    s.shots[0].plate = "nowhere"
+    p = preflight.package(s, s.shots[0], None, {"door": Plate("door", "v")}, tmp_path, ap, tmp_path)
+    assert any("plate nowhere is not in" in x for x in p)

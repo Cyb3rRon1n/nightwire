@@ -125,7 +125,7 @@ def cmd_submit(a) -> int:
         raise CliError('--override needs a reason, e.g. --override "owner approved in chat"; nothing was spent')
     override = (a.override or "").strip()
     seconds = int(round(a.seconds or shot.duration))  # fal bills whole seconds; the approval covers this length
-    fp = approve.fingerprint(a.model, prompt, refs, seconds, _fp_extra(s, shot))
+    fp = approve.fingerprint(a.model, prompt, refs, seconds, approve.fp_extra(s, shot, data_dir().parent))
     ok = approve.approval(work, a.shot, fp)
     if not (ok and ok.get("verdict") == "keep"):
         if not override:
@@ -176,11 +176,6 @@ def _images_api() -> dict:
             return json.load(r)
     except Exception:
         return {}
-
-
-def _fp_extra(s, shot) -> str:
-    from tools.shorts.model import scene_text
-    return f"{shot.mode}\n{scene_text(s)}"
 
 
 def _preflight(s, shot, model, designs):

@@ -10,7 +10,6 @@ from PIL import Image
 
 from tools.shorts import approve
 from tools.shorts.backends import fal
-from tools.shorts.model import scene_text
 from tools.shorts.prompt import CHARACTER_SHEETS
 from tools.shorts.takes import estimate
 
@@ -24,7 +23,7 @@ def collect(short, designs, design_dir: Path, work: Path, model: str, plans: dic
     for shot in short.shots:
         report, prompt, refs = plans[shot.id]
         used, left_out = fal.usable_refs(model, refs)
-        fp = approve.fingerprint(model, prompt, used, int(round(shot.duration)), f"{shot.mode}\n{scene_text(short)}")
+        fp = approve.fingerprint(model, prompt, used, int(round(shot.duration)), approve.fp_extra(short, shot, design_dir))
         shots.append({
             "id": shot.id, "time": f"{shot.duration:g} s ({shot.start:g}–{shot.end:g} s)", "summary": shot.summary,
             "size": shot.size, "angle": shot.angle, "lens": shot.lens, "move": shot.move, "action": shot.action,

@@ -23,6 +23,16 @@ def scene_fp(short) -> str:
     return hashlib.sha256(blob.encode()).hexdigest()[:10]
 
 
+def fp_extra(short, shot, design_dir: Path) -> str:
+    """What else an approval covers: mode, scene bible, and the shot's plate pixels (a re-rendered plate needs re-approval)."""
+    from tools.shorts.model import scene_text
+    from tools.shorts.plates import load_plates, plate_path
+    plates = load_plates(short.place)
+    f = plate_path(design_dir, short.place, plates[shot.plate]) if shot.plate in plates else None
+    plate = hashlib.sha256(f.read_bytes()).hexdigest() if f and f.exists() else ""
+    return f"{shot.mode}\n{scene_text(short)}\n{plate}"
+
+
 def plan_image_id(slug: str, shot_id: str, fp: str) -> str:
     if "--" in slug or not SLUG.fullmatch(slug):
         raise ValueError(f"slug {slug!r} must match [a-z0-9][a-z0-9-]* and must not contain '--'")

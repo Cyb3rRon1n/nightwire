@@ -96,7 +96,7 @@ def budget(short: Short, shot: Shot, model: str, spent: float) -> list[str]:
     return [f"${cost:.2f} would pass the budget (${left:.2f} left of ${short.budget_usd:.0f})"] if cost > left else []
 
 
-WEATHER = ("rain", "raining", "wet street", "snow", "fog", "daylight", "sunlight", "window")
+WEATHER = ("rain", "wet street", "snow", "fog", "daylight", "sunlight", "window")
 
 
 def package(short, shot, prev, plates: dict, shot_dir, approvals: dict, design_dir) -> list[str]:
@@ -123,22 +123,41 @@ def package(short, shot, prev, plates: dict, shot_dir, approvals: dict, design_d
             p.append("no approved start keyframe")
         elif not key("start"):
             p.append("start keyframe not approved")
-        if shot.end_frame or set(shot.at_start) != set(shot.at_end):
-            if not end.exists():
-                p.append("needs an end keyframe (end_frame, or someone enters or leaves)")
-            elif not key("end"):
+        if end.exists():  # sent whenever present, so it must always be approved
+            if not key("end"):
                 p.append("end keyframe not approved")
+        elif shot.end_frame or set(shot.at_start) != set(shot.at_end):
+            p.append("needs an end keyframe (end_frame, or someone enters or leaves)")
         if not shot.motion:
             p.append("missing motion")
     p += [f"{cid} has no [wardrobe] line" for cid in shot.frame if cid not in short.wardrobe]
     return p
 
 
+SUFFIX = "(?:s|es|ing|y)?"
+NEGATORS = {"no", "not", "without", "never"}
+
+
+def _rx(w: str) -> re.Pattern:
+    return re.compile(rf"\b{re.escape(w)}{SUFFIX}\b", re.IGNORECASE)
+
+
+def _allowed(w: str, weather: str) -> bool:
+    """Allowed only if the weather text names it as a whole word and it is not negated: a negator within the 3 words
+    before it, or within 6 when it sits in a list ("no rain or snow", "no rain, snow and fog")."""
+    for m in _rx(w).finditer(weather):
+        before = re.findall(r"[a-z']+|,", weather[:m.start()].lower())
+        listed = bool(before) and before[-1] in ("or", "and", ",")
+        near = [t for t in before if t != ","][-(6 if listed else 3):]
+        if not NEGATORS & set(near):
+            return True
+    return False
+
+
 def _banned(short) -> list[str]:
     if short.scene is None:
         return []
-    allowed = short.scene.weather.lower()
-    extra = [w for w in WEATHER if w not in allowed or f"no {w}" in allowed]
+    extra = [w for w in WEATHER if not _allowed(w, short.scene.weather)]
     return list(dict.fromkeys([w.lower() for w in short.scene.not_visible] + extra))
 
 
@@ -148,7 +167,7 @@ def bible_words(short, shot) -> tuple[list[str], list[str]]:
     texts += [(f"{a.who} acting", " ".join([a.goal, a.emotion, a.face, a.gaze, a.voice, a.end])) for a in shot.acting]
     problems, warnings = [], []
     for w in _banned(short):
-        rx = re.compile(rf"\b{re.escape(w)}\b", re.IGNORECASE)
+        rx = _rx(w)
         problems += [f"'{w}' in {where} contradicts the scene bible" for where, t in texts if rx.search(t)]
         warnings += [f"'{w}' in a line of dialogue (fine if spoken, not shown)" for ln in shot.lines if rx.search(ln.text)]
     return problems, warnings

@@ -35,7 +35,6 @@ def setup(tmp_path, monkeypatch, shot=PACKAGED, approved=True):
     plates.mkdir()
     (plates / "mama-satos-izakaya.toml").write_text('[[plate]]\nname = "door"\nview = "toward the door"\n')
     monkeypatch.setattr("tools.shorts.plates.PLATES_ROOT", plates)
-    monkeypatch.setattr("tools.shorts.plates.load_plates.__defaults__", (plates,))
     monkeypatch.setattr("tools.shorts.__main__._images_api",
                         lambda: {"plate--mama-satos-izakaya--door": {"verdict": "keep"}})  # never touch the network
     (script / "shots" / "S01.toml").write_text(shot)
@@ -314,3 +313,20 @@ def test_i2v_sends_and_fingerprints_only_keyframes(tmp_path, monkeypatch):
     s = _short("pilot")
     _, _, refs = _preflight(s, s.shots[0], "seedance-2.0-fast", designs())
     assert [label for label, _ in refs] == ["keyframe-start.png"]
+
+
+def test_i2v_sheet_fp_equals_submit_fp_and_plate_rerender_changes_it(tmp_path, monkeypatch):
+    from test_shorts_model import designs
+    from tools.shorts import approve
+    from tools.shorts.__main__ import _preflight, _short
+    setup(tmp_path, monkeypatch, shot=PACKAGED.replace('mode = "reference"', 'mode = "i2v"\nmotion = "C2 turns."'))
+    dd = tmp_path / "design-data"
+    (dd / "shorts" / "pilot" / "shots" / "S01" / "keyframe-start.png").write_bytes(b"k")
+    assert main(["sheet", "pilot", "--model", "seedance-2.0-fast"]) == 0
+    sheet_fp = json.loads((dd / "shorts" / "_site" / "pilot" / "sheet" / "sheet.json").read_text())["shots"][0]["fp"]
+    s = _short("pilot")
+    _, prompt, refs = _preflight(s, s.shots[0], "seedance-2.0-fast", designs())
+    extra = approve.fp_extra(s, s.shots[0], dd)
+    assert approve.fingerprint("seedance-2.0-fast", prompt, refs, 5, extra) == sheet_fp
+    (dd / "mama-satos-izakaya" / "plates" / "door.png").write_bytes(b"new render")
+    assert approve.fp_extra(s, s.shots[0], dd) != extra

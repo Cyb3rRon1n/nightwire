@@ -16,8 +16,8 @@ class Plate:
     source: str = ""   # an existing approved image of the place adopted as this plate
 
 
-def load_plates(place: str, plates_root: Path = PLATES_ROOT) -> dict[str, Plate]:
-    path = plates_root / f"{place}.toml"
+def load_plates(place: str, plates_root: Path | None = None) -> dict[str, Plate]:
+    path = (plates_root or PLATES_ROOT) / f"{place}.toml"
     if not path.exists():
         return {}
     return {p["name"]: Plate(**p) for p in tomllib.loads(path.read_text()).get("plate", [])}
