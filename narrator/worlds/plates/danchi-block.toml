@@ -3,7 +3,8 @@
 [[plate]]
 name = "block-facade"
 view = "from the courtyard looking up at a long concrete housing block: rows of identical open-air corridors and balconies with laundry, one corridor door glowing, a cyan vending machine at the foot"
-avoid = ["rain", "daylight", "people", "crowds", "text", "logos"]
+tags = "outdoors, exterior, apartment building, public housing, danchi, building facade, many balconies, open-air corridors, low angle, from below, night sky, scenery, wide shot"
+avoid = ["rain", "daylight", "people", "crowds", "text", "logos", "indoors", "interior", "hallway", "room", "vending machine close-up"]
 
 [[plate]]
 name = "corridor"
