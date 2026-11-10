@@ -239,3 +239,33 @@ def test_films_producer_survives_broken_scene_short(tmp_path, capsys):
     c = {"shorts_dir": shorts, "films_dir": films, "design_dir": dd, "site": tmp_path / "site"}
     assert [i.project for i in P.films(c)] == ["night"]
     assert "aaa" in capsys.readouterr().err
+
+
+def test_why_and_vertical_load_and_validate(tmp_path):
+    s = load_short(write(tmp_path / "s", shot=SHOT.replace("lens = 35.0", 'lens = 35.0\nwhy = "EWS: empty space is the loneliness"\nvertical = [0.3]') + BOARD))
+    assert (s.shots[0].why, s.shots[0].vertical) == ("EWS: empty space is the loneliness", 0.3)
+    assert load_short(write(tmp_path / "t", shot=SHOT + BOARD)).shots[0].vertical == 0.5
+    bad = load_short(write(tmp_path / "u", shot=SHOT.replace("lens = 35.0", "lens = 35.0\nvertical = [1.5]") + BOARD))
+    assert any("vertical" in p for p in validate_short(bad, {}))
+
+
+def test_boards_mark_safe_zone_and_write_crop(tmp_path):
+    shorts, films, lib, plates, dd = world(tmp_path, shot=with_plate_key(SHOT).replace("lens = 35.0", "lens = 35.0\nvertical = [0.2]") + BOARD)
+    out = boards.build(load_short(shorts / "pilot"), dd, dd / "shorts" / "pilot", lib, plates)
+    assert [p.name for p in out] == ["board-start.png", "board-end.png"]
+    crop = Image.open(out[0].with_name("board-start-9x16.png"))
+    assert crop.size == (338, 600)  # 600 * 9/16 = 337.5, rounded to even
+    assert boards.crop_box((1000, 600), 0.2) == (31, 0, 369, 600)
+    assert boards.crop_box((1000, 600), 0.0)[0] == 0 and boards.crop_box((1000, 600), 1.0)[2] == 1000
+    board = Image.open(out[0]).convert("RGB")
+    inside, outside = board.getpixel((200, 10)), board.getpixel((900, 10))
+    assert sum(outside) < sum(inside)  # outside the window is dimmed more than inside
+
+
+def test_wall_shows_why_and_crop(tmp_path):
+    shorts, films, lib, plates, dd = world(tmp_path, shot=with_plate_key(SHOT).replace("lens = 35.0", 'lens = 35.0\nwhy = "small figure, big space"') + BOARD)
+    boards.build(load_short(shorts / "pilot"), dd, dd / "shorts" / "pilot", lib, plates)
+    page = wall.build(film.load_film("night", films, shorts), "night", shorts, dd, tmp_path / "site")
+    html = page.read_text()
+    assert "small figure, big space" in html and "9:16" in html
+    assert (tmp_path / "site" / "films" / "night" / "boards" / "pilot-S01-9x16.jpg").exists()

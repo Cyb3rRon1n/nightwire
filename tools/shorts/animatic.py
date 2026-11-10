@@ -6,8 +6,8 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
+from tools.shorts import boards, remote
 from tools.shorts import plates as plate_mod
-from tools.shorts import remote
 from tools.shorts.model import load_short
 from tools.shorts.wall import board_file
 
@@ -74,14 +74,18 @@ class _Lit:
         return self.cache[plate].gain(i)
 
 
-def frames(film, shorts_dir: Path, design_dir: Path, fps: int = 24, size: tuple[int, int] = (1216, 832), lights: bool = True, plates_root: Path | None = None):
-    """Yields RGB PIL frames: Σ round(duration*fps) per shot plus GAP_S black between scenes."""
+VERTICAL_SIZE = (1080, 1920)
+
+
+def frames(film, shorts_dir: Path, design_dir: Path, fps: int = 24, size: tuple[int, int] = (1216, 832), lights: bool = True, plates_root: Path | None = None,
+           vertical: tuple[int, int] | None = None):
+    """With vertical=(w, h) each frame is the shot's 9:16 window scaled to that size. Yields RGB PIL frames: Σ round(duration*fps) per shot plus GAP_S black between scenes."""
     import numpy as np
     lit = _Lit(size, fps)
     for n, scene in enumerate(film.scenes):
         if n:
             for _ in range(round(GAP_S * fps)):
-                yield Image.new("RGB", size)
+                yield Image.new("RGB", vertical or size)
         short = load_short(shorts_dir / scene)
         work = design_dir / "shorts" / scene
         catalogue = plate_mod.load_plates(short.place, plates_root)
@@ -103,19 +107,23 @@ def frames(film, shorts_dir: Path, design_dir: Path, fps: int = 24, size: tuple[
                 if g is not None:
                     a = np.asarray(im, np.float32) * g
                     im = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
-                yield _caption(_camera(im, *zoom_pan(sh.move, i / max(1, n_fr - 1))), text)
+                im = _camera(im, *zoom_pan(sh.move, i / max(1, n_fr - 1)))
+                if vertical:
+                    im = im.crop(boards.crop_box(size, sh.vertical)).resize(vertical, Image.LANCZOS)
+                yield _caption(im, text)
 
 
 def build(film, film_slug: str, shorts_dir: Path, design_dir: Path, site_root: Path, fps: int = 24,
-          size: tuple[int, int] = (1216, 832), plates_root: Path | None = None) -> Path:
-    out = site_root / "films" / film_slug / "animatic.mp4"
+          size: tuple[int, int] = (1216, 832), plates_root: Path | None = None, vertical: bool = False) -> Path:
+    out = site_root / "films" / film_slug / ("animatic-9x16.mp4" if vertical else "animatic.mp4")
+    enc_size = VERTICAL_SIZE if vertical else size
     out.parent.mkdir(parents=True, exist_ok=True)
     enc = remote.h264_encoder()
     quality = ["-crf", "20"] if enc == "libx264" else ["-b:v", "4M"]
-    ff = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{size[0]}x{size[1]}",
+    ff = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{enc_size[0]}x{enc_size[1]}",
                            "-r", str(fps), "-i", "-", "-c:v", enc, "-pix_fmt", "yuv420p", *quality, str(out)], stdin=subprocess.PIPE)
     try:
-        for fr in frames(film, shorts_dir, design_dir, fps, size, plates_root=plates_root):
+        for fr in frames(film, shorts_dir, design_dir, fps, size, plates_root=plates_root, vertical=VERTICAL_SIZE if vertical else None):
             ff.stdin.write(fr.tobytes())
     finally:
         try:

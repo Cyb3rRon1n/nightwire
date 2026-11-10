@@ -128,6 +128,8 @@ class Shot:
     wardrobe_change: list[str] = field(default_factory=list) # cast ids whose wardrobe changes on purpose in this shot
     blocking_change: bool = False                            # the blocking (who sits or stands where) changes in this shot
     boards: list[Board] = field(default_factory=list)        # draft-board figures per keyframe
+    why: str = ""                                            # one line: the cinematographic reason for this shot
+    vertical: float = 0.5                                    # x centre (0..1) of the 9:16 crop window
 
     @property
     def duration(self) -> float:
@@ -190,6 +192,7 @@ def _shot(d: dict) -> Shot:
         blocking_change=d.get("blocking_change", False),
         boards=[Board(b["which"], b["figure"], b["pose"], b["camera"], tuple(map(float, b["feet"])), float(b["height"]))
                 for b in d.get("board", [])],
+        why=d.get("why", ""), vertical=float(d.get("vertical", [0.5])[0]),
     )
 
 
@@ -272,6 +275,8 @@ def validate_short(s: Short, designs: dict) -> list[str]:
             problems.append(f"{where}: mode {shot.mode!r} not in {MODES}")
         if not isinstance(shot.end_frame, bool) or not isinstance(shot.blocking_change, bool):
             problems.append(f"{where}: end_frame and blocking_change must be true or false")
+        if not 0 <= shot.vertical <= 1:
+            problems.append(f"{where}: vertical must be between 0 and 1")
         problems += _board_problems(s, shot, where)
         for ln in shot.lines:
             if ln.disfluency not in DISFLUENCIES:

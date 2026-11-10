@@ -32,11 +32,19 @@ def _card(scene: str, short, sh, work: Path, site: Path) -> str:
         im.thumbnail((THUMB, THUMB))
         im.save(dst, "JPEG", quality=85)
         img = f'<img loading="lazy" src="boards/{_e(scene)}-{_e(sh.id)}.jpg" alt="{_e(scene)} {_e(sh.id)}">'
+        crop = src.with_name(src.stem + "-9x16.png")
+        if crop.exists():
+            c = Image.open(crop).convert("RGB")
+            c.thumbnail((THUMB, THUMB))
+            c.save(site / "boards" / f"{scene}-{sh.id}-9x16.jpg", "JPEG", quality=85)
+            img += (f'<details><summary>9:16 crop</summary><img loading="lazy" src="boards/{_e(scene)}-{_e(sh.id)}-9x16.jpg" '
+                    f'alt="{_e(scene)} {_e(sh.id)} 9:16"></details>')
     else:
         img = '<div class="none">no board yet</div>'
     warns = preflight.one_action(sh) + preflight.pace(sh)
     return (f'<div class="card">{img}<div><b>{_e(sh.id)}</b> {_e(sh.size)} {_e(sh.move or "static")} {sh.duration:g} s</div>'
             f'<div class="meta">{_e(sh.action or sh.summary)}</div>'
+            + (f'<div class="meta why">Why: {_e(sh.why)}</div>' if sh.why else "")
             + "".join(f'<div class="warn">{_e(w)}</div>' for w in warns) + "</div>")
 
 

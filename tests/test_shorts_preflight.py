@@ -239,3 +239,11 @@ def test_bible_words_scans_frame_and_line_rule(tmp_path):
     s.line_rule = "C1 stays left of the street"
     problems, _ = preflight.bible_words(s, s.shots[0])
     assert any("'rain' in frame C1" in x for x in problems) and any("'street' in line_rule" in x for x in problems)
+
+
+def test_missing_why_warns_only(tmp_path):
+    s = shot(tmp_path)
+    r = preflight.run(s, s.shots[0], None, "p", [], "seedance-2.0-fast", 0)
+    assert r.ok and any("missing why" in w for w in r.warnings)
+    s = shot(tmp_path / "b", PLANNED.replace("lens = 35.0", 'lens = 35.0\nwhy = "x"'))
+    assert not any("why" in w for w in preflight.run(s, s.shots[0], None, "p", [], "seedance-2.0-fast", 0).warnings)

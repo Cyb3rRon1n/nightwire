@@ -180,4 +180,4 @@ def run(short: Short, shot: Shot, prev: Shot | None, prompt: str, ref_list, mode
     used, _ = fal.usable_refs(model, ref_list)
     return Report(problems=required(shot) + pace(shot) + one_action(shot) + continuity(prev, shot) + refs(model, used)
                   + budget(short, shot, model, spent) + list(package_problems) + list(bible[0]),
-                  warnings=filter_words(prompt) + list(bible[1]))
+                  warnings=filter_words(prompt) + list(bible[1]) + ([] if shot.why.strip() else ["missing why (one line: the cinematographic reason for this shot)"]))

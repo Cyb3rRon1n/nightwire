@@ -19,6 +19,33 @@ def _placeholder(name: str, out: Path) -> Path:
     return out
 
 
+def crop_box(size: tuple[int, int], x: float) -> tuple[int, int, int, int]:
+    """The 9:16 window: full frame height, centred at x (0..1 of the width), kept inside the frame."""
+    W, H = size
+    w = min(W, round(H * 9 / 16) // 2 * 2)
+    left = min(max(round(x * W - w / 2), 0), W - w)
+    return left, 0, left + w, H
+
+
+def _safe_zone(png: Path, x: float) -> Path:
+    """Writes <stem>-9x16.png (the clean crop) beside the board, then marks the window on the board itself."""
+    im = Image.open(png).convert("RGB")
+    box = crop_box(im.size, x)
+    im.crop(box).save(png.with_name(png.stem + "-9x16.png"))
+    marked = Image.eval(im, lambda v: int(v * 0.8))
+    marked.paste(im.crop(box), box[:2])
+    d = ImageDraw.Draw(marked)
+    l, t, r, b = box
+    for a in range(t, b, 16):  # dashed light outline
+        d.line((l, a, l, min(a + 8, b - 1)), fill=(235, 235, 240))
+        d.line((r - 1, a, r - 1, min(a + 8, b - 1)), fill=(235, 235, 240))
+    for a in range(l, r, 16):
+        d.line((a, t, min(a + 8, r - 1), t), fill=(235, 235, 240))
+        d.line((a, b - 1, min(a + 8, r - 1), b - 1), fill=(235, 235, 240))
+    marked.save(png)
+    return png
+
+
 def build(short, design_dir: Path, work: Path, lib: Path | None = None, plates_root: Path | None = None, shot: str | None = None) -> list[Path]:
     """Writes work/shots/<id>/board-<which>.png for every shot with [[board]] entries (only `shot` when given)."""
     lib = lib or lib_build.default_out()
@@ -40,5 +67,5 @@ def build(short, design_dir: Path, work: Path, lib: Path | None = None, plates_r
                     raise ValueError(f"{sh.id}: no library cell {b.pose}/{b.camera} in {lib} (python -m tools.greybox_library build)")
                 figs.append({"entry": entry, "feet": b.feet, "height": b.height, "label": b.figure})
             if figs:
-                out.append(insert.insert_many(src, figs, sd / f"board-{which}.png"))
+                out.append(_safe_zone(insert.insert_many(src, figs, sd / f"board-{which}.png"), sh.vertical))
     return out

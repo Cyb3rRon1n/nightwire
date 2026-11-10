@@ -67,3 +67,14 @@ def test_build_encodes_and_wall_links(tmp_path):
     assert n == "4"
     wall.build(f, "night", shorts, dd, site)
     assert "animatic.mp4" in (site / "films" / "night" / "index.html").read_text()
+
+
+def test_vertical_frames_and_build(tmp_path):
+    f, shorts, dd = _setup(tmp_path, SHOT.replace("end = 5.0", "end = 1.0").replace("lens = 35.0", "lens = 35.0\nvertical = [0.2]") + BOARD)
+    fr = list(animatic.frames(f, shorts, dd, fps=4, size=(160, 112), plates_root=_setup.plates, vertical=(54, 96)))
+    assert len(fr) == 4 and fr[0].size == (54, 96)
+    out = animatic.build(f, "night", shorts, dd, tmp_path / "site", fps=4, size=(160, 112), plates_root=_setup.plates, vertical=True)
+    assert out.name == "animatic-9x16.mp4"
+    wh = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v", "-show_entries", "stream=width,height", "-of", "csv=p=0", str(out)],
+                        capture_output=True, text=True).stdout.strip()
+    assert wh == "1080,1920"
