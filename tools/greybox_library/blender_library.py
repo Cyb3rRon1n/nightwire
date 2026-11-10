@@ -60,8 +60,12 @@ def quads(name, rects, colour, z):
     return obj
 
 
-def box(name, size, at):
-    bpy.ops.mesh.primitive_cube_add(size=1, location=(at[0], at[1], at[2] + size[2] / 2))
+def box(name, size, at, shape=None):
+    loc = (at[0], at[1], at[2] + size[2] / 2)
+    if shape == "cyl":  # upright cylinder: umbrella pole / canopy, cane
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.5, depth=1, location=loc)
+    else:
+        bpy.ops.mesh.primitive_cube_add(size=1, location=loc)
     o = bpy.context.object
     o.name, o.scale, o.color = name, size, GREY
     return o
@@ -117,7 +121,7 @@ for cell in J["cells"]:
         rig = mannequin("figure", GREY, {k: tuple(v) for k, v in r["rot"].items()})
         rig.scale, rig.location = (r["scale"],) * 3, r["pos"]
         rig.rotation_euler = tuple(math.radians(a) for a in r["euler"])
-        props = [box(b["name"], b["size"], b["at"]) for b in cell["blocks"]]
+        props = [box(b["name"], b["size"], b["at"], b.get("shape")) for b in cell["blocks"]]
         bpy.context.view_layer.update()
     c = cell["cam"]
     cam = bpy.data.objects.new("cam", bpy.data.cameras.new("cam"))

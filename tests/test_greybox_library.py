@@ -333,3 +333,167 @@ def test_old_cells_without_exact_depth_files_give_a_clear_error(tmp_path):
     (c / "floor-depth.png").unlink()
     with pytest.raises(ValueError, match="rebuild the library"):
         insert.cutout(c)
+
+
+# --- cinematic / editorial / character poses ----------------------------------------------------------------------------------
+
+NEW = {
+    "cinematic": ["doorway-silhouette", "walk-away", "sit-bed-edge-head-down", "rail-overlook", "look-up", "sit-bench", "stand-umbrella", "lie-floor-up", "sit-window-sill"],
+    "editorial": ["contrapposto", "hand-on-hip", "over-shoulder-glance", "hands-in-pockets", "arms-crossed", "lean-wall", "chair-backward", "seated-legs-crossed",
+                  "chin-on-hand", "crouch-street", "kneel-one-knee", "recline-elbow"],
+    "character": ["inspect-hand", "cross-legged-deck", "behind-counter", "lean-cane", "adjust-visor"],
+}
+WHO = {"inspect-hand": "Saeko", "cross-legged-deck": "Rin", "behind-counter": "Mama Sato", "lean-cane": "Tadamori", "adjust-visor": "Yuki"}
+
+
+def _fk(pose):
+    """Forward kinematics of the mannequin (the rig-local bone frames Blender builds from LAYOUT with roll 0), world joints at 165 cm."""
+    import ast
+    import math
+
+    import numpy as np
+    layout = next(ast.literal_eval(n.value) for n in ast.parse(presets.BLENDER_BUILD.read_text()).body
+                  if isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == "LAYOUT")
+
+    def rot(axis, a):
+        c, s = math.cos(math.radians(a)), math.sin(math.radians(a))
+        return {"x": [[1, 0, 0], [0, c, -s], [0, s, c]], "y": [[c, 0, s], [0, 1, 0], [-s, 0, c]], "z": [[c, -s, 0], [s, c, 0], [0, 0, 1]]}[axis]
+
+    def mat(r, t):
+        m = np.eye(4)
+        m[:3, :3], m[:3, 3] = r, t
+        return m
+
+    def rest(head, tail):
+        y = np.subtract(tail, head) / np.linalg.norm(np.subtract(tail, head))
+        k, c = np.cross([0, 1, 0], y), float(y[1])
+        kx = np.array([[0, -k[2], k[1]], [k[2], 0, -k[0]], [-k[1], k[0], 0]])
+        return mat(np.eye(3) + kx + kx @ kx / (1 + c) if c > -1 + 1e-9 else np.array(rot("x", 180)), head)
+
+    scale = presets.REF_HEIGHT_CM / presets.RIG_HEIGHT_CM
+    ex, ey, ez = (np.array(rot(a, v)) for a, v in zip("xyz", pose.get("euler", (0, 0, 0))))
+    world = mat((ez @ ey @ ex) * scale, [v * scale for v in pose.get("pos", (0, 0, 0))])  # rig euler XYZ, pos is scaled with the figure
+    rests, posed, out = {}, {}, {}
+    for name, parent, head, tail in layout:
+        rests[name] = rest(head, tail)
+        x, y, z = pose.get("rot", {}).get(name, (0, 0, 0))
+        local = mat(np.array(rot("z", z)) @ np.array(rot("y", y)) @ np.array(rot("x", x)), [0, 0, 0])  # bone euler XYZ: X applied first
+        posed[name] = rests[name] @ local if parent is None else posed[parent] @ np.linalg.inv(rests[parent]) @ rests[name] @ local
+        m = world @ posed[name] @ np.linalg.inv(rests[name])
+        out[name] = tuple((m @ np.array([*p, 1]))[:3] for p in (head, tail))
+    return out
+
+
+def _block(pose, name):
+    b = next(b for b in presets.POSES[pose]["blocks"] if b["name"] == name)
+    return b, b["at"][2] + b["size"][2]  # block, top z
+
+
+def test_new_poses_exist_with_groups_and_character_owners():
+    assert {k: [n for n, p in presets.POSES.items() if p["group"] == k] for k in NEW} == NEW
+    assert all(p["group"] == "basic" for n, p in presets.POSES.items() if n not in sum(NEW.values(), []))
+    assert {n: p["for"] for n, p in presets.POSES.items() if "for" in p} == WHO
+    assert {"ews-low", "ws-low-back", "profile-close", "high-wide", "doorway-frame"} <= set(presets.CAMERAS)
+    names = set(presets.bone_names())
+    for n in sum(NEW.values(), []):
+        assert set(presets.POSES[n]["rot"]) <= names and presets.SLUG.match(n)
+        for b in presets.POSES[n].get("blocks", []):
+            assert b.get("shape") in (None, "cyl") and len(b["size"]) == 3
+
+
+def test_every_pose_stays_above_the_floor():
+    for n, p in presets.POSES.items():
+        low = min(z for h, t in _fk(p).values() for z in (h[2], t[2]))
+        assert low >= 0.0 - 1e-6, (n, low)  # bone centrelines (limb radius is 0.07-0.09 on top of that)
+
+
+def test_seated_poses_sit_on_their_blocks_with_feet_down():
+    for pose, block in (("sit-bed-edge-head-down", "bed"), ("sit-bench", "bench"), ("sit-window-sill", "sill"), ("chin-on-hand", "chair.seat"), ("chair-backward", "chair.seat")):
+        _, top = _block(pose, block)
+        j = _fk(presets.POSES[pose])
+        assert j["thigh.L"][0][2] - 0.09 == pytest.approx(top, abs=0.02), pose  # hip joint one thigh radius above the seat
+    for pose, block in (("sit-bed-edge-head-down", "bed"), ("sit-bench", "bench"), ("chin-on-hand", "chair.seat")):
+        assert _fk(presets.POSES[pose])["shin.L"][1][2] < 0.1, pose  # feet on the floor
+    _, sill = _block("sit-window-sill", "sill")
+    j = _fk(presets.POSES["sit-window-sill"])
+    assert all(j[f"shin.{s}"][1][2] == pytest.approx(sill, abs=0.03) for s in "LR")  # feet up on the sill, knees above the hips
+    assert j["thigh.L"][1][2] > j["thigh.L"][0][2]
+
+
+def test_hands_rest_on_their_props():
+    # (pose, bone, prop, expected hand-centre height above the prop top: forearm radius 0.07)
+    for pose, bone, prop, dz in (("rail-overlook", "forearm.L", "rail", 0.07), ("rail-overlook", "forearm.R", "rail", 0.07), ("behind-counter", "forearm.L", "counter", 0.07),
+                                 ("behind-counter", "forearm.R", "counter", 0.07), ("chair-backward", "forearm.L", "chair.back", 0.07),
+                                 ("chin-on-hand", "upper_arm.R", "table.top", 0.07), ("chin-on-hand", "forearm.L", "table.top", 0.07)):
+        _, top = _block(pose, prop)
+        end = _fk(presets.POSES[pose])[bone][1]
+        assert end[2] == pytest.approx(top + dz, abs=0.04), (pose, bone, end[2], top)
+    b, _ = _block("behind-counter", "counter")
+    assert _fk(presets.POSES["behind-counter"])["forearm.L"][1][1] > b["at"][1] - b["size"][1] / 2  # over the counter, not through the front panel
+
+
+def test_umbrella_and_cane_are_held():
+    for pose, prop, bone in (("stand-umbrella", "umbrella.pole", "forearm.R"), ("lean-cane", "cane", "forearm.R")):
+        b, top = _block(pose, prop)
+        hand = _fk(presets.POSES[pose])[bone][1]
+        assert (b["at"][0], b["at"][1]) == pytest.approx(tuple(hand[:2]), abs=0.01) and b["at"][2] < hand[2] <= top + 0.03, pose
+    pole, ptop = _block("stand-umbrella", "umbrella.pole")
+    canopy, ctop = _block("stand-umbrella", "umbrella.canopy")
+    assert canopy["at"][2] <= ptop <= ctop and canopy["size"][0] > 1.0 and canopy["size"][2] < 0.1  # flat disc on the pole top, clear above the head
+    assert canopy["at"][2] > 1.72
+
+
+def test_doorway_figure_fits_the_frame_and_wall_touches_the_shoulder():
+    j = _fk(presets.POSES["doorway-silhouette"])
+    door = presets.POSES["doorway-silhouette"]["blocks"]
+    inner = min(abs(b["at"][0]) - b["size"][0] / 2 for b in door if b["name"] in ("door.L", "door.R"))
+    assert max(abs(p[0]) for h_t in j.values() for p in h_t) + 0.09 < inner
+    assert max(h[2] for h, t in j.values()) < min(b["at"][2] for b in door if b["name"] == "door.top")
+    wall, _ = _block("lean-wall", "wall")
+    face = wall["at"][0] + wall["size"][0] / 2  # wall is on the figure's right (-x)
+    assert _fk(presets.POSES["lean-wall"])["upper_arm.R"][0][0] - 0.07 == pytest.approx(face, abs=0.02)
+
+
+def test_deck_lies_in_the_crossed_lap_and_poses_lie_down_or_look_back():
+    deck, top = _block("cross-legged-deck", "deck")
+    j = _fk(presets.POSES["cross-legged-deck"])
+    assert top < j["spine"][0][2] + 0.1 and abs(deck["at"][0]) < 0.1 and 0.0 < deck["at"][1] < 0.6
+    assert all(j[f"forearm.{s}"][1][2] == pytest.approx(top, abs=0.1) for s in "LR")  # hands on the deck
+    lie = _fk(presets.POSES["lie-floor-up"])
+    assert max(abs(p[2]) for h_t in lie.values() for p in h_t) < 0.2  # everything within a hand's height of the floor
+    glance = presets.POSES["over-shoulder-glance"]
+    assert glance["euler"][2] == 180 and abs(glance["rot"]["spine"][1] + glance["rot"]["head"][1]) == pytest.approx(120, abs=5)
+    assert presets.POSES["look-up"]["rot"]["head"][0] == pytest.approx(35, abs=5)
+
+
+def test_new_cameras_do_what_the_names_say(tmp_path):
+    c = presets.CAMERAS
+    assert c["ews-low"]["height"] <= 0.5 and c["ews-low"]["dist"] >= 12 and c["ews-low"]["lens"] >= 50
+    assert c["ws-low-back"]["yaw"] == 180 and c["ws-low-back"]["height"] < 0.5
+    assert c["profile-close"]["yaw"] == 90 and c["profile-close"]["lens"] == 85
+    assert c["high-wide"]["height"] / c["high-wide"]["dist"] == pytest.approx(1.0, abs=0.2)  # ~45 degrees
+    assert len(build.jobs(None, None, 165, tmp_path)) == len(presets.POSES) * len(presets.CAMERAS)
+
+
+def test_page_groups_poses_and_names_the_character(tmp_path):
+    from PIL import Image
+
+    from tools.greybox_library import page
+    lib, made = tmp_path / "lib", ["stand", "contrapposto", "lean-cane", "walk-away"]
+    for pose in made:
+        (lib / pose / "ws-front").mkdir(parents=True)
+        Image.new("RGB", (40, 30), "grey").save(lib / pose / "ws-front" / "board.png")
+    idx = page.build(lib, tmp_path / "site").read_text()
+    heads = [idx.index(t) for t in ("Basic", "Cinematic", "Editorial", "Character-specific")]
+    assert heads == sorted(heads) and "for Tadamori" in idx
+    assert idx.index(">stand<") < heads[1] < idx.index(">walk-away<") < heads[2] < idx.index(">contrapposto<") < heads[3] < idx.index("lean-cane")
+
+
+def test_assert_posed_would_pass_for_every_pose():
+    """Mirror of blender_library.assert_posed: some bone turned >= 20 deg must have its tail moved >= 5 cm in armature space (pure twists don't count)."""
+    rest = _fk({})
+    for n, p in presets.POSES.items():
+        big = [b for b, r in p["rot"].items() if max(abs(v) for v in r) >= 20]
+        posed = _fk({"rot": p["rot"]})
+        moved = max((float(((posed[b][1] - rest[b][1]) ** 2).sum() ** 0.5) for b in big), default=1)
+        assert moved >= 0.05, (n, big, moved)

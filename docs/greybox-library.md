@@ -9,16 +9,61 @@ and `meta.json` (camera, where the feet and figure box are).
 
 ## Poses
 
-`stand`, `walk`, `sit-stool`, `sit-ledge`, `lean-rail`, `stand-back`, `stand-window-back`, `crouch`, `lie-side`, `sit-floor`
+Each pose has a `group` (the browse page groups the same way). Props are grey blocks in the cell; poses are FK-checked (feet on the floor or
+on their prop, hands on the rail / counter / table, nothing below the floor).
+
+**basic**: `stand`, `walk`, `sit-stool`, `sit-ledge`, `lean-rail`, `stand-back`, `stand-window-back`, `crouch`, `lie-side`, `sit-floor`
+
+**cinematic** (lone figures, backs, silhouettes, big spaces):
+- `doorway-silhouette`: standing just in front of a door-frame block, arms loose (door frame is behind the figure, so profile cameras still see it)
+- `walk-away`: mid-stride with the back to the `ws-front` camera
+- `sit-bed-edge-head-down`: on the edge of a low bed block, elbows on knees, head hanging
+- `rail-overlook`: forearms on a waist-high rail over a low parapet, looking out
+- `look-up`: standing, head tilted up about 35 degrees
+- `sit-bench`: on a bench block, hands in the lap
+- `stand-umbrella`: one arm up holding an umbrella (thin pole + flat disc canopy)
+- `lie-floor-up`: on the back, arms and legs a little apart, head toward +x
+- `sit-window-sill`: on a sill block, knees up and feet on the sill, window frame behind
+
+**editorial** (magazine cover / fashion poses):
+- `contrapposto`: weight on one leg, hips tilted, free leg out
+- `hand-on-hip`: contrapposto with one hand on the hip, elbow out
+- `over-shoulder-glance`: body turned away from `ws-front`, head turned back about 120 degrees in total (shown in `pose.json` / `pose.png`; the grey head is a plain cylinder)
+- `hands-in-pockets`: both hands at hip pockets
+- `arms-crossed`: forearms crossed over the chest
+- `lean-wall`: right shoulder on a wall block, one foot crossed in front with the knee bent
+- `chair-backward`: straddling a chair block, arms on the backrest
+- `seated-legs-crossed`: on a stool, one leg crossed over the other
+- `chin-on-hand`: seated at a table block, one elbow on the table and the chin in that hand
+- `crouch-street`: low crouch, forearms on the knees
+- `kneel-one-knee`: one knee on the floor, forearm resting on the other knee
+- `recline-elbow`: on the floor, propped on one elbow, one knee up
+
+**character** (generic geometry, named for what it was made for):
+
+| pose | for | what |
+|---|---|---|
+| `inspect-hand` | Saeko (chrome hand) | one forearm raised in front of the face, head tilted down at it |
+| `cross-legged-deck` | Rin (cyberdeck) | sitting cross-legged on the floor, a flat box on the lap, hands on it |
+| `behind-counter` | Mama Sato | standing behind a counter block, hands on it |
+| `lean-cane` | Tadamori | slightly stooped, one hand on top of a cane pole |
+| `adjust-visor` | Yuki | one hand at the temple, elbow forward |
 
 ## Cameras
 
 `ews-high`, `ws-front`, `ws-back`, `ws-profile`, `ms-front`, `ms-profile`, `mcu-front`, `ots-left`, `ots-right`, `low-hero`, `top-down`
+and the cinema set: `ews-low`, `ws-low-back`, `profile-close`, `high-wide`, `doorway-frame`
 
 (`ews` extreme wide, `ws` wide, `ms` medium, `mcu` close-up; `ots-*` are over-the-shoulder with a second grey figure in the foreground;
 `low-hero` looks up from knee height; `top-down` looks straight down.)
 
-## Thumbnails
+- `ews-low`: 20 m away, camera 0.4 m off the floor, 70 mm: a small figure in a big space
+- `ws-low-back`: 4 m behind the figure, camera 0.3 m high
+- `profile-close`: medium shot from the side, 85 mm (about the same framing as `ms-profile`, longer lens look)
+- `high-wide`: 45 degrees, far (8 m out and 8 m up)
+- `doorway-frame`: 3 m away, slightly off axis, 28 mm; only reads as "through a doorway" with the doorway props, but renders for every pose
+
+## Thumbnails (original ten poses and eleven cameras; the browse page shows every cell)
 
 | pose \ camera | ews-high | ws-front | ws-back | ws-profile | ms-front | ms-profile | mcu-front | ots-left | ots-right | low-hero | top-down |
 |---|---|---|---|---|---|---|---|---|---|---|---|
