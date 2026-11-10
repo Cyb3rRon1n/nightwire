@@ -1,6 +1,7 @@
 """One function per kind of reviewable work. Each returns Items; registry.build_items collects them.
 URLs point at pages already published on the AI Lab box (/designs, /world, /shorts) or at copies made with web_copy."""
 
+import hashlib
 import json
 import shutil
 from pathlib import Path
@@ -24,8 +25,8 @@ def sheets(ctx) -> list[Item]:
     for slug, d in sorted(ctx["designs"].items()):
         folder = ctx["design_dir"] / slug
         now = [(s, t) for s, t in SHEETS if (folder / f"{s}.png").exists()]
-        if d.kind != "character" or d.status != "approved" or not now:
-            continue
+        if d.kind != "character" or d.status != "approved" or not now or getattr(d, "wardrobe", None):
+            continue  # characters with wardrobe states are reviewed through bibles/sheet_sets instead
         judged = [folder / f"{s}.png" for s in CHARACTER_SHEETS if (folder / f"{s}.png").exists()]
         if not judged:
             continue
@@ -34,6 +35,69 @@ def sheets(ctx) -> list[Item]:
         compare = [{"label": f"{t}: before", "url": web_copy(folder / f"{s}-old.png", ctx["site"], f"sheets/{slug}/{s}-old.jpg")}
                    for s, t in SHEETS if (folder / f"{s}-old.png").exists()]
         out.append(Item(sheet_id(slug, version), "sheet", "designs", slug, f"{d.name}: model sheets", files, compare))
+    return out
+
+
+def _bible_data(d) -> dict:
+    return {"identity": list(d.identity), "appearance": d.appearance,
+            "wardrobe": {k: {"text": w.text, "tags": w.tags, "props": list(w.props)} for k, w in sorted(d.wardrobe.items())}}
+
+
+def bible_id(d, slug: str) -> str:
+    """Changes whenever the bible text does, so a keep on old text never approves new text."""
+    blob = json.dumps(_bible_data(d), sort_keys=True, ensure_ascii=False)
+    return f"bible--{slug}--{hashlib.sha256(blob.encode()).hexdigest()[:10]}"
+
+
+def bible_text(d) -> str:
+    lines = ["Identity:", *[f"- {i}" for i in d.identity], f"Appearance: {d.appearance}"]
+    for k, w in sorted(d.wardrobe.items()):
+        lines += [f"State {k}: {w.text}", f"  tags: {w.tags}", f"  props: {', '.join(w.props)}"]
+    return "\n".join(lines)
+
+
+def bibles(ctx) -> list[Item]:
+    out = []
+    for slug, d in sorted(ctx["designs"].items()):
+        if d.kind != "character" or not (getattr(d, "identity", None) or getattr(d, "wardrobe", None)):
+            continue
+        folder = ctx["design_dir"] / slug
+        files = [web_copy(folder / f"{s}.png", ctx["site"], f"bibles/{slug}/{s}.jpg")
+                 for s in ("turnaround", "portrait") if (folder / f"{s}.png").exists()]
+        text = bible_text(d)
+        dec = ctx["design_dir"] / "bibles" / f"{slug}-decisions.md"
+        if dec.exists():
+            text += "\n\nOpen decisions (answer in the Fix note):\n" + dec.read_text()
+        out.append(Item(bible_id(d, slug), "bible", "designs", slug, f"{d.name}: character bible (text)", files, context=text))
+    return out
+
+
+SET_ORDER = ("turnaround", "portrait", "expressions", "props")
+
+
+def sheet_set_id(slug: str, state: str, folder: Path) -> str:
+    h = hashlib.sha256()
+    for s in SET_ORDER:
+        h.update((folder / f"{s}.png").read_bytes())
+    return f"sheet--{slug}--{state}--{h.hexdigest()[:10]}"
+
+
+def sheet_sets(ctx) -> list[Item]:
+    out = []
+    for slug, d in sorted(ctx["designs"].items()):
+        for state, w in sorted((getattr(d, "wardrobe", None) or {}).items()):
+            folder = ctx["design_dir"] / slug / "wardrobe" / state
+            if not all((folder / f"{s}.png").exists() for s in SET_ORDER):
+                continue
+            names = [*SET_ORDER, "colorguide"]
+            files = [web_copy(folder / f"{s}.png", ctx["site"], f"sheets/{slug}/{state}/{s}.jpg")
+                     for s in names if (folder / f"{s}.png").exists()]
+            top = ctx["design_dir"] / slug
+            compare = [{"label": f"{s.capitalize()}: original", "url": web_copy(top / f"{s}.png", ctx["site"], f"sheets/{slug}/{state}/orig-{s}.jpg")}
+                       for s in ("turnaround", "portrait") if (top / f"{s}.png").exists()]
+            context = "\n".join(["Identity:", *[f"- {i}" for i in d.identity], f"State {state}: {w.text}"])
+            out.append(Item(sheet_set_id(slug, state, folder), "sheet-set", "designs", slug,
+                            f"{d.name}: {state} sheet set", files, compare, context=context))
     return out
 
 
@@ -219,4 +283,4 @@ def cuts(ctx) -> list[Item]:
     return out
 
 
-ALL = [sheets, candidates, world, takes, wallpapers, plates, scenes, keyframes, plans, cuts]
+ALL = [sheets, bibles, sheet_sets, candidates, world, takes, wallpapers, plates, scenes, keyframes, plans, cuts]

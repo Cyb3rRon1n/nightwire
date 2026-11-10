@@ -186,3 +186,41 @@ def test_plans_fp_follows_plate_pixels_and_equals_submit_fp(tmp_path, monkeypatc
     monkeypatch.setattr("tools.shorts.plates.PLATES_ROOT", tmp_path / "nowhere")
     del c["plates_root"]
     assert P.plans(c)[0].id == changed.id
+
+
+def warded(slug="mama", text="shop", identity=("late 50s",)):
+    from narrator.designs import WardrobeState
+    d = char(slug)
+    d.identity, d.appearance = list(identity), "grey hair"
+    d.wardrobe = {"work": WardrobeState(text=text, tags="kimono", props=["ladle"])}
+    return d
+
+
+def test_bible_item_id_changes_with_text_and_includes_decisions(tmp_path):
+    c = ctx(tmp_path, {"mama": warded()})
+    png(c["design_dir"] / "mama" / "turnaround.png"); png(c["design_dir"] / "mama" / "portrait.png")
+    (c["design_dir"] / "bibles").mkdir(); (c["design_dir"] / "bibles" / "mama-decisions.md").write_text("Q1: age?")
+    (item,) = P.bibles(c)
+    assert item.kind == "bible" and item.stage == "designs" and item.id.startswith("bible--mama--") and len(item.files) == 2
+    assert "late 50s" in item.context and "ladle" in item.context and "Q1: age?" in item.context
+    c["designs"]["mama"] = warded(text="shop apron")
+    assert P.bibles(c)[0].id != item.id
+    assert P.bibles(ctx(tmp_path, {"x": char("x")})) == []
+
+
+def test_sheet_sets_need_all_four_and_id_follows_bytes_and_v1_sheets_skip_states(tmp_path):
+    c = ctx(tmp_path, {"mama": warded()})
+    w = c["design_dir"] / "mama" / "wardrobe" / "work"
+    png(c["design_dir"] / "mama" / "turnaround.png"); png(c["design_dir"] / "mama" / "portrait.png")
+    for s in ("turnaround", "portrait", "expressions"):
+        png(w / f"{s}.png")
+    assert P.sheet_sets(c) == []
+    png(w / "props.png"); png(w / "colorguide.png")
+    (item,) = P.sheet_sets(c)
+    assert item.kind == "sheet-set" and item.id.startswith("sheet--mama--work--") and len(item.files) == 5 and len(item.compare) == 2
+    png(w / "colorguide.png", (9, 9))
+    assert P.sheet_sets(c)[0].id == item.id  # colour guide is shown, not hashed
+    png(w / "props.png", (9, 9))
+    assert P.sheet_sets(c)[0].id != item.id
+    assert P.sheets(c) == []  # v1 item skipped for characters with states
+    assert P.bibles in P.ALL and P.sheet_sets in P.ALL

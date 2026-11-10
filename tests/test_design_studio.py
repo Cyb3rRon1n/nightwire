@@ -328,23 +328,23 @@ async def test_state_sheets_go_to_wardrobe_folder_never_the_originals(studio):
     await ds.main(_args(studio, "sheets", "mama-sato"), backend=backend)
     orig = {p.name: p.read_bytes() for p in (data / "mama-sato").glob("*.png")}
     backend.workflows.clear()
-    assert await ds.main(_args(studio, "sheets", "mama-sato", "--state", "work", "--redo"), backend=backend) == 0
+    assert await ds.main(_args(studio, "sheets", "mama-sato", "--state", "work", "--redo", "--force"), backend=backend) == 0
     out = data / "mama-sato" / "wardrobe" / "work"
     assert sorted(p.name for p in out.glob("*.png")) == ["colorguide.png", "expressions.png", "portrait.png", "props.png", "turnaround.png"]
     assert {p.name: p.read_bytes() for p in (data / "mama-sato").glob("*.png")} == orig
     assert len(backend.workflows) == 1 + 1 + 6 + 1
     backend.workflows.clear()
-    await ds.main(_args(studio, "sheets", "mama-sato", "--state", "work"), backend=backend)
+    await ds.main(_args(studio, "sheets", "mama-sato", "--state", "work", "--force"), backend=backend)
     assert backend.workflows == []  # skips existing without --redo
 
 
 async def test_state_all_and_unknown_state(studio):
     designs, data, backend = await _warded_studio(studio)
-    assert await ds.main(_args(studio, "sheets", "mama-sato", "--state", "all"), backend=backend) == 0
+    assert await ds.main(_args(studio, "sheets", "mama-sato", "--state", "all", "--force"), backend=backend) == 0
     assert (data / "mama-sato" / "wardrobe" / "rest" / "turnaround.png").exists()
     assert (data / "mama-sato" / "wardrobe" / "work" / "props.png").exists()
     assert not (data / "mama-sato" / "turnaround.png").exists()
-    assert await ds.main(_args(studio, "sheets", "mama-sato", "--state", "nope"), backend=backend) == 1
+    assert await ds.main(_args(studio, "sheets", "mama-sato", "--state", "nope", "--force"), backend=backend) == 1
 
 
 async def test_one_failing_state_does_not_stop_the_others(studio):
@@ -355,5 +355,29 @@ async def test_one_failing_state_does_not_stop_the_others(studio):
             raise RuntimeError("boom")
         return await real(wf)
     backend.run_workflow = flaky
-    assert await ds.main(_args(studio, "sheets", "mama-sato", "--state", "all"), backend=backend) == 1
+    assert await ds.main(_args(studio, "sheets", "mama-sato", "--state", "all", "--force"), backend=backend) == 1
     assert (data / "mama-sato" / "wardrobe" / "rest" / "colorguide.png").exists()
+
+
+async def test_state_render_needs_keep_on_current_bible(studio, monkeypatch, capsys):
+    from tools.review import producers
+    designs, data, backend = await _warded_studio(studio)
+    bid = producers.bible_id(load_design(designs / "mama-sato.toml"), "mama-sato")
+    backend.workflows.clear()
+    monkeypatch.setattr("tools.shorts.__main__._images_api", lambda: None)
+    assert await ds.main(_args(studio, "sheets", "mama-sato", "--state", "work"), backend=backend) == 1
+    assert "review store" in capsys.readouterr().err and backend.workflows == []
+    monkeypatch.setattr("tools.shorts.__main__._images_api", lambda: {"bible--mama-sato--0000000000": {"verdict": "keep"}, bid: {"verdict": "fix"}})
+    assert await ds.main(_args(studio, "sheets", "mama-sato", "--state", "work"), backend=backend) == 1
+    assert "bible" in capsys.readouterr().err and backend.workflows == []
+    monkeypatch.setattr("tools.shorts.__main__._images_api", lambda: {bid: {"verdict": "keep"}})
+    assert await ds.main(_args(studio, "sheets", "mama-sato", "--state", "work"), backend=backend) == 0
+    monkeypatch.setattr("tools.shorts.__main__._images_api", lambda: None)
+    assert await ds.main(_args(studio, "sheets", "mama-sato", "--state", "rest", "--force"), backend=backend) == 0
+
+
+async def test_bible_draft_writes_markdown(studio):
+    designs, data, backend = await _warded_studio(studio)
+    assert await ds.main(_args(studio, "bible-draft", "mama-sato")) == 0
+    text = (data / "bibles" / "mama-sato.md").read_text()
+    assert "grey hair" in text and "ladle" in text and "work" in text

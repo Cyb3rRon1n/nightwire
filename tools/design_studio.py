@@ -568,6 +568,34 @@ def cmd_export(designs, args) -> int:
     return 0
 
 
+def cmd_bible_draft(designs, slugs: list[str], args) -> int:
+    """Owner-readable bible text per character into design-data/bibles/<slug>.md."""
+    from tools.review.producers import bible_text
+    out = args.design_dir / "bibles"
+    out.mkdir(parents=True, exist_ok=True)
+    for slug in slugs or [s for s, d in designs.items() if d.kind == "character" and (d.identity or d.wardrobe)]:
+        d = designs[slug]
+        won = _approved_candidate(d, args.design_dir / slug)
+        img = f"Approved candidate: {won[2]}" if won and won[2] else "Approved candidate: none"
+        (out / f"{slug}.md").write_text(f"# {d.name}\n\n{img}\n\n{bible_text(d)}\n")
+        print(out / f"{slug}.md")
+    return 0
+
+
+def _bible_gate(designs, slugs: list[str]) -> str | None:
+    """Why `sheets --state` may not render yet, else None: each bible's current text needs a keep in the review store."""
+    from tools.review.producers import bible_id
+    from tools.shorts.__main__ import _images_api
+    api = _images_api()
+    if api is None:
+        return "can't reach the review store, so bible approval can't be checked; nothing was spent (--force skips the check)"
+    for slug in slugs:
+        bid = bible_id(designs[slug], slug)
+        if api.get(bid, {}).get("verdict") != "keep":
+            return f"{slug}: bible text not approved yet (needs a keep on {bid}); nothing was spent (--force skips the check)"
+    return None
+
+
 def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="python -m tools.design_studio")
     p.add_argument("--designs-dir", type=Path, default=DESIGNS_DIR)
@@ -583,10 +611,12 @@ def _parser() -> argparse.ArgumentParser:
     s.add_argument("--only", choices=(*CHARACTER_SHEETS, *LOCATION_SHEETS, "props"), help="redo just this sheet; keeps the others")
     s.add_argument("--seed", type=int, help="render with this seed instead of the design's; not saved")
     s.add_argument("--state", help="render the v2 sheet set for this wardrobe state (or 'all') into wardrobe/<state>/; originals untouched")
+    s.add_argument("--force", action="store_true", help="with --state: render even without a keep on the current bible text")
     s.add_argument("--redo", action="store_true", help="with --state: overwrite existing state sheets")
     sc = sub.add_parser("scene"); sc.add_argument("slug"); sc.add_argument("what", help="place and action tags"); sc.add_argument("--name", required=True, help="file name, e.g. alley")
     sc.add_argument("--place", type=Path, help="empty location image to start from, so the character takes its light")
     sc.add_argument("--standing", action="store_true", help="old recipe: full-body skeleton, no starting image")
+    b = sub.add_parser("bible-draft"); b.add_argument("slugs", nargs="*")
     sub.add_parser("gallery"); sub.add_parser("export")
     return p
 
@@ -598,6 +628,8 @@ async def main(argv: list[str], backend=None) -> int:
         if slug not in designs:
             print(f"unknown design {slug!r}", file=sys.stderr)
             return 1
+    if args.command == "bible-draft":
+        return cmd_bible_draft(designs, list(args.slugs), args)
     if args.command in ("candidates", "sheets"):
         if args.command == "candidates":
             slugs = list(args.slugs)
@@ -614,6 +646,9 @@ async def main(argv: list[str], backend=None) -> int:
         if not slugs:
             print("nothing to do")
             return 0
+        if args.command == "sheets" and args.state and not args.force and (why := _bible_gate(designs, slugs)):
+            print(why, file=sys.stderr)
+            return 1
         args.batch_url = None if backend else batch_url()
         backend = backend or ComfyUIBackend(base_url=args.comfyui_url, profile="noobai", timeout=600.0)
         if not args.no_gpu_etiquette:
