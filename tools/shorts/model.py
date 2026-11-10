@@ -10,6 +10,7 @@ MAX_SHOT_S = 30.0
 # Shot sizes, closest first. ECU extreme close-up, CU close-up, MCU medium close-up (chest up), MS medium (waist up),
 # MWS medium wide (knees up), WS wide (whole body), EWS extreme wide (the place dominates).
 SIZES = ("ECU", "CU", "MCU", "MS", "MWS", "WS", "EWS")
+MODES = ("i2v", "reference")
 
 
 @dataclass
@@ -50,6 +51,25 @@ class CameraKey:
 
 
 @dataclass
+class Scene:
+    time: str
+    weather: str
+    set: str
+    light: list[str]
+    not_visible: list[str]
+
+
+def scene_text(short) -> str:
+    """The scene bible exactly as every shot sends it."""
+    s = short.scene
+    if s is None:
+        return ""
+    return " ".join([f"Time: {s.time}.", f"Weather: {s.weather}.", f"Set: {s.set}.",
+                     f"Light: {'; '.join(s.light)}." if s.light else "",
+                     f"Not visible: {', '.join(s.not_visible)}." if s.not_visible else ""]).strip()
+
+
+@dataclass
 class Shot:
     id: str
     start: float
@@ -72,6 +92,12 @@ class Shot:
     props: dict[str, str] = field(default_factory=dict)      # what each character holds, and in which hand
     prop_change: list[str] = field(default_factory=list)     # cast ids whose props change on purpose in this shot
     cross_ok: bool = False                                   # a deliberate crossing of the screen-direction line
+    plate: str = ""                                          # name of the location plate this shot is framed on
+    mode: str = "i2v"                                        # "i2v" (image to video) or "reference"
+    motion: str = ""                                         # what moves in the shot, in plain words
+    end_frame: bool = False                                  # render toward a fixed last frame
+    wardrobe_change: list[str] = field(default_factory=list) # cast ids whose wardrobe changes on purpose in this shot
+    blocking_change: bool = False                            # the blocking (who sits or stands where) changes in this shot
 
     @property
     def duration(self) -> float:
@@ -111,6 +137,9 @@ class Short:
     model: str = ""
     locks: dict[str, str] = field(default_factory=dict)
     retry_cap: int = 2
+    scene: Scene | None = None
+    wardrobe: dict[str, str] = field(default_factory=dict)
+    blocking: dict[str, str] = field(default_factory=dict)
 
 
 def _shot(d: dict) -> Shot:
@@ -125,6 +154,9 @@ def _shot(d: dict) -> Shot:
         size=d.get("size", ""), angle=d.get("angle", ""), move=d.get("move", ""), action=d.get("action", ""),
         frame=dict(d.get("frame", {})), at_start=dict(d.get("at_start", {})), at_end=dict(d.get("at_end", {})),
         props=dict(d.get("props", {})), prop_change=list(d.get("prop_change", [])), cross_ok=d.get("cross_ok", False),  # raw: validate_short rejects non-bools ("false" would be truthy)
+        plate=d.get("plate", ""), mode=d.get("mode", "i2v"), motion=d.get("motion", ""),
+        end_frame=d.get("end_frame", False), wardrobe_change=list(d.get("wardrobe_change", [])),
+        blocking_change=d.get("blocking_change", False),
     )
 
 
@@ -140,6 +172,8 @@ def load_short(folder: Path) -> Short:
         shots=[_shot(tomllib.loads(p.read_text())) for p in sorted((folder / "shots").glob("*.toml"))],
         line_rule=d.get("line_rule", ""), model=d.get("model", ""), locks=dict(d.get("locks", {})),
         retry_cap=int(d.get("retry_cap", 2)),
+        scene=Scene(**{"light": [], "not_visible": [], **d["scene"]}) if "scene" in d else None,
+        wardrobe=dict(d.get("wardrobe", {})), blocking=dict(d.get("blocking", {})),
     )
 
 
@@ -154,6 +188,9 @@ def validate_short(s: Short, designs: dict) -> list[str]:
     place = designs.get(s.place)
     if place is None or place.kind != "location":
         problems.append(f"place {s.place} is not a location design")
+    for cid in s.wardrobe:
+        if cid not in s.cast:
+            problems.append(f"wardrobe: unknown cast id {cid}")
     for cid, f in s.figures.items():
         if cid not in s.cast:
             problems.append(f"figure: unknown cast id {cid}")
@@ -169,7 +206,7 @@ def validate_short(s: Short, designs: dict) -> list[str]:
             if not 0 <= k.t <= shot.duration:
                 problems.append(f"{where}: camera key at {k.t}s is outside 0..{shot.duration}s (camera times are relative to the shot start)")
         ids = ([ln.who for ln in shot.lines] + [a.who for a in shot.acting] + list(shot.state) + list(shot.frame)
-               + list(shot.at_start) + list(shot.at_end) + list(shot.props) + list(shot.prop_change))
+               + list(shot.at_start) + list(shot.at_end) + list(shot.props) + list(shot.prop_change) + shot.wardrobe_change)
         for cid in ids:
             if cid not in s.cast:
                 problems.append(f"{where}: unknown cast id {cid}")
@@ -177,6 +214,10 @@ def validate_short(s: Short, designs: dict) -> list[str]:
             problems.append(f"{where}: cross_ok must be true or false")
         if shot.size and shot.size not in SIZES:
             problems.append(f"{where}: size {shot.size!r} not in {SIZES}")
+        if shot.mode not in MODES:
+            problems.append(f"{where}: mode {shot.mode!r} not in {MODES}")
+        if not isinstance(shot.end_frame, bool) or not isinstance(shot.blocking_change, bool):
+            problems.append(f"{where}: end_frame and blocking_change must be true or false")
         for ln in shot.lines:
             if ln.disfluency not in DISFLUENCIES:
                 problems.append(f"{where}: disfluency {ln.disfluency!r} not in {DISFLUENCIES}")

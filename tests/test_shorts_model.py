@@ -176,3 +176,40 @@ def test_short_plan_fields_load(tmp_path):
 def test_plan_field_values_are_checked(tmp_path, bad, expected):
     problems = validate_short(load_short(write(tmp_path, shot=bad)), designs())
     assert any(expected in p for p in problems), problems
+
+
+SCENE = '''
+[scene]
+time = "late night"
+weather = "indoors; no windows"
+set = "a narrow izakaya"
+light = ["paper lanterns", "red neon sign"]
+not_visible = ["windows", "rain"]
+
+[wardrobe]
+C1 = "navy jacket zipped"
+
+[blocking]
+seating = "side by side"
+'''
+
+
+def test_scene_wardrobe_blocking_and_shot_package_fields(tmp_path):
+    from tools.shorts.model import scene_text
+    # top-level shot keys must precede the [props] table, so plate/motion/end_frame go after `lens`
+    shot = SHOT.replace("lens = 35.0", 'lens = 35.0\nplate = "toward-door"\nmotion = "C2 turns."\nend_frame = true')
+    s = load_short(write(tmp_path, short=SHORT + SCENE, shot=shot))
+    assert s.scene.light == ["paper lanterns", "red neon sign"] and s.wardrobe["C1"] == "navy jacket zipped"
+    assert s.blocking["seating"] == "side by side"
+    sh = s.shots[0]
+    assert (sh.plate, sh.mode, sh.motion, sh.end_frame) == ("toward-door", "i2v", "C2 turns.", True)
+    t = scene_text(s)
+    assert "Time: late night." in t and "Not visible: windows, rain." in t and "Light: paper lanterns; red neon sign." in t
+
+
+def test_validate_rejects_bad_mode_and_unknown_wardrobe_id(tmp_path):
+    shot = PLANNED.replace("lens = 35.0", 'lens = 35.0\nmode = "dream"\nwardrobe_change = ["C9"]')
+    s = load_short(write(tmp_path, short=SHORT + SCENE.replace('C1 = "navy', 'C7 = "navy'), shot=shot))
+    p = validate_short(s, designs())
+    assert any("mode 'dream'" in x for x in p) and any("unknown cast id C9" in x for x in p)
+    assert any("wardrobe: unknown cast id C7" in x for x in p)
