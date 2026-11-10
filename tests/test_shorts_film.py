@@ -217,3 +217,15 @@ def test_cli_boards_and_wall(tmp_path, monkeypatch, capsys):
     assert (dd / "shorts" / "_site" / "films" / "night" / "index.html").exists()
     assert main(["wall", "ghost"]) == 1
     assert main(["boards", "ghost"]) == 1
+
+
+def test_films_producer_skips_bad_film_and_bad_slug(tmp_path, capsys):
+    shorts, films, lib, plates, dd = world(tmp_path)
+    (films / "ghosty.toml").write_text(FILM.replace('["pilot"]', '["ghost"]'))
+    (films / "Bad_Slug.toml").write_text(FILM)
+    (films / "broken.toml").write_text('title = "x"\nscenes = ["pilot"')
+    c = {"shorts_dir": shorts, "films_dir": films, "design_dir": dd, "site": tmp_path / "site"}
+    items = P.films(c)
+    assert [i.id.split("--")[1] for i in items] == ["night"]
+    err = capsys.readouterr().err
+    assert "ghosty" in err and "Bad_Slug" in err and "broken" in err

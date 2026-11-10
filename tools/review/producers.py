@@ -3,7 +3,9 @@ URLs point at pages already published on the AI Lab box (/designs, /world, /shor
 
 import hashlib
 import json
+import re
 import shutil
+import sys
 from pathlib import Path
 
 from narrator.design_sheets import CHARACTER_SHEETS
@@ -294,7 +296,14 @@ def films(ctx) -> list[Item]:
     fdir = Path(ctx.get("films_dir") or film_mod.default_dir())
     out = []
     for path in sorted(fdir.glob("*.toml")):
-        f = film_mod.load_film(path.stem, fdir, root)
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,80}", path.stem):
+            print(f"films: skipping {path.name}: bad slug", file=sys.stderr)
+            continue
+        try:
+            f = film_mod.load_film(path.stem, fdir, root)
+        except (ValueError, KeyError, OSError) as e:
+            print(f"films: skipping {path.stem}: {e}", file=sys.stderr)
+            continue
         h = hashlib.sha256(path.read_bytes())
         pngs, lines = [], []
         for scene in f.scenes:
