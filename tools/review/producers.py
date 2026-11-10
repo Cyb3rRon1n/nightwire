@@ -283,4 +283,36 @@ def cuts(ctx) -> list[Item]:
     return out
 
 
-ALL = [sheets, bibles, sheet_sets, candidates, world, takes, wallpapers, plates, scenes, keyframes, plans, cuts]
+def films(ctx) -> list[Item]:
+    """One wall item per film; the id hashes the film TOML, every scene's shot TOMLs and the board pngs."""
+    import hashlib
+
+    from tools.shorts import SHORTS_DIR
+    from tools.shorts import film as film_mod
+    from tools.shorts.model import load_short
+    root = Path(ctx.get("shorts_dir") or SHORTS_DIR)
+    fdir = Path(ctx.get("films_dir") or film_mod.default_dir())
+    out = []
+    for path in sorted(fdir.glob("*.toml")):
+        f = film_mod.load_film(path.stem, fdir, root)
+        h = hashlib.sha256(path.read_bytes())
+        pngs, lines = [], []
+        for scene in f.scenes:
+            short = load_short(root / scene)
+            lines.append(f"Scene {scene}: {short.title} ({short.scene.time if short.scene else ''}, {short.place})")
+            for tf in sorted((root / scene / "shots").glob("*.toml")):
+                h.update(tf.read_bytes())
+            for sh in short.shots:
+                lines.append(f"  {sh.id} {sh.size} {sh.move or 'static'} {sh.duration:g} s: {sh.action or sh.summary}")
+                for which in ("start", "end"):
+                    png = ctx["design_dir"] / "shorts" / scene / "shots" / sh.id / f"board-{which}.png"
+                    if png.exists():
+                        h.update(png.read_bytes())
+                        pngs.append((f"{scene}-{sh.id}-{which}", png))
+        files = [web_copy(png, ctx["site"], f"films/{f.slug}/{name}.jpg", 800) for name, png in pngs[:12]]
+        out.append(Item(f"film--{f.slug}--{h.hexdigest()[:10]}", "wall", "pre-production", f.slug, f"{f.title}: film wall", files,
+                        context="\n".join([f.logline, f"Mood: {f.mood}", *lines])))
+    return out
+
+
+ALL = [sheets, bibles, sheet_sets, candidates, world, takes, wallpapers, plates, scenes, keyframes, plans, cuts, films]

@@ -461,6 +461,29 @@ def cmd_status(a) -> int:
     return 0
 
 
+def cmd_boards(a) -> int:
+    from tools.shorts import boards
+    s = _short(a.slug)
+    if a.shot:
+        _shot(s, a.shot)
+    try:
+        for f in boards.build(s, data_dir().parent, _work(a.slug), shot=a.shot):
+            print(f)
+    except ValueError as e:
+        raise CliError(str(e))
+    return 0
+
+
+def cmd_wall(a) -> int:
+    from tools.shorts import film, wall
+    try:
+        f = film.load_film(a.slug, shorts_dir=SHORTS_DIR)
+    except ValueError as e:
+        raise CliError(str(e))
+    print(wall.build(f, a.slug, SHORTS_DIR, data_dir().parent, data_dir() / "_site"))
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="python -m tools.shorts")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -489,6 +512,8 @@ def main(argv=None) -> int:
     q.add_argument("--seed", type=int, default=703); q.add_argument("--redo", action="store_true")
     q.add_argument("--choose", nargs=2, metavar=("WHICH", "N"))
     sub.add_parser("page")
+    q = sub.add_parser("boards"); q.add_argument("slug"); q.add_argument("shot", nargs="?")
+    sub.add_parser("wall").add_argument("slug")
     q = sub.add_parser("assemble"); q.add_argument("slug"); q.add_argument("--music", type=Path)
     a = p.parse_args(argv)
     try:

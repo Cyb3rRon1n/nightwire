@@ -88,6 +88,17 @@ def scene_mood(short) -> str:
 
 
 @dataclass
+class Board:
+    """One figure on one draft board: [[board]] in a shot TOML. pose/camera name cells of the grey-box library."""
+    which: str                  # "start" or "end" keyframe
+    figure: str                 # cast id
+    pose: str
+    camera: str
+    feet: tuple[float, float]   # 0..1 of the frame
+    height: float               # figure height, 0..1 of the frame
+
+
+@dataclass
 class Shot:
     id: str
     start: float
@@ -116,6 +127,7 @@ class Shot:
     end_frame: bool = False                                  # render toward a fixed last frame
     wardrobe_change: list[str] = field(default_factory=list) # cast ids whose wardrobe changes on purpose in this shot
     blocking_change: bool = False                            # the blocking (who sits or stands where) changes in this shot
+    boards: list[Board] = field(default_factory=list)        # draft-board figures per keyframe
 
     @property
     def duration(self) -> float:
@@ -176,6 +188,8 @@ def _shot(d: dict) -> Shot:
         plate=d.get("plate", ""), mode=d.get("mode", "i2v"), motion=d.get("motion", ""),
         end_frame=d.get("end_frame", False), wardrobe_change=list(d.get("wardrobe_change", [])),
         blocking_change=d.get("blocking_change", False),
+        boards=[Board(b["which"], b["figure"], b["pose"], b["camera"], tuple(map(float, b["feet"])), float(b["height"]))
+                for b in d.get("board", [])],
     )
 
 
@@ -195,6 +209,26 @@ def load_short(folder: Path) -> Short:
         wardrobe=dict(d.get("wardrobe", {})), blocking=dict(d.get("blocking", {})),
         avoid=list(d.get("avoid", [])),
     )
+
+
+def _board_problems(s: "Short", shot: Shot, where: str) -> list[str]:
+    from tools.greybox_library import presets
+    out = []
+    for b in shot.boards:
+        tag = f"{where}: board {b.which} {b.figure}"
+        if b.which not in ("start", "end"):
+            out.append(f"{tag}: which must be start or end")
+        if b.figure not in s.cast:
+            out.append(f"{tag}: figure is not a cast id")
+        if b.pose not in presets.POSES:
+            out.append(f"{tag}: pose {b.pose!r} is not in the grey-box library")
+        if b.camera not in presets.CAMERAS:
+            out.append(f"{tag}: camera {b.camera!r} is not in the grey-box library")
+        if len(b.feet) != 2 or not all(0 <= v <= 1 for v in b.feet):
+            out.append(f"{tag}: feet must be [x, y] between 0 and 1")
+        if not 0 < b.height <= 1:
+            out.append(f"{tag}: height must be above 0 and at most 1")
+    return out
 
 
 def validate_short(s: Short, designs: dict) -> list[str]:
@@ -238,6 +272,7 @@ def validate_short(s: Short, designs: dict) -> list[str]:
             problems.append(f"{where}: mode {shot.mode!r} not in {MODES}")
         if not isinstance(shot.end_frame, bool) or not isinstance(shot.blocking_change, bool):
             problems.append(f"{where}: end_frame and blocking_change must be true or false")
+        problems += _board_problems(s, shot, where)
         for ln in shot.lines:
             if ln.disfluency not in DISFLUENCIES:
                 problems.append(f"{where}: disfluency {ln.disfluency!r} not in {DISFLUENCIES}")
