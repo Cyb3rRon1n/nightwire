@@ -36,15 +36,17 @@ def ref_roles(short: Short, designs: dict, sent: list[str]) -> str:
 
 
 def _identity(design) -> str:
+    # Deliberately outside the position-word check (L1/Wardrobe line, not L2/L4): identity marks like "scar on the right cheek" are looks, not screen positions.
     marks = list(getattr(design, "identity", None) or [])
     return f" (always: {'; '.join(marks)})" if marks else ""
 
 
-def _package_lines(short: Short, designs: dict) -> list[str]:
+def _package_lines(short: Short, designs: dict, shot: Shot | None = None) -> list[str]:
     out = [scene_text(short)] if short.scene else []
-    if short.wardrobe:
-        out.append("Wardrobe: " + "; ".join(f"{cid} {designs[short.cast[cid]].name}: {wardrobe_text(short, designs, cid)}"
-                                              + _identity(designs[short.cast[cid]]) for cid in short.wardrobe) + ".")
+    worn = [f"{cid} {designs[short.cast[cid]].name}: {wardrobe_text(short, designs, cid)}{_identity(designs[short.cast[cid]])}"
+            for cid in short.wardrobe if shot is None or not shot.frame or cid in shot.frame]
+    if worn:
+        out.append("Wardrobe: " + "; ".join(worn) + ".")
     if short.blocking:
         out.append("Seating: " + "; ".join(short.blocking.values()) + ".")
     return [x for x in out if x]
@@ -58,7 +60,7 @@ def _positions(short: Short, shot: Shot) -> str:
 def i2v_prompt(short: Short, shot: Shot, designs: dict) -> str:
     """Image-to-video: the start (and end) keyframe already shows the room, people and outfits; the text says what
     moves, restates what must not change, and lists what must not appear."""
-    head = [shot.motion or shot.action, *_package_lines(short, designs), _positions(short, shot)]
+    head = [shot.motion or shot.action, *_package_lines(short, designs, shot), _positions(short, shot)]
     if shot.move == "static":
         head.append("Keep the camera completely locked off.")
     l5 = layers(short, shot, designs)["L5"]
@@ -88,7 +90,7 @@ def layers(short: Short, shot: Shot, designs: dict, has_still: bool = False,
     if shot.move == "static":
         l1 += " Keep the camera completely locked off."
     if shot.mode == "reference":
-        l1 += "".join(" " + x for x in _package_lines(short, designs))
+        l1 += "".join(" " + x for x in _package_lines(short, designs, shot))
     if has_still:
         l1 += " start_frame.png is the approved opening frame: match its composition, characters and light at 0 s."
     # The design's required tags name what must not drift (hair, eyes, signature clothes).

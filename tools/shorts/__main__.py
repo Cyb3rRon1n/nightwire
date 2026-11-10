@@ -107,6 +107,14 @@ def cmd_bundle(a) -> int:
     s, work = _short(a.slug), _work(a.slug)
     shot_dir = work / "shots" / a.shot
     shot = _shot(s, a.shot)
+    if shot.frame:  # a character shot goes out only after the same package checks as submit
+        from tools.shorts.backends import fal
+        report = _preflight(s, shot, fal.shot_model(shot, s.model or "seedance-2.0-fast"), load_designs())[0]
+        if not report.ok:
+            for p in report.problems:
+                print(f"problem: {p}", file=sys.stderr)
+            print("pre-flight failed: no bundle written", file=sys.stderr)
+            return 1
     out = manual.write_bundle(shot_dir, build_prompt(s, shot, load_designs(), has_still=(shot_dir / "still.png").exists()),
                               ref_files(s, data_dir().parent, shot_dir))
     print(out)

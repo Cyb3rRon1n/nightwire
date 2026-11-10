@@ -141,7 +141,9 @@ def package(short, shot, prev, plates: dict, shot_dir, approvals: dict, design_d
     elif not keep(approvals.get("SCENE", {}).get(scene_fp(short))):
         p.append("scene bible not approved (or changed since)")
     environment = shot.mode == "i2v" and not shot.frame  # no cast in frame: the plate is the opening frame
-    if shot.mode == "reference" and shot.frame:
+    if shot.frame:  # any mode: cast in frame means a character shot
+        if shot.mode != "reference":
+            p.append("character shots use reference mode with sheets + board; i2v is for empty-room shots")
         p += character_shot(short, shot, shot_dir, images, design_dir, keep, designs or {})
     if environment:
         if not shot.motion:

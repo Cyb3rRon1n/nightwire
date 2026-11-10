@@ -43,8 +43,11 @@ def v2(dd, slug="saeko-kirigaya", state="work"):
 def test_state_name_resolves_and_unknown_state_is_an_error(tmp_path):
     s = short_(tmp_path)
     assert validate_short(s, state_designs()) == []  # "work" is a state; the C2 free text has spaces
-    bad = short_(tmp_path / "b", short=SHORT + '\n[wardrobe]\nC1 = "formal"\n')
-    assert any("C1" in p and "formal" in p for p in validate_short(bad, state_designs()))
+    for text in ("formal", "a long grey coat"):  # with states, only a state name is allowed
+        bad = short_(tmp_path / text[:3], short=SHORT + f'\n[wardrobe]\nC1 = "{text}"\n')
+        assert any("C1" in p and "not a wardrobe state" in p for p in validate_short(bad, state_designs()))
+    free = short_(tmp_path / "f", short=SHORT + '\n[wardrobe]\nC1 = "formal"\n')
+    assert validate_short(free, designs()) == []  # no states on the design: any free text
 
 
 def test_prompt_uses_state_text_and_identity(tmp_path):
@@ -136,3 +139,44 @@ def test_environment_shot_skips_cast_fields(tmp_path):
     assert preflight.required(sh) == []
     sh.plate = ""
     assert "missing frame" in preflight.required(sh)
+
+
+def test_i2v_shot_with_cast_in_frame_is_a_problem(tmp_path):
+    s = short_(tmp_path, shot=REF.replace('mode = "reference"', 'mode = "i2v"'))
+    p = preflight.package(s, s.shots[0], None, {}, tmp_path, _approvals({}), tmp_path, state_designs())
+    assert any("i2v is for empty-room shots" in x for x in p) and "no draft board (board-start.png)" in p
+
+
+def test_board_id_covers_end_board_and_plan_item_shows_it(tmp_path):
+    sd = tmp_path / "sd"
+    start = png(sd / "board-start.png")
+    a = board_id("pilot", "S01", start)
+    Image.new("RGB", (8, 8), "red").save(sd / "board-end.png")
+    b = board_id("pilot", "S01", start)
+    assert a != b
+    Image.new("RGB", (8, 8), "blue").save(sd / "board-end.png")
+    assert board_id("pilot", "S01", start) not in (a, b)
+    s = short_(tmp_path)
+    run = lambda images: preflight.package(s, s.shots[0], None, {}, sd, _approvals(images), tmp_path, state_designs())  # noqa: E731
+    assert "draft board not approved" in run({b: KEEP})  # keep on the old end board
+    assert "draft board not approved" not in run({board_id(s.slug, "S01", start): KEEP})
+
+
+def test_wardrobe_line_lists_only_cast_in_frame(tmp_path):
+    s = short_(tmp_path, shot=REF.replace('C2 = "screen-left, facing camera"\n', ""))
+    p = build_prompt(s, s.shots[0], state_designs())
+    assert "cropped navy jacket" in p and "red coat with a hood" not in p
+
+
+def test_frame_cid_not_in_cast_is_a_validation_error(tmp_path):
+    s = short_(tmp_path, shot=REF.replace('C2 = "screen-left', 'C9 = "screen-left'))
+    assert any("unknown cast id C9" in p for p in validate_short(s, state_designs()))
+
+
+def test_bundle_refuses_character_shot_that_fails_preflight(tmp_path, monkeypatch, capsys):
+    from test_shorts_cli import PACKAGED, setup
+    from tools.shorts.__main__ import main
+    setup(tmp_path, monkeypatch, shot=PACKAGED)
+    monkeypatch.setattr("tools.shorts.__main__._images_api", lambda: {})  # nothing approved
+    assert main(["bundle", "pilot", "S01"]) == 1
+    assert "no bundle written" in capsys.readouterr().err

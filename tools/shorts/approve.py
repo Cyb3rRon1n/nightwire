@@ -45,8 +45,13 @@ def keyframe_id(slug: str, shot_id: str, which: str, path: Path | None = None) -
 
 
 def board_id(slug: str, shot_id: str, path: Path) -> str:
-    """Review id of a shot's draft board; carries the hash of board-start.png so a changed board needs a new keep."""
-    return f"board--{slug}--{shot_id.lower()}--{file_sha(path)}"
+    """Review id of a shot's draft boards: hashes board-start.png and, when present, board-end.png beside it,
+    so a changed board of either kind needs a new keep. One id per shot."""
+    h = hashlib.sha256(path.read_bytes())
+    end = path.with_name("board-end.png")
+    if end.exists():
+        h.update(end.read_bytes())
+    return f"board--{slug}--{shot_id.lower()}--{h.hexdigest()[:10]}"
 
 
 def plan_image_id(slug: str, shot_id: str, fp: str) -> str:

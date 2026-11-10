@@ -289,6 +289,9 @@ def plans(ctx) -> list[Item]:
             sd = work / "shots" / row["id"]
             src = next((f for f in (sd / "keyframe-start.png", sd / "preview" / "start.png") if f.exists()), None)
             files = [web_copy(src, ctx["site"], f"plans/{short.slug}/{row['id'].lower()}.jpg")] if src else []
+            end = sd / "board-end.png"
+            if end.exists():
+                files.append(web_copy(end, ctx["site"], f"plans/{short.slug}/{row['id'].lower()}-end.jpg"))
             context = "\n".join([f"Model: {row['model']}", f"Cost: about ${row['cost']:.2f}", *[f"Waiting on: {p}" for p in row["problems"]],
                                  "Prompt:", row["prompt"]])
             out.append(Item(row["image_id"], "plan", "pre-production", short.slug, f"{short.title}: {row['id']} plan", files, context=context))
