@@ -1,0 +1,13 @@
+# Empty-room plates of Mama Sato's izakaya, one per camera direction. Night, no people.
+[[plate]]
+name = "toward-shelves"
+view = "from the guest stools toward the long wooden counter, bottle shelves, paper lanterns and the red neon sign on the back wall"
+source = "play.png"
+
+[[plate]]
+name = "toward-door"
+view = "from behind the counter toward the guest stools and the noren doorway in the left wall; no windows"
+
+[[plate]]
+name = "along-counter"
+view = "from the far end of the counter looking along it: stools on the left, counter and shelves on the right, the noren doorway at the back"

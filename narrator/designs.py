@@ -122,6 +122,8 @@ def load_design(path: Path) -> Design:
 def load_designs(directory: Path = DESIGNS_DIR) -> dict[str, Design]:
     designs = {}
     for path in sorted(Path(directory).glob("*.toml")):
+        if path.name.endswith(".plates.toml"):  # location plate catalogues, read by tools/shorts/plates.py
+            continue
         d = load_design(path)
         designs[d.slug] = d
     return designs
