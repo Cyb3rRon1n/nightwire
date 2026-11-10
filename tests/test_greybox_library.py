@@ -180,14 +180,14 @@ def _cell(tmp, name="c", box=(500, 300, 600, 700), props=None, fg=None, wide=Fal
     from PIL import Image
     d = tmp / name
     d.mkdir()
-    floor = np.tile(np.linspace(0, 200, 832, dtype=np.uint8)[:, None], (1, 1216))
+    floor = np.tile(np.linspace(0, 150, 832, dtype=np.uint8)[:, None], (1, 1216))
     if wide:
         box = (0, box[1], 1216, box[3])
     figd, depth = floor.copy(), floor.copy()
-    figd[box[1]:box[3], box[0]:box[2]] = 250
-    depth[box[1]:box[3], box[0]:box[2]] = 250
+    figd[box[1]:box[3], box[0]:box[2]] = 200
+    depth[box[1]:box[3], box[0]:box[2]] = 200
     if props:
-        depth[props[1]:props[3], props[0]:props[2]] = 240
+        depth[props[1]:props[3], props[0]:props[2]] = 210
     if fg:
         depth[fg[1]:fg[3], fg[0]:fg[2]] = 255
     for n, a in (("depth", depth), ("floor-depth", floor), ("figure-depth", figd)):
@@ -240,7 +240,7 @@ def test_insert_label_pose_depth_outputs(tmp_path):
     assert pose["points"]["neck"][1] == pytest.approx(0.4, abs=0.003)
     assert Image.open(tmp_path / "a.pose.png").size == (1000, 600) and Image.open(tmp_path / "a.depth.png").size == (1000, 600)
     dep = np.asarray(Image.open(tmp_path / "a.depth.png"))
-    assert dep[300, 400] > 200 and dep[10, 10] == 0
+    assert dep[300, 400] > 150 and dep[10, 10] == 0
 
 
 def test_insert_two_figures_and_cli(tmp_path, monkeypatch):
@@ -307,3 +307,29 @@ def test_tiny_figure_never_allocates_a_full_cell_upscale_and_zero_height_raises(
     (bad / "meta.json").write_text(json.dumps(meta))
     with pytest.raises(ValueError, match="figure_height_px is 0"):
         insert.insert(_plate(tmp_path), bad, (0.5, 0.9), 0.5, "Z", tmp_path / "z.png")
+
+
+def test_things_in_front_of_the_figure_are_not_painted_figure_grey(tmp_path):
+    import numpy as np
+    from PIL import Image
+    from tools.greybox_library import insert
+    c = _cell(tmp_path, box=(400, 300, 800, 700), props=(500, 400, 600, 500), fg=(700, 600, 800, 700))
+    for n, edits in (("depth", ((400, 300, 800, 700, 220), (500, 400, 600, 500, 232), (700, 600, 800, 700, 255))),
+                     ("figure-depth", ((400, 300, 800, 700, 220),))):  # figure 220; prop 232 and foreground 255 are nearer
+        a = np.asarray(Image.open(c / f"{n}.png").convert("L")).copy()
+        for x0, y0, x1, y1, v in edits:
+            a[y0:y1, x0:x1] = v
+        Image.fromarray(a).convert("RGB").save(c / f"{n}.png")
+    cut = dict((col, np.asarray(m) > 0) for m, col in insert.cutout(c)["layers"])
+    ox, oy = 400, 300  # crop origin
+    assert not cut[insert.FIGURE][400 - oy:500 - oy, 500 - ox:600 - ox].any() and cut[insert.PROPS][400 - oy:500 - oy, 500 - ox:600 - ox].all()
+    assert not cut[insert.FIGURE][600 - oy:700 - oy, 700 - ox:800 - ox].any() and cut[insert.FOREGROUND][600 - oy:700 - oy, 700 - ox:800 - ox].all()
+    assert cut[insert.FIGURE].sum() == 400 * 400 - 2 * 100 * 100
+
+
+def test_old_cells_without_exact_depth_files_give_a_clear_error(tmp_path):
+    from tools.greybox_library import insert
+    c = _cell(tmp_path)
+    (c / "floor-depth.png").unlink()
+    with pytest.raises(ValueError, match="rebuild the library"):
+        insert.cutout(c)

@@ -12,6 +12,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 from tools.shorts import guides
 
 FIGURE, PROPS, FOREGROUND, EDGE, DIM = (150, 150, 155), (105, 105, 110), (90, 90, 95), (200, 200, 206), 0.55
+FG_GAP = 20  # an OTS foreground figure is at least this much nearer than the whole figure; props in front of it are less
 MARGIN = 4  # depth levels (of 255) a pixel must be nearer than the empty floor to count as an object
 
 
@@ -26,12 +27,17 @@ def cutout(entry: Path) -> dict:
     meta = json.loads((entry / "meta.json").read_text())
     if meta.get("figure_height_px", 0) <= 0:
         raise ValueError(f"{entry}: figure_height_px is 0 (figure off screen?), cannot scale")
+    stale = [n for n in ("depth.png", "floor-depth.png", "figure-depth.png") if not (entry / n).exists()] + ([] if "res" in meta else ["meta res"])
+    if stale:
+        raise ValueError(f"{entry}: old library cell, missing {', '.join(stale)} - rebuild the library (python -m tools.greybox_library build)")
     depth, floor, fig_d = _depth(entry, "depth.png"), _depth(entry, "floor-depth.png"), _depth(entry, "figure-depth.png")
-    figure, near = fig_d > floor + MARGIN, depth > floor + MARGIN
-    if not figure.any():
+    figure = (fig_d > floor + MARGIN) & (np.abs(depth - fig_d) <= MARGIN)  # figure only where it is the nearest surface
+    near = depth > floor + MARGIN
+    if not (fig_d > floor + MARGIN).any():
         raise ValueError(f"{entry}: empty figure mask")
     rest = near & ~figure
-    fg = rest & (depth > fig_d[figure].max() + MARGIN) if meta.get("foreground_figure") else np.zeros_like(rest)
+    top = (fig_d[figure].max() if figure.any() else fig_d.max()) + FG_GAP
+    fg = rest & (depth > top) if meta.get("foreground_figure") else np.zeros_like(rest)
     layers = [(rest & ~fg, PROPS), (figure, FIGURE), (fg, FOREGROUND)]
     ys, xs = np.nonzero(near | figure)
     x0, y0, x1, y1 = xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
