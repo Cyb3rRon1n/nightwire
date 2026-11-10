@@ -26,3 +26,10 @@ Every phase so far has an implementation plan at `docs/superpowers/plans/` and a
 ## Generating images
 
 See `docs/image-generation-guide.md` (how to use ComfyUI, `tools.imagegen`, presets, GPU etiquette) and `docs/art-direction.md` (the approved look and content rules).
+
+## AI Lab reviews
+
+Every output the owner reviews goes through the review registry (`tools/review/`): add a producer in
+`tools/review/producers.py` that returns `Item`s, rebuild with `python -m tools.review build`, publish with the printed
+rsync. Never build a separate review page. Verdicts live in the shared store `/designs/api/images` (picks in
+`/designs/api/picks`).
