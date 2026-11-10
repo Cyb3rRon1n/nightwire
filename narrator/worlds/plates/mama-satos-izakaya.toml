@@ -6,7 +6,7 @@ source = "play.png"
 
 [[plate]]
 name = "toward-door"
-view = "from behind the counter toward the guest stools and the noren doorway in the left wall; no windows"
+view = "from behind the counter toward the guest stools and the noren doorway in the left wall"
 
 [[plate]]
 name = "along-counter"
