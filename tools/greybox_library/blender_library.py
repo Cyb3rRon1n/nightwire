@@ -96,6 +96,16 @@ def feet(pose, box_):
     return [round(sum(p[0] for p in pts) / len(pts), 4), round(max(p[1] for p in pts), 4)]
 
 
+def assert_posed(rig_obj, cell):
+    """Fail loudly if a pose with leg rotations left the evaluated leg bones at rest (the skeleton and board would both be standing)."""
+    if not any(cell["rig"]["rot"].get(b) and any(cell["rig"]["rot"][b]) for b in ("thigh.L", "thigh.R", "shin.L", "shin.R")):
+        return
+    ev = rig_obj.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    moved = max((ev.pose.bones[n].tail - ev.data.bones[n].tail_local).length for n in ("shin.L", "shin.R", "thigh.L", "thigh.R"))
+    if moved < 0.05:
+        raise SystemExit(f"pose '{cell['pose']}' not applied: leg bones still at rest (moved {moved:.3f} m)")
+
+
 current = None
 rig, props = None, []
 for cell in J["cells"]:
@@ -115,7 +125,9 @@ for cell in J["cells"]:
     cam.location = c["at"]
     cam.rotation_euler = (Vector(c["look"]) - Vector(c["at"])).to_track_quat("-Z", "Y").to_euler()
     sc.camera = cam
+    sc.frame_set(sc.frame_current)
     bpy.context.view_layer.update()
+    assert_posed(rig, cell)
     cell_dir = out / cell["dir"]
     cell_dir.mkdir(parents=True, exist_ok=True)
     render_still(cell_dir / "board.png")

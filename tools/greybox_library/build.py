@@ -6,6 +6,7 @@ design-data/greybox-library/<pose>/<camera>/{board,depth}.png + pose.json + meta
 import argparse
 import json
 import math
+import os
 import shlex
 import shutil
 import subprocess
@@ -19,7 +20,12 @@ from tools.shorts import guides, remote
 
 LIB = Path(__file__).with_name("blender_library.py")
 REMOTE_DIR = "nightwire-greybox"
-OUT = Path("design-data/greybox-library")
+
+
+def default_out() -> Path:
+    return Path(os.environ.get("NIGHTWIRE_DESIGN_DIR", "design-data")) / "greybox-library"
+
+
 RES = [guides.KEY_W, guides.KEY_H]
 
 
@@ -79,7 +85,8 @@ def finish(cell: Path) -> None:
         board.save(cell / "board.png")
 
 
-def build(poses, cameras, height_cm, out: Path = OUT) -> list[dict]:
+def build(poses, cameras, height_cm, out: Path | None = None) -> list[dict]:
+    out = out or default_out()
     todo = jobs(poses, cameras, height_cm, out)
     with tempfile.TemporaryDirectory() as tmp:
         job = Path(tmp) / "job.json"
@@ -98,7 +105,8 @@ def main(argv=None) -> None:
     b = sub.add_parser("build", help="render poses x cameras on the GPU box")
     b.add_argument("--poses", nargs="+"), b.add_argument("--cameras", nargs="+")
     b.add_argument("--height", type=int, default=presets.REF_HEIGHT_CM, help="figure height in cm")
-    b.add_argument("--out", type=Path, default=OUT)
+    b.add_argument("--out", type=Path, default=None, help="default: $NIGHTWIRE_DESIGN_DIR/greybox-library, else design-data/greybox-library")
     a = ap.parse_args(argv)
-    done = build(a.poses, a.cameras, a.height, a.out)
-    print(f"{len(done)} cells -> {a.out}")
+    out = a.out or default_out()
+    done = build(a.poses, a.cameras, a.height, out)
+    print(f"{len(done)} cells -> {out}")

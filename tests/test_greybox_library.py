@@ -106,3 +106,10 @@ def test_every_name_blender_library_extracts_exists_in_blender_build():
     funcs = {n.name for n in body if isinstance(n, ast.FunctionDef)}
     names = {n.targets[0].id for n in body if isinstance(n, ast.Assign) and isinstance(n.targets[0], ast.Name)}
     assert want["WANT_FUNCS"] <= funcs and want["WANT_NAMES"] <= names
+
+
+def test_default_output_follows_design_dir(monkeypatch, tmp_path):
+    monkeypatch.setenv("NIGHTWIRE_DESIGN_DIR", str(tmp_path))
+    assert build.default_out() == tmp_path / "greybox-library"
+    monkeypatch.delenv("NIGHTWIRE_DESIGN_DIR")
+    assert build.default_out() == Path("design-data/greybox-library")

@@ -161,41 +161,59 @@ def figure_pose(obj, cam):
 
 
 def render_depth(path, cam):
-    """White = near, black = far, normalised over the visible range. Workbench supports the Z pass; the compositor feeds a Viewer
-    node whose pixels are read back with numpy and saved as a 8-bit PNG. Compositor state is restored."""
+    """White = near, black = far, normalised over the visible range. The Z pass goes through a compositor File Output node as a float
+    OpenEXR (the Viewer node image is empty in background mode), is read back with numpy at the scene resolution and saved as an
+    8-bit PNG. Compositor state is restored."""
+    import tempfile
     import numpy as np
     vl, old_nodes, old_z = bpy.context.view_layer, sc.use_nodes, bpy.context.view_layer.use_pass_z
-    vl.use_pass_z, sc.use_nodes = True, True
+    old_comp, old_pct = sc.render.use_compositing, sc.render.resolution_percentage
+    vl.use_pass_z, sc.use_nodes, sc.render.use_compositing, sc.render.resolution_percentage = True, True, True, 100
     tree = sc.node_tree
     tmp = path.with_name(".tmp-" + path.name)
-    try:
-        for n in list(tree.nodes):
-            tree.nodes.remove(n)
-        rl, viewer, comp = tree.nodes.new("CompositorNodeRLayers"), tree.nodes.new("CompositorNodeViewer"), tree.nodes.new("CompositorNodeComposite")
-        tree.links.new(rl.outputs["Depth"], viewer.inputs["Image"])
-        tree.links.new(rl.outputs["Image"], comp.inputs["Image"])
-        render_still(tmp)
-        img = bpy.data.images["Viewer Node"]
-        w, h = img.size
-        z = np.array(img.pixels[:], dtype=np.float32).reshape(h, w, 4)[..., 0]
-        seen = z < 1e4  # background is ~1e10
-        out = np.zeros_like(z)
-        if seen.any():
-            lo, hi = float(z[seen].min()), float(z[seen].max())
-            out[seen] = 0.08 + 0.92 * (1 - (z[seen] - lo) / max(hi - lo, 1e-6))  # nearest = 1.0, farthest visible stays above black
-        res = bpy.data.images.new("depth_out", w, h, alpha=False, float_buffer=False)
-        res.colorspace_settings.name = "Non-Color"
-        res.pixels = np.dstack([out, out, out, np.ones_like(out)]).ravel().tolist()
-        res.filepath_raw, res.file_format = str(path), "PNG"
-        res.save()
-        bpy.data.images.remove(res)
-    finally:
-        for n in list(tree.nodes):
-            tree.nodes.remove(n)
-        sc.use_nodes, vl.use_pass_z = old_nodes, old_z
-        if "Viewer Node" in bpy.data.images:
-            bpy.data.images.remove(bpy.data.images["Viewer Node"])
-        tmp.unlink(missing_ok=True)
+    img = None
+    with tempfile.TemporaryDirectory() as zdir:
+        try:
+            for n in list(tree.nodes):
+                tree.nodes.remove(n)
+            rl, comp, fo = tree.nodes.new("CompositorNodeRLayers"), tree.nodes.new("CompositorNodeComposite"), tree.nodes.new("CompositorNodeOutputFile")
+            fo.base_path = zdir
+            fo.format.file_format, fo.format.color_depth, fo.format.color_mode = "OPEN_EXR", "32", "BW"
+            if hasattr(fo, "file_slots"):
+                fo.file_slots[0].path = "z_"
+            else:  # newer Blender: output items
+                fo.file_output_items.clear()
+                fo.file_output_items.new("FLOAT", "z_")
+            tree.links.new(rl.outputs["Depth"], fo.inputs[0])
+            tree.links.new(rl.outputs["Image"], comp.inputs["Image"])
+            render_still(tmp)
+            exr = sorted(Path(zdir).glob("z_*.exr"))
+            if not exr:
+                raise RuntimeError("depth: compositor wrote no EXR (files: %s)" % [p.name for p in Path(zdir).iterdir()])
+            img = bpy.data.images.load(str(exr[0]))
+            img.colorspace_settings.name = "Non-Color"
+            w, h = img.size
+            z = np.array(img.pixels[:], dtype=np.float32).reshape(h, w, -1)[..., 0]
+            if (w, h) != (sc.render.resolution_x, sc.render.resolution_y):
+                raise RuntimeError(f"depth: got {w}x{h}, expected {sc.render.resolution_x}x{sc.render.resolution_y}")
+            seen = z < 1e4  # background is ~1e10
+            out_z = np.zeros_like(z)
+            if seen.any():
+                lo, hi = float(z[seen].min()), float(z[seen].max())
+                out_z[seen] = 0.08 + 0.92 * (1 - (z[seen] - lo) / max(hi - lo, 1e-6))  # nearest = 1.0, farthest visible stays above black
+            res = bpy.data.images.new("depth_out", w, h, alpha=False, float_buffer=False)
+            res.colorspace_settings.name = "Non-Color"
+            res.pixels = np.dstack([out_z, out_z, out_z, np.ones_like(out_z)]).ravel().tolist()
+            res.filepath_raw, res.file_format = str(path), "PNG"
+            res.save()
+            bpy.data.images.remove(res)
+        finally:
+            for n in list(tree.nodes):
+                tree.nodes.remove(n)
+            sc.use_nodes, vl.use_pass_z, sc.render.use_compositing, sc.render.resolution_percentage = old_nodes, old_z, old_comp, old_pct
+            if img is not None:
+                bpy.data.images.remove(img)
+            tmp.unlink(missing_ok=True)
 
 
 def render_guides(shot, cam, start, last):
