@@ -17,6 +17,8 @@ def plan_migration(reviews: dict, images: dict) -> dict[str, dict]:
         new = sheet_id(slug, v)
         if not v or not verdict or not valid_id(new) or new in images:
             continue
+        if verdict == "fix" and not r.get("note", "").strip():  # the server requires a note for fix; skip, not abort
+            continue
         out[new] = {"verdict": verdict, **({"note": r["note"]} if verdict == "fix" and r.get("note") else {})}
     return out
 

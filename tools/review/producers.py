@@ -4,6 +4,7 @@ URLs point at pages already published on the AI Lab box (/designs, /world, /shor
 import json
 from pathlib import Path
 
+from narrator.design_sheets import CHARACTER_SHEETS
 from tools.review.registry import Item, web_copy
 
 SHEETS = (("portrait", "Portrait"), ("expressions", "Expressions"), ("turnaround", "Turnaround"),
@@ -21,7 +22,10 @@ def sheets(ctx) -> list[Item]:
         now = [(s, t) for s, t in SHEETS if (folder / f"{s}.png").exists()]
         if d.kind != "character" or d.status != "approved" or not now:
             continue
-        version = str(max((folder / f"{s}.png").stat().st_mtime_ns for s, _ in now))  # = design_studio._review_page
+        judged = [folder / f"{s}.png" for s in CHARACTER_SHEETS if (folder / f"{s}.png").exists()]
+        if not judged:
+            continue
+        version = str(max(f.stat().st_mtime_ns for f in judged))  # = design_studio._review_page (props not counted)
         files = [web_copy(folder / f"{s}.png", ctx["site"], f"sheets/{slug}/{s}.jpg") for s, _ in now]
         compare = [{"label": f"{t}: before", "url": web_copy(folder / f"{s}-old.png", ctx["site"], f"sheets/{slug}/{s}-old.jpg")}
                    for s, t in SHEETS if (folder / f"{s}-old.png").exists()]

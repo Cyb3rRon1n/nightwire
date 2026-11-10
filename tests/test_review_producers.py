@@ -61,3 +61,16 @@ def test_world_takes_wallpapers(tmp_path):
         {"id": "loop--x", "file": "x.mp4", "title": "X", "note": "n"}], "experiments": []}))
     (wp,) = P.wallpapers(c)
     assert wp.id == "loop--x" and wp.files == ["/shorts/loops/x.mp4"] and wp.stage == "finished"
+
+
+def test_sheet_version_ignores_props_like_the_review_page(tmp_path):
+    import os
+    from narrator.design_sheets import CHARACTER_SHEETS
+    c = ctx(tmp_path, {"saeko": char("saeko")})
+    folder = c["design_dir"] / "saeko"
+    for s in ("turnaround", "portrait", "props"):
+        png(folder / f"{s}.png")
+    os.utime(folder / "props.png", ns=(2_000_000_000_000_000_000, 2_000_000_000_000_000_000))  # props is newest
+    (item,) = P.sheets(c)
+    want = max((folder / f"{s}.png").stat().st_mtime_ns for s in CHARACTER_SHEETS if (folder / f"{s}.png").exists())
+    assert item.id == f"sheet--saeko--{want}" and len(item.files) == 3

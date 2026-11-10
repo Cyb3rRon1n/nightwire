@@ -28,7 +28,8 @@ def main(argv=None) -> int:
         return migrate.run()
     dd = design_dir()
     site = dd / "review" / "_site"
-    world_ids = a.world_ids or next(iter(sorted(dd.glob("lab-archive/*/world-page/ids.json"))), None)
+    archives = sorted(dd.glob("lab-archive/*/world-page/ids.json"))  # dated names: last is newest
+    world_ids = a.world_ids or (archives[-1] if archives else None)
     ctx = {"design_dir": dd, "site": site, "world_ids": world_ids, "shorts_site": dd / "shorts" / "_site",
            "designs": load_designs()}
     items, errors = build_items(producers.ALL, ctx)

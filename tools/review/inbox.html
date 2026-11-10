@@ -25,7 +25,7 @@ button{border:0;border-radius:6px;padding:6px 10px;font-weight:600;cursor:pointe
 <h1>Review inbox</h1>
 <p class="state">Everything waiting on you, in pipeline order. Click a picture to see it full size beside what it must match.</p>
 <div class="bar"><label>Kind <select id="kind"><option value="">all</option></select></label>
-<label>Project <select id="project"><option value="">all</option></select></label><span id="count" class="state"></span></div>
+<label>Project <select id="project"><option value="">all</option></select></label><span id="count" class="state"></span><span id="status" class="state" role="status"></span></div>
 <div id="app"></div>
 <div id="full" role="dialog" aria-modal="true"></div>
 </main>
@@ -39,7 +39,8 @@ const el = (t, a = {}, ...kids) => { const e = Object.assign(document.createElem
 const media = (url, full) => url.endsWith(".mp4")
   ? el("video", {src: url, controls: true, muted: true, loop: true, playsInline: true, preload: "metadata"})
   : el("img", {src: url, loading: "lazy", alt: ""});
-const done = it => it.kind === "pick" ? !!picks[it.extra.slug] && picks[it.extra.slug].round === it.extra.round : !!verdicts[it.id];
+const done = it => it.kind === "pick" ? !!picks[it.extra.slug] && (picks[it.extra.slug].action !== "pick" || picks[it.extra.slug].round === it.extra.round) : !!verdicts[it.id];
+const say = msg => { document.getElementById("status").textContent = msg; };
 
 async function load() {
   const [a, b, c] = await Promise.all([fetch("items.json").then(r => r.json()), fetch(API).then(r => r.json()),
@@ -71,24 +72,24 @@ function open(it) {
 document.addEventListener("keydown", e => { if (e.key === "Escape") document.getElementById("full").classList.remove("on"); });
 
 function controls(it) {
-  const st = el("span", {className: "state", role: "status"});
   const note = el("input", {type: "text", maxLength: 500, placeholder: it.kind === "pick" ? "Note for a reroll" : "What needs fixing?"});
   const box = el("div", {className: "ctl"});
-  const act = async (fn, msg) => { try { await fn(); st.textContent = msg; render(); } catch (e) { st.textContent = "Not saved: " + e.message; } };
+  const act = async (fn, msg) => { try { await fn(); say(msg); } catch (e) { say("Not saved: " + e.message); } render(); };
   if (it.kind === "pick") {
     it.extra.n.forEach((n, i) => box.append(el("button", {className: "pick", textContent: `Pick ${i + 1}`, onclick: () => act(async () => {
       picks = await send(`${PICKS}/${it.extra.slug}`, "PUT", {action: "pick", n, round: it.extra.round}); }, "Saved")})));
     box.append(note, el("button", {className: "reroll", textContent: "Reroll", onclick: () => act(async () => {
-      picks = await send(`${PICKS}/${it.extra.slug}`, "PUT", {action: "reroll", note: note.value}); }, "Saved")}));
+      picks = await send(`${PICKS}/${it.extra.slug}`, "PUT", {action: "reroll", note: note.value}); }, "Saved")}),
+               el("button", {className: "skip", textContent: "Skip", onclick: () => act(async () => {
+      picks = await send(`${PICKS}/${it.extra.slug}`, "PUT", {action: "skip"}); }, "Saved")}));
   } else {
     const put = v => act(async () => { verdicts = await send(`${API}/${it.id}`, "PUT", v === "fix" ? {verdict: v, note: note.value} : {verdict: v}); }, "Saved");
     box.append(el("button", {className: "keep", textContent: "Keep", onclick: () => put("keep")}), note,
-               el("button", {className: "fix", textContent: "Needs a fix", onclick: () => { if (!note.value.trim()) { st.textContent = "Say what to fix first."; return; } put("fix"); }}),
+               el("button", {className: "fix", textContent: "Needs a fix", onclick: () => { if (!note.value.trim()) { say("Say what to fix first."); return; } put("fix"); }}),
                el("button", {className: "reject", textContent: "Reject", onclick: () => put("reject")}));
   }
   if (done(it)) box.append(el("button", {className: "undo", textContent: "Undo", onclick: () => act(async () => {
     if (it.kind === "pick") picks = await send(`${PICKS}/${it.extra.slug}`, "DELETE"); else verdicts = await send(`${API}/${it.id}`, "DELETE"); }, "Undone")}));
-  box.append(st);
   return box;
 }
 
