@@ -1,6 +1,6 @@
 import pytest
 
-from test_shorts_model import SHORT, SHOT, designs, write
+from test_shorts_model import PLANNED, SHORT, SHOT, designs, write
 from tools.shorts.model import load_short
 from tools.shorts.prompt import build_prompt, layers, position_problems, ref_files
 
@@ -111,3 +111,18 @@ def test_position_word_before_locks_still_fails():
     assert [p for p in position_problems(L) if p.startswith("L4")] and not [p for p in position_problems(L) if p.startswith("L2")]
     L["L2"] = "C1 = Saeko, left of C2 (always: x); locks: chrome right hand"
     assert [p for p in position_problems(L) if p.startswith("L2")]
+
+
+def test_sent_refs_are_named_by_image_number_with_roles(tmp_path):
+    s = load_short(write(tmp_path, shot=PLANNED))
+    sent = ["C1_turnaround.png", "C1_portrait.png", "place.png", "greybox.mp4"]
+    p = build_prompt(s, s.shots[0], designs(), sent=sent)
+    assert "@Image1 is C1" in p and "@Image3 is the location" in p and "@Video1 is the grey-box" in p
+    assert "(@Image1, @Image2;" in p and "refs C1_*" not in p and "Floor plan" not in p
+    assert "Screen positions: C2 screen-left, facing camera" in p
+    assert "refs C1_*" in build_prompt(s, s.shots[0], designs())
+
+
+def test_static_shot_locks_the_camera(tmp_path):
+    s = load_short(write(tmp_path, shot=PLANNED.replace('move = "slow push-in"', 'move = "static"')))
+    assert "completely locked off" in build_prompt(s, s.shots[0], designs())

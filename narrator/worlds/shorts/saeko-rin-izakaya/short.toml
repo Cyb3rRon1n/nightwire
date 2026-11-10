@@ -14,7 +14,7 @@ retry_cap = 2
 beats = [
   "strange event: C1's chrome hand locks shut around a sake cup, an amber light blinking on its wrist (S01)",
   "immediate goal: C1 covers the hand before the newcomer sees it; C2 walks straight to her (S01)",
-  "unbreakable rule: nobody names a status light - C2 says 'stuck', C1 says 'resting' (S02)",
+  "unbreakable rule: nobody names a status light - C2 says 'jammed', C1 says 'resting' (S02)",
   "ticking clock: the amber blink quickens while C1 bargains (S03)",
   "reveal: C2's price is her own name off C1's repo list, and C1 already knew (S03)",
   "open question: C1 turns the data jack over and does not connect it (S03)",

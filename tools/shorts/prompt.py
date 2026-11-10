@@ -14,27 +14,55 @@ POSITION_WORDS = re.compile(
 # so models with a 9-image limit (Seedance 2.0) skip the floor plan; the grey-box video carries positions.
 LOCKS = "; locks: "
 CHARACTER_SHEETS = ("turnaround.png", "expressions.png", "props.png", "portrait.png")
+SHEET_ROLES = {"turnaround.png": "full-body turnaround (outfit)", "expressions.png": "expression sheet",
+               "props.png": "hands and props close-ups", "portrait.png": "face and hair close-up"}
+OTHER_ROLES = {"place.png": "the location: this exact room, its counter, shelves, lanterns and light, in every shot",
+               "start_frame.png": "the approved opening frame", "floorplan.png": "top-down floor plan, characters marked"}
+
+
+def ref_roles(short: Short, designs: dict, sent: list[str]) -> str:
+    """Seedance on fal names references @Image1.. and @Video1.. in the order sent; say what each one is for."""
+    imgs, vids = [l for l in sent if not l.endswith(".mp4")], [l for l in sent if l.endswith(".mp4")]
+    rows = []
+    for i, label in enumerate(imgs, 1):
+        cid, _, sheet = label.partition("_")
+        role = (f"{cid} {designs[short.cast[cid]].name}, {SHEET_ROLES.get(sheet, sheet)}" if cid in short.cast
+                else OTHER_ROLES.get(label, label))
+        rows.append(f"@Image{i} is {role}")
+    rows += [f"@Video{i} is the grey-box: camera path, positions and timing only" for i in range(1, len(vids) + 1)]
+    return "Use the references as follows: " + "; ".join(rows) + "."
 
 
 def _t(a: float, b: float) -> str:
     return f"{a:.1f}-{b:.1f}s"
 
 
-def layers(short: Short, shot: Shot, designs: dict, has_still: bool = False) -> dict[str, str]:
-    l1 = ("The grey-box reference video provides camera path, character positions, silhouettes and timing. "
+def layers(short: Short, shot: Shot, designs: dict, has_still: bool = False,
+           sent: list[str] | None = None) -> dict[str, str]:
+    l1 = (ref_roles(short, designs, sent) + " " if sent else "") + ("The grey-box reference video provides camera path, character positions, silhouettes and timing. "
           "Replace each grey mannequin with its character, keep no grey material. "
-          f"Camera: {shot.summary}. Floor plan: C1..C{len(short.cast)} as marked.")
+          f"Camera: {shot.summary}." + ("" if sent and "floorplan.png" not in sent
+                                        else f" Floor plan: C1..C{len(short.cast)} as marked."))
     plan = [f"{shot.size} {shot.angle}".strip(), f"camera {shot.move}" if shot.move else ""]
     if any(plan):
         l1 += " Shot: " + ", ".join(x for x in plan if x) + "."
     if shot.action:
         l1 += f" Main action: {shot.action}"
+    if shot.frame or short.line_rule:
+        l1 += " Screen positions: " + "; ".join([f"{c} {w}" for c, w in shot.frame.items()] + [short.line_rule]) + "."
+    if shot.move == "static":
+        l1 += " Keep the camera completely locked off."
     if has_still:
         l1 += " start_frame.png is the approved opening frame: match its composition, characters and light at 0 s."
     # The design's required tags name what must not drift (hair, eyes, signature clothes).
     # Locks (short.toml) are the owner's "never changes" notes; they may name hands ("chrome right hand"), so
     # position_problems checks L2 only up to LOCKS.
-    l2 = "\n".join(f"{cid} = {designs[slug].name} (refs {cid}_*; {cid}_portrait is the face close-up; always: "
+    def refs(cid):
+        if not sent:
+            return f"refs {cid}_*; {cid}_portrait is the face close-up"
+        imgs = [l for l in sent if not l.endswith(".mp4")]
+        return ", ".join(f"@Image{i}" for i, l in enumerate(imgs, 1) if l.startswith(cid + "_"))
+    l2 = "\n".join(f"{cid} = {designs[slug].name} ({refs(cid)}; always: "
                    f"{', '.join(designs[slug].required)})" + (f"{LOCKS}{short.locks[cid]}" if cid in short.locks else "")
                    for cid, slug in short.cast.items())
     l3 = short.style
@@ -67,8 +95,10 @@ def position_problems(L: dict[str, str]) -> list[str]:
             for k in ("L2", "L4") for m in POSITION_WORDS.finditer(checked[k])]
 
 
-def build_prompt(short: Short, shot: Shot, designs: dict, has_still: bool = False) -> str:
-    L = layers(short, shot, designs, has_still)
+def build_prompt(short: Short, shot: Shot, designs: dict, has_still: bool = False,
+                 sent: list[str] | None = None) -> str:
+    """sent: labels of the references this model will get, in order; names them @Image1.. in the prompt."""
+    L = layers(short, shot, designs, has_still, sent)
     problems = position_problems(L)
     if problems:
         raise ValueError("; ".join(problems))

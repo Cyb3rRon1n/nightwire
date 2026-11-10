@@ -57,7 +57,10 @@ def cmd_prompt(a) -> int:
     s = _short(a.slug)
     try:
         shot = _shot(s, a.shot)
-        print(build_prompt(s, shot, load_designs(), has_still=(_work(s.slug) / "shots" / shot.id / "still.png").exists()))
+        if s.model:
+            print(_preflight(s, shot, s.model, load_designs())[1])  # the exact text submit would send
+        else:
+            print(build_prompt(s, shot, load_designs(), has_still=(_work(s.slug) / "shots" / shot.id / "still.png").exists()))
     except ValueError as e:
         print(e, file=sys.stderr)
         return 1
@@ -167,9 +170,11 @@ def _preflight(s, shot, model, designs):
     from tools.shorts import preflight
     work = _work(s.slug)
     shot_dir = work / "shots" / shot.id
-    prompt = build_prompt(s, shot, designs, has_still=(shot_dir / "still.png").exists())
+    from tools.shorts.backends import fal
     expected = expected_refs(s, data_dir().parent, shot_dir)
     refs = [(label, p) for label, p in expected if p.exists()]  # what is sent and fingerprinted
+    sent = [label for label, _ in fal.usable_refs(model, refs)[0]]
+    prompt = build_prompt(s, shot, designs, has_still=(shot_dir / "still.png").exists(), sent=sent)
     return preflight.run(s, shot, _prev(s, shot), prompt, expected, model, Ledger(work / "costs.json").total()), prompt, refs
 
 

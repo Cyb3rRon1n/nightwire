@@ -30,7 +30,7 @@ t = [8.0, 15.5]
 goal = "make C1 ask for help without saying the word"
 emotion = "deadpan, then a flicker of nerves as she makes the offer"
 trigger = "unlock"
-face = "AU12 small one-sided lip-corner pull B on 'stuck' (peak 1.0 s, offset 1.6 s); AU1+AU2 brow raise A at 'resting'; AU17 chin raiser B after 'unlock it' (peak 5.4 s)"
+face = "AU12 small one-sided lip-corner pull B on 'jammed' (peak 1.0 s, offset 1.6 s); AU1+AU2 brow raise A at 'resting'; AU17 chin raiser B after 'unlock it' (peak 5.4 s)"
 gaze = "holds C1's eyes, drops to the hand at 3.0 s, back up on 'unlock'"
 voice = "flat and low; a small dry exhale before 'I can'"
 end = "waits, two fingers on the cable plug; C1's shoulder stays still"
@@ -38,7 +38,7 @@ end = "waits, two fingers on the cable plug; C1's shoulder stays still"
 [[lines]]
 who = "C2"
 t = 8.6
-text = "Your chrome hand's stuck."
+text = "Your chrome hand's jammed."
 
 [[lines]]
 who = "C1"
@@ -56,7 +56,7 @@ C1 = "foreground screen-right edge, out-of-focus back of head and shoulder only,
 
 [at_start]
 C1 = "left hand covering the chrome hand on the cup"
-C2 = "seated across, hands near her cyberdeck"
+C2 = "seated on the stool beside C1, turned toward her, hands near her cyberdeck"
 
 [at_end]
 C1 = "still, shoulder only"
