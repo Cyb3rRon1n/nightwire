@@ -118,7 +118,7 @@ def screen_box(obj, cam):
             pts += [world_to_camera_view(sc, cam, ev.matrix_world @ Vector(c)) for c in ev.bound_box]
     xs = [min(max(p.x, 0), 1) for p in pts if p.z > 0]
     ys = [min(max(1 - p.y, 0), 1) for p in pts if p.z > 0]
-    if not xs or max(xs) - min(xs) < 0.01:
+    if not xs or max(xs) - min(xs) < 0.01 or max(ys) - min(ys) < 0.01:
         return None
     return [round(min(xs), 4), round(min(ys), 4), round(max(xs), 4), round(max(ys), 4)]
 
@@ -129,16 +129,22 @@ def render_guides(shot, cam, start, last):
     guide.mkdir(parents=True, exist_ok=True)
     sh, res, world = sc.display.shading, (sc.render.resolution_x, sc.render.resolution_y), tuple(sc.world.color)
     saved = (sh.light, sh.color_type, sh.show_object_outline)
-    fig_shade = {c.name: 0.9 + 0.05 * (i % 3) for i, o in enumerate(figures.values()) for c in (o, *o.children_recursive)}
     old_colours = {o.name: tuple(o.color) for o in bpy.data.objects}
-    for o in bpy.data.objects:  # one stable shade per room object (0.25..0.85), one near-white shade per figure
-        g = fig_shade[o.name] if o.name in fig_shade else 0.25 + 0.6 * (zlib.crc32(o.name.encode()) % 1000) / 999
-        o.color = (g, g, g, 1)
-    sc.render.resolution_x, sc.render.resolution_y = KEY_W, KEY_H
-    sh.light, sh.color_type, sh.show_object_outline = "FLAT", "OBJECT", True
-    sc.world.color = (0, 0, 0)
+    old_hide = {o.name: o.hide_render for o in bpy.data.objects}
     boxes = {}
+
+    def unhide():
+        for o in bpy.data.objects:
+            o.hide_render = old_hide[o.name]
+
     try:
+        fig_shade = {c.name: 0.9 + 0.05 * (i % 3) for i, o in enumerate(figures.values()) for c in (o, *o.children_recursive)}
+        for o in bpy.data.objects:  # one stable shade per room object (0.25..0.85), one near-white shade per figure
+            g = fig_shade[o.name] if o.name in fig_shade else 0.25 + 0.6 * (zlib.crc32(o.name.encode()) % 1000) / 999
+            o.color = (g, g, g, 1)
+        sc.render.resolution_x, sc.render.resolution_y = KEY_W, KEY_H
+        sh.light, sh.color_type, sh.show_object_outline = "FLAT", "OBJECT", True
+        sc.world.color = (0, 0, 0)
         for label, frame in (("start", start), ("end", last)):
             sc.frame_set(frame)
             bpy.context.view_layer.update()
@@ -149,12 +155,10 @@ def render_guides(shot, cam, start, last):
                 for c in o.children_recursive:
                     c.hide_render = True
             render_still(guide / f"{label}-room.png")
-            for o in figures.values():
-                o.hide_render = False
-                for c in o.children_recursive:
-                    c.hide_render = False
+            unhide()
         (guide / "regions.json").write_text(json.dumps(boxes, indent=1))
     finally:
+        unhide()
         sc.render.resolution_x, sc.render.resolution_y = res
         sh.light, sh.color_type, sh.show_object_outline = saved
         for o in bpy.data.objects:
