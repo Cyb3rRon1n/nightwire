@@ -317,6 +317,7 @@ async def _warded_studio(studio):
     await ds.main(_args(studio, "approve", "mama-sato", "1"))
     d = load_design(designs / "mama-sato.toml")
     d.identity = ["mole under eye"]
+    d.appearance = "grey hair, hair bun"
     d.wardrobe = {"work": WardrobeState(text="shop", tags="kimono", props=["ladle"]), "rest": WardrobeState(text="home", tags="yukata")}
     save_design(d, designs / "mama-sato.toml")
     return designs, data, backend
@@ -344,3 +345,15 @@ async def test_state_all_and_unknown_state(studio):
     assert (data / "mama-sato" / "wardrobe" / "work" / "props.png").exists()
     assert not (data / "mama-sato" / "turnaround.png").exists()
     assert await ds.main(_args(studio, "sheets", "mama-sato", "--state", "nope"), backend=backend) == 1
+
+
+async def test_one_failing_state_does_not_stop_the_others(studio):
+    designs, data, backend = await _warded_studio(studio)
+    real = backend.run_workflow
+    async def flaky(wf):
+        if "kimono" in str(wf):
+            raise RuntimeError("boom")
+        return await real(wf)
+    backend.run_workflow = flaky
+    assert await ds.main(_args(studio, "sheets", "mama-sato", "--state", "all"), backend=backend) == 1
+    assert (data / "mama-sato" / "wardrobe" / "rest" / "colorguide.png").exists()

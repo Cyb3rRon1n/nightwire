@@ -419,15 +419,17 @@ def test_flatten_background_refuses_to_return_a_blank_sheet(monkeypatch):
 
 def _warded():
     from narrator.designs import WardrobeState
-    return _char(identity=["scar over left eye", "silver ring"], required=["yellow eyes"],
+    return _char(identity=["scar over left eye", "silver ring"], required=["yellow eyes", "white hoodie"],
+                 appearance="short hair, black hair, yellow eyes",
                  wardrobe={"work": WardrobeState(text="office wear", tags="white blouse, pencil skirt", props=["clipboard"])})
 
 
 def test_state_turnaround_swaps_outfit_keeps_identity():
     from narrator.design_sheets import sheet_prompt
     pos, _ = sheet_prompt(_warded(), "turnaround", state="work")
-    assert "white blouse, pencil skirt" in pos and "scar over left eye, silver ring" in pos and "yellow eyes" in pos
-    assert "black bomber jacket" not in pos and "mechanical left arm" not in pos
+    assert "white blouse, pencil skirt" in pos and "scar over left eye, silver ring" in pos and "short hair, black hair, yellow eyes" in pos
+    assert "black bomber jacket" not in pos and "mechanical left arm" not in pos and "white hoodie" not in pos
+    assert "techwear" not in pos and pos.count("cyberpunk") == 0
 
 
 def test_state_portrait_and_expressions_use_neutral_light():
@@ -435,9 +437,9 @@ def test_state_portrait_and_expressions_use_neutral_light():
     d = _warded()
     pos, neg = portrait_prompt(d, state="work")
     assert NEUTRAL_LIGHT in pos and "blue light" in neg and "neon lights" not in pos.split(NEUTRAL_LIGHT)[0] and "silver ring" in pos
-    assert "bomber" not in pos
+    assert "bomber" not in pos and "white hoodie" not in pos and "black hair" in pos and "no neon" not in pos
     for _l, p, n in expression_prompts(d, state="work"):
-        assert NEUTRAL_LIGHT in p and "cyan tint" in n and "scar over left eye" in p
+        assert NEUTRAL_LIGHT in p and "cyan tint" in n and "scar over left eye" in p and "white hoodie" not in p and "black hair" in p
     assert "night" not in pos.split(", ")
 
 
@@ -445,7 +447,7 @@ def test_state_props_prompt_uses_state_props_or_falls_back():
     from narrator.design_sheets import state_props_prompt
     d = _warded()
     pos, _ = state_props_prompt(d, "work")
-    assert "clipboard" in pos and "grey background" in pos
+    assert "clipboard" in pos and "grey background" in pos and "scar over left eye" not in pos
     d.wardrobe["work"].props = []
     assert "white blouse" in state_props_prompt(d, "work")[0]
 

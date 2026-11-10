@@ -123,7 +123,7 @@ def test_pilot_places_load_as_new_locations():
 def _bible(**kw):
     from narrator.designs import WardrobeState
     base = dict(name="Mira", kind="character", source="new:test", tags="1girl, red hair",
-                identity=["scar over left brow", "silver ring"],
+                identity=["scar over left brow", "silver ring"], appearance="red hair, green eyes, slender",
                 wardrobe={"work": WardrobeState("grey coverall", "coverall, grey", ["wrench"]),
                           "night-out": WardrobeState('red "jacket"', "jacket, red")})
     base.update(kw)
@@ -166,6 +166,8 @@ def test_wardrobe_requires_identity_and_characters_only():
         validate(_bible(identity=[]))
     with pytest.raises(ValueError, match="characters only"):
         validate(_bible(kind="location"))
+    with pytest.raises(ValueError, match="appearance"):
+        validate(_bible(appearance=" "))
 
 
 def test_real_designs_save_byte_identical(tmp_path):

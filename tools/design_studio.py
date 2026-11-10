@@ -220,36 +220,47 @@ async def _state_sheets_one(slug: str, args, backend) -> None:
     if unknown := [s for s in states if s not in d.wardrobe]:
         raise ValueError(f"no wardrobe state {unknown[0]!r} (has: {', '.join(d.wardrobe)})")
     seed = getattr(args, "seed", None) or d.seed
+    failed = []
     for state in states:
-        out = args.design_dir / slug / "wardrobe" / state
-        out.mkdir(parents=True, exist_ok=True)
-        for sheet in STATE_SHEETS:
-            if getattr(args, "only", None) not in (None, sheet):
-                continue
-            target = out / f"{sheet}.png"
-            if target.exists() and not getattr(args, "redo", False):
-                continue
-            if sheet == "expressions":
-                panels = []
-                for label, pos, neg in expression_prompts(d, state):
-                    wf = candidate_workflow(pos, neg, seed)
-                    wf["5"]["inputs"].update(width=EXPRESSION_SIZE[0], height=EXPRESSION_SIZE[1])
-                    panels.append((label, await backend.run_workflow(wf)))
-                png = expression_grid(panels)
-            elif sheet == "colorguide":
-                source = (out / "turnaround.png").read_bytes()
-                png = colour_guide(source, extract_palette(source), _front_head(source))
-            elif sheet == "props":
-                png = await backend.run_workflow(sheet_workflow(*state_props_prompt(d, state), seed))
-            else:
-                pos, neg = sheet_prompt(d, sheet, state=state)
-                pose = await _turnaround_pose(d, backend) if sheet == "turnaround" else None
-                size = EXPRESSION_SIZE if sheet == "portrait" else None
-                png = await backend.run_workflow(sheet_workflow(pos, neg, seed, size=size, pose=pose))
-                if sheet == "turnaround":
-                    png = flatten_background(png)
-            target.write_bytes(png)
-            print(f"{slug}/{state}: {sheet}", flush=True)
+        try:
+            await _one_state(slug, d, state, seed, args, backend)
+        except Exception as e:  # one bad state must not stop the others
+            failed.append(state)
+            print(f"{slug}/{state}: FAILED: {e}", file=sys.stderr)
+    if failed:
+        raise RuntimeError(f"states failed: {', '.join(failed)}")
+
+
+async def _one_state(slug: str, d: Design, state: str, seed: int, args, backend) -> None:
+    out = args.design_dir / slug / "wardrobe" / state
+    out.mkdir(parents=True, exist_ok=True)
+    for sheet in STATE_SHEETS:
+        if getattr(args, "only", None) not in (None, sheet):
+            continue
+        target = out / f"{sheet}.png"
+        if target.exists() and not getattr(args, "redo", False):
+            continue
+        if sheet == "expressions":
+            panels = []
+            for label, pos, neg in expression_prompts(d, state):
+                wf = candidate_workflow(pos, neg, seed)
+                wf["5"]["inputs"].update(width=EXPRESSION_SIZE[0], height=EXPRESSION_SIZE[1])
+                panels.append((label, await backend.run_workflow(wf)))
+            png = expression_grid(panels)
+        elif sheet == "colorguide":
+            source = (out / "turnaround.png").read_bytes()
+            png = colour_guide(source, extract_palette(source), _front_head(source))
+        elif sheet == "props":
+            png = await backend.run_workflow(sheet_workflow(*state_props_prompt(d, state), seed))
+        else:
+            pos, neg = sheet_prompt(d, sheet, state=state)
+            pose = await _turnaround_pose(d, backend) if sheet == "turnaround" else None
+            size = EXPRESSION_SIZE if sheet == "portrait" else None
+            png = await backend.run_workflow(sheet_workflow(pos, neg, seed, size=size, pose=pose))
+            if sheet == "turnaround":
+                png = flatten_background(png)
+        target.write_bytes(png)
+        print(f"{slug}/{state}: {sheet}", flush=True)
 
 
 async def _turnaround_pose(d: Design, backend) -> str:

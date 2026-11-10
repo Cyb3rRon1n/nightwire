@@ -14,7 +14,7 @@ KINDS = ("character", "location")
 STATUSES = ("draft", "candidates", "approved")
 PRESENTATIONS = ("feminine", "masculine", "androgynous")
 _ORDER = ("name", "kind", "source", "presentation", "height_cm", "bio", "tags", "required", "held", "negative", "alt_tags", "props",
-          "status", "seed", "palette", "notes", "identity", "wardrobe")
+          "status", "seed", "palette", "notes", "identity", "appearance", "wardrobe")
 _STATE_NAME = re.compile(r"[a-z][a-z0-9-]*")
 
 
@@ -50,6 +50,7 @@ class Design:
     height_cm: int = 0  # 0 = not set; characters only, drives line-ups and group scale
     bio: str = ""  # for characters without a world card
     identity: list[str] = field(default_factory=list)  # marks that stay constant across every wardrobe state
+    appearance: str = ""  # booru tags for the look that never changes (hair, eyes, build, skin, face, marks); used under a wardrobe state
     wardrobe: dict[str, WardrobeState] = field(default_factory=dict)
 
     @property
@@ -75,10 +76,12 @@ def validate(d: Design) -> None:
         raise ValueError(f"{d.name}: presentation is for characters only")
     elif d.held or d.required or d.height_cm or d.bio:
         raise ValueError(f"{d.name}: held, required, height_cm and bio are for characters only")
-    if d.kind != "character" and (d.identity or d.wardrobe):
-        raise ValueError(f"{d.name}: identity and wardrobe are for characters only")
+    if d.kind != "character" and (d.identity or d.wardrobe or d.appearance):
+        raise ValueError(f"{d.name}: identity, appearance and wardrobe are for characters only")
     if d.wardrobe and not any(m.strip() for m in d.identity):
         raise ValueError(f"{d.name}: a character with wardrobe states needs identity marks")
+    if d.wardrobe and not d.appearance.strip():
+        raise ValueError(f"{d.name}: a character with wardrobe states needs appearance tags")
     for state, w in d.wardrobe.items():
         if not _STATE_NAME.fullmatch(state):
             raise ValueError(f"{d.name}: wardrobe state name {state!r} must match [a-z][a-z0-9-]*")
@@ -121,7 +124,7 @@ def save_design(d: Design, path: Path) -> None:
             continue
         if key in ("held", "required") and d.kind != "character":
             continue
-        if key in ("height_cm", "bio", "identity") and not value:
+        if key in ("height_cm", "bio", "identity", "appearance") and not value:
             continue
         if key == "wardrobe":
             continue

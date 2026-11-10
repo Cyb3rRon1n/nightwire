@@ -60,7 +60,7 @@ _PORTRAIT_GUARD = ("realistic, photorealistic, photo (medium), 3d, semi-realisti
                    "airbrushed, (blue skin:1.3), (colored skin:1.3), (grey skin:1.3), (shadow over face:1.2)")
 _PROPS_TAGS = "still life, no humans, object focus, multiple views, white background"
 # Wardrobe-state sheets (character bible v2): neutral light so the outfit's true colours read, no scene neon.
-NEUTRAL_LIGHT = "plain grey background, soft even studio light, neutral colors, no neon"
+NEUTRAL_LIGHT = "plain grey background, soft even studio light, neutral colors"
 NEUTRAL_NEGATIVE = "neon, blue light, cyan tint, colored light, rim light"
 _NEUTRAL_STYLE = "anime screenshot, anime coloring, cel shading, thick outlines"
 _PRESENTATION = {"feminine": "1girl", "masculine": "1boy", "androgynous": "1other"}
@@ -101,9 +101,8 @@ def candidate_prompt(d: Design) -> tuple[str, str]:
 
 
 def _state_tags(d: Design, state: str) -> str:
-    """A wardrobe state's outfit tags. The replacement rule: with a state, `d.tags` (outfit and body mixed) is dropped
-    whole; the look comes from `required` + `identity` + the state's own tags. Hair, build and marks that must persist
-    belong in `required`/`identity`."""
+    """A wardrobe state's outfit tags. The rule: with a state, `d.tags` and `required` (both mix in outfit items) are
+    dropped whole; the look is `appearance` + the state's tags + `identity`."""
     if state not in d.wardrobe:
         raise ValueError(f"{d.name}: no wardrobe state {state!r} (has: {', '.join(d.wardrobe) or 'none'})")
     return d.wardrobe[state].tags
@@ -111,7 +110,7 @@ def _state_tags(d: Design, state: str) -> str:
 
 def _outfit(d: Design, state: str | None) -> str:
     if state:
-        return _state_tags(d, state)
+        return _join(d.appearance, _state_tags(d, state))
     return ", ".join(t for t in (x.strip() for x in d.tags.split(",")) if t not in d.required)
 
 
@@ -123,7 +122,7 @@ def state_props_prompt(d: Design, state: str) -> tuple[str, str]:
     """Hands-and-props close-up for one wardrobe state, on grey."""
     items = ", ".join(d.wardrobe[state].props) or _state_tags(d, state)
     pos = _join(CHARACTER_QUALITY, _NEUTRAL_STYLE, "hands and props close-up, product sheet, still life, object focus, "
-                "multiple views, grey background, soft even studio light, neutral colors", items, _identity(d, state))
+                "multiple views, grey background, soft even studio light, neutral colors", items)
     return pos, _styled_negative(d, _join(NEUTRAL_NEGATIVE, "white background, 1girl, 1boy, face"))
 
 
@@ -137,7 +136,9 @@ def sheet_prompt(d: Design, sheet: str, mood: str | None = None, state: str | No
             raise ValueError("the colour guide is built from the turnaround, see colour_guide")
         if sheet == "portrait":
             return portrait_prompt(d, state)
-        pos = _join(CHARACTER_QUALITY, CHARACTER_SHEET_STYLE, CHARACTER_MATURE, _SHEET_TAGS[sheet], subject_for(d), ", ".join(d.required),
+        style, mature = (CHARACTER_SHEET_STYLE.removesuffix(", cyberpunk"), CHARACTER_MATURE.removesuffix(", cyberpunk, techwear")) if state \
+            else (CHARACTER_SHEET_STYLE, CHARACTER_MATURE)
+        pos = _join(CHARACTER_QUALITY, style, mature, _SHEET_TAGS[sheet], subject_for(d), "" if state else ", ".join(d.required),
                     _outfit(d, state), _identity(d, state))
         return pos, _styled_negative(d, _SHEET_GUARD)
     if sheet not in LOCATION_SHEETS:
@@ -162,8 +163,9 @@ def expressions_for(d: Design) -> tuple[tuple[str, str], ...]:
 def _face_tags(d: Design, state: str | None = None) -> list[str]:
     """The character's face and upper-body canon: no carried items, lower body or fixed mood."""
     held = {h.strip() for h in d.held}
-    source = _state_tags(d, state) if state else d.tags
-    return [t for t in dict.fromkeys(x.strip() for x in source.split(",")) if t and t not in held and t not in d.required
+    source = _join(d.appearance, _state_tags(d, state)) if state else d.tags
+    skip = set() if state else set(d.required)
+    return [t for t in dict.fromkeys(x.strip() for x in source.split(",")) if t and t not in held and t not in skip
             and not _below_chest(t) and not any(w in t for w in (*_BELOW_FRAME_WORDS, *_EXPRESSION_WORDS))]
 
 
@@ -185,7 +187,7 @@ def expression_prompts(d: Design, state: str | None = None) -> list[tuple[str, s
         negative = _join(negative, NEUTRAL_NEGATIVE)
     style = _join(_NEUTRAL_STYLE, NEUTRAL_LIGHT) if state else STYLE
     return [(label, _join(CHARACTER_QUALITY, style, "mature, adult, solo, portrait, close-up, face focus, looking at viewer",
-                          subject_for(d), mood, ", ".join(d.required), ", ".join(face), _identity(d, state)), negative)
+                          subject_for(d), mood, "" if state else ", ".join(d.required), ", ".join(face), _identity(d, state)), negative)
             for label, mood in expressions_for(d)]
 
 
