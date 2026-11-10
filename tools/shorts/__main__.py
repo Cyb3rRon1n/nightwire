@@ -484,6 +484,17 @@ def cmd_wall(a) -> int:
     return 0
 
 
+def cmd_animatic(a) -> int:
+    from tools.shorts import animatic, film
+    try:
+        f = film.load_film(a.slug, shorts_dir=SHORTS_DIR)
+        w, h = (int(v) for v in a.size.split("x"))
+    except ValueError as e:
+        raise CliError(str(e))
+    print(animatic.build(f, a.slug, SHORTS_DIR, data_dir().parent, data_dir() / "_site", a.fps, (w, h)))
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="python -m tools.shorts")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -514,6 +525,7 @@ def main(argv=None) -> int:
     sub.add_parser("page")
     q = sub.add_parser("boards"); q.add_argument("slug"); q.add_argument("shot", nargs="?")
     sub.add_parser("wall").add_argument("slug")
+    q = sub.add_parser("animatic"); q.add_argument("slug"); q.add_argument("--fps", type=int, default=24); q.add_argument("--size", default="1216x832")
     q = sub.add_parser("assemble"); q.add_argument("slug"); q.add_argument("--music", type=Path)
     a = p.parse_args(argv)
     try:

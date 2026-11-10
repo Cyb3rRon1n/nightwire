@@ -53,8 +53,10 @@ def build(film, film_slug: str, shorts_dir: Path, design_dir: Path, site_root: P
         wardrobe = "".join(f'<div class="meta">{_e(cid)} ({_e(short.cast.get(cid, ""))}): {_e(w)}</div>' for cid, w in short.wardrobe.items())
         cols.append(f'<div class="col"><h2>{_e(short.title)}</h2><div class="meta">{_e(sc.time if sc else "")} · {_e(short.place)}</div>'
                     f'{wardrobe}<div class="meta">{_e(mood)}</div>' + "".join(_card(scene, short, sh, work, site) for sh in short.shots) + "</div>")
+    animatic = ('<p><a href="animatic.mp4">Animatic</a></p><video controls preload=none src="animatic.mp4" style="max-width:100%"></video>'
+                if (site / "animatic.mp4").exists() else "")
     page = ("<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
             f"<title>{_e(film.title)}</title><style>{CSS}</style><h1>{_e(film.title)}</h1><p>{_e(film.logline)}</p><p class=meta>Mood: {_e(film.mood)}</p>"
-            f'<p><a href="/review/?project={_e(film_slug)}">Review in the inbox</a></p><div class="cols">{"".join(cols)}</div>')
+            f'<p><a href="/review/?project={_e(film_slug)}">Review in the inbox</a></p>{animatic}<div class="cols">{"".join(cols)}</div>')
     (site / "index.html").write_text(page)
     return site / "index.html"
