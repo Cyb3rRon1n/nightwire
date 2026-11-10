@@ -125,7 +125,7 @@ def cmd_submit(a) -> int:
         raise CliError('--override needs a reason, e.g. --override "owner approved in chat"; nothing was spent')
     override = (a.override or "").strip()
     seconds = int(round(a.seconds or shot.duration))  # fal bills whole seconds; the approval covers this length
-    fp = approve.fingerprint(a.model, prompt, refs, seconds)
+    fp = approve.fingerprint(a.model, prompt, refs, seconds, _fp_extra(s, shot))
     ok = approve.approval(work, a.shot, fp)
     if not (ok and ok.get("verdict") == "keep"):
         if not override:
@@ -166,6 +166,23 @@ def _prev(short, shot):
     return short.shots[i - 1] if i else None
 
 
+IMAGES_API = "http://192.168.10.19:8080/designs/api/images"
+
+
+def _images_api() -> dict:
+    """Review verdicts by image id; {} on any error, which reports plates and keyframes as not approved (the safe side)."""
+    try:
+        with urllib.request.urlopen(IMAGES_API, timeout=10) as r:
+            return json.load(r)
+    except Exception:
+        return {}
+
+
+def _fp_extra(s, shot) -> str:
+    from tools.shorts.model import scene_text
+    return f"{shot.mode}\n{scene_text(s)}"
+
+
 def _preflight(s, shot, model, designs):
     from tools.shorts import preflight
     work = _work(s.slug)
@@ -174,11 +191,20 @@ def _preflight(s, shot, model, designs):
     from tools.shorts.plates import load_plates, plate_path
     plates = load_plates(s.place)
     plate = plate_path(data_dir().parent, s.place, plates[shot.plate]) if shot.plate in plates else None
-    expected = expected_refs(s, data_dir().parent, shot_dir, plate=plate)
+    if shot.mode == "i2v":  # an i2v take sends only its keyframes
+        expected = [(f"keyframe-{w}.png", shot_dir / f"keyframe-{w}.png") for w in ("start", "end")]
+        expected = [(label, p) for label, p in expected if p.exists()]
+    else:
+        expected = expected_refs(s, data_dir().parent, shot_dir, plate=plate)
     refs = [(label, p) for label, p in expected if p.exists()]  # what is sent and fingerprinted
     sent = [label for label, _ in fal.usable_refs(model, refs)[0]]
     prompt = build_prompt(s, shot, designs, has_still=(shot_dir / "still.png").exists(), sent=sent)
-    return preflight.run(s, shot, _prev(s, shot), prompt, expected, model, Ledger(work / "costs.json").total()), prompt, refs
+    approvals_file = work / "approvals.json"
+    approvals = {**(json.loads(approvals_file.read_text()) if approvals_file.exists() else {}), "images": _images_api()}
+    report = preflight.run(s, shot, _prev(s, shot), prompt, expected, model, Ledger(work / "costs.json").total(),
+                           package_problems=preflight.package(s, shot, _prev(s, shot), plates, shot_dir, approvals, data_dir().parent),
+                           bible=preflight.bible_words(s, shot))
+    return report, prompt, refs
 
 
 def cmd_preflight(a) -> int:

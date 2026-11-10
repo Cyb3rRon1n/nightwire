@@ -9,11 +9,18 @@ from pathlib import Path
 from tools.shorts.takes import SLUG
 
 
-def fingerprint(model: str, prompt: str, refs: list[tuple[str, Path]], seconds: int) -> str:
-    h = hashlib.sha256(model.encode() + b"\0" + prompt.encode() + b"\0" + str(seconds).encode())
+def fingerprint(model: str, prompt: str, refs: list[tuple[str, Path]], seconds: int, extra: str = "") -> str:
+    """`extra` carries what else the approval covers (mode + scene bible); keyframes are covered by passing them in refs."""
+    h = hashlib.sha256(model.encode() + b"\0" + prompt.encode() + b"\0" + str(seconds).encode() + b"\0" + extra.encode())
     for label, path in refs:
         h.update(b"\0" + label.encode() + b"\0" + hashlib.sha256(path.read_bytes()).digest())
     return h.hexdigest()[:10]
+
+
+def scene_fp(short) -> str:
+    from tools.shorts.model import scene_text
+    blob = json.dumps([scene_text(short), sorted(short.wardrobe.items()), sorted(short.blocking.items())])
+    return hashlib.sha256(blob.encode()).hexdigest()[:10]
 
 
 def plan_image_id(slug: str, shot_id: str, fp: str) -> str:

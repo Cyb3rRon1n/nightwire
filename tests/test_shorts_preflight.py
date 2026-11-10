@@ -102,3 +102,64 @@ def test_shorts_copy_of_a_sheet_wins(tmp_path):
     refs = dict(expected_refs(s, dd, sd))
     assert refs["C1_turnaround.png"] == alt
     assert refs["C1_portrait.png"] == dd / "saeko-kirigaya" / "portrait.png"
+
+
+SCENE_SHORT = SHORT + '''
+[scene]
+time = "late night"
+weather = "indoors; no windows"
+set = "a narrow izakaya"
+light = ["paper lanterns"]
+not_visible = ["rain", "street"]
+
+[wardrobe]
+C1 = "navy jacket zipped"
+
+[blocking]
+seating = "side by side, C2 on C1's left"
+'''
+
+
+def _planned(extra):
+    return PLANNED.replace("lens = 35.0", "lens = 35.0\n" + extra)
+
+
+def test_package_problems(tmp_path):
+    from tools.shorts.plates import Plate
+    s = load_short(write(tmp_path, short=SCENE_SHORT, shot=_planned('plate = "door"\nend_frame = true')))
+    sd = tmp_path / "sd"; sd.mkdir()
+    p = preflight.package(s, s.shots[0], None, {"door": Plate("door", "v")}, sd,
+                          {"images": {}, "SCENE": {}}, tmp_path / "dd")
+    for want in ("plate door not rendered", "scene bible not approved", "no approved start keyframe",
+                 "needs an end keyframe", "missing motion", "C2 has no [wardrobe] line"):
+        assert any(want in x for x in p), (want, p)
+
+
+def test_package_requires_approved_keyframes(tmp_path):
+    from tools.shorts.approve import scene_fp
+    from tools.shorts.plates import Plate
+    s = load_short(write(tmp_path, short=SCENE_SHORT, shot=_planned('plate = "door"\nmotion = "C2 turns."\nend_frame = true')))
+    dd, sd = tmp_path / "dd", tmp_path / "sd"
+    sd.mkdir()
+    plates = {"door": Plate("door", "v")}
+    (dd / s.place / "plates").mkdir(parents=True)
+    (dd / s.place / "plates" / "door.png").write_bytes(b"x")
+    (sd / "keyframe-start.png").write_bytes(b"x")
+    (sd / "keyframe-end.png").write_bytes(b"x")
+    keep = {"verdict": "keep"}
+    images = {f"plate--{s.place}--door": keep}
+    ap = {"images": images, "SCENE": {scene_fp(s): keep}}
+    p = preflight.package(s, s.shots[0], None, plates, sd, ap, dd)
+    assert "start keyframe not approved" in p and "end keyframe not approved" in p
+    images[f"key--{s.slug}--s01--start"] = keep
+    images[f"key--{s.slug}--s01--end"] = keep
+    p = preflight.package(s, s.shots[0], None, plates, sd, ap, dd)
+    assert not any("keyframe" in x or "plate" in x or "scene" in x for x in p), p
+
+
+def test_bible_words(tmp_path):
+    shot = PLANNED.replace('action = "C2 asks who paid her tab."', 'action = "C2 shakes rain off her hood."')
+    shot = shot.replace('text = "Who paid it?"', 'text = "Still raining?"')
+    s = load_short(write(tmp_path, short=SCENE_SHORT, shot=shot))
+    problems, warnings = preflight.bible_words(s, s.shots[0])
+    assert any("'rain' in action" in x for x in problems) and any("'raining'" in w for w in warnings)

@@ -4,10 +4,40 @@ from test_shorts_model import PLANNED, SHORT, SHOT
 from tools.shorts.__main__ import main
 
 
-def setup(tmp_path, monkeypatch, shot=PLANNED, approved=True):
+SCENE = '''
+[scene]
+time = "late night"
+weather = "rain on the windows, wet street"
+set = "a narrow izakaya"
+
+[wardrobe]
+C1 = "navy jacket zipped"
+C2 = "red coat"
+'''
+# The reference-mode planned shot with a plate: passes the package checks once the plate and scene are approved.
+PACKAGED = PLANNED.replace("lens = 35.0", 'lens = 35.0\nmode = "reference"\nplate = "door"')
+
+
+def approvals(work, per_shot):
+    """Write approvals.json with the scene bible approved, plus the given per-shot fingerprints."""
+    from tools.shorts.approve import scene_fp
+    from tools.shorts.model import load_short
+    work.mkdir(parents=True, exist_ok=True)
+    fp = scene_fp(load_short(work.parent.parent.parent / "script" / "pilot"))
+    (work / "approvals.json").write_text(json.dumps({**per_shot, "SCENE": {fp: {"verdict": "keep"}}}))
+
+
+def setup(tmp_path, monkeypatch, shot=PACKAGED, approved=True):
     script = tmp_path / "script" / "pilot"
     (script / "shots").mkdir(parents=True)
-    (script / "short.toml").write_text(SHORT)
+    (script / "short.toml").write_text(SHORT + SCENE)
+    plates = tmp_path / "plates"
+    plates.mkdir()
+    (plates / "mama-satos-izakaya.toml").write_text('[[plate]]\nname = "door"\nview = "toward the door"\n')
+    monkeypatch.setattr("tools.shorts.plates.PLATES_ROOT", plates)
+    monkeypatch.setattr("tools.shorts.plates.load_plates.__defaults__", (plates,))
+    monkeypatch.setattr("tools.shorts.__main__._images_api",
+                        lambda: {"plate--mama-satos-izakaya--door": {"verdict": "keep"}})  # never touch the network
     (script / "shots" / "S01.toml").write_text(shot)
     monkeypatch.setattr("tools.shorts.__main__.SHORTS_DIR", tmp_path / "script")
     monkeypatch.setenv("NIGHTWIRE_DESIGN_DIR", str(tmp_path / "design-data"))
@@ -28,10 +58,13 @@ def setup(tmp_path, monkeypatch, shot=PLANNED, approved=True):
     sd = dd / "shorts" / "pilot" / "shots" / "S01"
     sd.mkdir(parents=True, exist_ok=True)
     (sd / "greybox.mp4").write_bytes(b"g")
+    (dd / "mama-satos-izakaya" / "plates").mkdir(parents=True, exist_ok=True)
+    Image.new("RGB", (8, 8)).save(dd / "mama-satos-izakaya" / "plates" / "door.png")
+    approvals(dd / "shorts" / "pilot", {})
 
 
 def test_check_ok_and_prompt_prints_layers(tmp_path, monkeypatch, capsys):
-    setup(tmp_path, monkeypatch, shot=PLANNED.replace("lens = 35.0", 'lens = 35.0\nmode = "reference"'))
+    setup(tmp_path, monkeypatch, shot=PACKAGED)
     assert main(["check", "pilot"]) == 0
     assert main(["prompt", "pilot", "S01"]) == 0
     assert "C1 = Saeko Kirigaya" in capsys.readouterr().out
@@ -162,8 +195,7 @@ def test_submit_refuses_unapproved_and_stale(tmp_path, monkeypatch, capsys):
     assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--yes"]) == 1
     assert "not approved" in capsys.readouterr().err and called == []
     work = tmp_path / "design-data" / "shorts" / "pilot"
-    work.mkdir(parents=True, exist_ok=True)
-    (work / "approvals.json").write_text('{"S01": {"0000000000": {"verdict": "keep"}}}')  # an old fingerprint
+    approvals(work, {"S01": {"0000000000": {"verdict": "keep"}}})  # an old fingerprint
     assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--yes"]) == 1 and called == []
 
 
@@ -205,8 +237,7 @@ def test_sheet_fingerprint_matches_submit(tmp_path, monkeypatch, capsys):
     data = json.loads((tmp_path / "design-data" / "shorts" / "_site" / "pilot" / "sheet" / "sheet.json").read_text())
     fp = data["shots"][0]["fp"]
     work = tmp_path / "design-data" / "shorts" / "pilot"
-    work.mkdir(parents=True, exist_ok=True)
-    (work / "approvals.json").write_text(json.dumps({"S01": {fp: {"verdict": "keep"}}}))
+    approvals(work, {"S01": {fp: {"verdict": "keep"}}})
     monkeypatch.setattr("tools.shorts.backends.fal.load_key", lambda *a: "k")
     monkeypatch.setattr("tools.shorts.backends.fal.run_take", lambda *a, **k: "t001")
     assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--yes"]) == 0
@@ -231,7 +262,7 @@ def test_submit_with_other_seconds_than_approved_is_refused(tmp_path, monkeypatc
     setup(tmp_path, monkeypatch, approved=False)
     assert main(["sheet", "pilot", "--model", "seedance-2.0-fast"]) == 0
     fp = json.loads((tmp_path / "design-data" / "shorts" / "_site" / "pilot" / "sheet" / "sheet.json").read_text())["shots"][0]["fp"]
-    (tmp_path / "design-data" / "shorts" / "pilot" / "approvals.json").write_text(json.dumps({"S01": {fp: {"verdict": "keep"}}}))
+    approvals(tmp_path / "design-data" / "shorts" / "pilot", {"S01": {fp: {"verdict": "keep"}}})
     monkeypatch.setattr("tools.shorts.backends.fal.load_key", lambda *a: "k")
     called = []
     monkeypatch.setattr("tools.shorts.backends.fal.run_take", lambda *a, **k: called.append(a[5]) or "t001")
@@ -272,3 +303,14 @@ def test_submit_network_error_is_clean_and_says_money_may_be_spent(tmp_path, mon
         assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--yes"]) == 1
         out = capsys.readouterr()
         assert "may already be spent" in out.err and "costs.json" in out.err and "secret-key-value" not in out.err + out.out
+
+
+def test_i2v_sends_and_fingerprints_only_keyframes(tmp_path, monkeypatch):
+    from test_shorts_model import designs
+    from tools.shorts.__main__ import _preflight, _short
+    setup(tmp_path, monkeypatch, shot=PACKAGED.replace('mode = "reference"', 'mode = "i2v"\nmotion = "C2 turns."'))
+    sd = tmp_path / "design-data" / "shorts" / "pilot" / "shots" / "S01"
+    (sd / "keyframe-start.png").write_bytes(b"k")
+    s = _short("pilot")
+    _, _, refs = _preflight(s, s.shots[0], "seedance-2.0-fast", designs())
+    assert [label for label, _ in refs] == ["keyframe-start.png"]

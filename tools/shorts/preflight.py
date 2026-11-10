@@ -5,8 +5,10 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from tools.shorts.approve import scene_fp
 from tools.shorts.backends import fal
 from tools.shorts.model import Shot, Short
+from tools.shorts.plates import plate_id, plate_path
 from tools.shorts.takes import estimate
 
 WORDS_PER_S = 2.5
@@ -94,8 +96,67 @@ def budget(short: Short, shot: Shot, model: str, spent: float) -> list[str]:
     return [f"${cost:.2f} would pass the budget (${left:.2f} left of ${short.budget_usd:.0f})"] if cost > left else []
 
 
-def run(short: Short, shot: Shot, prev: Shot | None, prompt: str, ref_list, model: str, spent: float) -> Report:
+WEATHER = ("rain", "raining", "wet street", "snow", "fog", "daylight", "sunlight", "window")
+
+
+def package(short, shot, prev, plates: dict, shot_dir, approvals: dict, design_dir) -> list[str]:
+    p = []
+    images = approvals.get("images", {})
+    keep = lambda v: (v or {}).get("verdict") == "keep"  # noqa: E731
+    if not shot.plate:
+        p.append("no plate")
+    elif shot.plate not in plates:
+        p.append(f"plate {shot.plate} is not in {short.place}.plates.toml")
+    elif not plate_path(design_dir, short.place, plates[shot.plate]).exists():
+        p.append(f"plate {shot.plate} not rendered")
+    elif not keep(images.get(plate_id(short.place, shot.plate))):
+        p.append(f"plate {shot.plate} not approved")
+    if short.scene is None:
+        p.append("no [scene] bible")
+    elif not keep(approvals.get("SCENE", {}).get(scene_fp(short))):
+        p.append("scene bible not approved (or changed since)")
+    if shot.mode == "i2v":
+        def key(which):
+            return keep(images.get(f"key--{short.slug}--{shot.id.lower()}--{which}"))
+        start, end = shot_dir / "keyframe-start.png", shot_dir / "keyframe-end.png"
+        if not start.exists():
+            p.append("no approved start keyframe")
+        elif not key("start"):
+            p.append("start keyframe not approved")
+        if shot.end_frame or set(shot.at_start) != set(shot.at_end):
+            if not end.exists():
+                p.append("needs an end keyframe (end_frame, or someone enters or leaves)")
+            elif not key("end"):
+                p.append("end keyframe not approved")
+        if not shot.motion:
+            p.append("missing motion")
+    p += [f"{cid} has no [wardrobe] line" for cid in shot.frame if cid not in short.wardrobe]
+    return p
+
+
+def _banned(short) -> list[str]:
+    if short.scene is None:
+        return []
+    allowed = short.scene.weather.lower()
+    extra = [w for w in WEATHER if w not in allowed or f"no {w}" in allowed]
+    return list(dict.fromkeys([w.lower() for w in short.scene.not_visible] + extra))
+
+
+def bible_words(short, shot) -> tuple[list[str], list[str]]:
+    texts = [("style", short.style), ("summary", shot.summary), ("action", shot.action), ("motion", shot.motion)]
+    texts += [("beat", b.text) for b in shot.beats]
+    texts += [(f"{a.who} acting", " ".join([a.goal, a.emotion, a.face, a.gaze, a.voice, a.end])) for a in shot.acting]
+    problems, warnings = [], []
+    for w in _banned(short):
+        rx = re.compile(rf"\b{re.escape(w)}\b", re.IGNORECASE)
+        problems += [f"'{w}' in {where} contradicts the scene bible" for where, t in texts if rx.search(t)]
+        warnings += [f"'{w}' in a line of dialogue (fine if spoken, not shown)" for ln in shot.lines if rx.search(ln.text)]
+    return problems, warnings
+
+
+def run(short: Short, shot: Shot, prev: Shot | None, prompt: str, ref_list, model: str, spent: float,
+        package_problems=(), bible=((), ())) -> Report:
     used, _ = fal.usable_refs(model, ref_list)
     return Report(problems=required(shot) + pace(shot) + one_action(shot) + continuity(prev, shot) + refs(model, used)
-                  + budget(short, shot, model, spent),
-                  warnings=filter_words(prompt))
+                  + budget(short, shot, model, spent) + list(package_problems) + list(bible[0]),
+                  warnings=filter_words(prompt) + list(bible[1]))

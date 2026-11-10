@@ -6,7 +6,7 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
-PLATES_ROOT = Path("narrator/worlds/plates")
+PLATES_ROOT = Path(__file__).resolve().parents[2] / "narrator" / "worlds" / "plates"
 
 
 @dataclass

@@ -40,3 +40,14 @@ def test_attempts_counts_paid_ledger_rows(tmp_path):
     rows = [{"shot": "S01", "fp": "abc"}, {"shot": "S01", "fp": "abc"}, {"shot": "S01"}, {"shot": "S02", "fp": "abc"}]
     (tmp_path / "costs.json").write_text(json.dumps(rows))
     assert approve.attempts(tmp_path, "S01", "abc") == 2
+
+
+def test_fingerprint_extra_and_scene_fp(tmp_path):
+    from test_shorts_model import SHORT, write
+    from tools.shorts.approve import fingerprint, scene_fp
+    from tools.shorts.model import load_short
+    scene = SHORT + '\n[scene]\ntime = "late night"\nweather = "indoors"\nset = "a bar"\n'
+    assert fingerprint("m", "p", [], 5, "a") != fingerprint("m", "p", [], 5, "b")
+    s1 = load_short(write(tmp_path / "a", short=scene))
+    s2 = load_short(write(tmp_path / "b", short=scene.replace("late night", "midnight")))
+    assert scene_fp(s1) != scene_fp(s2) and len(scene_fp(s1)) == 10
