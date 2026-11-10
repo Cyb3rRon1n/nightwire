@@ -1,10 +1,10 @@
 id = "S02"
 start = 8.0
 end = 15.5
-summary = "over C1's shoulder on C2, medium close-up, from across the counter; near-static"
+summary = "over-the-shoulder single on C2: C2 alone fills the frame from the chest up; only the blurred back of C1's head at the right edge; static"
 lens = 40.0
 size = "MCU"
-angle = "eye level, over C1's shoulder from across the counter"
+angle = "eye level, tight over C1's shoulder, camera close behind C1"
 move = "static"
 action = "Rin offers to unlock the hand and slides her cable toward it."
 camera = [
@@ -18,7 +18,7 @@ C2 = "deadpan, quietly sure of her leverage"
 
 [[beats]]
 t = [8.0, 15.5]
-text = "C2 MCU facing camera, screen left of centre; C1's shoulder and the back of her head as blurred foreground screen right; C2 looks at C1"
+text = "Medium close-up single on C2, chest up, facing camera, screen left of centre, filling most of the frame. C1 is seen only from behind: the out-of-focus back of her head and one shoulder at the right edge of frame; C1's face is never visible. Not a side-by-side two-shot. C2 looks at C1"
 
 [[beats]]
 t = [11.5, 13.0]
@@ -52,7 +52,7 @@ text = "I can unlock it."
 
 [frame]
 C2 = "screen-left of centre, facing camera"
-C1 = "foreground screen-right, shoulder and back of head"
+C1 = "foreground screen-right edge, out-of-focus back of head and shoulder only, face not visible"
 
 [at_start]
 C1 = "left hand covering the chrome hand on the cup"
