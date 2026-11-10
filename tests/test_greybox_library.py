@@ -93,3 +93,16 @@ def test_blender_script_compiles_and_needs_only_names_that_exist():
     import ast
     defined = {n.name for n in ast.parse(presets.BLENDER_BUILD.read_text()).body if isinstance(n, ast.FunctionDef)}
     assert {"mannequin", "screen_box", "figure_pose", "render_depth", "render_still"} <= defined
+
+
+def test_every_name_blender_library_extracts_exists_in_blender_build():
+    import ast
+    want = {}
+    for n in ast.parse(BLENDER_LIB.read_text()).body:
+        if isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") in ("WANT_NAMES", "WANT_FUNCS"):
+            want[n.targets[0].id] = ast.literal_eval(n.value)
+    assert set(want) == {"WANT_NAMES", "WANT_FUNCS"}
+    body = ast.parse(presets.BLENDER_BUILD.read_text()).body
+    funcs = {n.name for n in body if isinstance(n, ast.FunctionDef)}
+    names = {n.targets[0].id for n in body if isinstance(n, ast.Assign) and isinstance(n.targets[0], ast.Name)}
+    assert want["WANT_FUNCS"] <= funcs and want["WANT_NAMES"] <= names
