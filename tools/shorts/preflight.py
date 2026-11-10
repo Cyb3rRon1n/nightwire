@@ -5,7 +5,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from tools.shorts.approve import scene_fp
+from tools.shorts.approve import keyframe_id, scene_fp
 from tools.shorts.backends import fal
 from tools.shorts.model import Shot, Short
 from tools.shorts.plates import plate_id, plate_path
@@ -107,9 +107,9 @@ def package(short, shot, prev, plates: dict, shot_dir, approvals: dict, design_d
         p.append("no plate")
     elif shot.plate not in plates:
         p.append(f"plate {shot.plate} is not in {short.place}.plates.toml")
-    elif not plate_path(design_dir, short.place, plates[shot.plate]).exists():
+    elif not (chosen := plate_path(design_dir, short.place, plates[shot.plate])).exists():
         p.append(f"plate {shot.plate} not rendered")
-    elif not keep(images.get(plate_id(short.place, shot.plate))):
+    elif not keep(images.get(plate_id(short.place, shot.plate, chosen))):
         p.append(f"plate {shot.plate} not approved")
     if short.scene is None:
         p.append("no [scene] bible")
@@ -117,7 +117,8 @@ def package(short, shot, prev, plates: dict, shot_dir, approvals: dict, design_d
         p.append("scene bible not approved (or changed since)")
     if shot.mode == "i2v":
         def key(which):
-            return keep(images.get(f"key--{short.slug}--{shot.id.lower()}--{which}"))
+            f = shot_dir / f"keyframe-{which}.png"
+            return keep(images.get(keyframe_id(short.slug, shot.id, which, f)))
         start, end = shot_dir / "keyframe-start.png", shot_dir / "keyframe-end.png"
         if not start.exists():
             p.append("no approved start keyframe")
@@ -163,6 +164,7 @@ def _banned(short) -> list[str]:
 
 def bible_words(short, shot) -> tuple[list[str], list[str]]:
     texts = [("style", short.style), ("summary", shot.summary), ("action", shot.action), ("motion", shot.motion)]
+    texts += [(f"frame {cid}", v) for cid, v in shot.frame.items()] + [("line_rule", short.line_rule)]  # both reach the video prompt
     texts += [("beat", b.text) for b in shot.beats]
     texts += [(f"{a.who} acting", " ".join([a.goal, a.emotion, a.face, a.gaze, a.voice, a.end])) for a in shot.acting]
     problems, warnings = [], []

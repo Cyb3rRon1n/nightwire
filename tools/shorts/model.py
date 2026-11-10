@@ -158,6 +158,7 @@ class Short:
     scene: Scene | None = None
     wardrobe: dict[str, str] = field(default_factory=dict)
     blocking: dict[str, str] = field(default_factory=dict)
+    avoid: list[str] = field(default_factory=list)  # extra keyframe negatives for this short
 
 
 def _shot(d: dict) -> Shot:
@@ -192,6 +193,7 @@ def load_short(folder: Path) -> Short:
         retry_cap=int(d.get("retry_cap", 2)),
         scene=Scene(**{"light": [], "not_visible": [], **d["scene"]}) if "scene" in d else None,
         wardrobe=dict(d.get("wardrobe", {})), blocking=dict(d.get("blocking", {})),
+        avoid=list(d.get("avoid", [])),
     )
 
 

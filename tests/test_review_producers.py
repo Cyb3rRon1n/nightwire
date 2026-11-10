@@ -97,11 +97,11 @@ def test_plates_item_per_plate_with_candidates_then_chosen(tmp_path):
     png(base / "plates" / "toward-door-c02.png")
     (item,) = P.plates(c)
     assert item.id == "plate--mama-satos-izakaya--toward-door" and item.kind == "plate" and item.stage == "pre-production"
-    assert len(item.files) == 2 and item.context == "toward the door"
+    assert len(item.files) == 2 and item.context.endswith("toward the door")
     assert item.compare[0]["label"] == "Approved room"
     png(base / "plates" / "toward-door.png")
     (item,) = P.plates(c)
-    assert len(item.files) == 1 and item.files[0].endswith("toward-door.jpg")
+    assert len(item.files) == 1 and item.files[0].endswith("toward-door.jpg") and item.context == "toward the door"
 
 
 def test_plates_adopted_source_still_gets_an_item(tmp_path):
@@ -110,7 +110,7 @@ def test_plates_adopted_source_still_gets_an_item(tmp_path):
         '[[plate]]\nname = "toward-door"\nview = "v"\nsource = "play.png"\n')
     png(c["design_dir"] / "mama-satos-izakaya" / "play.png")
     (item,) = P.plates(c)
-    assert item.id == "plate--mama-satos-izakaya--toward-door" and len(item.files) == 1
+    assert item.id.startswith("plate--mama-satos-izakaya--toward-door--") and len(item.files) == 1
 
 
 def test_scenes_item_carries_bible_wardrobe_and_fingerprint_id(tmp_path):

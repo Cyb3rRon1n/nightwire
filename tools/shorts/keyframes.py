@@ -26,11 +26,11 @@ def candidate_path(work: Path, shot_id: str, which: str, n: int) -> Path:
     return work / "shots" / shot_id / "keyframes" / f"{which}-c{n:02d}.png"
 
 
-def keyframe_workflow(short, shot, designs, which, regions, lineart_name, seed) -> dict:
+def keyframe_workflow(short, shot, designs, which, regions, lineart_name, seed, plate=None) -> dict:
     from tools.design_scenes import _crowd, _region_tags
     from tools.image_studio import _subject
     from tools.imagegen import MATURE_18, MATURE_18_MALE, MATURE_18_OTHER, build
-    from tools.shorts.model import scene_look
+    from tools.shorts.model import scene_look, scene_mood
     from tools.shorts.stills import SIZE_WORDS
     place = designs[short.place]
     boxes = regions.get(which, {})
@@ -43,10 +43,10 @@ def keyframe_workflow(short, shot, designs, which, regions, lineart_name, seed) 
         kw["subject"] = _subject(designs[short.cast[who[0]]])
     elif len(who) >= 2:  # the crowd text is the subject so nothing is prepended twice
         kw["subject"] = _crowd(designs[short.cast[who[0]]], designs[short.cast[who[1]]])
-    words = ", ".join(x for x in ("solo" if len(who) == 1 else "", SIZE_WORDS.get(shot.size, ""), shot.angle, place.alt_tags or place.tags,
-                                   scene_look(short)) if x)
+    tags, look = (plate.tags, scene_mood(short)) if plate and plate.tags else (place.alt_tags or place.tags, scene_look(short))  # as plate_workflow
+    words = ", ".join(x for x in ("solo" if len(who) == 1 else "", SIZE_WORDS.get(shot.size, ""), shot.angle, tags, look) if x)
     negative = ", ".join(["merged bodies, fused faces, extra arms", *(short.scene.not_visible if short.scene else []),
-                          "open jacket, cleavage"])
+                          *short.avoid, *(plate.avoid if plate else [])])
     wf = build(words, "subject" if who else "scene", False, negative, "base", seed, **kw)
     wf["5"]["inputs"].update(width=W, height=H)
     clip, combined = wf["6"]["inputs"]["clip"], ["6", 0]
@@ -121,12 +121,13 @@ def choose(work: Path, shot_id: str, which: str, n: int) -> Path:
 
 async def render(jobs, backend, short, designs, seed: int) -> list[str]:
     """jobs from plan_jobs. One failure does not stop the rest."""
-    errors = []
+    from tools.shorts.plates import load_plates
+    errors, catalogue = [], load_plates(short.place)
     for out, shot, which, art, reg, n in jobs:
         try:
             name = await backend.upload_image(f"key-guide-{short.slug}-{shot.id}-{which}.png", art.read_bytes())
             out.parent.mkdir(parents=True, exist_ok=True)
-            out.write_bytes(await backend.run_workflow(keyframe_workflow(short, shot, designs, which, reg, name, seed + n - 1)))
+            out.write_bytes(await backend.run_workflow(keyframe_workflow(short, shot, designs, which, reg, name, seed + n - 1, catalogue.get(shot.plate))))
             print(out, flush=True)
         except Exception as e:  # noqa: BLE001 - keep the batch going
             errors.append(f"{out.name}: {e}")

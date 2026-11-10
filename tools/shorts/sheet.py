@@ -30,7 +30,7 @@ def cut_file(work: Path) -> Path | None:
     return next((p for p in (work / "cut.mp4", work / "draft.mp4") if p.exists()), None)
 
 
-def stages(short, plans: list[dict], plates: dict, approvals: dict, work: Path) -> list[dict]:
+def stages(short, plans: list[dict], plates: dict, approvals: dict, work: Path, design_dir: Path) -> list[dict]:
     """Gate status per stage; a stage is locked until every earlier one is approved. plans = collect()'s shot rows."""
     images = approvals.get("images", {})
     keep = lambda v: (v or {}).get("verdict") == "keep"  # noqa: E731
@@ -43,10 +43,11 @@ def stages(short, plans: list[dict], plates: dict, approvals: dict, work: Path) 
     checks = [
         ("Bible", short.scene is not None and keep(approvals.get("SCENE", {}).get(approve.scene_fp(short))),
          "the scene, wardrobe and seating"),
-        ("Plates", bool(named) and all(n in plates and keep(images.get(plate_mod.plate_id(short.place, n))) for n in named),
+        ("Plates", bool(named) and all(n in plates and (f := plate_mod.plate_path(design_dir, short.place, plates[n])).exists()
+                                       and keep(images.get(plate_mod.plate_id(short.place, n, f))) for n in named),
          f"{len(named)} room view(s)"),
         ("Keyframes", all(keyframes.chosen_path(work, sh.id, w).exists()
-                          and keep(images.get(f"key--{short.slug}--{sh.id.lower()}--{w}")) for sh, w in keys),
+                          and keep(images.get(approve.keyframe_id(short.slug, sh.id, w, keyframes.chosen_path(work, sh.id, w)))) for sh, w in keys),
          f"{len(keys)} opening/closing picture(s)"),
         ("Shots", all(keep(approvals.get(p["id"], {}).get(p["fp"])) for p in plans), f"{len(plans)} shot plan(s)"),
         ("Takes", len(kept_takes) == len(short.shots), f"{len(short.shots)} shot(s) need a chosen take"),
@@ -101,7 +102,7 @@ def collect(short, designs, design_dir: Path, work: Path, default: str, plans: d
             "spent": round(sum(r["cost"] for r in costs), 2),
             "line_rule": short.line_rule, "style": short.style, "place": short.place,
             "beats": [{"text": b, "shot": (re.findall(r"\((S\d+)\)", b) or [""])[0]} for b in short.beats],
-            "cast": cast, "shots": shots, "stages": stages(short, shots, catalogue, approvals, work),
+            "cast": cast, "shots": shots, "stages": stages(short, shots, catalogue, approvals, work, design_dir),
             "bible": {"scene": scene_text(short) if short.scene else "", "wardrobe": dict(short.wardrobe), "blocking": dict(short.blocking)},
             "plates": [{"name": n, "view": catalogue[n].view,
                         "img": plate_path_ok(design_dir, short.place, catalogue[n])} for n in sorted({sh.plate for sh in short.shots} & set(catalogue))],

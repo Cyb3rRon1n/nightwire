@@ -33,6 +33,17 @@ def fp_extra(short, shot, design_dir: Path, plates_root: Path | None = None) -> 
     return f"{shot.mode}\n{scene_text(short)}\n{plate}"
 
 
+def file_sha(path: Path) -> str:
+    """First 10 hex of the file's sha256: ids versioned by pixels, so a keep on an old file never approves a new one."""
+    return hashlib.sha256(path.read_bytes()).hexdigest()[:10]
+
+
+def keyframe_id(slug: str, shot_id: str, which: str, path: Path | None = None) -> str:
+    """Review id of a keyframe; once the chosen file exists it carries the file's hash."""
+    base = f"key--{slug}--{shot_id.lower()}--{which}"
+    return f"{base}--{file_sha(path)}" if path is not None and path.exists() else base
+
+
 def plan_image_id(slug: str, shot_id: str, fp: str) -> str:
     if "--" in slug or not SLUG.fullmatch(slug):
         raise ValueError(f"slug {slug!r} must match [a-z0-9][a-z0-9-]* and must not contain '--'")

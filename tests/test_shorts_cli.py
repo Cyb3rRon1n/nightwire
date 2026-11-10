@@ -35,8 +35,7 @@ def setup(tmp_path, monkeypatch, shot=PACKAGED, approved=True):
     plates.mkdir()
     (plates / "mama-satos-izakaya.toml").write_text('[[plate]]\nname = "door"\nview = "toward the door"\n')
     monkeypatch.setattr("tools.shorts.plates.PLATES_ROOT", plates)
-    monkeypatch.setattr("tools.shorts.__main__._images_api",
-                        lambda: {"plate--mama-satos-izakaya--door": {"verdict": "keep"}})  # never touch the network
+    monkeypatch.setattr("tools.shorts.__main__._images_api", lambda: _api_with_scene(tmp_path))  # never touch the network
     (script / "shots" / "S01.toml").write_text(shot)
     monkeypatch.setattr("tools.shorts.__main__.SHORTS_DIR", tmp_path / "script")
     monkeypatch.setenv("NIGHTWIRE_DESIGN_DIR", str(tmp_path / "design-data"))
@@ -236,7 +235,7 @@ def test_sheet_fingerprint_matches_submit(tmp_path, monkeypatch, capsys):
     data = json.loads((tmp_path / "design-data" / "shorts" / "_site" / "pilot" / "sheet.json").read_text())
     fp = data["shots"][0]["fp"]
     work = tmp_path / "design-data" / "shorts" / "pilot"
-    approvals(work, {"S01": {fp: {"verdict": "keep"}}})
+    monkeypatch.setattr("tools.shorts.__main__._images_api", lambda: _api_with_scene(tmp_path, {f"plan--pilot--s01--{fp}": {"verdict": "keep"}}))
     monkeypatch.setattr("tools.shorts.backends.fal.load_key", lambda *a: "k")
     monkeypatch.setattr("tools.shorts.backends.fal.run_take", lambda *a, **k: "t001")
     assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--yes"]) == 0
@@ -261,7 +260,7 @@ def test_submit_with_other_seconds_than_approved_is_refused(tmp_path, monkeypatc
     setup(tmp_path, monkeypatch, approved=False)
     assert main(["sheet", "pilot", "--model", "seedance-2.0-fast"]) == 0
     fp = json.loads((tmp_path / "design-data" / "shorts" / "_site" / "pilot" / "sheet.json").read_text())["shots"][0]["fp"]
-    approvals(tmp_path / "design-data" / "shorts" / "pilot", {"S01": {fp: {"verdict": "keep"}}})
+    monkeypatch.setattr("tools.shorts.__main__._images_api", lambda: _api_with_scene(tmp_path, {f"plan--pilot--s01--{fp}": {"verdict": "keep"}}))
     monkeypatch.setattr("tools.shorts.backends.fal.load_key", lambda *a: "k")
     called = []
     monkeypatch.setattr("tools.shorts.backends.fal.run_take", lambda *a, **k: called.append(a[5]) or "t001")
@@ -416,3 +415,54 @@ def test_plates_choose_and_busy_gpu_and_unreachable(tmp_path, monkeypatch, capsy
     def down(url): raise urllib.error.URLError("nope")
     monkeypatch.setattr("tools.design_scenes.gpu_busy", down)
     assert main(["plates", "pilot"]) == 1 and "not reachable" in capsys.readouterr().err
+
+
+def _api_with_scene(tmp_path, extra=None):
+    """The fake review store: the chosen plate and the scene bible approved (plus extra)."""
+    from tools.shorts.approve import scene_fp
+    from tools.shorts.model import load_short
+    from tools.shorts.plates import plate_id
+    fp = scene_fp(load_short(tmp_path / "script" / "pilot"))
+    plate = tmp_path / "design-data" / "mama-satos-izakaya" / "plates" / "door.png"
+    return {plate_id("mama-satos-izakaya", "door", plate): {"verdict": "keep"}, f"plan--pilot--scene--{fp}": {"verdict": "keep"}, **(extra or {})}
+
+
+def test_prompt_with_model_in_short_toml(tmp_path, monkeypatch, capsys):
+    setup(tmp_path, monkeypatch)
+    toml = tmp_path / "script" / "pilot" / "short.toml"
+    toml.write_text('model = "seedance-2.0-fast"\n' + toml.read_text())
+    assert main(["prompt", "pilot", "S01"]) == 0
+    assert "C1 = Saeko Kirigaya" in capsys.readouterr().out
+
+
+def test_submit_refreshes_approvals_and_blocks_a_new_reject(tmp_path, monkeypatch, capsys):
+    setup(tmp_path, monkeypatch)
+    monkeypatch.setattr("tools.shorts.backends.fal.load_key", lambda *a: "k")
+    called = []
+    monkeypatch.setattr("tools.shorts.backends.fal.run_take", lambda *a, **k: called.append(k) or "t001")
+    scene_fp_ = next(k for k in _api_with_scene(tmp_path) if k.startswith("plan--"))
+    monkeypatch.setattr("tools.shorts.__main__._images_api", lambda: _api_with_scene(tmp_path))
+    assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--yes"]) == 0  # fresh keep
+    called.clear()
+    # approvals.json still says keep for the scene, but the store now says reject
+    monkeypatch.setattr("tools.shorts.__main__._images_api",
+                        lambda: _api_with_scene(tmp_path, {scene_fp_: {"verdict": "reject"}}))
+    assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--yes"]) == 1
+    assert called == [] and "scene bible not approved" in capsys.readouterr().err
+
+
+def test_submit_refuses_when_review_store_unreachable(tmp_path, monkeypatch, capsys):
+    setup(tmp_path, monkeypatch)
+    monkeypatch.setattr("tools.shorts.__main__._images_api", lambda: None)
+    monkeypatch.setattr("tools.shorts.backends.fal.load_key", lambda *a: "k")
+    called = []
+    monkeypatch.setattr("tools.shorts.backends.fal.run_take", lambda *a, **k: called.append(k) or "t001")
+    assert main(["submit", "pilot", "S01", "--model", "seedance-2.0-fast", "--yes"]) == 1
+    assert called == [] and "can't reach the review store; nothing was spent" in capsys.readouterr().err
+
+
+def test_preflight_warns_once_when_store_unreachable(tmp_path, monkeypatch, capsys):
+    setup(tmp_path, monkeypatch)
+    monkeypatch.setattr("tools.shorts.__main__._images_api", lambda: None)
+    main(["preflight", "pilot", "--model", "seedance-2.0-fast"])
+    assert capsys.readouterr().err.count("review store unreachable: approvals read as missing") == 1

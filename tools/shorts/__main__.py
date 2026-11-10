@@ -58,6 +58,7 @@ def cmd_prompt(a) -> int:
     try:
         shot = _shot(s, a.shot)
         if s.model:
+            from tools.shorts.backends import fal
             print(_preflight(s, shot, fal.shot_model(shot, s.model), load_designs())[1])  # the exact text submit would send
         else:
             print(build_prompt(s, shot, load_designs(), has_still=(_work(s.slug) / "shots" / shot.id / "still.png").exists()))
@@ -124,7 +125,12 @@ def cmd_submit(a) -> int:
     s, work, designs = _short(a.slug), _work(a.slug), load_designs()
     shot = _shot(s, a.shot)
     shot_dir = work / "shots" / a.shot
-    report, prompt, refs = _preflight(s, shot, a.model, designs)
+    api = _images_api()  # approvals.json is only refreshed by `verdicts`; a later Reject must stop this submit
+    if api is None:
+        print("can't reach the review store; nothing was spent", file=sys.stderr)
+        return 1
+    approve.apply_approvals(work, s.slug, api)
+    report, prompt, refs = _preflight(s, shot, a.model, designs, api)
     for w in report.warnings:
         print(f"warning: {w}")
     if not report.ok:
@@ -183,18 +189,27 @@ def _prev(short, shot):
 IMAGES_API = "http://192.168.10.19:8080/designs/api/images"
 
 
-def _images_api() -> dict:
-    """Review verdicts by image id; {} on any error, which reports plates and keyframes as not approved (the safe side)."""
+def _images_api() -> dict | None:
+    """Review verdicts by image id; None when the store can't be reached (an empty store is {})."""
     try:
         with urllib.request.urlopen(IMAGES_API, timeout=10) as r:
             return json.load(r)
     except Exception:
+        return None
+
+
+def _images_or_warn() -> dict:
+    """For read-only checks: an unreachable store reads as {} (everything unapproved, the safe side), with one warning."""
+    api = _images_api()
+    if api is None:
+        print("review store unreachable: approvals read as missing", file=sys.stderr)
         return {}
+    return api
 
 
 def _approvals(work, images=None) -> dict:
     f = work / "approvals.json"
-    return {**(json.loads(f.read_text()) if f.exists() else {}), "images": _images_api() if images is None else images}
+    return {**(json.loads(f.read_text()) if f.exists() else {}), "images": _images_or_warn() if images is None else images}
 
 
 def _preflight(s, shot, model, designs, images=None, design_dir=None, plates_root=None):
@@ -245,9 +260,9 @@ def cmd_preflight(a) -> int:
     from tools.shorts.backends import fal
     if model not in fal.MODELS:
         raise CliError(f"unknown model {model!r}; choose from: {', '.join(fal.MODELS)}")
-    bad = 0
+    bad, images = 0, _images_or_warn()
     for shot in [_shot(s, a.shot)] if a.shot else s.shots:
-        report = _preflight(s, shot, model if a.model else fal.shot_model(shot, model), designs)[0]
+        report = _preflight(s, shot, model if a.model else fal.shot_model(shot, model), designs, images)[0]
         print(f"{shot.id}: {'ok' if report.ok else 'FAIL'}")
         for p in report.problems:
             print(f"  problem: {p}")
@@ -266,8 +281,9 @@ def cmd_sheet(a) -> int:
     from tools.shorts.backends import fal
     if model not in fal.MODELS:
         raise CliError(f"unknown model {model!r}; choose from: {', '.join(fal.MODELS)}")
-    plans = {shot.id: _preflight(s, shot, fal.shot_model(shot, model), designs) for shot in s.shots}
-    data = sheet.collect(s, designs, data_dir().parent, _work(a.slug), model, plans, _approvals(_work(a.slug)))
+    images = _images_or_warn()
+    plans = {shot.id: _preflight(s, shot, fal.shot_model(shot, model), designs, images) for shot in s.shots}
+    data = sheet.collect(s, designs, data_dir().parent, _work(a.slug), model, plans, _approvals(_work(a.slug), images))
     site = sheet.build(data, data_dir().parent, _work(a.slug), data_dir() / "_site")
     print(site)
     print(f"rsync -a {data_dir() / '_site'}/ 192.168.10.19:anvil-deploy/stack/dashboard/shorts/")

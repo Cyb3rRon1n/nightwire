@@ -38,8 +38,11 @@ def plate_path(design_dir: Path, place: str, plate: Plate) -> Path:
     return design_dir / place / (plate.source or f"plates/{plate.name}.png")
 
 
-def plate_id(place: str, name: str) -> str:
-    return f"plate--{place}--{name}"
+def plate_id(place: str, name: str, path: Path | None = None) -> str:
+    """Review id of a plate; once the chosen file exists it carries the file's hash."""
+    from tools.shorts.approve import file_sha
+    base = f"plate--{place}--{name}"
+    return f"{base}--{file_sha(path)}" if path is not None and path.exists() else base
 
 
 NO_TEXT = "text, english text, latin letters, signature, watermark"

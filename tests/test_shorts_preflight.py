@@ -147,12 +147,14 @@ def test_package_requires_approved_keyframes(tmp_path):
     (sd / "keyframe-start.png").write_bytes(b"x")
     (sd / "keyframe-end.png").write_bytes(b"x")
     keep = {"verdict": "keep"}
-    images = {f"plate--{s.place}--door": keep}
+    from tools.shorts.approve import keyframe_id
+    from tools.shorts.plates import plate_id
+    images = {plate_id(s.place, "door", dd / s.place / "plates" / "door.png"): keep}
     ap = {"images": images, "SCENE": {scene_fp(s): keep}}
     p = preflight.package(s, s.shots[0], None, plates, sd, ap, dd)
     assert "start keyframe not approved" in p and "end keyframe not approved" in p
-    images[f"key--{s.slug}--s01--start"] = keep
-    images[f"key--{s.slug}--s01--end"] = keep
+    images[keyframe_id(s.slug, "S01", "start", sd / "keyframe-start.png")] = keep
+    images[keyframe_id(s.slug, "S01", "end", sd / "keyframe-end.png")] = keep
     p = preflight.package(s, s.shots[0], None, plates, sd, ap, dd)
     assert not any("keyframe" in x or "plate" in x or "scene" in x for x in p), p
 
@@ -192,7 +194,8 @@ def test_package_end_keyframe_present_needs_approval_even_if_not_required(tmp_pa
     sh.at_end = dict(sh.at_start)  # same cast at both ends
     sd = tmp_path / "sd"; sd.mkdir()
     (sd / "keyframe-start.png").write_bytes(b"x"); (sd / "keyframe-end.png").write_bytes(b"x")
-    ap = {"images": {f"key--{s.slug}--s01--start": {"verdict": "keep"}}, "SCENE": {}}
+    from tools.shorts.approve import keyframe_id
+    ap = {"images": {keyframe_id(s.slug, "S01", "start", sd / "keyframe-start.png"): {"verdict": "keep"}}, "SCENE": {}}
     p = preflight.package(s, sh, None, {"door": Plate("door", "v")}, sd, ap, tmp_path / "dd")
     assert "end keyframe not approved" in p and "start keyframe not approved" not in p
 
@@ -205,3 +208,34 @@ def test_package_no_plate_and_unknown_plate(tmp_path):
     s.shots[0].plate = "nowhere"
     p = preflight.package(s, s.shots[0], None, {"door": Plate("door", "v")}, tmp_path, ap, tmp_path)
     assert any("plate nowhere is not in" in x for x in p)
+
+
+def test_package_keep_on_an_old_chosen_keyframe_or_plate_does_not_count(tmp_path):
+    from tools.shorts.approve import keyframe_id, scene_fp
+    from tools.shorts.plates import Plate, plate_id
+    s = load_short(write(tmp_path, short=SCENE_SHORT, shot=_planned('plate = "door"\nmotion = "C2 turns."')))
+    dd, sd = tmp_path / "dd", tmp_path / "sd"
+    sd.mkdir()
+    (dd / s.place / "plates").mkdir(parents=True)
+    plate, key = dd / s.place / "plates" / "door.png", sd / "keyframe-start.png"
+    plate.write_bytes(b"plate-1")
+    key.write_bytes(b"key-1")
+    keep = {"verdict": "keep"}
+    images = {plate_id(s.place, "door", plate): keep, keyframe_id(s.slug, "S01", "start", key): keep}
+    ap = {"images": images, "SCENE": {scene_fp(s): keep}}
+    plates = {"door": Plate("door", "v")}
+    assert not [x for x in preflight.package(s, s.shots[0], None, plates, sd, ap, dd) if ("keyframe" in x and "needs an end" not in x) or "plate" in x]
+    plate.write_bytes(b"plate-2")  # a different candidate was chosen: the old keeps no longer apply
+    key.write_bytes(b"key-2")
+    p = preflight.package(s, s.shots[0], None, plates, sd, ap, dd)
+    assert "plate door not approved" in p and "start keyframe not approved" in p
+
+
+def test_bible_words_scans_frame_and_line_rule(tmp_path):
+    sc = SCENE_SHORT.replace('weather = "indoors; no windows"', 'weather = "indoors"').replace('["rain", "street"]', '["rain", "street"]')
+    sc = sc.replace('line_rule = "', 'line_rule = "') 
+    s = load_short(write(tmp_path, short=sc, shot=PLANNED))
+    s.shots[0].frame["C1"] = "screen-right, rain on her hood"
+    s.line_rule = "C1 stays left of the street"
+    problems, _ = preflight.bible_words(s, s.shots[0])
+    assert any("'rain' in frame C1" in x for x in problems) and any("'street' in line_rule" in x for x in problems)

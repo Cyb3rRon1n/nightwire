@@ -11,6 +11,7 @@ budget_usd = 25.0
 model = "seedance-2.0-fast"
 line_rule = "C1 (Saeko) is screen-right of C2 (Rin) in every shot from S01's two-shot on"
 retry_cap = 2
+avoid = ["open jacket", "cleavage"]
 beats = [
   "strange event: C1's chrome hand locks shut around a sake cup, an amber light blinking on its wrist (S01)",
   "immediate goal: C1 covers the hand before the newcomer sees it; C2 walks straight to her (S01)",

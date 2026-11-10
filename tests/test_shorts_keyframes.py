@@ -41,7 +41,7 @@ def test_workflow_has_area_per_character_controlnet_and_negative(tmp_path):
     assert wf["3"]["inputs"]["positive"] == ["62", 0] and wf["3"]["inputs"]["negative"] == ["62", 1]
     assert wf["62"]["inputs"]["positive"] == ["75", 0]
     neg = wf["7"]["inputs"]["text"]
-    assert "rain" in neg and "windows" in neg and "cleavage" in neg and "daylight" not in neg
+    assert "rain" in neg and "windows" in neg and "daylight" not in neg
     assert "Not visible" not in wf["6"]["inputs"]["text"] and "2girls" in wf["6"]["inputs"]["text"]
     assert wf["5"]["inputs"]["width"] == 1216 and wf["3"]["inputs"]["seed"] == 7
 
@@ -115,7 +115,7 @@ def test_producer_candidates_then_chosen_with_compare(tmp_path):
         png(shot_dir / "keyframes" / f"start-c0{n}.png")
     png(shot_dir / "guide" / "start.png")
     (item,) = P.keyframes(c)
-    assert item.id == "key--pilot--s01--start" and item.kind == "keyframe" and item.stage == "pre-production"
+    assert item.id == "key--pilot--s01--start" and item.choices == () and item.kind == "keyframe" and item.stage == "pre-production"
     assert len(item.files) == 2 and item.compare[-1]["label"] == "Grey-box"
     png(shot_dir / "keyframe-start.png")
     png(dd / "saeko-kirigaya" / "turnaround.png")
@@ -160,3 +160,43 @@ def test_three_characters_keep_leftmost_two_with_note(tmp_path, capsys):
     assert len([n for n in wf.values() if n["class_type"] == "ConditioningSetArea"]) == 2
     assert wf["6"]["inputs"]["text"].count("2girls") == 1
     assert "C1" in capsys.readouterr().err
+
+
+def test_workflow_uses_plate_tags_mood_and_avoid(tmp_path):
+    from tools.shorts.plates import Plate
+    s = short_with(tmp_path)
+    plate = Plate("door", "toward the door", tags="noren curtain, wooden door", avoid=["back bar"])
+    wf = kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", REG, "g.png", 1, plate)
+    pos, neg = wf["6"]["inputs"]["text"], wf["7"]["inputs"]["text"]
+    assert "noren curtain" in pos and "izakaya, night" not in pos and "Set:" not in pos
+    assert "back bar" in neg
+    plain = kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", REG, "g.png", 1)
+    assert "izakaya, night" in plain["6"]["inputs"]["text"]
+
+
+def test_negative_avoid_comes_from_short_not_code(tmp_path):
+    s = short_with(tmp_path)
+    assert "cleavage" not in kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", REG, "g.png", 1)["7"]["inputs"]["text"]
+    s.avoid = ["open jacket", "cleavage"]
+    neg = kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", REG, "g.png", 1)["7"]["inputs"]["text"]
+    assert "open jacket" in neg and "cleavage" in neg
+
+
+def test_producers_version_ids_by_pixels_and_candidates_not_approvable(tmp_path):
+    from tools.shorts.approve import keyframe_id
+    c = _shorts_world(tmp_path)
+    shot_dir = c["design_dir"] / "shorts" / "pilot" / "shots" / "S01"
+    png(shot_dir / "keyframes" / "start-c01.png")
+    (item,) = P.keyframes(c)
+    assert item.choices == () and "Claude picks one candidate first" in item.context
+    png(shot_dir / "keyframe-start.png")
+    (item,) = P.keyframes(c)
+    assert item.choices == ("keep", "fix", "reject")
+    assert item.id == keyframe_id("pilot", "S01", "start", shot_dir / "keyframe-start.png") and len(item.id.split("--")[-1]) == 10
+    base = c["design_dir"] / "mama-satos-izakaya"
+    png(base / "plates" / "toward-door-c01.png")
+    (plate,) = P.plates(c)
+    assert plate.choices == () and plate.id == "plate--mama-satos-izakaya--toward-door"
+    png(base / "plates" / "toward-door.png")
+    (plate,) = P.plates(c)
+    assert plate.choices and len(plate.id.split("--")[-1]) == 10

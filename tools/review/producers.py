@@ -12,6 +12,9 @@ SHEETS = (("portrait", "Portrait"), ("expressions", "Expressions"), ("turnaround
           ("colorguide", "Colour guide"), ("props", "Hands and props"))
 
 
+PICK_FIRST = "Claude picks one candidate first; approve the chosen one"  # candidates are shown so the owner can see them, but only the chosen file is approvable
+
+
 def sheet_id(slug: str, version: str) -> str:
     return f"sheet--{slug}--{version}"
 
@@ -105,8 +108,10 @@ def plates(ctx) -> list[Item]:
             files = [web_copy(f, ctx["site"], f"{rel}/{f.stem}.jpg") for f in srcs]
             compare = ([{"label": "Approved room", "url": web_copy(base / "play.png", ctx["site"], f"{rel}/play.jpg")}]
                        if (base / "play.png").exists() else [])
-            out.append(Item(pl.plate_id(short.place, plate.name), "plate", "pre-production", short.place,
-                            f"{short.place}: plate {plate.name}", files, compare, context=plate.view))
+            picked = chosen.exists()
+            out.append(Item(pl.plate_id(short.place, plate.name, chosen), "plate", "pre-production", short.place,
+                            f"{short.place}: plate {plate.name}", files, compare,
+                            context=plate.view if picked else f"{PICK_FIRST}\n{plate.view}", **({} if picked else {"choices": ()})))
     return out
 
 
@@ -127,6 +132,7 @@ def scenes(ctx) -> list[Item]:
 
 
 def keyframes(ctx) -> list[Item]:
+    from tools.shorts import approve
     from tools.shorts import keyframes as kf
     from tools.shorts import plates as pl
     out = []
@@ -163,8 +169,11 @@ def keyframes(ctx) -> list[Item]:
                                     + [f"At {which} {k}: {v}" for k, v in sorted(moves.items())]
                                     + [f"Props {k}: {v}" for k, v in sorted(shot.props.items())]
                                     + [f"Wardrobe {k}: {v}" for k, v in sorted(short.wardrobe.items())])
-                out.append(Item(f"key--{short.slug}--{shot.id.lower()}--{which}", "keyframe", "pre-production", short.slug,
-                                f"{short.title}: {shot.id} {which} keyframe", files, compare, context=context))
+                if not chosen.exists():
+                    context = f"{PICK_FIRST}\n{context}"
+                out.append(Item(approve.keyframe_id(short.slug, shot.id, which, chosen), "keyframe", "pre-production", short.slug,
+                                f"{short.title}: {shot.id} {which} keyframe", files, compare, context=context,
+                                **({} if chosen.exists() else {"choices": ()})))
     return out
 
 

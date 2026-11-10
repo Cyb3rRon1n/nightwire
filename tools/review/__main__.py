@@ -19,8 +19,8 @@ def design_dir() -> Path:
 
 
 def _fetch_images() -> dict:
-    from tools.shorts.__main__ import _images_api
-    return _images_api()
+    from tools.shorts.__main__ import _images_or_warn
+    return _images_or_warn()
 
 
 def main(argv=None) -> int:

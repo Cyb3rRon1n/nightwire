@@ -51,33 +51,39 @@ def _plates():
 
 def test_stages_bible_waiting_locks_everything_after(tmp_path):
     s = _stage_short(tmp_path)
-    out = sheet.stages(s, [{"id": "S01", "fp": "x"}], _plates(), {"images": {}}, tmp_path / "w")
+    out = sheet.stages(s, [{"id": "S01", "fp": "x"}], _plates(), {"images": {}}, tmp_path / "w", tmp_path / "dd")
     assert [o["name"] for o in out] == ["Bible", "Plates", "Keyframes", "Shots", "Takes", "Cut"]
     assert out[0]["status"] == "waiting" and {o["status"] for o in out[1:]} == {"locked"}
 
 
 def test_stages_bible_and_plates_approved_keyframes_waiting(tmp_path, monkeypatch):
-    from tools.shorts import keyframes
+    from tools.shorts import approve, keyframes
     from tools.shorts.approve import scene_fp
     from tools.shorts.plates import plate_id
     s = _stage_short(tmp_path)
     s.shots[0].mode = "i2v"
-    ap = {"SCENE": {scene_fp(s): {"verdict": "keep"}}, "images": {plate_id(s.place, "toward-door"): {"verdict": "keep"}}}
-    out = sheet.stages(s, [{"id": "S01", "fp": "x"}], _plates(), ap, tmp_path / "w")
+    plate = tmp_path / "dd" / s.place / "plates" / "toward-door.png"
+    plate.parent.mkdir(parents=True)
+    plate.write_bytes(b"p1")
+    ap = {"SCENE": {scene_fp(s): {"verdict": "keep"}}, "images": {plate_id(s.place, "toward-door", plate): {"verdict": "keep"}}}
+    out = sheet.stages(s, [{"id": "S01", "fp": "x"}], _plates(), ap, tmp_path / "w", tmp_path / "dd")
     assert [o["status"] for o in out] == ["approved", "approved", "waiting", "locked", "locked", "locked"]
     # keyframe drawn and kept -> keyframes approved, shots waiting
     kf = keyframes.chosen_path(tmp_path / "w", "S01", "start")
     kf.parent.mkdir(parents=True)
     kf.write_bytes(b"x")
     for w in keyframes.needed(s.shots[0]):
-        ap["images"][f"key--{s.slug}--s01--{w}"] = {"verdict": "keep"}
         keyframes.chosen_path(tmp_path / "w", "S01", w).write_bytes(b"x")
-    out = sheet.stages(s, [{"id": "S01", "fp": "x"}], _plates(), ap, tmp_path / "w")
+        ap["images"][approve.keyframe_id(s.slug, "S01", w, keyframes.chosen_path(tmp_path / "w", "S01", w))] = {"verdict": "keep"}
+    out = sheet.stages(s, [{"id": "S01", "fp": "x"}], _plates(), ap, tmp_path / "w", tmp_path / "dd")
     assert [o["status"] for o in out[2:4]] == ["approved", "waiting"]
+    keyframes.chosen_path(tmp_path / "w", "S01", "start").write_bytes(b"other pixels")  # a different candidate chosen
+    assert sheet.stages(s, [{"id": "S01", "fp": "x"}], _plates(), ap, tmp_path / "w", tmp_path / "dd")[2]["status"] == "waiting"
+    keyframes.chosen_path(tmp_path / "w", "S01", "start").write_bytes(b"x")
     ap["S01"] = {"x": {"verdict": "keep"}}
     (tmp_path / "w" / "shots" / "S01" / "verdicts.json").write_text('{"t1": {"verdict": "keep"}}')
     (tmp_path / "w" / "draft.mp4").write_bytes(b"v")
     ap["images"][sheet.cut_id(s.slug, tmp_path / "w" / "draft.mp4")] = {"verdict": "keep"}
-    assert {o["status"] for o in sheet.stages(s, [{"id": "S01", "fp": "x"}], _plates(), ap, tmp_path / "w")} == {"approved"}
+    assert {o["status"] for o in sheet.stages(s, [{"id": "S01", "fp": "x"}], _plates(), ap, tmp_path / "w", tmp_path / "dd")} == {"approved"}
     (tmp_path / "w" / "draft.mp4").write_bytes(b"new cut")  # a new cut needs its own approval
-    assert sheet.stages(s, [{"id": "S01", "fp": "x"}], _plates(), ap, tmp_path / "w")[-1]["status"] == "waiting"
+    assert sheet.stages(s, [{"id": "S01", "fp": "x"}], _plates(), ap, tmp_path / "w", tmp_path / "dd")[-1]["status"] == "waiting"
