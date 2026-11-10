@@ -70,3 +70,17 @@ def test_visible_regions_drops_occluded_figure(tmp_path):
     im.save(g / "start.png")
     (g / "regions.json").write_text(json.dumps({"start": {"C1": [0.1, 0.1, 0.4, 0.4], "C2": [0.6, 0.6, 0.9, 0.9]}}))
     assert list(visible_regions(tmp_path)["start"]) == ["C1"]
+
+
+def test_pose_image_draws_skeleton_and_omits_face_from_behind(tmp_path):
+    from tools.shorts.guides import pose_image
+    g = tmp_path / "guide"
+    g.mkdir()
+    fig = {"nose": [0.5, 0.2], "neck": [0.5, 0.3], "rsho": [0.45, 0.3], "lsho": [0.55, 0.3], "reye": [0.48, 0.18], "relb": None}
+    (g / "start-pose.json").write_text(json.dumps({"C1": {"points": fig, "back": False}, "C2": {"points": {**fig, "neck": [0.2, 0.3], "nose": [0.2, 0.2]}, "back": True}, "C9": {"points": fig, "back": False}}))
+    out = pose_image(tmp_path, "start", {"C1", "C2"})
+    im = Image.open(out).convert("RGB")
+    assert im.size == (1216, 832) and out.name == "start-pose.png"
+    assert im.getpixel((int(0.5 * 1216), int(0.2 * 832))) != (0, 0, 0)   # C1 nose drawn
+    assert im.getpixel((int(0.2 * 1216), int(0.2 * 832))) == (0, 0, 0)   # C2 (back) nose omitted
+    assert im.getpixel((int(0.45 * 1216), int(0.3 * 832))) != (0, 0, 0)  # shoulder drawn

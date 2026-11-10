@@ -21,6 +21,11 @@ DESIGNS = {"mama-satos-izakaya": Design(name="Izakaya", kind="location", source=
 REG = {"start": {"C1": [0.5, 0.1, 0.9, 1.0], "C2": [0.1, 0.1, 0.45, 1.0]}}
 
 
+def _guides(guide, which="start"):
+    png(guide / f"{which}-depth.png")
+    png(guide / f"{which}-pose.png")
+
+
 def short_with(tmp_path, shot_extra="", scene=True):
     sc = ('\n[scene]\ntime = "late"\nweather = "indoors"\nset = "bar"\nnot_visible = ["rain", "windows"]\n'
           '[wardrobe]\nC1 = "grey coat"\n[locks]\nC2 = "red scarf"\n') if scene else ""
@@ -31,14 +36,18 @@ def test_workflow_has_area_per_character_controlnet_and_negative(tmp_path):
     s = short_with(tmp_path)
     shot = s.shots[0]
     shot.props = {"C1": "cup in left hand"}
-    wf = kf.keyframe_workflow(s, shot, DESIGNS, "start", REG, "g.png", 7)
+    wf = kf.keyframe_workflow(s, shot, DESIGNS, "start", REG, "d.png", "p.png", 7)
     areas = [n for n in wf.values() if n["class_type"] == "ConditioningSetArea"]
     assert [(a["inputs"]["x"], a["inputs"]["width"]) for a in areas] == [(120, 424), (608, 480)]
     assert all(v % 8 == 0 for a in areas for v in (a["inputs"]["x"], a["inputs"]["y"], a["inputs"]["width"], a["inputs"]["height"]))
     texts = [wf[k]["inputs"]["text"] for k in ("70", "73")]
-    assert "grey coat" in texts[1] and "cup in left hand" in texts[1] and "red scarf" in texts[0]  # left to right: C2, C1
-    assert wf["62"]["class_type"] == "ControlNetApplyAdvanced" and wf["61"]["inputs"]["image"] == "g.png"
-    assert wf["3"]["inputs"]["positive"] == ["62", 0] and wf["3"]["inputs"]["negative"] == ["62", 1]
+    assert "grey coat:1.4" in texts[1] and "cup in left hand" in texts[1] and "red scarf" in texts[0]  # left to right: C2, C1
+    assert wf["62"]["class_type"] == "ControlNetApplyAdvanced" and wf["61"]["inputs"]["image"] == "d.png" and wf["64"]["inputs"]["image"] == "p.png"
+    assert wf["60"]["inputs"]["control_net_name"] == "noob_sdxl_controlnet_depth.safetensors"
+    assert wf["63"]["inputs"]["control_net_name"] == "noob_openpose_pre.safetensors"
+    assert wf["65"]["inputs"]["positive"] == ["62", 0] and wf["65"]["inputs"]["negative"] == ["62", 1]  # chained
+    assert wf["3"]["inputs"]["positive"] == ["65", 0] and wf["3"]["inputs"]["negative"] == ["65", 1]
+    assert [wf[k]["inputs"][f] for k in ("62", "65") for f in ("strength", "end_percent")] == [0.6, 0.6, 0.9, 0.8]
     assert wf["62"]["inputs"]["positive"] == ["75", 0]
     neg = wf["7"]["inputs"]["text"]
     assert "rain" in neg and "windows" in neg and "daylight" not in neg
@@ -48,7 +57,7 @@ def test_workflow_has_area_per_character_controlnet_and_negative(tmp_path):
 
 def test_workflow_without_regions_is_a_scene(tmp_path):
     s = short_with(tmp_path, scene=False)
-    wf = kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", {}, "g.png", 1)
+    wf = kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", {}, "d.png", "p.png", 1)
     assert not [n for n in wf.values() if n["class_type"] == "ConditioningSetArea"]
     assert wf["62"]["inputs"]["positive"] == ["6", 0] and "rain" not in wf["7"]["inputs"]["text"]
 
@@ -69,7 +78,7 @@ def test_plan_jobs_choose_and_redo(tmp_path):
     work = tmp_path / "w"
     assert kf.plan_jobs(s, work)[1] and kf.plan_jobs(s, work)[0] == []  # no guide: skipped with a note
     shot_dir = work / "shots" / "S01"
-    png(shot_dir / "guide" / "start-room-lineart.png")
+    _guides(shot_dir / "guide")
     (shot_dir / "guide" / "regions.json").write_text(json.dumps(REG))
     jobs, _ = kf.plan_jobs(s, work, "S01", "both", 2)
     assert [(j[0].name, j[2], j[5]) for j in jobs] == [("start-c01.png", "start", 1), ("start-c02.png", "start", 2)]
@@ -97,12 +106,13 @@ def test_render_uploads_unique_guide_seeds_and_survives_failure(tmp_path):
                 raise RuntimeError("boom")
             return b"png"
     s = short_with(tmp_path / "s")
-    art = png(tmp_path / "a.png")
+    art = tmp_path / "S01" / "guide"
+    _guides(art)
     f = Fake()
     jobs = [(tmp_path / f"o{n}.png", s.shots[0], "start", art, REG, n) for n in (1, 3)]
     errs = asyncio.run(kf.render(jobs, f, s, DESIGNS, 10))
     assert len(errs) == 1 and "boom" in errs[0] and (tmp_path / "o3.png").read_bytes() == b"png"
-    assert f.uploads[0] == f"key-guide-{s.slug}-S01-start.png" and s.slug
+    assert f.uploads[:2] == [f"key-depth-{s.slug}-S01-start.png", f"key-pose-{s.slug}-S01-start.png"]
     assert f.runs[0]["3"]["inputs"]["seed"] == 10 and f.runs[1]["3"]["inputs"]["seed"] == 12
 
 
@@ -127,18 +137,18 @@ def test_producer_candidates_then_chosen_with_compare(tmp_path):
 def test_subject_not_duplicated_and_boxes_stay_inside(tmp_path):
     s = short_with(tmp_path)
     d = dict(DESIGNS, **{"saeko-kirigaya": D("Saeko", "short hair", "masculine")})
-    solo = kf.keyframe_workflow(s, s.shots[0], d, "start", {"start": {"C1": [0.97, 0.0, 1.0, 1.0]}}, "g", 1)
+    solo = kf.keyframe_workflow(s, s.shots[0], d, "start", {"start": {"C1": [0.97, 0.0, 1.0, 1.0]}}, "d", "p", 1)
     assert "1girl" not in solo["6"]["inputs"]["text"]
     (area,) = [n for n in solo.values() if n["class_type"] == "ConditioningSetArea"]
     assert area["inputs"]["x"] + area["inputs"]["width"] <= 1216 and area["inputs"]["x"] % 8 == 0
-    two = kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", REG, "g", 1)["6"]["inputs"]["text"]
+    two = kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", REG, "d", "p", 1)["6"]["inputs"]["text"]
     assert two.count("2girls") == 1 and "1girl" not in two
 
 
 def test_plan_jobs_skips_shot_without_character_regions(tmp_path):
     s = short_with(tmp_path / "s")
     work = tmp_path / "w"
-    png(work / "shots" / "S01" / "guide" / "start-room-lineart.png")
+    _guides(work / "shots" / "S01" / "guide")
     (work / "shots" / "S01" / "guide" / "regions.json").write_text(json.dumps({"end": REG["start"]}))
     jobs, notes = kf.plan_jobs(s, work)
     assert jobs == [] and "regions" in notes[0]
@@ -147,7 +157,7 @@ def test_plan_jobs_skips_shot_without_character_regions(tmp_path):
 def test_region_prompts_carry_adult_tags_and_negative(tmp_path):
     from tools.imagegen import MATURE_18_NEG
     s = short_with(tmp_path)
-    wf = kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", REG, "g", 1)
+    wf = kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", REG, "d", "p", 1)
     assert all("25 years old" in wf[k]["inputs"]["text"] for k in ("70", "73"))
     assert MATURE_18_NEG in wf["7"]["inputs"]["text"]
 
@@ -156,7 +166,7 @@ def test_three_characters_keep_leftmost_two_with_note(tmp_path, capsys):
     s = short_with(tmp_path)
     s.cast["C3"] = "rin-kageyama"
     reg = {"start": {"C1": [0.5, 0.1, 0.9, 1.0], "C2": [0.1, 0.1, 0.45, 1.0], "C3": [0.46, 0.1, 0.49, 1.0]}}
-    wf = kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", reg, "g", 1)
+    wf = kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", reg, "d", "p", 1)
     assert len([n for n in wf.values() if n["class_type"] == "ConditioningSetArea"]) == 2
     assert wf["6"]["inputs"]["text"].count("2girls") == 1
     assert "C1" in capsys.readouterr().err
@@ -166,19 +176,19 @@ def test_workflow_uses_plate_tags_mood_and_avoid(tmp_path):
     from tools.shorts.plates import Plate
     s = short_with(tmp_path)
     plate = Plate("door", "toward the door", tags="noren curtain, wooden door", avoid=["back bar"])
-    wf = kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", REG, "g.png", 1, plate)
+    wf = kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", REG, "d.png", "p.png", 1, plate)
     pos, neg = wf["6"]["inputs"]["text"], wf["7"]["inputs"]["text"]
     assert "noren curtain" in pos and "izakaya, night" not in pos and "Set:" not in pos
     assert "back bar" in neg
-    plain = kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", REG, "g.png", 1)
+    plain = kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", REG, "d.png", "p.png", 1)
     assert "izakaya, night" in plain["6"]["inputs"]["text"]
 
 
 def test_negative_avoid_comes_from_short_not_code(tmp_path):
     s = short_with(tmp_path)
-    assert "cleavage" not in kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", REG, "g.png", 1)["7"]["inputs"]["text"]
+    assert "cleavage" not in kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", REG, "d.png", "p.png", 1)["7"]["inputs"]["text"]
     s.avoid = ["open jacket", "cleavage"]
-    neg = kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", REG, "g.png", 1)["7"]["inputs"]["text"]
+    neg = kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", REG, "d.png", "p.png", 1)["7"]["inputs"]["text"]
     assert "open jacket" in neg and "cleavage" in neg
 
 
@@ -210,7 +220,7 @@ def test_lead_pose_no_text_and_stronger_guides(tmp_path):
     shot.at_start = {"C1": "seated, hand on cup", "C2": "standing"}
     shot.at_end = {"C1": "leaning forward"}
     shot.frame = {"C1": "screen-right, back of head", "C2": "screen-left, facing camera"}
-    wf = kf.keyframe_workflow(s, shot, DESIGNS, "start", REG, "g", 1)
+    wf = kf.keyframe_workflow(s, shot, DESIGNS, "start", REG, "d", "p", 1)
     pos = wf["6"]["inputs"]["text"]
     assert "(upper body, eye level:1.4)" in pos
     assert pos.index("eye level:1.4") < pos.index("izakaya")
@@ -218,11 +228,10 @@ def test_lead_pose_no_text_and_stronger_guides(tmp_path):
     c2, c1 = wf["70"]["inputs"]["text"], wf["73"]["inputs"]["text"]
     assert "(seated, hand on cup:1.3)" in c1 and "(from behind, back of head:1.4)" in c1
     assert "(standing:1.3)" in c2 and "from behind" not in c2
-    assert "(leaning forward:1.3)" in kf.keyframe_workflow(s, shot, DESIGNS, "end", REG | {"end": REG["start"]}, "g", 1)["73"]["inputs"]["text"]
+    assert "(leaning forward:1.3)" in kf.keyframe_workflow(s, shot, DESIGNS, "end", REG | {"end": REG["start"]}, "d", "p", 1)["73"]["inputs"]["text"]
     assert [wf[k]["inputs"]["strength"] for k in ("71", "74")] == [1.5, 1.5]
-    assert wf["62"]["inputs"]["strength"] == 0.85 and wf["62"]["inputs"]["end_percent"] == 0.9
     shot.size = "WS"
-    assert "full body, wide shot" in kf.keyframe_workflow(s, shot, DESIGNS, "start", REG, "g", 1)["6"]["inputs"]["text"]
+    assert "full body, wide shot" in kf.keyframe_workflow(s, shot, DESIGNS, "start", REG, "d", "p", 1)["6"]["inputs"]["text"]
 
 
 def test_weight_groups_sanitised_and_terms_deduped(tmp_path):
@@ -230,21 +239,32 @@ def test_weight_groups_sanitised_and_terms_deduped(tmp_path):
     shot = s.shots[0]
     shot.size, shot.angle = "CU", "low (dutch): tilt"
     shot.at_start = {"C1": "holding (left hand): cup"}
-    wf = kf.keyframe_workflow(s, shot, DESIGNS, "start", REG, "g", 1)
+    wf = kf.keyframe_workflow(s, shot, DESIGNS, "start", REG, "d", "p", 1)
     pos = wf["6"]["inputs"]["text"]
     assert pos.count("close-up") == 1 and "low dutch tilt:1.4)" in pos and "(close-up, portrait" in pos
     group = wf["73"]["inputs"]["text"]
     assert "(holding left hand cup:1.3)" in group
     import re
-    assert re.findall(r"\([^()]*\)", group).count("(holding left hand cup:1.3)") == 1 and group.count(":") == 1
+    assert re.findall(r"\([^()]*\)", group).count("(holding left hand cup:1.3)") == 1 and group.count(":1.3") == 1
 
 
-def test_plan_jobs_ignores_full_lineart_and_needs_room_only(tmp_path):
+def test_plan_jobs_needs_depth_and_pose(tmp_path):
     s = short_with(tmp_path / "s")
     work = tmp_path / "w"
     guide = work / "shots" / "S01" / "guide"
-    png(guide / "start-lineart.png")
-    (guide / "regions.json").write_text(json.dumps(REG))
-    assert kf.plan_jobs(s, work)[0] == []
     png(guide / "start-room-lineart.png")
-    assert kf.plan_jobs(s, work, seeds=1)[0][0][3].name == "start-room-lineart.png"
+    png(guide / "start-depth.png")
+    (guide / "regions.json").write_text(json.dumps(REG))
+    jobs, notes = kf.plan_jobs(s, work)
+    assert jobs == [] and "depth/pose" in notes[0]
+    png(guide / "start-pose.png")
+    assert kf.plan_jobs(s, work, seeds=1)[0][0][3] == guide
+
+
+def test_back_from_pose_json_and_weighted_wardrobe_and_avoid(tmp_path):
+    s = short_with(tmp_path)
+    s.avoid = ["open jacket", "cleavage"]
+    wf = kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", REG, "d", "p", 1, back={"C2"})
+    assert "(from behind, back of head:1.4)" in wf["70"]["inputs"]["text"] and "from behind" not in wf["73"]["inputs"]["text"]
+    assert "(grey coat:1.4)" in wf["73"]["inputs"]["text"]
+    assert "(open jacket cleavage:1.4)" in wf["7"]["inputs"]["text"] or "(open jacket, cleavage:1.4)" in wf["7"]["inputs"]["text"]

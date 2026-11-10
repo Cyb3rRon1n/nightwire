@@ -95,6 +95,9 @@ def cmd_guides(a) -> int:
         for n in ("start", "end", "start-room", "end-room"):
             if (g / f"{n}.png").exists():
                 print(guides.lineart(g / f"{n}.png", g / f"{n}-lineart.png"))
+        for n in ("start", "end"):
+            if (g / f"{n}-pose.json").exists():
+                print(guides.pose_image(g.parent, n, _short(a.slug).cast))
         if (g / "regions.json").exists():
             (g / "regions.json").write_text(json.dumps(guides.visible_regions(g.parent), indent=1))
     return 0

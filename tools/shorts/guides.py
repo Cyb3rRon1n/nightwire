@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from PIL import Image, ImageChops, ImageFilter, ImageOps
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageOps
 
 KEY_W, KEY_H = 1216, 832
 
@@ -47,3 +47,31 @@ def visible_regions(shot_dir: Path, min_diff: float = 0.02) -> dict:
                 keep[fid] = [x0, y0, x1, y1]
         reg[which] = keep
     return reg
+
+
+FACE = ("nose", "reye", "leye", "rear", "lear")
+
+
+def pose_json(shot_dir: Path, which: str) -> dict:
+    path = shot_dir / "guide" / f"{which}-pose.json"
+    return json.loads(path.read_text()) if path.exists() else {}
+
+
+def pose_image(shot_dir: Path, which: str, cast) -> Path:
+    """guide/<which>-pose.png: OpenPose skeletons on black for the cast figures in <which>-pose.json. A figure seen from behind
+    (back: true) has no face points; limbs with a missing end are skipped."""
+    from tools.reference_library import _COLOURS, _LIMBS, _ORDER
+    im = Image.new("RGB", (KEY_W, KEY_H), "black")
+    d = ImageDraw.Draw(im)
+    for fid, fig in pose_json(shot_dir, which).items():
+        if fid not in cast:
+            continue
+        pts = {k: (v[0] * KEY_W, v[1] * KEY_H) for k, v in fig["points"].items() if v and not (fig.get("back") and k in FACE)}
+        for i, (a, b) in enumerate(_LIMBS):
+            if a in pts and b in pts:
+                d.line([pts[a], pts[b]], fill=tuple(int(c * .6) for c in _COLOURS[i]), width=4)
+        for k, (x, y) in pts.items():
+            d.ellipse((x - 4, y - 4, x + 4, y + 4), fill=_COLOURS[_ORDER.index(k)])
+    out = shot_dir / "guide" / f"{which}-pose.png"
+    im.save(out)
+    return out

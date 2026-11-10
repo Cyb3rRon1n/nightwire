@@ -1,4 +1,4 @@
-"""Start/end keyframe candidates per shot: the house NoobAI model, guided by the room-only grey-box lineart (ControlNet) and
+"""Start/end keyframe candidates per shot: the house NoobAI model, guided by grey-box depth + OpenPose (chained ControlNets) and
 one prompt per character limited to that character's screen region. Mirrors plates.py (plan_jobs / render / run / choose)."""
 
 import shutil
@@ -27,7 +27,9 @@ def candidate_path(work: Path, shot_id: str, which: str, n: int) -> Path:
 
 
 REGION_STRENGTH = 1.5
-KF_GUIDE_STRENGTH, KF_GUIDE_END = 0.85, 0.9
+DEPTH_NET, DEPTH_STRENGTH, DEPTH_END = "noob_sdxl_controlnet_depth.safetensors", 0.6, 0.6
+POSE_NET, POSE_STRENGTH, POSE_END = "noob_openpose_pre.safetensors", 0.9, 0.8
+WARDROBE_WEIGHT = 1.4
 SIZE_EXTRA = {"MCU": "upper body", "CU": "close-up", "ECU": "close-up", "WS": "full body, wide shot", "EWS": "full body, wide shot"}
 BEHIND = ("back of head", "from behind", "face not visible")
 
@@ -38,7 +40,8 @@ def _weight(text: str, w: float) -> str:
     return f"({text}:{w})" if text else ""
 
 
-def keyframe_workflow(short, shot, designs, which, regions, lineart_name, seed, plate=None) -> dict:
+def keyframe_workflow(short, shot, designs, which, regions, depth_name, pose_name, seed, plate=None, back=()) -> dict:
+    """back: figure ids the pose json says are seen from behind."""
     from tools.design_scenes import _crowd, _region_tags
     from tools.image_studio import _subject
     from tools.imagegen import MATURE_18, MATURE_18_MALE, MATURE_18_OTHER, build
@@ -60,8 +63,8 @@ def keyframe_workflow(short, shot, designs, which, regions, lineart_name, seed, 
     terms = [t.strip() for x in (SIZE_WORDS.get(shot.size, ""), SIZE_EXTRA.get(shot.size, ""), shot.angle) for t in x.split(",")]
     lead = _weight(", ".join(dict.fromkeys(t for t in terms if t)).replace(",", " ,"), 1.4).replace(" ,", ",")
     words = ", ".join(x for x in (lead, "solo" if len(who) == 1 else "", tags, look) if x)
-    negative = ", ".join(["merged bodies, fused faces, extra arms", *(short.scene.not_visible if short.scene else []),
-                          *short.avoid, *(plate.avoid if plate else []), NO_TEXT])
+    negative = ", ".join(x for x in ["merged bodies, fused faces, extra arms", *(short.scene.not_visible if short.scene else []),
+                          _weight(", ".join(short.avoid), WARDROBE_WEIGHT), *(plate.avoid if plate else []), NO_TEXT] if x)
     wf = build(words, "subject" if who else "scene", False, negative, "base", seed, **kw)
     wf["5"]["inputs"].update(width=W, height=H)
     clip, combined = wf["6"]["inputs"]["clip"], ["6", 0]
@@ -70,8 +73,8 @@ def keyframe_workflow(short, shot, designs, which, regions, lineart_name, seed, 
         x0, y0, x1, y1 = boxes[cid]
         adult = {"1girl": MATURE_18, "1boy": MATURE_18_MALE}.get(_subject(d), MATURE_18_OTHER)
         pose = (shot.at_start if which == "start" else shot.at_end).get(cid, "")
-        behind = _weight("from behind, back of head", 1.4) if any(b in shot.frame.get(cid, "").lower() for b in BEHIND) else ""
-        text = ", ".join(x for x in (_subject(d), adult, _weight(pose, 1.3), behind, _region_tags(d), short.locks.get(cid, ""), short.wardrobe.get(cid, ""),
+        behind = _weight("from behind, back of head", 1.4) if cid in back or any(b in shot.frame.get(cid, "").lower() for b in BEHIND) else ""
+        text = ", ".join(x for x in (_subject(d), adult, _weight(pose, 1.3), behind, _region_tags(d), short.locks.get(cid, ""), _weight(short.wardrobe.get(cid, ""), WARDROBE_WEIGHT),
                                       shot.props.get(cid, "")) if x)
         n = 70 + i * 3
         wf[str(n)] = {"class_type": "CLIPTextEncode", "inputs": {"text": text, "clip": clip}}
@@ -81,21 +84,24 @@ def keyframe_workflow(short, shot, designs, which, regions, lineart_name, seed, 
             "conditioning": [str(n), 0], "width": bw, "height": bh, "x": bx, "y": by, "strength": REGION_STRENGTH}}
         wf[str(n + 2)] = {"class_type": "ConditioningCombine", "inputs": {"conditioning_1": combined, "conditioning_2": [str(n + 1), 0]}}
         combined = [str(n + 2), 0]
-    wf["60"] = {"class_type": "ControlNetLoader", "inputs": {"control_net_name": "noob-sdxl-controlnet-lineart_anime.fp16.safetensors"}}
-    wf["61"] = {"class_type": "LoadImage", "inputs": {"image": lineart_name}}
-    wf["62"] = {"class_type": "ControlNetApplyAdvanced", "inputs": {
-        "positive": combined, "negative": wf["3"]["inputs"]["negative"], "control_net": ["60", 0], "image": ["61", 0],
-        "strength": KF_GUIDE_STRENGTH, "start_percent": 0.0, "end_percent": KF_GUIDE_END}}
-    wf["3"]["inputs"].update(positive=["62", 0], negative=["62", 1])
+    neg_in = wf["3"]["inputs"]["negative"]
+    for base, net, img, strength, end in ((60, DEPTH_NET, depth_name, DEPTH_STRENGTH, DEPTH_END), (63, POSE_NET, pose_name, POSE_STRENGTH, POSE_END)):
+        wf[str(base)] = {"class_type": "ControlNetLoader", "inputs": {"control_net_name": net}}
+        wf[str(base + 1)] = {"class_type": "LoadImage", "inputs": {"image": img}}
+        wf[str(base + 2)] = {"class_type": "ControlNetApplyAdvanced", "inputs": {
+            "positive": combined, "negative": neg_in, "control_net": [str(base), 0], "image": [str(base + 1), 0],
+            "strength": strength, "start_percent": 0.0, "end_percent": end}}
+        wf["3"]["inputs"].update(positive=[str(base + 2), 0], negative=[str(base + 2), 1])  # chained: pose takes depth's output
+        combined, neg_in = [str(base + 2), 0], [str(base + 2), 1]
     if "34" in wf:  # high-res second pass (not in the "base" size, handled in case that changes)
-        wf["34"]["inputs"].update(positive=["62", 0], negative=["62", 1])
+        wf["34"]["inputs"].update(positive=["65", 0], negative=["65", 1])
     wf["9"]["inputs"]["filename_prefix"] = f"nightwire_shorts/{short.slug}-{shot.id}-{which}"
     return wf
 
 
 def plan_jobs(short, work: Path, shot_id: str | None = None, which: str = "both", seeds: int = 4, redo: bool = False):
-    """[(out_path, shot, which, lineart_path, regions, n)] for each needed keyframe with no chosen file.
-    Shots without guide lineart/regions are skipped and named in the second return value."""
+    """[(out_path, shot, which, guide_dir, regions, n)] for each needed keyframe with no chosen file.
+    Shots without depth/pose guides or regions are skipped and named in the second return value."""
     from tools.shorts.guides import regions as load_regions
     jobs, skipped = [], []
     for shot in short.shots:
@@ -105,9 +111,9 @@ def plan_jobs(short, work: Path, shot_id: str | None = None, which: str = "both"
         for w in needed(shot):
             if which != "both" and w != which:
                 continue
-            art = shot_dir / "guide" / f"{w}-room-lineart.png"
-            if not art.exists():
-                skipped.append(f"{shot.id} {w}: no room-only guide lineart (run guides first)")
+            art = shot_dir / "guide"
+            if not all((art / f"{w}-{k}.png").exists() for k in ("depth", "pose")):
+                skipped.append(f"{shot.id} {w}: no depth/pose guide (run guides first)")
                 continue
             if chosen_path(work, shot.id, w).exists():
                 continue
@@ -138,13 +144,15 @@ def choose(work: Path, shot_id: str, which: str, n: int) -> Path:
 
 async def render(jobs, backend, short, designs, seed: int) -> list[str]:
     """jobs from plan_jobs. One failure does not stop the rest."""
+    from tools.shorts.guides import pose_json
     from tools.shorts.plates import load_plates
     errors, catalogue = [], load_plates(short.place)
     for out, shot, which, art, reg, n in jobs:
         try:
-            name = await backend.upload_image(f"key-guide-{short.slug}-{shot.id}-{which}.png", art.read_bytes())
+            names = [await backend.upload_image(f"key-{k}-{short.slug}-{shot.id}-{which}.png", (art / f"{which}-{k}.png").read_bytes()) for k in ("depth", "pose")]
+            back = {f for f, v in pose_json(art.parent, which).items() if v.get("back")}
             out.parent.mkdir(parents=True, exist_ok=True)
-            out.write_bytes(await backend.run_workflow(keyframe_workflow(short, shot, designs, which, reg, name, seed + n - 1, catalogue.get(shot.plate))))
+            out.write_bytes(await backend.run_workflow(keyframe_workflow(short, shot, designs, which, reg, *names, seed + n - 1, catalogue.get(shot.plate), back)))
             print(out, flush=True)
         except Exception as e:  # noqa: BLE001 - keep the batch going
             errors.append(f"{out.name}: {e}")

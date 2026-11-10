@@ -123,6 +123,81 @@ def screen_box(obj, cam):
     return [round(min(xs), 4), round(min(ys), 4), round(max(xs), 4), round(max(ys), 4)]
 
 
+UP = Vector((0, 0, 1))
+# OpenPose 18-point names in tools/reference_library._ORDER; left side is +x in the figure's own frame (it faces +Y).
+CAPSULE_PTS = {"neck": (0, 0, 1.5), "rsho": (-.2, 0, 1.45), "lsho": (.2, 0, 1.45), "relb": (-.22, 0, 1.1), "lelb": (.22, 0, 1.1),
+               "rwri": (-.22, 0, .85), "lwri": (.22, 0, .85), "rhip": (-.1, 0, .95), "lhip": (.1, 0, .95), "rkne": (-.1, 0, .5),
+               "lkne": (.1, 0, .5), "rank": (-.1, 0, .05), "lank": (.1, 0, .05)}
+
+
+def figure_pose(obj, cam):
+    """{points: {openpose name: [x, y] image fractions or None}, back: bool} for one figure at the current frame."""
+    ev = obj.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    mw = ev.matrix_world
+    if ev.type == "ARMATURE":
+        pb = ev.pose.bones
+        w = lambda v: mw @ v  # noqa: E731
+        pts = {"neck": w(pb["spine"].tail), "rsho": w(pb["upper_arm.R"].head), "lsho": w(pb["upper_arm.L"].head),
+               "relb": w(pb["upper_arm.R"].tail), "lelb": w(pb["upper_arm.L"].tail),
+               "rwri": w(pb["forearm.R"].tail), "lwri": w(pb["forearm.L"].tail),
+               "rhip": w(pb["thigh.R"].head), "lhip": w(pb["thigh.L"].head), "rkne": w(pb["thigh.R"].tail), "lkne": w(pb["thigh.L"].tail),
+               "rank": w(pb["shin.R"].tail), "lank": w(pb["shin.L"].tail)}
+        hb = pb["head"]
+        centre = w((hb.head + hb.tail) / 2)
+        delta = (hb.matrix @ hb.bone.matrix_local.inverted()).to_3x3()  # the head's pose rotation, so a turned head turns the face
+        face = (mw.to_3x3() @ (delta @ Vector((0, 1, 0)))).normalized()
+    else:  # capsule: fixed offsets, facing from the object's rotation
+        pts = {k: mw @ Vector(v) for k, v in CAPSULE_PTS.items()}
+        centre = mw @ Vector((0, 0, 1.6))
+        face = (mw.to_3x3() @ Vector((0, 1, 0))).normalized()
+    right = UP.cross(face).normalized()
+    pts.update(nose=centre + .11 * face, reye=centre + .09 * face + .03 * UP + .04 * right, leye=centre + .09 * face + .03 * UP - .04 * right,
+               rear=centre + .1 * right, lear=centre - .1 * right)
+    out = {}
+    for k, p in pts.items():
+        v = world_to_camera_view(sc, cam, p)
+        out[k] = [round(v.x, 4), round(1 - v.y, 4)] if v.z > 0 and 0 <= v.x <= 1 and 0 <= v.y <= 1 else None
+    return {"points": out, "back": face.dot(centre - cam.matrix_world.translation) > 0}
+
+
+def render_depth(path, cam):
+    """White = near, black = far, normalised over the visible range. Workbench supports the Z pass; the compositor feeds a Viewer
+    node whose pixels are read back with numpy and saved as a 8-bit PNG. Compositor state is restored."""
+    import numpy as np
+    vl, old_nodes, old_z = bpy.context.view_layer, sc.use_nodes, bpy.context.view_layer.use_pass_z
+    vl.use_pass_z, sc.use_nodes = True, True
+    tree = sc.node_tree
+    tmp = path.with_name(".tmp-" + path.name)
+    try:
+        for n in list(tree.nodes):
+            tree.nodes.remove(n)
+        rl, viewer, comp = tree.nodes.new("CompositorNodeRLayers"), tree.nodes.new("CompositorNodeViewer"), tree.nodes.new("CompositorNodeComposite")
+        tree.links.new(rl.outputs["Depth"], viewer.inputs["Image"])
+        tree.links.new(rl.outputs["Image"], comp.inputs["Image"])
+        render_still(tmp)
+        img = bpy.data.images["Viewer Node"]
+        w, h = img.size
+        z = np.array(img.pixels[:], dtype=np.float32).reshape(h, w, 4)[..., 0]
+        seen = z < 1e4  # background is ~1e10
+        out = np.zeros_like(z)
+        if seen.any():
+            lo, hi = float(z[seen].min()), float(z[seen].max())
+            out[seen] = 0.08 + 0.92 * (1 - (z[seen] - lo) / max(hi - lo, 1e-6))  # nearest = 1.0, farthest visible stays above black
+        res = bpy.data.images.new("depth_out", w, h, alpha=False, float_buffer=False)
+        res.colorspace_settings.name = "Non-Color"
+        res.pixels = np.dstack([out, out, out, np.ones_like(out)]).ravel().tolist()
+        res.filepath_raw, res.file_format = str(path), "PNG"
+        res.save()
+        bpy.data.images.remove(res)
+    finally:
+        for n in list(tree.nodes):
+            tree.nodes.remove(n)
+        sc.use_nodes, vl.use_pass_z = old_nodes, old_z
+        if "Viewer Node" in bpy.data.images:
+            bpy.data.images.remove(bpy.data.images["Viewer Node"])
+        tmp.unlink(missing_ok=True)
+
+
 def render_guides(shot, cam, start, last):
     """Flat white-on-black renders at keyframe size (with and without figures) plus figure screen regions; restores all state."""
     guide = out / "shots" / shot["id"] / "guide"
@@ -149,7 +224,9 @@ def render_guides(shot, cam, start, last):
             sc.frame_set(frame)
             bpy.context.view_layer.update()
             render_still(guide / f"{label}.png")
+            render_depth(guide / f"{label}-depth.png", cam)
             boxes[label] = {fid: b for fid, o in figures.items() if (b := screen_box(o, cam))}
+            (guide / f"{label}-pose.json").write_text(json.dumps({fid: figure_pose(figures[fid], cam) for fid in boxes[label]}, indent=1))
             for o in figures.values():
                 o.hide_render = True
                 for c in o.children_recursive:
