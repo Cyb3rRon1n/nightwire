@@ -44,6 +44,11 @@ def keyframe_id(slug: str, shot_id: str, which: str, path: Path | None = None) -
     return f"{base}--{file_sha(path)}" if path is not None and path.exists() else base
 
 
+def board_id(slug: str, shot_id: str, path: Path) -> str:
+    """Review id of a shot's draft board; carries the hash of board-start.png so a changed board needs a new keep."""
+    return f"board--{slug}--{shot_id.lower()}--{file_sha(path)}"
+
+
 def plan_image_id(slug: str, shot_id: str, fp: str) -> str:
     if "--" in slug or not SLUG.fullmatch(slug):
         raise ValueError(f"slug {slug!r} must match [a-z0-9][a-z0-9-]* and must not contain '--'")

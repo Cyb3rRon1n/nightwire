@@ -243,6 +243,31 @@ def keyframes(ctx) -> list[Item]:
     return out
 
 
+def boards(ctx) -> list[Item]:
+    """One approvable item per shot draft board (board-start.png, plus board-end.png when present); compare = the plate."""
+    from tools.shorts import approve
+    from tools.shorts import plates as pl
+    out = []
+    for short in _shorts(ctx):
+        work = ctx["design_dir"] / "shorts" / short.slug
+        catalogue = pl.load_plates(short.place, ctx.get("plates_root"))
+        for shot in short.shots:
+            start = work / "shots" / shot.id / "board-start.png"
+            if not start.exists():
+                continue
+            rel = f"boards/{short.slug}/{shot.id.lower()}"
+            files = [web_copy(f, ctx["site"], f"{rel}/{f.stem}.jpg") for f in (start, start.with_name("board-end.png")) if f.exists()]
+            compare = []
+            if shot.plate in catalogue:
+                plate = pl.plate_path(ctx["design_dir"], short.place, catalogue[shot.plate])
+                if plate.exists():
+                    compare.append({"label": "Plate", "url": web_copy(plate, ctx["site"], f"{rel}/plate.jpg")})
+            context = "\n".join([shot.summary] + [f"Frame {k}: {v}" for k, v in sorted(shot.frame.items())])
+            out.append(Item(approve.board_id(short.slug, shot.id, start), "board", "pre-production", short.slug,
+                            f"{short.title}: {shot.id} draft board", files, compare, context=context))
+    return out
+
+
 def plans(ctx) -> list[Item]:
     """One item per shot plan that is ready to approve: its only pre-flight problems are approvals still pending."""
     from tools.shorts import __main__ as cli
@@ -323,4 +348,4 @@ def films(ctx) -> list[Item]:
     return out
 
 
-ALL = [sheets, bibles, sheet_sets, candidates, world, takes, wallpapers, plates, scenes, keyframes, plans, cuts, films]
+ALL = [sheets, bibles, sheet_sets, candidates, world, takes, wallpapers, plates, scenes, keyframes, boards, plans, cuts, films]

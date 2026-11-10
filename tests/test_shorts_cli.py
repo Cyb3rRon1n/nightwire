@@ -55,7 +55,7 @@ def setup(tmp_path, monkeypatch, shot=PACKAGED, approved=True):
     Image.new("RGB", (8, 8)).save(dd / "mama-satos-izakaya" / "play.png")
     sd = dd / "shorts" / "pilot" / "shots" / "S01"
     sd.mkdir(parents=True, exist_ok=True)
-    (sd / "greybox.mp4").write_bytes(b"g")
+    Image.new("RGB", (8, 8)).save(sd / "board-start.png")
     (dd / "mama-satos-izakaya" / "plates").mkdir(parents=True, exist_ok=True)
     Image.new("RGB", (8, 8)).save(dd / "mama-satos-izakaya" / "plates" / "door.png")
     approvals(dd / "shorts" / "pilot", {})
@@ -140,17 +140,18 @@ def test_submit_missing_key_and_closed_stdin_are_clean_errors(tmp_path, monkeypa
     assert "--yes" in capsys.readouterr().err
 
 
-def test_submit_kling_drops_video_refs_and_says_so(tmp_path, monkeypatch, capsys):
+def test_submit_kling_sends_board_and_plate_and_drops_its_skip_list(tmp_path, monkeypatch, capsys):
     setup(tmp_path, monkeypatch)
     got = {}
     monkeypatch.setattr("tools.shorts.backends.fal.load_key", lambda *a: "k")
     monkeypatch.setattr("tools.shorts.backends.fal.run_take", lambda *a, **k: got.update(refs=a[4], seconds=a[5]) or "t001")
     assert main(["submit", "pilot", "S01", "--model", "kling-3", "--yes"]) == 0
-    assert not [l for l, _ in got["refs"] if l.endswith(".mp4")]
-    assert "greybox.mp4" in capsys.readouterr().out
+    labels = [l for l, _ in got["refs"]]
+    assert "start_frame.png" in labels and "place.png" in labels and "C1_portrait.png" not in labels
+    assert "C1_portrait.png" in capsys.readouterr().out
     got.clear()
     assert main(["submit", "pilot", "S01", "--model", "seedance-2.5", "--yes"]) == 0
-    assert "greybox.mp4" in [l for l, _ in got["refs"]]
+    assert "C1_portrait.png" in [l for l, _ in got["refs"]]
 
 
 def test_submit_estimate_uses_rounded_seconds(tmp_path, monkeypatch, capsys):
@@ -424,7 +425,10 @@ def _api_with_scene(tmp_path, extra=None):
     from tools.shorts.plates import plate_id
     fp = scene_fp(load_short(tmp_path / "script" / "pilot"))
     plate = tmp_path / "design-data" / "mama-satos-izakaya" / "plates" / "door.png"
-    return {plate_id("mama-satos-izakaya", "door", plate): {"verdict": "keep"}, f"plan--pilot--scene--{fp}": {"verdict": "keep"}, **(extra or {})}
+    from tools.shorts.approve import board_id
+    board = tmp_path / "design-data" / "shorts" / "pilot" / "shots" / "S01" / "board-start.png"
+    boards = {board_id("pilot", "S01", board): {"verdict": "keep"}} if board.exists() else {}
+    return {**boards, plate_id("mama-satos-izakaya", "door", plate): {"verdict": "keep"}, f"plan--pilot--scene--{fp}": {"verdict": "keep"}, **(extra or {})}
 
 
 def test_prompt_with_model_in_short_toml(tmp_path, monkeypatch, capsys):

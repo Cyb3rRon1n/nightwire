@@ -33,7 +33,8 @@ class Report:
 
 def required(shot: Shot) -> list[str]:
     out = [f"missing {f}" for f in REQUIRED if not getattr(shot, f).strip()]
-    for name in ("frame", "at_start", "at_end"):
+    environment = shot.mode == "i2v" and shot.plate and not shot.frame and not shot.at_start and not shot.at_end
+    for name in () if environment else ("frame", "at_start", "at_end"):  # an empty-room shot has no cast to place
         if not getattr(shot, name):
             out.append(f"missing {name}")
     return out
@@ -100,7 +101,30 @@ def budget(short: Short, shot: Shot, model: str, spent: float) -> list[str]:
 WEATHER = ("rain", "wet street", "snow", "fog", "daylight", "sunlight", "window")
 
 
-def package(short, shot, prev, plates: dict, shot_dir, approvals: dict, design_dir) -> list[str]:
+def character_shot(short, shot, shot_dir, images: dict, design_dir, keep, designs) -> list[str]:
+    """A character shot needs its draft board approved and every stated cast member's v2 sheet set approved."""
+    from tools.review.producers import SET_ORDER, sheet_set_id
+    from tools.shorts.approve import board_id
+    from tools.shorts.model import wardrobe_state
+    p = []
+    board = shot_dir / "board-start.png"
+    if not board.exists():
+        p.append("no draft board (board-start.png)")
+    elif not keep(images.get(board_id(short.slug, shot.id, board))):
+        p.append("draft board not approved")
+    for cid in shot.frame:
+        st = wardrobe_state(short, designs, cid) if cid in short.cast else None
+        if not st:
+            continue  # free-text wardrobe: the old sheets are sent, no set to approve
+        folder = design_dir / short.cast[cid] / "wardrobe" / st
+        if not all((folder / f"{x}.png").exists() for x in SET_ORDER):
+            p.append(f"{cid} {st}: v2 sheet set missing")
+        elif not keep(images.get(sheet_set_id(short.cast[cid], st, folder))):
+            p.append(f"{cid} {st}: v2 sheet set not approved")
+    return p
+
+
+def package(short, shot, prev, plates: dict, shot_dir, approvals: dict, design_dir, designs: dict | None = None) -> list[str]:
     p = []
     images = approvals.get("images", {})
     keep = lambda v: (v or {}).get("verdict") == "keep"  # noqa: E731
@@ -116,7 +140,13 @@ def package(short, shot, prev, plates: dict, shot_dir, approvals: dict, design_d
         p.append("no [scene] bible")
     elif not keep(approvals.get("SCENE", {}).get(scene_fp(short))):
         p.append("scene bible not approved (or changed since)")
-    if shot.mode == "i2v":
+    environment = shot.mode == "i2v" and not shot.frame  # no cast in frame: the plate is the opening frame
+    if shot.mode == "reference" and shot.frame:
+        p += character_shot(short, shot, shot_dir, images, design_dir, keep, designs or {})
+    if environment:
+        if not shot.motion:
+            p.append("missing motion")
+    elif shot.mode == "i2v":
         def key(which):
             f = shot_dir / f"keyframe-{which}.png"
             return keep(images.get(keyframe_id(short.slug, shot.id, which, f)))

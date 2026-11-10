@@ -14,7 +14,7 @@ from tools.shorts import SHORTS_DIR, approve, data_dir, guides, remote
 from tools.shorts.backends import manual
 from tools.shorts.greybox.scene import FPS, scene_json
 from tools.shorts.model import load_short, scene_look, scene_mood, validate_short
-from tools.shorts.prompt import build_prompt, expected_refs, ref_files
+from tools.shorts.prompt import build_prompt, expected_refs, ref_files, trim_refs
 from tools.shorts.takes import BudgetError, Ledger, apply_verdicts, estimate
 
 PICKS_API = "http://192.168.10.19:8080/designs/api/images"
@@ -224,18 +224,25 @@ def _preflight(s, shot, model, designs, images=None, design_dir=None, plates_roo
     from tools.shorts.plates import load_plates, plate_path
     plates = load_plates(s.place, plates_root)
     plate = plate_path(dd, s.place, plates[shot.plate]) if shot.plate in plates else None
-    if shot.mode == "i2v":  # an i2v take sends only its keyframes
+    notes: list[str] = []
+    if shot.mode == "i2v" and not shot.frame and plate is not None:  # environment shot: the plate is the opening frame
+        expected = [("keyframe-start.png", plate)]
+    elif shot.mode == "i2v":  # an i2v take sends only its keyframes
         expected = [(f"keyframe-{w}.png", shot_dir / f"keyframe-{w}.png") for w in ("start", "end")]
         expected = [(label, p) for label, p in expected if p.exists()]
     else:
-        expected = expected_refs(s, dd, shot_dir, plate=plate)
+        expected = expected_refs(s, dd, shot_dir, plate=plate, designs=designs, shot=shot, warnings=notes)
+        limit = fal.MODELS[model].get("max_images")
+        if limit:
+            expected = trim_refs(expected, limit, shot)
     refs = [(label, p) for label, p in expected if p.exists()]  # what is sent and fingerprinted
     sent = [label for label, _ in fal.usable_refs(model, refs)[0]]
-    prompt = build_prompt(s, shot, designs, has_still=(shot_dir / "still.png").exists(), sent=sent)
+    prompt = build_prompt(s, shot, designs, has_still=(shot_dir / "still.png").exists() and not (shot_dir / "board-start.png").exists(), sent=sent)
     approvals = _approvals(work, images)
     report = preflight.run(s, shot, _prev(s, shot), prompt, expected, model, Ledger(work / "costs.json").total(),
-                           package_problems=preflight.package(s, shot, _prev(s, shot), plates, shot_dir, approvals, dd),
+                           package_problems=preflight.package(s, shot, _prev(s, shot), plates, shot_dir, approvals, dd, designs),
                            bible=preflight.bible_words(s, shot))
+    report.warnings += notes
     if shot.mode == "i2v" and not fal.MODELS[model].get("i2v"):
         report.problems.append(f"mode i2v needs an -i2v model, got {model}; use {fal.shot_model(shot, model)}")
     elif shot.mode == "reference" and fal.MODELS[model].get("i2v"):

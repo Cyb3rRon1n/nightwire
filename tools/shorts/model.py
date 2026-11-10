@@ -1,5 +1,6 @@
 """A short is one TOML (cast, room, figures on one shared timeline) plus one TOML per shot."""
 
+import re
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -234,6 +235,22 @@ def _board_problems(s: "Short", shot: Shot, where: str) -> list[str]:
     return out
 
 
+STATE_NAME = re.compile(r"[a-z][a-z0-9]*")  # a single slug word looks like a wardrobe state name
+
+
+def wardrobe_state(short, designs: dict, cid: str) -> str | None:
+    """The design wardrobe state a short's [wardrobe] value names, or None when it is free text."""
+    d = designs.get(short.cast.get(cid, ""))
+    v = short.wardrobe.get(cid, "")
+    return v if v in (getattr(d, "wardrobe", None) or {}) else None
+
+
+def wardrobe_text(short, designs: dict, cid: str) -> str:
+    """What the prompt says the character wears: the state's text, else the free text as written."""
+    st = wardrobe_state(short, designs, cid)
+    return designs[short.cast[cid]].wardrobe[st].text if st else short.wardrobe[cid]
+
+
 def validate_short(s: Short, designs: dict) -> list[str]:
     problems = []
     for cid, slug in s.cast.items():
@@ -245,9 +262,12 @@ def validate_short(s: Short, designs: dict) -> list[str]:
     place = designs.get(s.place)
     if place is None or place.kind != "location":
         problems.append(f"place {s.place} is not a location design")
-    for cid in s.wardrobe:
+    for cid, v in s.wardrobe.items():
         if cid not in s.cast:
             problems.append(f"wardrobe: unknown cast id {cid}")
+        elif STATE_NAME.fullmatch(v) and wardrobe_state(s, designs, cid) is None and s.cast[cid] in designs:
+            have = sorted(getattr(designs[s.cast[cid]], "wardrobe", None) or {})
+            problems.append(f"wardrobe {cid}: {v!r} looks like a wardrobe state but {s.cast[cid]} has none by that name (states: {', '.join(have) or 'none'})")
     for cid, f in s.figures.items():
         if cid not in s.cast:
             problems.append(f"figure: unknown cast id {cid}")

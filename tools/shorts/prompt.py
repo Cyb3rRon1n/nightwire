@@ -4,7 +4,7 @@ Each fact lives in one layer; positions only in the floor plan / grey-box and in
 import re
 from pathlib import Path
 
-from tools.shorts.model import Short, Shot, scene_text
+from tools.shorts.model import Short, Shot, scene_text, wardrobe_state, wardrobe_text
 
 POSITION_WORDS = re.compile(
     r"\b(left|right|behind|beside|next to|in front of|across from|opposite|near|corner|at the (?:counter|door|bar|table|window))\b",
@@ -17,7 +17,9 @@ CHARACTER_SHEETS = ("turnaround.png", "expressions.png", "props.png", "portrait.
 SHEET_ROLES = {"turnaround.png": "full-body turnaround (outfit)", "expressions.png": "expression sheet",
                "props.png": "hands and props close-ups", "portrait.png": "face and hair close-up"}
 OTHER_ROLES = {"place.png": "the location: this exact room, its counter, shelves, lanterns and light, in every shot",
-               "start_frame.png": "the approved opening frame", "floorplan.png": "top-down floor plan, characters marked"}
+               "start_frame.png": "the draft board: match this composition and staging; grey figures are placeholders for the characters",
+               "end_frame.png": "the draft board for the closing frame: match this composition and staging at the end; grey figures are placeholders for the characters",
+               "floorplan.png": "top-down floor plan, characters marked"}
 
 
 def ref_roles(short: Short, designs: dict, sent: list[str]) -> str:
@@ -33,10 +35,16 @@ def ref_roles(short: Short, designs: dict, sent: list[str]) -> str:
     return "Use the references as follows: " + "; ".join(rows) + "."
 
 
+def _identity(design) -> str:
+    marks = list(getattr(design, "identity", None) or [])
+    return f" (always: {'; '.join(marks)})" if marks else ""
+
+
 def _package_lines(short: Short, designs: dict) -> list[str]:
     out = [scene_text(short)] if short.scene else []
     if short.wardrobe:
-        out.append("Wardrobe: " + "; ".join(f"{cid} {designs[short.cast[cid]].name}: {w}" for cid, w in short.wardrobe.items()) + ".")
+        out.append("Wardrobe: " + "; ".join(f"{cid} {designs[short.cast[cid]].name}: {wardrobe_text(short, designs, cid)}"
+                                              + _identity(designs[short.cast[cid]]) for cid in short.wardrobe) + ".")
     if short.blocking:
         out.append("Seating: " + "; ".join(short.blocking.values()) + ".")
     return [x for x in out if x]
@@ -63,8 +71,11 @@ def _t(a: float, b: float) -> str:
 
 def layers(short: Short, shot: Shot, designs: dict, has_still: bool = False,
            sent: list[str] | None = None) -> dict[str, str]:
-    l1 = (ref_roles(short, designs, sent) + " " if sent else "") + ("The grey-box reference video provides camera path, character positions, silhouettes and timing. "
-          "Replace each grey mannequin with its character, keep no grey material. "
+    board = bool(sent) and not any(l.endswith(".mp4") for l in sent)  # draft-board route: no grey-box video is sent
+    grey = ("Replace each grey figure in the draft board with its character, keep no grey material. " if board else
+            "The grey-box reference video provides camera path, character positions, silhouettes and timing. "
+            "Replace each grey mannequin with its character, keep no grey material. ")
+    l1 = (ref_roles(short, designs, sent) + " " if sent else "") + (grey +
           f"Camera: {shot.summary}." + ("" if sent and "floorplan.png" not in sent
                                         else f" Floor plan: C1..C{len(short.cast)} as marked."))
     plan = [f"{shot.size} {shot.angle}".strip(), f"camera {shot.move}" if shot.move else ""]
@@ -88,9 +99,10 @@ def layers(short: Short, shot: Shot, designs: dict, has_still: bool = False,
             return f"refs {cid}_*; {cid}_portrait is the face close-up"
         imgs = [l for l in sent if not l.endswith(".mp4")]
         return ", ".join(f"@Image{i}" for i, l in enumerate(imgs, 1) if l.startswith(cid + "_"))
+    in_frame = {c: sl for c, sl in short.cast.items() if c in shot.frame} or short.cast
     l2 = "\n".join(f"{cid} = {designs[slug].name} ({refs(cid)}; always: "
                    f"{', '.join(designs[slug].required)})" + (f"{LOCKS}{short.locks[cid]}" if cid in short.locks else "")
-                   for cid, slug in short.cast.items())
+                   for cid, slug in in_frame.items())
     l3 = short.style
     l4 = "\n".join(f"{cid}: {state}" for cid, state in shot.state.items())
     o = shot.start  # each shot is generated as its own clip from 0; TOML times are absolute
@@ -139,16 +151,58 @@ def _sheet(design: Path, name: str) -> Path:
     return alt if alt.exists() else design / name
 
 
-def expected_refs(short: Short, design_dir: Path, shot_dir: Path, plate: Path | None = None) -> list[tuple[str, Path]]:
-    """Every reference a shot should send, whether or not the file exists yet (pre-flight reports the missing ones)."""
+SET = ("turnaround", "portrait", "expressions", "props")
+
+
+def state_folder(design_dir: Path, slug: str, state: str) -> Path:
+    return design_dir / slug / "wardrobe" / state
+
+
+def v2_set_exists(design_dir: Path, slug: str, state: str) -> bool:
+    return all((state_folder(design_dir, slug, state) / f"{x}.png").exists() for x in SET)
+
+
+def expected_refs(short: Short, design_dir: Path, shot_dir: Path, plate: Path | None = None, designs: dict | None = None,
+                  shot: Shot | None = None, warnings: list[str] | None = None) -> list[tuple[str, Path]]:
+    """Every reference a shot should send, whether or not the file exists yet (pre-flight reports the missing ones).
+    With a shot: the cast in frame, their state's v2 sheets (v1 when the v2 set isn't made yet), the plate, and the draft boards."""
     out = []
     for cid, slug in short.cast.items():
+        if shot is not None and shot.frame and cid not in shot.frame:
+            continue
+        state = wardrobe_state(short, designs, cid) if designs else None
+        if state and v2_set_exists(design_dir, slug, state):
+            out += [(f"{cid}_{f}", state_folder(design_dir, slug, state) / f) for f in CHARACTER_SHEETS]
+            continue
+        if state and warnings is not None:
+            warnings.append(f"{cid} {state}: no v2 sheet set yet, sending the v1 sheets")
         out += [(f"{cid}_{f}", _sheet(design_dir / slug, f)) for f in CHARACTER_SHEETS]
-    still = shot_dir / "still.png"
-    out.append(("start_frame.png", still) if still.exists() else ("place.png", plate or design_dir / short.place / "play.png"))
-    out.append(("floorplan.png", shot_dir.parent.parent / "floorplan.png"))
-    out.append(("greybox.mp4", shot_dir / "greybox.mp4"))
+    plate_file = plate or design_dir / short.place / "play.png"
+    if shot is None:  # old route: a still replaces the place, plus floor plan and grey-box video
+        still = shot_dir / "still.png"
+        out.append(("start_frame.png", still) if still.exists() else ("place.png", plate_file))
+        out.append(("floorplan.png", shot_dir.parent.parent / "floorplan.png"))
+        out.append(("greybox.mp4", shot_dir / "greybox.mp4"))
+        return out
+    out.append(("place.png", plate_file))
+    out.append(("start_frame.png", shot_dir / "board-start.png"))
+    if (shot_dir / "board-end.png").exists():
+        out.append(("end_frame.png", shot_dir / "board-end.png"))
     return out
+
+
+def trim_refs(refs: list[tuple[str, Path]], limit: int, shot: Shot) -> list[tuple[str, Path]]:
+    """Fit an image limit: drop the closing board, then expressions, then props the shot doesn't feature, then portraits."""
+    refs = list(refs)
+    featured = set(shot.props)
+    tiers = (lambda l: l == "end_frame.png", lambda l: l.endswith("_expressions.png"),
+             lambda l: l.endswith("_props.png") and l.partition("_")[0] not in featured, lambda l: l.endswith("_portrait.png"))
+    for hit in tiers:
+        for r in reversed([r for r in refs if hit(r[0])]):
+            if sum(1 for l, _ in refs if l.endswith(".png")) <= limit:
+                return refs
+            refs.remove(r)
+    return refs
 
 
 def ref_files(short: Short, design_dir: Path, shot_dir: Path) -> list[tuple[str, Path]]:
