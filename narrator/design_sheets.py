@@ -124,7 +124,7 @@ def state_props_prompt(d: Design, state: str) -> tuple[str, str]:
     items = ", ".join(d.wardrobe[state].props) or _state_tags(d, state)
     pos = _join(CHARACTER_QUALITY, _NEUTRAL_STYLE, "hands and props close-up, product sheet, still life, object focus, "
                 "multiple views, grey background, soft even studio light, neutral colors", items, _identity(d, state))
-    return pos, _join(_character_negative(d, mature=False), NEUTRAL_NEGATIVE, "white background, 1girl, 1boy, face")
+    return pos, _styled_negative(d, _join(NEUTRAL_NEGATIVE, "white background, 1girl, 1boy, face"))
 
 
 def sheet_prompt(d: Design, sheet: str, mood: str | None = None, state: str | None = None) -> tuple[str, str]:
