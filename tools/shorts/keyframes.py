@@ -2,6 +2,7 @@
 one prompt per character limited to that character's screen region. Mirrors plates.py (plan_jobs / render / run / choose)."""
 
 import shutil
+import sys
 from pathlib import Path
 
 from PIL import Image
@@ -28,12 +29,15 @@ def candidate_path(work: Path, shot_id: str, which: str, n: int) -> Path:
 def keyframe_workflow(short, shot, designs, which, regions, lineart_name, seed) -> dict:
     from tools.design_scenes import _crowd, _region_tags
     from tools.image_studio import _subject
-    from tools.imagegen import build
+    from tools.imagegen import MATURE_18, MATURE_18_MALE, MATURE_18_OTHER, build
     from tools.shorts.model import scene_look
     from tools.shorts.stills import SIZE_WORDS
     place = designs[short.place]
     boxes = regions.get(which, {})
-    who = [c for c in boxes if c in short.cast]
+    who = sorted((c for c in boxes if c in short.cast), key=lambda c: boxes[c][0])
+    if len(who) > 2:  # two characters at most, like stills: keep the leftmost two
+        print(f"note: {shot.id} {which}: more than two characters in frame; dropping {', '.join(who[2:])}", file=sys.stderr)
+        who = who[:2]
     kw = {}
     if len(who) == 1:
         kw["subject"] = _subject(designs[short.cast[who[0]]])
@@ -49,7 +53,8 @@ def keyframe_workflow(short, shot, designs, which, regions, lineart_name, seed) 
     for i, cid in enumerate(who):
         d = designs[short.cast[cid]]
         x0, y0, x1, y1 = boxes[cid]
-        text = ", ".join(x for x in (_subject(d), _region_tags(d), short.locks.get(cid, ""), short.wardrobe.get(cid, ""),
+        adult = {"1girl": MATURE_18, "1boy": MATURE_18_MALE}.get(_subject(d), MATURE_18_OTHER)
+        text = ", ".join(x for x in (_subject(d), adult, _region_tags(d), short.locks.get(cid, ""), short.wardrobe.get(cid, ""),
                                       shot.props.get(cid, "")) if x)
         n = 70 + i * 3
         wf[str(n)] = {"class_type": "CLIPTextEncode", "inputs": {"text": text, "clip": clip}}

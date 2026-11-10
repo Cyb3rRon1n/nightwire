@@ -12,8 +12,8 @@ from tools.shorts import keyframes as kf
 from tools.shorts.model import Scene, load_short
 
 
-def D(name, tags="1girl, black hair"):
-    return Design(name=name, kind="character", source="t", tags=tags, required=["long hair"], status="approved")
+def D(name, tags="1girl, black hair", pres="feminine"):
+    return Design(name=name, kind="character", source="t", tags=tags, required=["long hair"], presentation=pres, status="approved")
 
 
 DESIGNS = {"mama-satos-izakaya": Design(name="Izakaya", kind="location", source="t", tags="izakaya", alt_tags="izakaya, night", status="approved"),
@@ -33,10 +33,10 @@ def test_workflow_has_area_per_character_controlnet_and_negative(tmp_path):
     shot.props = {"C1": "cup in left hand"}
     wf = kf.keyframe_workflow(s, shot, DESIGNS, "start", REG, "g.png", 7)
     areas = [n for n in wf.values() if n["class_type"] == "ConditioningSetArea"]
-    assert [(a["inputs"]["x"], a["inputs"]["width"]) for a in areas] == [(608, 480), (120, 424)]
+    assert [(a["inputs"]["x"], a["inputs"]["width"]) for a in areas] == [(120, 424), (608, 480)]
     assert all(v % 8 == 0 for a in areas for v in (a["inputs"]["x"], a["inputs"]["y"], a["inputs"]["width"], a["inputs"]["height"]))
     texts = [wf[k]["inputs"]["text"] for k in ("70", "73")]
-    assert "grey coat" in texts[0] and "cup in left hand" in texts[0] and "red scarf" in texts[1]
+    assert "grey coat" in texts[1] and "cup in left hand" in texts[1] and "red scarf" in texts[0]  # left to right: C2, C1
     assert wf["62"]["class_type"] == "ControlNetApplyAdvanced" and wf["61"]["inputs"]["image"] == "g.png"
     assert wf["3"]["inputs"]["positive"] == ["62", 0] and wf["3"]["inputs"]["negative"] == ["62", 1]
     assert wf["62"]["inputs"]["positive"] == ["75", 0]
@@ -126,7 +126,7 @@ def test_producer_candidates_then_chosen_with_compare(tmp_path):
 
 def test_subject_not_duplicated_and_boxes_stay_inside(tmp_path):
     s = short_with(tmp_path)
-    d = dict(DESIGNS, **{"saeko-kirigaya": D("Saeko", "1boy, short hair")})
+    d = dict(DESIGNS, **{"saeko-kirigaya": D("Saeko", "short hair", "masculine")})
     solo = kf.keyframe_workflow(s, s.shots[0], d, "start", {"start": {"C1": [0.97, 0.0, 1.0, 1.0]}}, "g", 1)
     assert "1girl" not in solo["6"]["inputs"]["text"]
     (area,) = [n for n in solo.values() if n["class_type"] == "ConditioningSetArea"]
@@ -142,3 +142,21 @@ def test_plan_jobs_skips_shot_without_character_regions(tmp_path):
     (work / "shots" / "S01" / "guide" / "regions.json").write_text(json.dumps({"end": REG["start"]}))
     jobs, notes = kf.plan_jobs(s, work)
     assert jobs == [] and "regions" in notes[0]
+
+
+def test_region_prompts_carry_adult_tags_and_negative(tmp_path):
+    from tools.imagegen import MATURE_18_NEG
+    s = short_with(tmp_path)
+    wf = kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", REG, "g", 1)
+    assert all("25 years old" in wf[k]["inputs"]["text"] for k in ("70", "73"))
+    assert MATURE_18_NEG in wf["7"]["inputs"]["text"]
+
+
+def test_three_characters_keep_leftmost_two_with_note(tmp_path, capsys):
+    s = short_with(tmp_path)
+    s.cast["C3"] = "rin-kageyama"
+    reg = {"start": {"C1": [0.5, 0.1, 0.9, 1.0], "C2": [0.1, 0.1, 0.45, 1.0], "C3": [0.46, 0.1, 0.49, 1.0]}}
+    wf = kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", reg, "g", 1)
+    assert len([n for n in wf.values() if n["class_type"] == "ConditioningSetArea"]) == 2
+    assert wf["6"]["inputs"]["text"].count("2girls") == 1
+    assert "C1" in capsys.readouterr().err
