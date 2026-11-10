@@ -1,0 +1,44 @@
+id = "S03"
+start = 17.0
+end = 27.0
+summary = "slow push-in on her lying on her side on the futon, chrome hand by her face, amber light blinking"
+lens = 35.0
+size = "WS"
+angle = "low eye level, along the floor"
+move = "slow push-in"
+action = "Saeko lies on her side with the chrome hand beside her face as the amber light blinks."
+plate = "flat-room"
+motion = "Slow push in. She lies on her side, eyes open; the amber light blinks softly beside her face and lights the pillow."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 10.0, at = [0, -8, 1.65], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "alone, still"
+
+[frame]
+C1 = "centre-low, lying on her side facing camera"
+
+[at_start]
+C1 = "lying on her side, eyes open, chrome hand by her face"
+
+[at_end]
+C1 = "lying still, eyes closing"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "lie-side"
+camera = "ws-front"
+feet = [0.5, 0.85]
+height = 0.25
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "lie-side"
+camera = "ws-front"
+feet = [0.5, 0.85]
+height = 0.25

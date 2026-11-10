@@ -1,0 +1,44 @@
+id = "S02"
+start = 8.0
+end = 16.0
+summary = "static wide profile; the train blurs past, light flickering across her motionless face"
+lens = 35.0
+size = "WS"
+angle = "eye level across the tracks, profile"
+move = "static"
+action = "A train slides past and its lights sweep across Saeko's still profile."
+plate = "platform-edge"
+motion = "Static. A train rushes past in streaks of light; Saeko does not move and the flickering light sweeps over her profile."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 8.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "still, distant"
+
+[frame]
+C1 = "centre-left, profile facing screen-right"
+
+[at_start]
+C1 = "standing in profile at the platform edge"
+
+[at_end]
+C1 = "standing in profile, a carriage door open in front of her"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "stand"
+camera = "ws-profile"
+feet = [0.4, 0.9]
+height = 0.45
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand"
+camera = "ws-profile"
+feet = [0.4, 0.9]
+height = 0.45

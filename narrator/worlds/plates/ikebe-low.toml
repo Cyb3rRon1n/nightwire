@@ -1,0 +1,13 @@
+# Empty-room plates of Ikebe Low. Night, no people.
+
+[[plate]]
+name = "alley-from-above"
+view = "from high above looking down a narrow wooden-era alley under the expressway, lanterns, power lines, a dark van parked at the alley mouth with amber hazard lights"
+tags = "narrow alley seen from above, old wooden buildings, elevated expressway, paper lanterns, power lines, parked van, amber hazard lights, wet ground, puddles, night, light rain"
+avoid = ["daylight", "crowds", "people", "crowds", "text", "logos"]
+
+[[plate]]
+name = "alley-doorway"
+view = "along the narrow alley toward one lit doorway with a paper screen and a hanging lantern, wet ground reflecting the glow"
+tags = "narrow alley, old wooden building, lit doorway with paper screen, paper lantern, utility pole, power lines, wet ground, puddles, night, light rain"
+avoid = ["daylight", "van", "crowds", "people", "crowds", "text", "logos"]

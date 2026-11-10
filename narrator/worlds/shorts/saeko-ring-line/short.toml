@@ -1,0 +1,29 @@
+# Saeko's day film, scene: Saeko rides the Ring Line. Near-wordless; place and plates in narrator/worlds/plates/ring-line.toml.
+title = "Saeko rides the Ring Line"
+logline = "Saeko rides the Ring Line alone, a small still figure among empty platforms and carriages."
+place = "ring-line"
+style = "anime screenshot coloring, cel shading, thick outlines, night, vast empty spaces, tiny figure, amber against cold cyan, high contrast, bloom, quiet mature cyberpunk"
+budget_usd = 25.0
+model = "seedance-2.0-fast"
+retry_cap = 2
+avoid = ["cleavage", "open jacket", "readable text", "logos"]
+beats = ["immediate goal: reach the next job across the city", "ticking clock: the last trains before the shift"]
+
+[cast]
+C1 = "saeko-kirigaya"
+
+[locks]
+C1 = "chrome right hand with an amber ring light on the wrist, long straight black hair with blunt bangs, brown eyes, X-shaped scar on the left cheek"
+
+[scene]
+time = "night, about 22:30"
+weather = "underground station and train; dry; no rain, no daylight"
+set = "a Ring Line station: a long tiled platform with a yellow safety line, a carriage with long benches, ticket gates at the foot of an escalator"
+light = ["flat fluorescent tubes overhead", "flickering advertisement screens", "cold cyan reflections on the tiles", "amber wrist light"]
+not_visible = ["daylight", "crowds", "other passengers", "readable text"]
+
+[wardrobe]
+C1 = "cropped navy jacket with red trim over a black bodysuit zipped to the high collar, dark opaque tights and black boots, red-and-black gloves, chrome right hand with an amber ring light on the wrist"
+
+[blocking]
+staging = "Saeko is the only person on screen; she is small in frame and mostly seen from behind or in profile"

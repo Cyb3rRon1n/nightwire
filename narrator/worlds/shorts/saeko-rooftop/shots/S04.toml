@@ -1,0 +1,44 @@
+id = "S04"
+start = 27.0
+end = 35.0
+summary = "static wide profile; she sits on the low parapet, small, amber blink on her wrist"
+lens = 35.0
+size = "WS"
+angle = "eye level, profile, wide of the railing"
+move = "static"
+action = "Saeko sits on the low parapet with the city behind her as the amber light keeps blinking."
+plate = "rooftop-rail"
+motion = "Static. She sits on the parapet and looks at her wrist; the amber light blinks again and again."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 8.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "weary, silent"
+
+[frame]
+C1 = "centre-left, profile facing screen-right, small"
+
+[at_start]
+C1 = "seated on the parapet, profile, eyes on her wrist"
+
+[at_end]
+C1 = "unchanged, head bowed"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "sit-ledge"
+camera = "ws-profile"
+feet = [0.5, 0.9]
+height = 0.4
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "sit-ledge"
+camera = "ws-profile"
+feet = [0.5, 0.9]
+height = 0.4

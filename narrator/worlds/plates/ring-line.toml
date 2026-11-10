@@ -1,0 +1,22 @@
+# Empty-room plates of the Ring Line. Night, no people.
+
+[[plate]]
+name = "platform-wide"
+view = "from the far end of a long empty station platform: yellow safety line, tiled floor, flat fluorescent tubes, advertisement screens on the wall, dark tunnel mouth"
+avoid = ["rain", "daylight", "train", "people", "crowds", "text", "logos"]
+
+[[plate]]
+name = "platform-edge"
+view = "from across the tracks looking at the edge of the platform and the yellow safety line, the tiled wall and a line map behind it"
+avoid = ["rain", "daylight", "train", "people", "crowds", "text", "logos"]
+
+[[plate]]
+name = "carriage-interior"
+view = "inside an empty commuter carriage: long benches, handrails, advertisement screens, the dark glass opposite"
+tags = "commuter train interior, long bench seats, handrails, ad screens, dark glass, fluorescent lights, night, indoors"
+avoid = ["rain", "daylight", "daytime view outside", "people", "crowds", "text", "logos"]
+
+[[plate]]
+name = "ticket-gates"
+view = "from beyond the ticket gates looking back at the row of gates and the foot of an escalator, a vending machine and a station clock to one side"
+avoid = ["rain", "daylight", "crowd barriers full of people", "people", "crowds", "text", "logos"]

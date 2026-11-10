@@ -1,0 +1,44 @@
+id = "S03"
+start = 17.0
+end = 24.0
+summary = "slow push-in from behind as she lifts the charcoal coat from the wall hook"
+lens = 40.0
+size = "MS"
+angle = "eye level behind her"
+move = "slow push-in"
+action = "Saeko takes the long coat from its hook."
+plate = "flat-room"
+motion = "Slow push in from behind. She lifts the coat from the hook and slides one arm in; the amber light catches the coat sleeve."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 7.0, at = [0, -8, 1.65], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "preparing, unhurried"
+
+[frame]
+C1 = "centre, seen from behind"
+
+[at_start]
+C1 = "standing at the coat hook, back to camera"
+
+[at_end]
+C1 = "coat on one shoulder, back to camera"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "stand-back"
+camera = "ws-back"
+feet = [0.5, 0.95]
+height = 0.75
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand-back"
+camera = "ws-back"
+feet = [0.5, 0.95]
+height = 0.75

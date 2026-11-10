@@ -1,0 +1,44 @@
+id = "S01"
+start = 0.0
+end = 8.0
+summary = "static extreme wide of the empty platform under flat tubes; she stands tiny at the yellow line"
+lens = 28.0
+size = "EWS"
+angle = "high and far down the platform"
+move = "static"
+action = "A tiny Saeko stands on the empty platform with her back to us."
+plate = "platform-wide"
+motion = "Static. The tubes hum and one flickers; Saeko stands motionless at the yellow line."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 8.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "waiting, patient"
+
+[frame]
+C1 = "tiny, back to camera, standing at the yellow line, centre"
+
+[at_start]
+C1 = "standing at the platform edge, back to camera"
+
+[at_end]
+C1 = "unchanged, head tilted toward the tunnel"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "stand-back"
+camera = "ews-high"
+feet = [0.5, 0.55]
+height = 0.08
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand-back"
+camera = "ews-high"
+feet = [0.5, 0.55]
+height = 0.08

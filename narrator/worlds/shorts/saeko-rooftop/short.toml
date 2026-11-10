@@ -1,0 +1,29 @@
+# Saeko's day film, scene: Saeko on the rooftop. Near-wordless; place and plates in narrator/worlds/plates/tenjo-heights.toml.
+title = "Saeko on the rooftop"
+logline = "Alone above the city, Saeko watches her wrist light blink amber."
+place = "tenjo-heights"
+style = "anime screenshot coloring, cel shading, thick outlines, night, vast empty spaces, tiny figure, amber against cold cyan, high contrast, bloom, quiet mature cyberpunk"
+budget_usd = 25.0
+model = "seedance-2.0-fast"
+retry_cap = 2
+avoid = ["cleavage", "open jacket", "readable text", "logos"]
+beats = ["ticking clock: the amber blink on her wrist", "open question: she looks at it and does not touch it"]
+
+[cast]
+C1 = "saeko-kirigaya"
+
+[locks]
+C1 = "chrome right hand with an amber ring light on the wrist, long straight black hair with blunt bangs, brown eyes, X-shaped scar on the left cheek"
+
+[scene]
+time = "deep night, about 03:00"
+weather = "outdoors; clear and dry, cold air; no rain, no fog"
+set = "the rooftop of a white glass tower on Tenjo Heights: a metal railing, a gravel floor, the whole city spread far below, a monorail line in the distance"
+light = ["cold cyan light from the tower glass", "far orange city glow below", "a distant monorail pod passing", "amber blink of her wrist light"]
+not_visible = ["daylight", "crowds", "other people", "sunset"]
+
+[wardrobe]
+C1 = "cropped navy jacket with red trim over a black bodysuit zipped to the high collar, dark opaque tights and black boots, red-and-black gloves, chrome right hand with an amber ring light on the wrist"
+
+[blocking]
+staging = "Saeko is the only person on screen; she is small in frame and mostly seen from behind or in profile"

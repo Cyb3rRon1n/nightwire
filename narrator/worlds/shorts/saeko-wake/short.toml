@@ -1,0 +1,29 @@
+# Saeko's day film, scene: Saeko wakes. Near-wordless; place and plates in narrator/worlds/plates/danchi-block.toml.
+title = "Saeko wakes"
+logline = "Saeko wakes alone in the danchi before the city's night shift begins."
+place = "danchi-block"
+style = "anime screenshot coloring, cel shading, thick outlines, night, vast empty spaces, tiny figure, amber against cold cyan, high contrast, bloom, quiet mature cyberpunk"
+budget_usd = 25.0
+model = "seedance-2.0-fast"
+retry_cap = 2
+avoid = ["cleavage", "open jacket", "readable text", "logos"]
+beats = ["strange event: none yet, a quiet ordinary waking", "immediate goal: leave for work before the shift starts"]
+
+[cast]
+C1 = "saeko-kirigaya"
+
+[locks]
+C1 = "chrome right hand with an amber ring light on the wrist, long straight black hair with blunt bangs, brown eyes, X-shaped scar on the left cheek"
+
+[scene]
+time = "evening, just after dark, about 19:00"
+weather = "dry and still; no rain; indoors in the flat, outdoors in the corridor"
+set = "a harbor danchi block: identical concrete blocks with open-air corridors, a small flat with a futon bed, a coat hook and a balcony door"
+light = ["cold cyan glow from the vending machine below", "far orange glow of the city on the horizon", "faint amber from her wrist light", "one bare ceiling bulb, off"]
+not_visible = ["daylight", "other residents", "crowds"]
+
+[wardrobe]
+C1 = "plain long charcoal coat over black leggings and black boots, chrome right hand left bare with an amber ring light on the wrist"
+
+[blocking]
+staging = "Saeko is the only person on screen; she is small in frame and mostly seen from behind or in profile"

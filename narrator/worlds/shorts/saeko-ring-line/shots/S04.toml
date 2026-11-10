@@ -1,0 +1,44 @@
+id = "S04"
+start = 25.0
+end = 32.0
+summary = "static wide at the gates; she walks toward camera and passes the reader, the gate pausing before it opens"
+lens = 35.0
+size = "WS"
+angle = "eye level facing the gates"
+move = "static"
+action = "Saeko walks through the ticket gate and the reader blinks at her amber light."
+plate = "ticket-gates"
+motion = "Static. She walks toward camera; the gate reader blinks amber, pauses, and the gate opens as she passes through."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 7.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "composed, unhurried"
+
+[frame]
+C1 = "centre, walking toward camera, small"
+
+[at_start]
+C1 = "at the foot of the escalator, walking toward the gate"
+
+[at_end]
+C1 = "through the gate, walking toward camera"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "walk"
+camera = "ws-front"
+feet = [0.5, 0.6]
+height = 0.2
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "walk"
+camera = "ws-front"
+feet = [0.5, 0.88]
+height = 0.4

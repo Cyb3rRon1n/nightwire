@@ -1,0 +1,44 @@
+id = "S02"
+start = 8.0
+end = 17.0
+summary = "static medium profile; she sits against the bed and the chrome fingers close only halfway"
+lens = 50.0
+size = "MS"
+angle = "eye level, profile across the flat"
+move = "static"
+action = "Saeko sits on the floor and tries to close her chrome hand, but the fingers stop halfway."
+plate = "flat-room"
+motion = "Static. She sits on the floor and tries to close the chrome hand; the fingers curl halfway and stop while the amber light glows."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 9.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "tired, private"
+
+[frame]
+C1 = "centre, seated on the floor in profile"
+
+[at_start]
+C1 = "seated on the floor, profile, chrome hand open on her knee"
+
+[at_end]
+C1 = "chrome hand half-closed on her knee, eyes on it"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "sit-floor"
+camera = "ms-profile"
+feet = [0.5, 0.95]
+height = 0.45
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "sit-floor"
+camera = "ms-profile"
+feet = [0.5, 0.95]
+height = 0.45

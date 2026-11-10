@@ -1,0 +1,17 @@
+# Empty-room plates of the harbor danchi block. Night, no people.
+
+[[plate]]
+name = "block-facade"
+view = "from the courtyard looking up at a long concrete housing block: rows of identical open-air corridors and balconies with laundry, one corridor door glowing, a cyan vending machine at the foot"
+avoid = ["rain", "daylight", "people", "crowds", "text", "logos"]
+
+[[plate]]
+name = "corridor"
+view = "along a long open-air concrete corridor of apartment doors with fluorescent lights, a balcony rail on one side and the lit city far off"
+avoid = ["rain", "daylight", "people", "crowds", "text", "logos"]
+
+[[plate]]
+name = "flat-room"
+view = "inside a small flat: a futon bed on tatami, a coat hook on the wall, a low table, a balcony door with a pale glow beyond, the room dark"
+tags = "small apartment interior, futon, tatami, coat hook, low table, balcony door, dark room, night, indoors"
+avoid = ["rain", "daylight", "windows with a city view", "people", "crowds", "text", "logos"]

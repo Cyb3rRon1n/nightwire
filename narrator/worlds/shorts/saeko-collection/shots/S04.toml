@@ -1,0 +1,44 @@
+id = "S04"
+start = 26.0
+end = 34.0
+summary = "static extreme wide high; she walks back up the alley to the van, the doorway behind her dark"
+lens = 28.0
+size = "EWS"
+angle = "high above the alley"
+move = "static"
+action = "Saeko walks back to the van alone as the doorway light goes out behind her."
+plate = "alley-from-above"
+motion = "Static. She walks away from the doorway toward the van; behind her the lit doorway goes dark; rain keeps falling."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 8.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "done, tired"
+
+[frame]
+C1 = "tiny, centre, walking away"
+
+[at_start]
+C1 = "near the doorway, small"
+
+[at_end]
+C1 = "beside the van at the alley mouth, small"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "walk"
+camera = "ews-high"
+feet = [0.5, 0.85]
+height = 0.08
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "walk"
+camera = "ews-high"
+feet = [0.4, 0.6]
+height = 0.08

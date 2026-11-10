@@ -1,0 +1,13 @@
+# Empty-room plates of Tenjo Heights. Night, no people.
+
+[[plate]]
+name = "rooftop-city-view"
+view = "from a high rooftop looking out over a vast city of lights far below, a monorail line crossing the distance, the cold glass of the tower to one side"
+tags = "rooftop of a white glass skyscraper, vast city lights far below, monorail line in the distance, gravel floor, night, clear sky, cold cyan light, lens flare"
+avoid = ["sunset", "daylight", "clouds below", "people", "crowds", "text", "logos"]
+
+[[plate]]
+name = "rooftop-rail"
+view = "along a metal rooftop railing and a low parapet, the city lights glittering far below and beyond"
+tags = "rooftop railing, low parapet, gravel floor, city lights far below, monorail line in the distance, night, clear sky, cold cyan light"
+avoid = ["sunset", "daylight", "people", "crowds", "text", "logos"]

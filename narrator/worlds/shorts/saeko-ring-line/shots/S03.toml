@@ -1,0 +1,44 @@
+id = "S03"
+start = 16.0
+end = 25.0
+summary = "slow push-in on her seated in profile in the empty carriage, streaking lights in the dark glass behind her"
+lens = 40.0
+size = "MS"
+angle = "eye level, across the carriage, profile"
+move = "slow push-in"
+action = "Saeko sits alone in the carriage as lights streak by in the dark glass."
+plate = "carriage-interior"
+motion = "Slow push in. She sits motionless on the bench; light streaks slide across the dark glass behind her and the ad screens flicker."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 9.0, at = [0, -8, 1.65], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "lonely, quiet"
+
+[frame]
+C1 = "centre, seated in profile"
+
+[at_start]
+C1 = "seated on the long bench, profile, hands in her lap"
+
+[at_end]
+C1 = "seated, head turned very slightly toward the dark glass"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "sit-ledge"
+camera = "ms-profile"
+feet = [0.5, 0.92]
+height = 0.6
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "sit-ledge"
+camera = "ms-profile"
+feet = [0.5, 0.92]
+height = 0.6

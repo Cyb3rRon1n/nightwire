@@ -1,0 +1,47 @@
+id = "S03"
+start = 18.0
+end = 27.0
+summary = "slow push-in close on the chrome hand on the railing; the amber ring light blinks against cold cyan"
+lens = 50.0
+size = "CU"
+angle = "eye level, close on her chrome wrist"
+move = "slow push-in"
+action = "The amber light on her wrist blinks, slowly at first."
+plate = "rooftop-rail"
+motion = "Slow push in. The amber ring light on the wrist blinks slowly, then a little faster; the cold cyan city glow lies on the chrome."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 9.0, at = [0, -8, 1.65], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "uneasy"
+
+[frame]
+C1 = "centre, chrome hand and wrist on the rail"
+
+[at_start]
+C1 = "chrome hand resting on the railing, amber light dark between blinks"
+
+[at_end]
+C1 = "amber light blinking, hand unmoving"
+
+[props]
+C1 = "chrome right hand with an amber ring light on the wrist"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "lean-rail"
+camera = "mcu-front"
+feet = [0.5, 0.95]
+height = 0.8
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "lean-rail"
+camera = "mcu-front"
+feet = [0.5, 0.95]
+height = 0.8

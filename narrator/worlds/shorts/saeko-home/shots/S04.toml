@@ -1,0 +1,28 @@
+id = "S04"
+start = 27.0
+end = 35.0
+summary = "static extreme wide of the danchi block; one lit flat goes dark"
+lens = 35.0
+size = "EWS"
+angle = "high across the courtyard"
+move = "static"
+action = "The one lit flat goes dark as the first grey light touches the horizon."
+plate = "block-facade"
+motion = "Static. The single lit flat in the block goes dark; the cyan vending machine glow remains; a faint grey light appears at the horizon."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 8.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "none"
+
+[frame]
+C1 = "the whole block, Saeko not visible inside her flat"
+
+[at_start]
+C1 = "one flat lit, Saeko inside, not visible"
+
+[at_end]
+C1 = "all flats dark, Saeko inside, not visible"

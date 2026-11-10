@@ -1,0 +1,29 @@
+# Saeko's day film, scene: Saeko makes a collection. Near-wordless; place and plates in narrator/worlds/plates/ikebe-low.toml.
+title = "Saeko makes a collection"
+logline = "Saeko does a repo job in an Ikebe Low alley, seen from a distance; her crew is only implied."
+place = "ikebe-low"
+style = "anime screenshot coloring, cel shading, thick outlines, night, vast empty spaces, tiny figure, amber against cold cyan, high contrast, bloom, quiet mature cyberpunk"
+budget_usd = 25.0
+model = "seedance-2.0-fast"
+retry_cap = 2
+avoid = ["cleavage", "open jacket", "readable text", "logos"]
+beats = ["strange event: a courteous apology at a doorway", "reveal: the crew is only a van, shadows and a tow rig"]
+
+[cast]
+C1 = "saeko-kirigaya"
+
+[locks]
+C1 = "chrome right hand with an amber ring light on the wrist, long straight black hair with blunt bangs, brown eyes, X-shaped scar on the left cheek"
+
+[scene]
+time = "night, about 00:30"
+weather = "outdoors, light steady rain throughout, wet ground and puddles in every shot"
+set = "a narrow Ikebe Low alley under the expressway: old wooden buildings, paper lanterns, power lines, one lit doorway, a dark tow van with amber hazard lights at the alley mouth"
+light = ["paper lantern glow, warm and dim", "amber hazard lights of the tow van", "cold cyan expressway glow overhead", "light from one open doorway"]
+not_visible = ["daylight", "crowds", "other people", "crew members"]
+
+[wardrobe]
+C1 = "cropped navy jacket with red trim over a black bodysuit zipped to the high collar, dark opaque tights and black boots, red-and-black gloves, chrome right hand with an amber ring light on the wrist"
+
+[blocking]
+staging = "Saeko is the only person on screen; she is small in frame and mostly seen from behind or in profile"

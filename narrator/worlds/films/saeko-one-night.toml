@@ -1,0 +1,5 @@
+title = "Saeko: one night"
+character = "saeko-kirigaya"
+logline = "Saeko Kirigaya wakes before the city's night shift, rides the Ring Line alone, makes a quiet collection, rests at Mama Sato's, watches her wrist light blink amber on a rooftop, and goes home alone with a hand that will not close."
+mood = "lonely, quiet, Blade Runner 2049: vast night spaces, small figure, amber against cold cyan"
+scenes = ["saeko-wake", "saeko-ring-line", "saeko-collection", "saeko-rin-izakaya", "saeko-rooftop", "saeko-home"]

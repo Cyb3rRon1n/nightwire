@@ -1,0 +1,44 @@
+id = "S02"
+start = 9.0
+end = 18.0
+summary = "slow push-in on her leaning on the railing in profile, city lights beyond"
+lens = 35.0
+size = "WS"
+angle = "eye level, profile along the railing"
+move = "slow push-in"
+action = "Saeko rests her forearms on the railing and looks out over the city."
+plate = "rooftop-rail"
+motion = "Slow push in. She leans on the railing and looks out; her hair lifts slightly in the wind."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 9.0, at = [0, -8, 1.65], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "contemplative"
+
+[frame]
+C1 = "centre, profile facing screen-right"
+
+[at_start]
+C1 = "leaning on the railing, profile"
+
+[at_end]
+C1 = "leaning on the railing, profile, head slightly lowered"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "lean-rail"
+camera = "ws-profile"
+feet = [0.5, 0.9]
+height = 0.4
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "lean-rail"
+camera = "ws-profile"
+feet = [0.5, 0.9]
+height = 0.4

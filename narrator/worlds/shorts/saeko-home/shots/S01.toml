@@ -1,0 +1,44 @@
+id = "S01"
+start = 0.0
+end = 8.0
+summary = "static wide from behind as she walks the empty corridor toward her door"
+lens = 35.0
+size = "WS"
+angle = "eye level, up the corridor from behind her"
+move = "static"
+action = "Saeko walks along the open-air corridor to her own door."
+plate = "corridor"
+motion = "Static. She walks slowly along the corridor under buzzing lights and stops at her door."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 8.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "exhausted, quiet"
+
+[frame]
+C1 = "centre, back to camera, small"
+
+[at_start]
+C1 = "mid-corridor, walking, back to camera"
+
+[at_end]
+C1 = "at her door, back to camera"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "walk"
+camera = "ws-back"
+feet = [0.5, 0.75]
+height = 0.32
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand-back"
+camera = "ws-back"
+feet = [0.5, 0.6]
+height = 0.2

@@ -1,0 +1,44 @@
+id = "S04"
+start = 24.0
+end = 32.0
+summary = "static wide down the long corridor; she walks away from camera, a small figure between cyan lights"
+lens = 35.0
+size = "WS"
+angle = "eye level, down the corridor"
+move = "static"
+action = "Saeko walks away down the open-air corridor."
+plate = "corridor"
+motion = "Static. She walks slowly away down the corridor under the buzzing lights until she is small at the far end."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 8.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "resigned, going to work"
+
+[frame]
+C1 = "centre, walking away, back to camera"
+
+[at_start]
+C1 = "near camera, back to camera, starting to walk"
+
+[at_end]
+C1 = "far end of the corridor, small, still walking away"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "walk"
+camera = "ws-back"
+feet = [0.5, 0.82]
+height = 0.32
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "walk"
+camera = "ws-back"
+feet = [0.5, 0.58]
+height = 0.16

@@ -1,0 +1,49 @@
+id = "S03"
+start = 18.0
+end = 26.0
+summary = "static wide profile in lantern light and rain; she bows her head slightly"
+lens = 35.0
+size = "WS"
+angle = "eye level, profile in the doorway light"
+move = "static"
+action = "Saeko bows her head in apology."
+plate = "alley-doorway"
+motion = "Static. She bows her head a little, polite and unhurried, then lifts it; rain beads on her jacket."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 8.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "apologetic, courteous"
+
+[frame]
+C1 = "centre, profile facing screen-right, small"
+
+[at_start]
+C1 = "standing in profile, head up"
+
+[at_end]
+C1 = "standing in profile, head slightly bowed"
+
+[[lines]]
+who = "C1"
+t = 19.0
+text = "Sorry for the trouble."
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "stand"
+camera = "ws-profile"
+feet = [0.5, 0.88]
+height = 0.45
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand"
+camera = "ws-profile"
+feet = [0.5, 0.88]
+height = 0.45

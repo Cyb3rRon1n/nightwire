@@ -1,0 +1,44 @@
+id = "S02"
+start = 8.0
+end = 17.0
+summary = "static medium profile; she sits on the bed edge in the dark, amber wrist light glowing on her knee"
+lens = 50.0
+size = "MS"
+angle = "eye level from the foot of the bed, in profile"
+move = "static"
+action = "Saeko sits on the edge of the bed with her chrome hand open on her knee."
+plate = "flat-room"
+motion = "Static. She sits very still, then turns her head slowly toward the pale balcony door; the amber wrist light glows steadily."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 9.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "tired, composed"
+
+[frame]
+C1 = "centre, seated in profile facing screen-right"
+
+[at_start]
+C1 = "seated on the bed edge, profile, chrome hand open on her knee"
+
+[at_end]
+C1 = "head turned toward the balcony door"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "sit-ledge"
+camera = "ms-profile"
+feet = [0.5, 0.92]
+height = 0.6
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "sit-ledge"
+camera = "ms-profile"
+feet = [0.5, 0.92]
+height = 0.6

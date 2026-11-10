@@ -1,0 +1,44 @@
+id = "S01"
+start = 0.0
+end = 8.0
+summary = "static extreme wide of the danchi block after dark; one corridor door glows; Saeko a tiny back at the rail"
+lens = 28.0
+size = "EWS"
+angle = "high across the courtyard, level with the fourth floor"
+move = "static"
+action = "A tiny Saeko stands at an upper corridor rail with her back to us."
+plate = "block-facade"
+motion = "Static. Laundry sways very slightly; the cyan vending machine glow flickers below; Saeko stands motionless at the rail."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 8.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "waking, quiet, a little numb"
+
+[frame]
+C1 = "tiny, back to camera, fourth-floor corridor rail, centre-right"
+
+[at_start]
+C1 = "standing at the corridor rail, back to camera, in the long charcoal coat"
+
+[at_end]
+C1 = "unchanged, head lowered slightly"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "stand-back"
+camera = "ews-high"
+feet = [0.62, 0.5]
+height = 0.08
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand-back"
+camera = "ews-high"
+feet = [0.62, 0.5]
+height = 0.08

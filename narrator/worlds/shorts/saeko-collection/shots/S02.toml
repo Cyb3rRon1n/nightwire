@@ -1,0 +1,44 @@
+id = "S02"
+start = 9.0
+end = 18.0
+summary = "static wide from behind; she stands at the lit doorway in the rain, a shadow moving on the screen"
+lens = 35.0
+size = "WS"
+angle = "eye level from behind her down the alley"
+move = "static"
+action = "Saeko stands at a lit doorway while a shadow shifts behind its paper screen."
+plate = "alley-doorway"
+motion = "Static. Rain streaks through the lantern light; behind the doorway screen a shadow shifts and then goes still; Saeko waits, back to camera."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 9.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "patient, polite"
+
+[frame]
+C1 = "centre, small, back to camera in front of the lit doorway"
+
+[at_start]
+C1 = "standing before the doorway, back to camera, tow hook hanging from her hand"
+
+[at_end]
+C1 = "unchanged, head lowered slightly"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "stand-back"
+camera = "ws-back"
+feet = [0.5, 0.85]
+height = 0.55
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand-back"
+camera = "ws-back"
+feet = [0.5, 0.85]
+height = 0.55

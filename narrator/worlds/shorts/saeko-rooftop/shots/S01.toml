@@ -1,0 +1,44 @@
+id = "S01"
+start = 0.0
+end = 9.0
+summary = "static extreme wide; the city below, Saeko a tiny dark figure at the roof edge"
+lens = 28.0
+size = "EWS"
+angle = "high behind her over the city"
+move = "static"
+action = "A tiny Saeko stands at the roof edge above the glittering city."
+plate = "rooftop-city-view"
+motion = "Static. City lights shimmer far below; a monorail pod glides across the distance; Saeko stands motionless with her back to camera."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 9.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "alone, still"
+
+[frame]
+C1 = "tiny, back to camera, lower centre"
+
+[at_start]
+C1 = "standing at the roof edge, back to camera"
+
+[at_end]
+C1 = "unchanged"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "stand-back"
+camera = "ews-high"
+feet = [0.5, 0.75]
+height = 0.08
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand-back"
+camera = "ews-high"
+feet = [0.5, 0.75]
+height = 0.08
