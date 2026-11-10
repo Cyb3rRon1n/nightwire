@@ -146,4 +146,29 @@ def test_plans_item_when_only_approvals_pending_and_cut_item(tmp_path, monkeypat
     assert P.cuts(c) == []
     (dd / "shorts" / "pilot" / "draft.mp4").write_bytes(b"v")
     (cut,) = P.cuts(c)
-    assert cut.id == "cut--pilot" and cut.kind == "cut" and cut.stage == "finished"
+    assert cut.id.startswith("cut--pilot--") and len(cut.id) == len("cut--pilot--") + 10 and cut.kind == "cut" and cut.stage == "finished"
+    copy = c["site"] / "media" / "cuts" / "pilot" / "draft.mp4"
+    before = copy.stat().st_mtime_ns
+    import time
+    time.sleep(0.01)
+    P.cuts(c)
+    assert copy.stat().st_mtime_ns == before  # not rewritten
+    (dd / "shorts" / "pilot" / "draft.mp4").write_bytes(b"other cut")
+    assert P.cuts(c)[0].id != cut.id
+
+
+def test_plans_use_ctx_paths_not_env_defaults(tmp_path, monkeypatch):
+    from test_shorts_cli import PACKAGED, setup
+    from test_shorts_model import designs
+    setup(tmp_path, monkeypatch, shot=PACKAGED, approved=False)
+    toml = tmp_path / "script" / "pilot" / "short.toml"
+    toml.write_text('model = "seedance-2.0-fast"\n' + toml.read_text())
+    dd = tmp_path / "design-data"
+    c = {"design_dir": dd, "site": tmp_path / "site", "shorts_dir": tmp_path / "script", "plates_root": tmp_path / "plates",
+         "designs": designs(), "images": {}}
+    (item,) = P.plans(c)
+    # the environment now points somewhere else entirely; ctx paths must still decide
+    monkeypatch.setenv("NIGHTWIRE_DESIGN_DIR", str(tmp_path / "elsewhere"))
+    monkeypatch.setattr("tools.shorts.plates.PLATES_ROOT", tmp_path / "nowhere")
+    (again,) = P.plans(c)
+    assert again.id == item.id

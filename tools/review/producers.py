@@ -179,8 +179,10 @@ def plans(ctx) -> list[Item]:
         if not short.model or short.model not in fal.MODELS:
             continue
         work = ctx["design_dir"] / "shorts" / short.slug
-        pre = {shot.id: cli._preflight(short, shot, fal.shot_model(shot, short.model), ctx["designs"], images) for shot in short.shots}
-        data = sheet.collect(short, ctx["designs"], ctx["design_dir"], work, short.model, pre, cli._approvals(work, images))
+        pre = {shot.id: cli._preflight(short, shot, fal.shot_model(shot, short.model), ctx["designs"], images,
+                                           ctx["design_dir"], ctx.get("plates_root")) for shot in short.shots}
+        data = sheet.collect(short, ctx["designs"], ctx["design_dir"], work, short.model, pre, cli._approvals(work, images),
+                              ctx.get("plates_root"))
         for row in data["shots"]:
             if any("not approved" not in p for p in row["problems"]):
                 continue
@@ -201,8 +203,9 @@ def cuts(ctx) -> list[Item]:
         if f:
             dst = ctx["site"] / "media" / "cuts" / short.slug / f.name
             dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(f, dst)  # a video: web_copy makes JPEGs
-            out.append(Item(sheet.cut_id(short.slug), "cut", "finished", short.slug, f"{short.title}: cut",
+            if not dst.exists() or (dst.stat().st_size, dst.stat().st_mtime_ns) != (f.stat().st_size, f.stat().st_mtime_ns):
+                shutil.copy2(f, dst)  # a video: web_copy makes JPEGs; copy2 keeps mtime so the next run skips it
+            out.append(Item(sheet.cut_id(short.slug, f), "cut", "finished", short.slug, f"{short.title}: cut",
                             [f"/review/media/cuts/{short.slug}/{f.name}"]))
     return out
 

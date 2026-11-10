@@ -77,5 +77,7 @@ def test_stages_bible_and_plates_approved_keyframes_waiting(tmp_path, monkeypatc
     ap["S01"] = {"x": {"verdict": "keep"}}
     (tmp_path / "w" / "shots" / "S01" / "verdicts.json").write_text('{"t1": {"verdict": "keep"}}')
     (tmp_path / "w" / "draft.mp4").write_bytes(b"v")
-    ap["images"][sheet.cut_id(s.slug)] = {"verdict": "keep"}
+    ap["images"][sheet.cut_id(s.slug, tmp_path / "w" / "draft.mp4")] = {"verdict": "keep"}
     assert {o["status"] for o in sheet.stages(s, [{"id": "S01", "fp": "x"}], _plates(), ap, tmp_path / "w")} == {"approved"}
+    (tmp_path / "w" / "draft.mp4").write_bytes(b"new cut")  # a new cut needs its own approval
+    assert sheet.stages(s, [{"id": "S01", "fp": "x"}], _plates(), ap, tmp_path / "w")[-1]["status"] == "waiting"

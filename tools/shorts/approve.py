@@ -23,11 +23,11 @@ def scene_fp(short) -> str:
     return hashlib.sha256(blob.encode()).hexdigest()[:10]
 
 
-def fp_extra(short, shot, design_dir: Path) -> str:
+def fp_extra(short, shot, design_dir: Path, plates_root: Path | None = None) -> str:
     """What else an approval covers: mode, scene bible, and the shot's plate pixels (a re-rendered plate needs re-approval)."""
     from tools.shorts.model import scene_text
     from tools.shorts.plates import load_plates, plate_path
-    plates = load_plates(short.place)
+    plates = load_plates(short.place, plates_root)
     f = plate_path(design_dir, short.place, plates[shot.plate]) if shot.plate in plates else None
     plate = hashlib.sha256(f.read_bytes()).hexdigest() if f and f.exists() else ""
     return f"{shot.mode}\n{scene_text(short)}\n{plate}"

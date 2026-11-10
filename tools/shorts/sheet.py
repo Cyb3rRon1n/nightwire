@@ -1,6 +1,7 @@
 """The per-short page: stage tabs (Bible, Plates, Keyframes, Shots, Takes, Cut), each with its gate status, and
 everything a shot needs before money is spent. Read-only: decisions happen in the review inbox at /review/."""
 
+import hashlib
 import json
 import re
 import shutil
@@ -20,8 +21,9 @@ THUMB = 1024
 STAGES = ("Bible", "Plates", "Keyframes", "Shots", "Takes", "Cut")
 
 
-def cut_id(slug: str) -> str:
-    return f"cut--{slug}"
+def cut_id(slug: str, cut: Path) -> str:
+    """Versioned by the file's bytes: a keep on an old cut never approves a new one."""
+    return f"cut--{slug}--{hashlib.sha256(cut.read_bytes()).hexdigest()[:10]}"
 
 
 def cut_file(work: Path) -> Path | None:
@@ -48,7 +50,7 @@ def stages(short, plans: list[dict], plates: dict, approvals: dict, work: Path) 
          f"{len(keys)} opening/closing picture(s)"),
         ("Shots", all(keep(approvals.get(p["id"], {}).get(p["fp"])) for p in plans), f"{len(plans)} shot plan(s)"),
         ("Takes", len(kept_takes) == len(short.shots), f"{len(short.shots)} shot(s) need a chosen take"),
-        ("Cut", cut is not None and keep(images.get(cut_id(short.slug))), "the assembled film"),
+        ("Cut", cut is not None and keep(images.get(cut_id(short.slug, cut))), "the assembled film"),
     ]
     out, open_ = [], True
     for name, ok, detail in checks:
@@ -63,14 +65,14 @@ def _verdicts(work: Path, shot_id: str) -> dict:
     return json.loads(f.read_text()) if f.exists() else {}
 
 
-def collect(short, designs, design_dir: Path, work: Path, default: str, plans: dict, approvals: dict | None = None) -> dict:
+def collect(short, designs, design_dir: Path, work: Path, default: str, plans: dict, approvals: dict | None = None, plates_root: Path | None = None) -> dict:
     costs = json.loads((work / "costs.json").read_text()) if (work / "costs.json").exists() else []
     shots = []
     for shot in short.shots:
         report, prompt, refs = plans[shot.id]
         model = fal.shot_model(shot, default)
         used, left_out = fal.usable_refs(model, refs)
-        fp = approve.fingerprint(model, prompt, used, int(round(shot.duration)), approve.fp_extra(short, shot, design_dir))
+        fp = approve.fingerprint(model, prompt, used, int(round(shot.duration)), approve.fp_extra(short, shot, design_dir, plates_root))
         shots.append({
             "id": shot.id, "time": f"{shot.duration:g} s ({shot.start:g}–{shot.end:g} s)", "summary": shot.summary,
             "size": shot.size, "angle": shot.angle, "lens": shot.lens, "move": shot.move, "action": shot.action,
@@ -90,7 +92,7 @@ def collect(short, designs, design_dir: Path, work: Path, default: str, plans: d
         [*designs[slug].required, *([short.locks[cid]] if cid in short.locks else [])]),
              "sheets": [f.removesuffix(".png") for f in CHARACTER_SHEETS if (design_dir / slug / f).exists()]}
             for cid, slug in short.cast.items()]
-    catalogue = plate_mod.load_plates(short.place)
+    catalogue = plate_mod.load_plates(short.place, plates_root)
     approvals = approvals or {"images": {}}
     kf = {sh.id: [w for w in keyframes.needed(sh) if keyframes.chosen_path(work, sh.id, w).exists()] for sh in short.shots}
     from tools.shorts.model import scene_text

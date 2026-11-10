@@ -197,25 +197,26 @@ def _approvals(work, images=None) -> dict:
     return {**(json.loads(f.read_text()) if f.exists() else {}), "images": _images_api() if images is None else images}
 
 
-def _preflight(s, shot, model, designs, images=None):
+def _preflight(s, shot, model, designs, images=None, design_dir=None, plates_root=None):
     from tools.shorts import preflight
-    work = _work(s.slug)
+    dd = design_dir or data_dir().parent
+    work = dd / "shorts" / s.slug
     shot_dir = work / "shots" / shot.id
     from tools.shorts.backends import fal
     from tools.shorts.plates import load_plates, plate_path
-    plates = load_plates(s.place)
-    plate = plate_path(data_dir().parent, s.place, plates[shot.plate]) if shot.plate in plates else None
+    plates = load_plates(s.place, plates_root)
+    plate = plate_path(dd, s.place, plates[shot.plate]) if shot.plate in plates else None
     if shot.mode == "i2v":  # an i2v take sends only its keyframes
         expected = [(f"keyframe-{w}.png", shot_dir / f"keyframe-{w}.png") for w in ("start", "end")]
         expected = [(label, p) for label, p in expected if p.exists()]
     else:
-        expected = expected_refs(s, data_dir().parent, shot_dir, plate=plate)
+        expected = expected_refs(s, dd, shot_dir, plate=plate)
     refs = [(label, p) for label, p in expected if p.exists()]  # what is sent and fingerprinted
     sent = [label for label, _ in fal.usable_refs(model, refs)[0]]
     prompt = build_prompt(s, shot, designs, has_still=(shot_dir / "still.png").exists(), sent=sent)
     approvals = _approvals(work, images)
     report = preflight.run(s, shot, _prev(s, shot), prompt, expected, model, Ledger(work / "costs.json").total(),
-                           package_problems=preflight.package(s, shot, _prev(s, shot), plates, shot_dir, approvals, data_dir().parent),
+                           package_problems=preflight.package(s, shot, _prev(s, shot), plates, shot_dir, approvals, dd),
                            bible=preflight.bible_words(s, shot))
     if shot.mode == "i2v" and not fal.MODELS[model].get("i2v"):
         report.problems.append(f"mode i2v needs an -i2v model, got {model}; use {fal.shot_model(shot, model)}")
