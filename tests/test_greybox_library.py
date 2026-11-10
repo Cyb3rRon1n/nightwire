@@ -79,6 +79,7 @@ def test_build_runs_remote_then_writes_pose_png(tmp_path, monkeypatch):
             from PIL import Image
             Image.new("RGB", (1216, 832), "grey").save(d / "board.png")
             (d / "pose.json").write_text(json.dumps({"points": {"neck": [0.5, 0.4], "nose": [0.5, 0.3]}, "back": False}))
+            Image.new("L", (1216, 832)).save(d / "depth.png")
             (d / "meta.json").write_text(json.dumps({"horizon_y": 0.3}))
 
     monkeypatch.setattr(build.subprocess, "run", fake_run)
@@ -113,3 +114,24 @@ def test_default_output_follows_design_dir(monkeypatch, tmp_path):
     assert build.default_out() == tmp_path / "greybox-library"
     monkeypatch.delenv("NIGHTWIRE_DESIGN_DIR")
     assert build.default_out() == Path("design-data/greybox-library")
+
+
+def test_partial_result_raises_and_lists_missing_cells(tmp_path, monkeypatch):
+    def fake_run(argv, check):
+        if argv[0] == "rsync" and ":" in argv[-2]:
+            d = tmp_path / "stand" / "ws-front"
+            d.mkdir(parents=True)
+            (d / "board.png").write_bytes(b"x")  # no depth/pose/meta, and ws-back never rendered
+
+    monkeypatch.setattr(build.subprocess, "run", fake_run)
+    with pytest.raises(RuntimeError) as e:
+        build.build(["stand"], ["ws-front", "ws-back"], 165, tmp_path)
+    assert "stand/ws-front/depth.png" in str(e.value) and "stand/ws-back/board.png" in str(e.value)
+
+
+def test_stale_remote_cells_are_cleared_and_not_pulled(tmp_path):
+    todo = build.jobs(["stand", "walk"], ["ws-front"], 165, tmp_path)
+    up, run, down = build.commands(tmp_path, todo=todo)
+    assert "rm -rf" in run[-1] and run[-1].index("rm -rf") < run[-1].index("-b -P")
+    assert "--include=stand/ws-front/***" in down and "--include=walk/" in down
+    assert down.index("--exclude=*") < down.index(down[-2])

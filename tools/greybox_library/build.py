@@ -61,12 +61,20 @@ def jobs(poses, cameras, height_cm, out: Path) -> list[dict]:
     return result
 
 
-def commands(out: Path, job: Path = Path("job.json")) -> list[list[str]]:
+NEEDED = ("board.png", "depth.png", "pose.json", "meta.json")
+
+
+def commands(out: Path, job: Path = Path("job.json"), todo: list[dict] | None = None) -> list[list[str]]:
     host = remote.BLENDER_HOST
     up = ["rsync", "-a", "--mkpath", str(job), str(LIB), str(presets.BLENDER_BUILD), f"{host}:{REMOTE_DIR}/"]
-    run = ["ssh", host, f"cd {shlex.quote(REMOTE_DIR)} && {remote.BLENDER} -b -P blender_library.py -- job.json . "
+    run = ["ssh", host, f"cd {shlex.quote(REMOTE_DIR)} && find . -mindepth 1 -maxdepth 1 -type d -exec rm -rf {{}} + && {remote.BLENDER} -b -P blender_library.py -- job.json . "
                         "> blender.log 2>&1 || (tail -30 blender.log; exit 1)"]
-    down = ["rsync", "-a", "--mkpath", "--exclude", "*.py", "--exclude", "job.json", "--exclude", "blender.log", f"{host}:{REMOTE_DIR}/", f"{out}/"]
+    only = []  # pull just this job's cells
+    if todo is not None:
+        for p in dict.fromkeys(j["pose"] for j in todo):
+            only += [f"--include={p}/"] + [f"--include={j['dir']}/***" for j in todo if j["pose"] == p]
+        only.append("--exclude=*")
+    down = ["rsync", "-a", "--mkpath", *only, f"{host}:{REMOTE_DIR}/", f"{out}/"]
     return [up, run, down]
 
 
@@ -85,17 +93,23 @@ def finish(cell: Path) -> None:
         board.save(cell / "board.png")
 
 
+def missing(todo: list[dict], out: Path) -> list[str]:
+    return [f"{j['dir']}/{f}" for j in todo for f in NEEDED if not (out / j["dir"] / f).exists()]
+
+
 def build(poses, cameras, height_cm, out: Path | None = None) -> list[dict]:
     out = out or default_out()
     todo = jobs(poses, cameras, height_cm, out)
     with tempfile.TemporaryDirectory() as tmp:
         job = Path(tmp) / "job.json"
         job.write_text(json.dumps({"res": RES, "cells": todo}))
-        for argv in commands(out, job):
+        for argv in commands(out, job, todo):
             subprocess.run(argv, check=True)
+    lost = missing(todo, out)
+    if lost:
+        raise RuntimeError(f"{len(lost)} missing outputs after the Blender run, e.g.: {', '.join(lost[:10])}")
     for j in todo:
-        if (out / j["dir"] / "pose.json").exists():
-            finish(out / j["dir"])
+        finish(out / j["dir"])
     return todo
 
 

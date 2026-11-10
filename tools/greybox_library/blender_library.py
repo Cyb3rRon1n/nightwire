@@ -121,7 +121,7 @@ for cell in J["cells"]:
     c = cell["cam"]
     cam = bpy.data.objects.new("cam", bpy.data.cameras.new("cam"))
     sc.collection.objects.link(cam)
-    cam.data.lens = c["lens"]
+    cam.data.lens, cam.data.clip_start, cam.data.clip_end = c["lens"], 0.05, 1000  # far enough for the 300 m floor from any preset
     cam.location = c["at"]
     cam.rotation_euler = (Vector(c["look"]) - Vector(c["at"])).to_track_quat("-Z", "Y").to_euler()
     sc.camera = cam
@@ -139,11 +139,12 @@ for cell in J["cells"]:
     cam.data.clip_end = math.hypot(c["dist"], c["at"][2]) + 6
     render_depth(cell_dir / "depth.png", cam)
     grid.hide_render = False
-    cam.data.clip_end = 1000
     meta = {"camera": {"height": round(c["at"][2], 3), "distance": round(c["dist"], 3), "lens": c["lens"],
                        "pitch_down_deg": round(90 - math.degrees(cam.rotation_euler.x), 2),
                        "yaw_deg": round(math.degrees(math.atan2(c["at"][0], c["at"][1])), 2)},
             "figure_box": box_, "feet": feet(pose, box_), "figure_height_px": round((box_[3] - box_[1]) * J["res"][1]) if box_ else 0,
             "horizon_y": horizon_y(cam), "back": pose["back"], "res": J["res"]}
     (cell_dir / "meta.json").write_text(json.dumps(meta, indent=1))
+    data = cam.data
     delete([cam])
+    bpy.data.cameras.remove(data)
