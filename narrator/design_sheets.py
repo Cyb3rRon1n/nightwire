@@ -4,7 +4,7 @@ Pure builders plus two Pillow helpers; no network here."""
 import io
 
 from narrator.designs import Design
-from narrator.image_prompt import NEGATIVE, QUALITY, STYLE, _below_chest
+from narrator.image_prompt import NEGATIVE, QUALITY, STYLE, _below_chest, weight
 
 CHECKPOINT = "NoobAI-XL-Vpred-v1.0.safetensors"
 LORA = "Smooth_Booster_v3.safetensors"
@@ -114,9 +114,33 @@ def _state_tags(d: Design, state: str) -> str:
     return d.wardrobe[state].tags
 
 
+_COLOURS = {"red", "black", "white", "blonde", "blond", "brown", "blue", "green", "pink", "purple", "silver", "grey", "gray",
+            "orange", "yellow", "aqua", "teal", "cyan", "golden", "gold", "violet", "crimson", "auburn", "lavender", "magenta", "turquoise"}
+# Under a state, a covered outfit must stay covered: the model's mature tags drift to cleavage and open jackets.
+_COVERED = ("cleavage:1.4", "open jacket:1.3", "unbuttoned:1.3", "open shirt:1.3", "midriff:1.3", "navel:1.2", "bare thighs:1.2")
+
+
+def _lock(tag: str) -> str:
+    """Hair and eye colour tags get a weight so every sheet of a state agrees on them."""
+    t = tag.strip().lower()
+    return weight(t, 1.25) if t.endswith(" eyes") or (t.endswith(" hair") and set(t.split()) & _COLOURS) else tag.strip()
+
+
+def _appearance(d: Design) -> str:
+    return ", ".join(_lock(t) for t in d.appearance.split(",") if t.strip())
+
+
+def _covered_negative(d: Design, state: str | None) -> str:
+    """The safety negative for a state, minus any term the state's own tags deliberately ask for."""
+    if not state:
+        return ""
+    tags = _state_tags(d, state).lower()
+    return ", ".join(f"({t})" for t in _COVERED if t.split(":")[0] not in tags)
+
+
 def _outfit(d: Design, state: str | None) -> str:
     if state:
-        return _join(d.appearance, _state_tags(d, state))
+        return _join(_appearance(d), weight(_state_tags(d, state), 1.2))
     return ", ".join(t for t in (x.strip() for x in d.tags.split(",")) if t not in d.required)
 
 
@@ -136,7 +160,7 @@ def state_props_prompt(d: Design, state: str) -> tuple[str, str]:
     items = ", ".join(d.wardrobe[state].props) or _state_tags(d, state)
     pos = _join(CHARACTER_QUALITY, _NEUTRAL_STYLE, "hands and props close-up, product sheet, still life, object focus, "
                 "multiple views, grey background, soft even studio light, neutral colors", items)
-    return pos, _unless_in(_styled_negative(d, _join(NEUTRAL_NEGATIVE, "white background, 1girl, 1boy, face")), pos)
+    return pos, _join(_unless_in(_styled_negative(d, _join(NEUTRAL_NEGATIVE, "white background, 1girl, 1boy, face")), pos), _covered_negative(d, state))
 
 
 def sheet_prompt(d: Design, sheet: str, mood: str | None = None, state: str | None = None) -> tuple[str, str]:
@@ -154,7 +178,7 @@ def sheet_prompt(d: Design, sheet: str, mood: str | None = None, state: str | No
         pos = _join(CHARACTER_QUALITY, style, mature, _SHEET_TAGS[sheet], subject_for(d), "" if state else ", ".join(d.required),
                     _outfit(d, state), _identity(d, state))
         neg = _styled_negative(d, _SHEET_GUARD)
-        return pos, _unless_in(neg, pos) if state else neg
+        return pos, _join(_unless_in(neg, pos), _covered_negative(d, state)) if state else neg
     if sheet not in LOCATION_SHEETS:
         raise ValueError(f"{sheet!r} is not a location sheet")
     if sheet == "props":
@@ -183,8 +207,9 @@ def _face_tags(d: Design, state: str | None = None) -> list[str]:
     held = _held(d, state)
     source = _join(d.appearance, _state_tags(d, state)) if state else d.tags
     skip = set() if state else set(d.required)
-    return [t for t in dict.fromkeys(x.strip() for x in source.split(",")) if t and t not in held and t not in skip
+    kept = [t for t in dict.fromkeys(x.strip() for x in source.split(",")) if t and t not in held and t not in skip
             and not _below_chest(t) and not any(w in t for w in (*_BELOW_FRAME_WORDS, *_EXPRESSION_WORDS))]
+    return [_lock(t) for t in kept] if state else kept
 
 
 def portrait_prompt(d: Design, state: str | None = None) -> tuple[str, str]:
@@ -208,7 +233,7 @@ def expression_prompts(d: Design, state: str | None = None) -> list[tuple[str, s
     for label, mood in expressions_for(d):
         pos = _join(CHARACTER_QUALITY, style, "mature, adult, solo, portrait, close-up, face focus, looking at viewer",
                     subject_for(d), mood, "" if state else ", ".join(d.required), ", ".join(face), _face_identity(d, state))
-        out.append((label, pos, _unless_in(negative, pos) if state else negative))
+        out.append((label, pos, _join(_unless_in(negative, pos), _covered_negative(d, state)) if state else negative))
     return out
 
 

@@ -427,7 +427,7 @@ def _warded():
 def test_state_turnaround_swaps_outfit_keeps_identity():
     from narrator.design_sheets import sheet_prompt
     pos, _ = sheet_prompt(_warded(), "turnaround", state="work")
-    assert "white blouse, pencil skirt" in pos and "scar over left eye, silver ring" in pos and "short hair, black hair, yellow eyes" in pos
+    assert "(white blouse, pencil skirt:1.2)" in pos and "scar over left eye, silver ring" in pos and "short hair, (black hair:1.25), (yellow eyes:1.25)" in pos
     assert "black bomber jacket" not in pos and "mechanical left arm" not in pos and "white hoodie" not in pos
     assert "techwear" not in pos and pos.count("cyberpunk") == 0
 
@@ -478,3 +478,32 @@ def test_state_expressions_hold_back_state_props_not_v1_held():
 def test_state_props_unknown_state_is_value_error():
     with pytest.raises(ValueError):
         ds.state_props_prompt(_warded(), "nope")
+
+
+def _covered():
+    from narrator.designs import WardrobeState
+    return _char(appearance="large breasts, red hair, purple eyes, short hair",
+                 wardrobe={"work": WardrobeState(text="suit", tags="buttoned jacket, black shirt"),
+                           "open": WardrobeState(text="x", tags="open jacket, white shirt")})
+
+
+def test_state_sheets_get_covered_outfit_negative_and_state_weight():
+    d = _covered()
+    pos, neg = ds.sheet_prompt(d, "turnaround", state="work")
+    assert "(buttoned jacket, black shirt:1.2)" in pos
+    for n in (neg, ds.portrait_prompt(d, "work")[1], ds.expression_prompts(d, state="work")[1][2], ds.state_props_prompt(d, "work")[1]):
+        assert "(cleavage:1.4)" in n and "(open jacket:1.3)" in n and "(midriff:1.3)" in n
+    assert "cleavage" not in ds.sheet_prompt(d, "turnaround")[1]
+
+
+def test_state_asking_for_open_jacket_keeps_it_out_of_negative():
+    neg = ds.sheet_prompt(_covered(), "turnaround", state="open")[1]
+    assert "(open jacket:1.3)" not in neg and "(cleavage:1.4)" in neg
+
+
+def test_state_colour_lock_weights_hair_and_eyes_only():
+    d = _covered()
+    for p in (ds.sheet_prompt(d, "turnaround", state="work")[0], ds.portrait_prompt(d, "work")[0],
+              ds.expression_prompts(d, state="work")[2][1]):
+        assert "(red hair:1.25)" in p and "(purple eyes:1.25)" in p and "(short hair:1.25)" not in p
+    assert "(red hair:1.25)" not in ds.sheet_prompt(d, "turnaround")[0]

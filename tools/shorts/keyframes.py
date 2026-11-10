@@ -7,6 +7,8 @@ from pathlib import Path
 
 from PIL import Image
 
+from narrator.image_prompt import weight as _weight
+
 W, H = 1216, 832
 
 
@@ -32,12 +34,6 @@ POSE_NET, POSE_STRENGTH, POSE_END = "noob_openpose_pre.safetensors", 0.9, 0.8
 WARDROBE_WEIGHT = 1.4
 SIZE_EXTRA = {"MCU": "upper body", "CU": "close-up", "ECU": "close-up", "WS": "full body, wide shot", "EWS": "full body, wide shot"}
 BEHIND = ("back of head", "from behind", "face not visible")
-
-
-def _weight(text: str, w: float) -> str:
-    """A ComfyUI weight group; parens and colons in the text would break the weighting syntax."""
-    text = " ".join(text.translate({ord(c): " " for c in "():"}).split())
-    return f"({text}:{w})" if text else ""
 
 
 def keyframe_workflow(short, shot, designs, which, regions, depth_name, pose_name, seed, plate=None, back=()) -> dict:

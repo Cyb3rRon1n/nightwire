@@ -100,3 +100,9 @@ async def resolve(client, kind: str, text: str, character=None) -> tuple[str, st
     if len(tags) >= _MIN_TAGS:
         return build_prompt(subject, tags), negative, "tags"
     return build_prompt(subject, text), negative, "sentence"
+
+
+def weight(text: str, w: float) -> str:
+    """A ComfyUI weight group; parens and colons in the text would break the weighting syntax."""
+    text = " ".join(text.translate({ord(c): " " for c in "():"}).split())
+    return f"({text}:{w})" if text else ""
