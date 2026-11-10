@@ -78,7 +78,7 @@ def refs(model: str, ref_list: list[tuple[str, Path]]) -> list[str]:
     out = [f"{label}: file missing ({p})" for label, p in ref_list if not p.exists() and label not in OPTIONAL_REFS]
     ref_list = [(label, p) for label, p in ref_list if p.exists()]
     images = sum(1 for label, _ in ref_list if label.endswith(".png"))
-    limit = fal.MODELS[model]["max_images"]
+    limit = fal.MODELS[model].get("max_images", 2)
     if images > limit:
         out.append(f"{images} images, {model} limit {limit}")
     return out

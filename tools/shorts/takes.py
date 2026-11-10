@@ -12,6 +12,8 @@ RATES = {
     "seedance-2.5": 0.473,
     "seedance-2.0": 0.3034,
     "seedance-2.0-fast": 0.2419,
+    "seedance-2.0-fast-i2v": 0.2419,
+    "seedance-2.0-i2v": 0.3024,
     "kling-3": 0.14,
     "veo-3.1-fast": 0.10,
 }
@@ -35,16 +37,33 @@ class Ledger:
     def total(self) -> float:
         return round(sum(r["cost"] for r in self._rows()), 4)
 
-    def add(self, shot: str, take: str, model: str, cost: float, note: str = "", fp: str = "") -> None:
+    def add(self, shot: str, take: str, model: str, cost: float, note: str = "", fp: str = "", status: str = "") -> None:
         row = {"shot": shot, "take": take, "model": model, "cost": cost,
                "at": dt.datetime.now().isoformat(timespec="seconds")}
         if note:
             row["note"] = note
         if fp:
             row["fp"] = fp
-        rows = self._rows() + [row]
+        if status:
+            row["status"] = status
+        self._write(self._rows() + [row])
+
+    def _write(self, rows: list[dict]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(json.dumps(rows, indent=1))
+
+    def set_status(self, take: str, status: str) -> None:
+        rows = self._rows()
+        for r in rows:
+            if r["take"] == take:
+                r["status"] = status
+        self._write(rows)
+
+    def adjust(self, balance_left: float, budget: float, note: str) -> None:
+        """Add a correcting row so budget - total() == the real balance."""
+        self._write(self._rows() + [{"shot": "-", "take": "adjust", "model": "-", "note": note, "status": "adjust",
+                                     "cost": round((budget - balance_left) - self.total(), 4),
+                                     "at": dt.datetime.now().isoformat(timespec="seconds")}])
 
     def check(self, budget: float, cost: float) -> None:
         if self.total() + cost > budget:

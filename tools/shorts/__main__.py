@@ -199,7 +199,20 @@ def _preflight(s, shot, model, designs):
     report = preflight.run(s, shot, _prev(s, shot), prompt, expected, model, Ledger(work / "costs.json").total(),
                            package_problems=preflight.package(s, shot, _prev(s, shot), plates, shot_dir, approvals, data_dir().parent),
                            bible=preflight.bible_words(s, shot))
+    if shot.mode == "i2v" and not fal.MODELS[model].get("i2v"):
+        report.problems.append(f"mode i2v needs an -i2v model, got {model}")
+    elif shot.mode == "reference" and fal.MODELS[model].get("i2v"):
+        report.problems.append(f"mode reference can't use an -i2v model, got {model}")
     return report, prompt, refs
+
+
+def cmd_ledger_sync(a) -> int:
+    s, work = _short(a.slug), _work(a.slug)
+    led = Ledger(work / "costs.json")
+    old = round(s.budget_usd - led.total(), 2)
+    led.adjust(a.balance, s.budget_usd, f"ledger-sync to fal balance ${a.balance:.2f}")
+    print(f"remaining was ${old:.2f}, now ${s.budget_usd - led.total():.2f}")
+    return 0
 
 
 def cmd_preflight(a) -> int:
@@ -212,7 +225,8 @@ def cmd_preflight(a) -> int:
         raise CliError(f"unknown model {model!r}; choose from: {', '.join(fal.MODELS)}")
     bad = 0
     for shot in [_shot(s, a.shot)] if a.shot else s.shots:
-        report = _preflight(s, shot, model, designs)[0]
+        m = model if a.model or not (shot.mode == "i2v" and not fal.MODELS[model].get("i2v")) else "seedance-2.0-fast-i2v"
+        report = _preflight(s, shot, m, designs)[0]  # no --model: an i2v shot gets the preferred i2v model
         print(f"{shot.id}: {'ok' if report.ok else 'FAIL'}")
         for p in report.problems:
             print(f"  problem: {p}")
@@ -352,6 +366,7 @@ def main(argv=None) -> int:
     q = sub.add_parser("submit"); q.add_argument("slug"); q.add_argument("shot"); q.add_argument("--model", required=True)
     q.add_argument("--seconds", type=float); q.add_argument("--yes", action="store_true")
     q.add_argument("--override")
+    q = sub.add_parser("ledger-sync"); q.add_argument("slug"); q.add_argument("--balance", type=float, required=True)
     q = sub.add_parser("preflight"); q.add_argument("slug"); q.add_argument("shot", nargs="?"); q.add_argument("--model")
     q = sub.add_parser("idcheck"); q.add_argument("slug"); q.add_argument("shot"); q.add_argument("take")
     q = sub.add_parser("sheet"); q.add_argument("slug"); q.add_argument("--model")
@@ -361,7 +376,7 @@ def main(argv=None) -> int:
     q = sub.add_parser("assemble"); q.add_argument("slug"); q.add_argument("--music", type=Path)
     a = p.parse_args(argv)
     try:
-        return globals()[f"cmd_{a.cmd}"](a)
+        return globals()[f"cmd_{a.cmd.replace('-', '_')}"](a)
     except CliError as e:
         print(e, file=sys.stderr)
         return 1

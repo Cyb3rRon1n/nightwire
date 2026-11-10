@@ -330,3 +330,29 @@ def test_i2v_sheet_fp_equals_submit_fp_and_plate_rerender_changes_it(tmp_path, m
     assert approve.fingerprint("seedance-2.0-fast", prompt, refs, 5, extra) == sheet_fp
     (dd / "mama-satos-izakaya" / "plates" / "door.png").write_bytes(b"new render")
     assert approve.fp_extra(s, s.shots[0], dd) != extra
+
+
+def test_mode_and_model_kind_must_match(tmp_path, monkeypatch):
+    from test_shorts_model import designs
+    from tools.shorts.__main__ import _preflight, _short
+    setup(tmp_path, monkeypatch, shot=PACKAGED.replace('mode = "reference"', 'mode = "i2v"\nmotion = "C2 turns."'))
+    s = _short("pilot")
+    assert any("mode i2v needs an -i2v model" in p for p in _preflight(s, s.shots[0], "seedance-2.0-fast", designs())[0].problems)
+    assert not any("-i2v model" in p for p in _preflight(s, s.shots[0], "seedance-2.0-fast-i2v", designs())[0].problems)
+
+
+def test_reference_shot_refuses_i2v_model(tmp_path, monkeypatch):
+    from test_shorts_model import designs
+    from tools.shorts.__main__ import _preflight, _short
+    setup(tmp_path, monkeypatch, shot=PACKAGED)
+    s = _short("pilot")
+    assert any("mode reference can't use an -i2v model" in p for p in _preflight(s, s.shots[0], "seedance-2.0-fast-i2v", designs())[0].problems)
+
+
+def test_ledger_sync_cli(tmp_path, monkeypatch, capsys):
+    setup(tmp_path, monkeypatch)
+    assert main(["ledger-sync", "pilot", "--balance", "3.29"]) == 0
+    from tools.shorts.__main__ import _short, _work
+    from tools.shorts.takes import Ledger
+    assert round(_short("pilot").budget_usd - Ledger(_work("pilot") / "costs.json").total(), 2) == 3.29
+    assert "now $3.29" in capsys.readouterr().out

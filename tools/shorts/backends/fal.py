@@ -20,6 +20,10 @@ import httpx
 
 from tools.shorts.takes import Ledger, estimate, file_take
 
+class Blocked(RuntimeError):
+    """fal refused the job on content moderation (HTTP 422 on the result)."""
+
+
 QUEUE = "https://queue.fal.run"
 # "duration_str": fal's duration is a string enum ("5"), not an int. Default (absent) = int.
 MODELS = {
@@ -29,6 +33,12 @@ MODELS = {
                      "video": "video_urls", "duration": "duration", "duration_str": True, "min_s": 4, "max_images": 9, "extra": {"resolution": "720p"}, "skip": ("floorplan.png",)},
     "seedance-2.5": {"endpoint": "bytedance/seedance-2.5/reference-to-video", "prompt": "prompt", "images": "image_urls",
                      "video": "video_urls", "duration": "duration", "duration_str": True, "min_s": 4, "max_images": 30, "extra": {"resolution": "720p"}},
+    "seedance-2.0-fast-i2v": {"endpoint": "bytedance/seedance-2.0/fast/image-to-video", "prompt": "prompt", "i2v": True,
+                              "duration": "duration", "duration_str": True, "min_s": 4,
+                              "extra": {"resolution": "720p", "aspect_ratio": "auto"}},
+    "seedance-2.0-i2v": {"endpoint": "bytedance/seedance-2.0/image-to-video", "prompt": "prompt", "i2v": True,
+                         "duration": "duration", "duration_str": True, "min_s": 4,
+                         "extra": {"resolution": "720p", "aspect_ratio": "auto"}},
     # "skip": refs a model can't take (image limits); left out with a note. Kling has no top-level reference-video field (only elements[].video_url), so video=None.
     "kling-3": {"endpoint": "fal-ai/kling-video/o3/pro/reference-to-video", "prompt": "prompt", "images": "image_urls",
                 "video": None, "duration": "duration", "duration_str": True, "min_s": 3, "max_images": 7, "extra": {},
@@ -40,6 +50,9 @@ MODELS = {
 def usable_refs(model: str, refs: list[tuple[str, Path]]) -> tuple[list[tuple[str, Path]], list[str]]:
     """The refs this model can take, and the labels left out (its skip list, and videos when it takes none)."""
     spec = MODELS[model]
+    if spec.get("i2v"):
+        out = [label for label, _ in refs if not label.startswith("keyframe-")]
+        return [r for r in refs if r[0] not in out], out
     out = [label for label, _ in refs if label in spec.get("skip", ()) or (label.endswith(".mp4") and spec["video"] is None)]
     return [r for r in refs if r[0] not in out], out
 
@@ -71,6 +84,16 @@ def data_uri(path: Path) -> str:
 def build_input(model: str, prompt: str, refs: list[tuple[str, Path]], seconds: float) -> dict:
     spec = MODELS[model]
     secs = int(round(seconds))
+    if spec.get("i2v"):
+        refs = dict(refs)
+        bad = [l for l in refs if l not in ("keyframe-start.png", "keyframe-end.png")]
+        if bad or "keyframe-start.png" not in refs:
+            raise ValueError(f"{model} takes keyframe-start.png and optional keyframe-end.png only, got {list(refs)}")
+        body = {spec["prompt"]: prompt, spec["duration"]: str(secs), **spec["extra"],
+                "image_url": data_uri(refs["keyframe-start.png"])}
+        if "keyframe-end.png" in refs:
+            body["end_image_url"] = data_uri(refs["keyframe-end.png"])
+        return body
     body = {spec["prompt"]: prompt, spec["duration"]: str(secs) if spec.get("duration_str") else secs, **spec["extra"]}
     dropped = [label for label, _ in refs if not label.endswith(".png") and not (label.endswith(".mp4") and spec["video"])]
     if dropped:
@@ -97,7 +120,10 @@ def fetch(job: dict, *, key: str, client: httpx.Client, poll_s: float = 5.0, tim
         if time.monotonic() > deadline:
             raise TimeoutError(f"fal request {job['request_id']} not done after {timeout_s}s")
         time.sleep(poll_s)
-    result = client.get(job["response_url"], headers=headers, timeout=60).raise_for_status().json()
+    r = client.get(job["response_url"], headers=headers, timeout=60)
+    if r.status_code == 422:
+        raise Blocked(r.text[:300])
+    result = r.raise_for_status().json()
     return client.get(result["video"]["url"], timeout=300).raise_for_status().content
 
 
@@ -116,7 +142,13 @@ def run_take(short_dir: Path, shot_id: str, model: str, prompt: str, refs, secon
     ledger.check(budget, cost)
     job = start(model, prompt, refs, seconds, key=key, client=client)
     ledger.add(shot_id, f"req-{job['request_id']}", model, cost, note=note, fp=(meta or {}).get("fp", ""))  # money is spent once the POST succeeds
-    video = fetch(job, key=key, client=client)
+    try:
+        video = fetch(job, key=key, client=client)
+    except Blocked as e:
+        ledger.set_status(f"req-{job['request_id']}", "blocked")
+        raise RuntimeError("blocked by fal content moderation (partner_validation_failed); refs: "
+                           f"{[label for label, _ in refs]}; the charge may or may not apply — run ledger-sync with the "
+                           f"balance from fal's billing page ({e})") from e
     tmp = short_dir / "shots" / shot_id / "incoming.mp4"
     tmp.parent.mkdir(parents=True, exist_ok=True)
     tmp.write_bytes(video)

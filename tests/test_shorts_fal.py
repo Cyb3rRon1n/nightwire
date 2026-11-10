@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import httpx
 import pytest
@@ -42,10 +43,12 @@ def test_build_input_uses_model_field_names(tmp_path):
     assert body[spec["images"]][0].startswith("data:image/jpeg;base64,")
 
 
-def test_fal_enum_durations_are_strings():
+def test_fal_enum_durations_are_strings(monkeypatch):
+    monkeypatch.setattr(fal, "data_uri", lambda p: "uri")
     for model, spec in fal.MODELS.items():
         assert spec.get("duration_str") is True, model
-        assert fal.build_input(model, "p", [], 5.4)[spec["duration"]] == "5"
+        refs = [("keyframe-start.png", Path("k.png"))] if spec.get("i2v") else []
+        assert fal.build_input(model, "p", refs, 5.4)[spec["duration"]] == "5"
 
 
 def test_int_duration_option():
@@ -159,3 +162,39 @@ def test_failed_fetch_after_post_counts_as_paid_attempt(tmp_path, monkeypatch):
     rows = json.loads((tmp_path / "costs.json").read_text())
     assert rows[0]["fp"] == "abc" and rows[0]["note"] == "override: x"
     assert approve.attempts(tmp_path, "S01", "abc") == 1
+
+
+def test_i2v_body_start_end_and_rejects_sheets(tmp_path, monkeypatch):
+    monkeypatch.setattr(fal, "data_uri", lambda p: f"uri:{p.name}")
+    a, b = tmp_path / "keyframe-start.png", tmp_path / "keyframe-end.png"
+    body = fal.build_input("seedance-2.0-fast-i2v", "p", [("keyframe-start.png", a), ("keyframe-end.png", b)], 8)
+    assert body["image_url"] == "uri:keyframe-start.png" and body["end_image_url"] == "uri:keyframe-end.png"
+    assert body["duration"] == "8" and body["aspect_ratio"] == "auto" and "image_urls" not in body
+    with pytest.raises(ValueError):
+        fal.build_input("seedance-2.0-fast-i2v", "p", [("C1_turnaround.png", a)], 8)
+    assert fal.usable_refs("seedance-2.0-i2v", [("keyframe-start.png", a), ("C1_turnaround.png", a)]) == ([("keyframe-start.png", a)], ["C1_turnaround.png"])
+    assert RATES["seedance-2.0-i2v"] == 0.3024 and RATES["seedance-2.0-fast-i2v"] == 0.2419
+
+
+def test_ledger_adjust_matches_real_balance(tmp_path):
+    led = Ledger(tmp_path / "costs.json")
+    led.add("S01", "t1", "m", 23.45)
+    led.add("S02", "t2", "m", 1.0, status="blocked")
+    led.adjust(3.29, 25.0, "fal billing 2026-11-10")
+    assert round(25.0 - led.total(), 2) == 3.29
+    assert json.loads((tmp_path / "costs.json").read_text())[1]["status"] == "blocked"
+
+
+def test_422_on_result_marks_ledger_row_blocked(tmp_path, monkeypatch):
+    monkeypatch.setattr(fal, "data_uri", lambda p: "uri")
+    def handler(request):
+        if request.method == "POST":
+            return httpx.Response(200, json={"request_id": "r1", "status_url": "https://q/s/status", "response_url": "https://q/r"})
+        if request.url.path.endswith("/status"):
+            return httpx.Response(200, json={"status": "COMPLETED"})
+        return httpx.Response(422, json={"detail": "partner_validation_failed"})
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    with pytest.raises(RuntimeError, match="blocked by fal content moderation"):
+        fal.run_take(tmp_path, "S01", "seedance-2.0-fast-i2v", "p", [("keyframe-start.png", tmp_path / "k.png")], 5, 25, key="k", client=client)
+    rows = json.loads((tmp_path / "costs.json").read_text())
+    assert rows[0]["status"] == "blocked" and Ledger(tmp_path / "costs.json").total() == estimate("seedance-2.0-fast-i2v", 5)
