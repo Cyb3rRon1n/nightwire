@@ -1,0 +1,46 @@
+id = "S02"
+start = 10.0
+end = 21.0
+summary = "static wide at the alley corner; Mama crouches small by the crates and sets the dish down"
+lens = 35.0
+why = "Crouched low and small at the crates: the cat is off screen and the stillness of her waiting is the performance"
+vertical = [0.5]
+size = "WS"
+angle = "low eye level at the corner"
+move = "static"
+action = "Mama crouches and sets the dish on the ground."
+plate = "alley-corner"
+motion = "Static. Mama crouches by the crates, sets the dish down and waits; rain falls in the lantern light."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 11.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "patient"
+
+[frame]
+C1 = "small, crouching, back three-quarter, centre"
+
+[at_start]
+C1 = "crouching, the dish in her hands"
+
+[at_end]
+C1 = "crouching, hands empty"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "crouch"
+camera = "ws-back"
+feet = [0.5, 0.82]
+height = 0.25
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "crouch"
+camera = "ws-back"
+feet = [0.5, 0.82]
+height = 0.25

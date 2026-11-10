@@ -1,0 +1,46 @@
+id = "S03"
+start = 20.0
+end = 29.0
+summary = "static extreme wide across the tracks; Rin at the platform edge looks up at something we do not see"
+lens = 28.0
+why = "From across the tracks she is a tiny figure at the edge looking up at something off screen; the open question costs nothing and the empty frame does the rest"
+vertical = [0.6]
+size = "EWS"
+angle = "eye level from across the tracks"
+move = "static"
+action = "Rin stands at the safety line and looks up."
+plate = "platform-edge"
+motion = "Static. Rin stands at the yellow line and tilts her head up; a pale moving light crosses her face and the tiles."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 9.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "caught by something"
+
+[frame]
+C1 = "tiny, standing at the platform edge, centre right"
+
+[at_start]
+C1 = "standing, head level"
+
+[at_end]
+C1 = "head tilted up"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "stand"
+camera = "ws-front"
+feet = [0.6, 0.62]
+height = 0.14
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand"
+camera = "ws-front"
+feet = [0.6, 0.62]
+height = 0.14

@@ -1,0 +1,13 @@
+# Empty-room plates of The Loop. Night, no people, no riders.
+
+[[plate]]
+name = "underpass-wide"
+view = "from street level under the elevated expressway looking down a long row of concrete pillars, light trails streaking across the underside overhead, wet empty road"
+tags = "under elevated highway, concrete pillars, light trails overhead, wet road, puddle reflections, neon glow in the distance, night, light rain"
+avoid = ["daylight", "people", "crowds", "motorcycle", "rider", "text", "logos"]
+
+[[plate]]
+name = "offramp-arcade"
+view = "from a footbridge looking at a curved off-ramp and an arcade tower with a dim neon sign at the edge of the ring road, light trails below, wet railing in the foreground"
+tags = "footbridge railing, curved off-ramp, arcade building, neon sign glow, light trails, expressway, city lights, night, light rain, wet"
+avoid = ["daylight", "people", "crowds", "motorcycle", "rider", "text", "logos"]

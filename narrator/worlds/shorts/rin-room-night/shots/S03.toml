@@ -1,0 +1,46 @@
+id = "S03"
+start = 20.0
+end = 30.0
+summary = "static extreme wide; Rin tiny on the window sill, knees up, the neon city beyond"
+lens = 28.0
+why = "Last shot is the first shot's frame again with her small on the sill: she is where the light is, and the film ends on the city still going"
+vertical = [0.3]
+size = "EWS"
+angle = "eye level from beside the desk"
+move = "static"
+action = "Rin sits on the sill and watches the city."
+plate = "bed-window"
+motion = "Static. Rin sits on the window sill with her back to camera; neon shifts on the glass; the desk lamp glows behind her."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 10.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "still, at rest"
+
+[frame]
+C1 = "tiny, seated on the sill, back to camera, left of centre"
+
+[at_start]
+C1 = "sitting on the sill"
+
+[at_end]
+C1 = "unchanged"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "sit-ledge"
+camera = "ws-back"
+feet = [0.3, 0.7]
+height = 0.2
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "sit-ledge"
+camera = "ws-back"
+feet = [0.3, 0.7]
+height = 0.2

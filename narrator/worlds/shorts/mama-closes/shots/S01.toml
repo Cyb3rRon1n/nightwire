@@ -1,0 +1,46 @@
+id = "S01"
+start = 0.0
+end = 10.0
+summary = "static wide along the counter; Mama, small, switches off the lanterns one by one"
+lens = 35.0
+why = "From the door end: the lanterns go out one by one along the counter and the room grows around her"
+vertical = [0.5]
+size = "WS"
+angle = "eye level from the door end of the stools"
+move = "static"
+action = "Mama switches off the lanterns."
+plate = "toward-far-end"
+motion = "Static. Mama reaches up and the lanterns go dark one by one; the last one stays lit."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 10.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "tired, satisfied"
+
+[frame]
+C1 = "small, standing, back three-quarter, centre"
+
+[at_start]
+C1 = "reaching up to the first lantern"
+
+[at_end]
+C1 = "standing under the last lit lantern"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "stand-back"
+camera = "ws-back"
+feet = [0.55, 0.82]
+height = 0.4
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand-back"
+camera = "ws-back"
+feet = [0.55, 0.82]
+height = 0.4

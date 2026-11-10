@@ -1,0 +1,5 @@
+title = "Rin: one night"
+character = "rin-kageyama"
+logline = "Rin Kageyama wakes in her neon room, crosses the city by Ring Line and the Loop, buys something hot in Hanabira-cho, eats at Mama Sato's under the eye of a woman she will help, and goes home to leave one small amber window open."
+mood = "lonely, quiet, Blade Runner 2049 / Dune: vast night spaces, one small figure, a small warm light in a big dark world"
+scenes = ["rin-wakes", "rin-ring-line", "rin-loop", "rin-hanabira", "rin-izakaya", "rin-room-night"]

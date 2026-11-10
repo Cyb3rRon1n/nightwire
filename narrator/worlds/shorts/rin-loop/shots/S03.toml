@@ -1,0 +1,46 @@
+id = "S03"
+start = 20.0
+end = 31.0
+summary = "static extreme wide under the pillars; Rin a tiny seated figure, her deck lit blue, light trails above"
+lens = 28.0
+why = "Hold: same wide as before, now she glows a little; the pale blue light is the small warmth against concrete and rain"
+vertical = [0.4]
+size = "EWS"
+angle = "eye level from the road, far back"
+move = "static"
+action = "Rin jacks in and goes still."
+plate = "underpass-wide"
+motion = "Static. Rin sits motionless, her deck glowing pale blue; light trails keep passing overhead; rain falls past the pillars."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 11.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "jacked in, still"
+
+[frame]
+C1 = "tiny, seated, centre left"
+
+[at_start]
+C1 = "seated, deck open"
+
+[at_end]
+C1 = "unchanged, deck glowing"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "sit-floor"
+camera = "ws-back"
+feet = [0.4, 0.78]
+height = 0.1
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "sit-floor"
+camera = "ws-back"
+feet = [0.4, 0.78]
+height = 0.1

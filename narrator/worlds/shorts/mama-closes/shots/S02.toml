@@ -1,0 +1,46 @@
+id = "S02"
+start = 10.0
+end = 20.0
+summary = "static extreme wide along the counter; Mama tiny at the far stool under one amber lantern, a cup in her hands"
+lens = 28.0
+why = "Long still wide on the one lantern: Mama is a small seated shape under it, the tiny warm light the film has been building"
+vertical = [0.86]
+size = "EWS"
+angle = "low eye level from the far end of the counter"
+move = "static"
+action = "Mama sits down with a cup under the last lantern."
+plate = "along-counter"
+motion = "Static. Mama sits with a cup; the one lantern glows; everything else in the room is dark."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 10.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "at rest"
+
+[frame]
+C1 = "tiny, seated, back three-quarter, far right"
+
+[at_start]
+C1 = "sitting down with a cup"
+
+[at_end]
+C1 = "seated, steam rising from the cup"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "sit-stool"
+camera = "ws-back"
+feet = [0.88, 0.88]
+height = 0.3
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "sit-stool"
+camera = "ws-back"
+feet = [0.88, 0.88]
+height = 0.3

@@ -1,0 +1,46 @@
+id = "S03"
+start = 20.0
+end = 29.0
+summary = "static medium-wide; Rin takes a paper bag and holds it with both hands, steam rising"
+lens = 35.0
+why = "Slightly closer, still from the side: a paper bag handed over is the smallest kindness in the film and needs no face"
+vertical = [0.35]
+size = "MWS"
+angle = "eye level, profile"
+move = "static"
+action = "Rin takes the bag and stands holding it, warm in her hands."
+plate = "yakitori-stand"
+motion = "Static. A bag is passed across the counter; Rin holds it in both sleeved hands; steam rises past the lantern."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 9.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "quietly comforted"
+
+[frame]
+C1 = "centre left, profile, holding a bag"
+
+[at_start]
+C1 = "reaching for the bag"
+
+[at_end]
+C1 = "holding the bag"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "stand"
+camera = "ms-profile"
+feet = [0.35, 0.95]
+height = 0.5
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand"
+camera = "ms-profile"
+feet = [0.35, 0.95]
+height = 0.5

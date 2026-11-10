@@ -1,0 +1,66 @@
+id = "S01"
+start = 0.0
+end = 10.0
+summary = "static extreme wide along the counter; Saeko tiny at the far stool, Mama small behind the counter walking toward her"
+lens = 28.0
+why = "A lone customer far right in the vast room; Mama enters from the other side so the frame holds two small people on one long counter"
+vertical = [0.86]
+size = "EWS"
+angle = "low eye level from the far end of the counter"
+move = "static"
+action = "Mama walks along the counter to the lone woman."
+plate = "along-counter"
+motion = "Static. Mama walks slowly along behind the counter; Saeko sits motionless, her chrome hand locked round a cup; steam rises."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 10.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "warm, watchful"
+C2 = "tired, composed"
+
+[frame]
+C1 = "small, behind the counter, centre right"
+C2 = "tiny, seated far right, back three-quarter"
+
+[at_start]
+C1 = "walking toward C2"
+C2 = "seated, chrome hand locked round a cup"
+
+[at_end]
+C1 = "near C2"
+C2 = "unchanged"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "walk"
+camera = "ws-back"
+feet = [0.6, 0.62]
+height = 0.2
+
+[[board]]
+which = "start"
+figure = "C2"
+pose = "sit-stool"
+camera = "ws-back"
+feet = [0.88, 0.88]
+height = 0.3
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand-back"
+camera = "ws-back"
+feet = [0.76, 0.62]
+height = 0.2
+
+[[board]]
+which = "end"
+figure = "C2"
+pose = "sit-stool"
+camera = "ws-back"
+feet = [0.88, 0.88]
+height = 0.3

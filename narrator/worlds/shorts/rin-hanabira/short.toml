@@ -1,0 +1,29 @@
+# Rin's day film, scene 4 of 6. Plates: narrator/worlds/plates/hanabira-cho.toml (new, not yet generated).
+title = "Rin in Hanabira-cho"
+logline = "Rin walks the neon street and stops at one small lantern-lit yakitori stand."
+place = "hanabira-cho"
+style = "anime screenshot coloring, cel shading, thick outlines, night, vast empty spaces, tiny figure, a small warm light in a big dark world, high contrast, bloom, quiet mature cyberpunk"
+budget_usd = 25.0
+model = "seedance-2.0-fast"
+retry_cap = 2
+avoid = ["cleavage", "open jacket", "readable text", "logos"]
+beats = ["immediate goal: get something hot to eat", "open question: she looks back down the street at nothing"]
+
+[cast]
+C1 = "rin-kageyama"
+
+[locks]
+C1 = "short black pixie undercut with pink tips, black lips, pale grey eyes, silver ear cuff, pale skin, lean frame"
+
+[scene]
+time = "night, about 00:30"
+weather = "outdoors; light rain, wet street"
+set = "a long wet Hanabira-cho street of stacked pink and cyan neon, with a small yakitori stand at a side-street corner"
+light = ["pink and cyan neon", "steam from a grate", "one warm paper lantern at the yakitori stand"]
+not_visible = ["daylight", "crowds", "readable text"]
+
+[wardrobe]
+C1 = "Oversized white hoodie with black shoulder straps and a yellow buckle band over a black high-neck underlayer, black fingerless gloves, black leggings with knee pads and chunky white sneakers."
+
+[blocking]
+staging = "figures are small in frame and mostly seen from behind or in profile; wide shots, slow, long holds"

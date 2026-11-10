@@ -1,0 +1,46 @@
+id = "S01"
+start = 0.0
+end = 10.0
+summary = "static extreme wide across the room; Rin a tiny figure on the bed edge, head down, neon across the blanket"
+lens = 28.0
+why = "Neon window as the big shape in the frame and Rin a small dark figure on the bed edge: the city is already awake and she is not"
+vertical = [0.3]
+size = "EWS"
+angle = "eye level from beside the desk, looking at the bed and window"
+move = "static"
+action = "Rin sits on the bed edge, head down, awake but not yet moving."
+plate = "bed-window"
+motion = "Static. Pink and cyan neon slides slowly across the blanket; Rin does not move, her sweater sleeves over her hands."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 10.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "tired, still half asleep"
+
+[frame]
+C1 = "small, seated on the bed edge, back to camera, left of centre"
+
+[at_start]
+C1 = "sitting, head down"
+
+[at_end]
+C1 = "unchanged"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "sit-ledge"
+camera = "ws-back"
+feet = [0.3, 0.86]
+height = 0.2
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "sit-ledge"
+camera = "ws-back"
+feet = [0.3, 0.86]
+height = 0.2

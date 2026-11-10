@@ -1,0 +1,13 @@
+# Empty-room plates of Hanabira-cho. Night, no people.
+
+[[plate]]
+name = "street-vanishing"
+view = "down a long wet entertainment-district street to a vanishing point: pink and cyan neon signs stacked on both sides, steam from a grate, an idol poster, empty pavement"
+tags = "street level, vanishing point, pink neon, cyan neon, neon signs, wet street reflections, steam, idol poster, pachinko parlor front, night, light rain"
+avoid = ["daylight", "people", "crowds", "text", "logos"]
+
+[[plate]]
+name = "yakitori-stand"
+view = "a small yakitori stand at the corner of a side street: one warm paper lantern, a grill with a little smoke, a short counter, wet pavement, neon far behind"
+tags = "yakitori stand, paper lantern, grill smoke, small counter, wet pavement, side street, pink neon in the background, night, light rain"
+avoid = ["daylight", "people", "crowds", "text", "logos"]

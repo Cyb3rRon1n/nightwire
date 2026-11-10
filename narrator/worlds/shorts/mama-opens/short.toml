@@ -1,0 +1,29 @@
+# Mama Sato's day film, scene 1 of 6. Plates: narrator/worlds/plates/ikebe-low.toml (alley-from-above and alley-doorway approved; alley-from-doorway new).
+title = "Mama Sato opens"
+logline = "At nightfall Mama Sato lights the lantern over her doorway in the narrow alley under the expressway."
+place = "ikebe-low"
+style = "anime screenshot coloring, cel shading, thick outlines, night, vast empty spaces, tiny figure, a small warm light in a big dark world, high contrast, bloom, quiet mature cyberpunk"
+budget_usd = 25.0
+model = "seedance-2.0-fast"
+retry_cap = 2
+avoid = ["cleavage", "open jacket", "readable text", "logos"]
+beats = ["immediate goal: open before the first customers", "open question: she looks out at the empty alley a moment too long"]
+
+[cast]
+C1 = "mama-sato"
+
+[locks]
+C1 = "grey hair in a high bun with gold hairsticks, brown eyes with red eyeliner, gold cybernetic ear piece, slender mature woman"
+
+[scene]
+time = "dusk-dark, about 18:30"
+weather = "outdoors; light rain, wet ground"
+set = "Ikebe Low: a narrow wooden-era alley under the expressway, wet ground, power lines, Mama Sato's lit doorway with a hanging lantern"
+light = ["the unlit lantern then its warm glow", "far orange expressway glow above", "wet ground reflections"]
+not_visible = ["daylight", "crowds", "readable text"]
+
+[wardrobe]
+C1 = "Red kimono with gold floral embroidery closed at the collar over a white inner collar, wide gold obi with a bow, ankle-length hem, black tabi socks and black platform sandals, with a black techwear apron over it."
+
+[blocking]
+staging = "figures are small in frame and mostly seen from behind or in profile; wide shots, slow, long holds"

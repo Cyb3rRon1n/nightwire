@@ -1,0 +1,66 @@
+id = "S03"
+start = 21.0
+end = 30.0
+summary = "static wide from the door end; Rin small in the foreground, Saeko tiny at the far stool, each with her back turned"
+lens = 35.0
+why = "Looking along the counter with Rin: a woman in a navy jacket far down is the next scene, and nobody turns to look at anyone"
+vertical = [0.7]
+size = "WS"
+angle = "eye level from the door end of the stools"
+move = "static"
+action = "Rin glances up the counter at the woman at the far end."
+plate = "toward-far-end"
+motion = "Static. Rin lifts her head and looks along the counter; far down the counter Saeko sits with her back turned; the lanterns hold still."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 9.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "noticing"
+C3 = "composed, still"
+
+[frame]
+C1 = "small, seated, left foreground, back three-quarter"
+C3 = "tiny, seated far right, back three-quarter"
+
+[at_start]
+C1 = "seated, eating"
+C3 = "seated, left hand over her chrome hand"
+
+[at_end]
+C1 = "seated, head raised toward C3"
+C3 = "unchanged"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "sit-stool"
+camera = "ws-back"
+feet = [0.52, 0.86]
+height = 0.4
+
+[[board]]
+which = "start"
+figure = "C3"
+pose = "sit-stool"
+camera = "ws-back"
+feet = [0.9, 0.86]
+height = 0.3
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "sit-stool"
+camera = "ws-back"
+feet = [0.52, 0.86]
+height = 0.4
+
+[[board]]
+which = "end"
+figure = "C3"
+pose = "sit-stool"
+camera = "ws-back"
+feet = [0.9, 0.86]
+height = 0.3

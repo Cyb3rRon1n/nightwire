@@ -1,0 +1,46 @@
+id = "S03"
+start = 19.0
+end = 30.0
+summary = "static medium-wide over the chair; three monitors wake blue one by one; the warm desk lamp stays on"
+lens = 35.0
+why = "Over the chair at the screens: the monitors waking one by one is the only light change, and the small desk lamp is the warm spot the film is about"
+vertical = [0.5]
+size = "MWS"
+angle = "eye level over the desk chair"
+move = "static"
+action = "Rin sits and the screens wake around her."
+plate = "desk-screens"
+motion = "Static. Rin sits in the chair, back to camera; the three monitors light blue one after another; the small desk lamp glows amber."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 11.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "settling in"
+
+[frame]
+C1 = "small, seated, back to camera, centre"
+
+[at_start]
+C1 = "sitting, hands near the keyboard"
+
+[at_end]
+C1 = "unchanged, lit blue by the screens"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "sit-stool"
+camera = "ws-back"
+feet = [0.5, 0.95]
+height = 0.4
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "sit-stool"
+camera = "ws-back"
+feet = [0.5, 0.95]
+height = 0.4

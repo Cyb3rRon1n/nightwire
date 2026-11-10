@@ -1,0 +1,29 @@
+# Rin's day film, scene 1 of 6. Plates: narrator/worlds/plates/rins-room.toml (desk-wide, bed-window, desk-screens are new, not yet generated).
+title = "Rin wakes"
+logline = "Rin wakes in her glowing little room and sits down at the screens, a small lamp the only warm thing in the dark."
+place = "rins-room"
+style = "anime screenshot coloring, cel shading, thick outlines, night, vast empty spaces, tiny figure, a small warm light in a big dark world, high contrast, bloom, quiet mature cyberpunk"
+budget_usd = 25.0
+model = "seedance-2.0-fast"
+retry_cap = 2
+avoid = ["cleavage", "open jacket", "readable text", "logos"]
+beats = ["strange event: none yet, a quiet ordinary waking", "immediate goal: sit down at the screens before the city's night starts"]
+
+[cast]
+C1 = "rin-kageyama"
+
+[locks]
+C1 = "short black pixie undercut with pink tips, black lips, pale grey eyes, silver ear cuff, pale skin, lean frame"
+
+[scene]
+time = "evening just after dark, about 20:00"
+weather = "indoors; the city outside the window is dry"
+set = "Rin's small stacked-block room: a desk with three dark monitors and a keyboard, an unmade bed in the corner, a large neon window, bundled cables, energy drink cans"
+light = ["pink and cyan neon through the window", "three monitors waking blue one by one", "one small warm desk lamp"]
+not_visible = ["daylight", "other people", "readable text"]
+
+[wardrobe]
+C1 = "Oversized dark grey knit sweater with sleeves over the hands, loose black cargo joggers and white sneakers."
+
+[blocking]
+staging = "figures are small in frame and mostly seen from behind or in profile; wide shots, slow, long holds"

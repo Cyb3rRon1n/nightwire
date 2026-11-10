@@ -1,0 +1,46 @@
+id = "S01"
+start = 0.0
+end = 9.0
+summary = "static extreme wide from inside the room; Rin a small silhouette in the doorway"
+lens = 28.0
+why = "Doorway silhouette: she is a dark cut-out against neon as she comes home, the room larger than her for the second time"
+vertical = [0.5]
+size = "EWS"
+angle = "eye level from the desk wall"
+move = "static"
+action = "Rin comes home and stands in the doorway."
+plate = "desk-wide"
+motion = "Static. Pink and cyan neon moves faintly on the wall; Rin's silhouette stands in the open doorway, then steps in."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 9.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "tired, a little lighter"
+
+[frame]
+C1 = "small, silhouette in the doorway, left of centre"
+
+[at_start]
+C1 = "in the doorway"
+
+[at_end]
+C1 = "one step inside"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "stand"
+camera = "ws-front"
+feet = [0.25, 0.88]
+height = 0.22
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand"
+camera = "ws-front"
+feet = [0.25, 0.88]
+height = 0.22

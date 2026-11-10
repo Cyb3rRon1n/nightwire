@@ -1,0 +1,46 @@
+id = "S01"
+start = 0.0
+end = 10.0
+summary = "static wide from the door end; Mama sits on the last stool in profile, two envelopes on the counter, the room empty"
+lens = 35.0
+why = "Profile on the end stool with two envelopes: she is small in the long room and it looks like a woman balancing two lives"
+vertical = [0.5]
+size = "WS"
+angle = "eye level from the door end of the stools"
+move = "static"
+action = "Mama sits with two envelopes in front of her."
+plate = "toward-far-end"
+motion = "Static. Mama sits in profile at the end stool; two envelopes lie on the counter; the lanterns hold still."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 10.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "tired, resolute"
+
+[frame]
+C1 = "small, seated profile, centre right"
+
+[at_start]
+C1 = "seated, hands folded"
+
+[at_end]
+C1 = "seated, one hand on an envelope"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "sit-stool"
+camera = "ws-profile"
+feet = [0.68, 0.86]
+height = 0.4
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "sit-stool"
+camera = "ws-profile"
+feet = [0.68, 0.86]
+height = 0.4

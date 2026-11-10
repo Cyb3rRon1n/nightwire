@@ -1,0 +1,35 @@
+# Rin's day film, scene 5 of 6. Plates: narrator/worlds/plates/mama-satos-izakaya.toml (existing; toward-door avoided). Leads into the saeko-rin-izakaya scene.
+title = "Rin at Mama Sato's"
+logline = "Mama Sato puts a bowl in front of Rin without being asked; far down the counter a woman in a navy jacket sits with her back turned."
+place = "mama-satos-izakaya"
+style = "anime screenshot coloring, cel shading, thick outlines, night, vast empty spaces, tiny figure, a small warm light in a big dark world, high contrast, bloom, quiet mature cyberpunk"
+budget_usd = 25.0
+model = "seedance-2.0-fast"
+retry_cap = 2
+avoid = ["cleavage", "open jacket", "readable text", "logos"]
+beats = ["immediate goal: eat something before anything else", "open question: Rin looks down the counter at a woman with a hand she is hiding"]
+
+[cast]
+C1 = "rin-kageyama"
+C2 = "mama-sato"
+C3 = "saeko-kirigaya"
+
+[locks]
+C1 = "short black pixie undercut with pink tips, black lips, pale grey eyes, silver ear cuff, pale skin, lean frame"
+C2 = "grey hair in a high bun with gold hairsticks, brown eyes with red eyeliner, gold cybernetic ear piece, slender mature woman"
+C3 = "chrome right hand with an amber ring light on the wrist, long straight black hair with blunt bangs, brown eyes, X-shaped scar on the left cheek"
+
+[scene]
+time = "late night, about 01:00"
+weather = "indoors; no windows"
+set = "Mama Sato's izakaya: one long wooden counter with guest stools on one side, bottle shelves and paper lanterns behind it, the noren doorway in the left wall"
+light = ["amber paper lanterns over the counter", "red neon sign on the back wall", "steam from the bowls"]
+not_visible = ["windows", "street", "daylight", "other customers"]
+
+[wardrobe]
+C1 = "Oversized white hoodie with black shoulder straps and a yellow buckle band over a black high-neck underlayer, black fingerless gloves, black leggings with knee pads and chunky white sneakers."
+C2 = "Red kimono with gold floral embroidery closed at the collar over a white inner collar, wide gold obi with a bow, ankle-length hem, black tabi socks and black platform sandals, with a black techwear apron over it."
+C3 = "cropped navy jacket with red trim zipped shut to the high collar, black trousers, chrome right hand with an amber ring light on the wrist"
+
+[blocking]
+staging = "figures are small in frame and mostly seen from behind or in profile; wide shots, slow, long holds"

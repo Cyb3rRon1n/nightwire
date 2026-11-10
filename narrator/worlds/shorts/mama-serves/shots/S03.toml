@@ -1,0 +1,66 @@
+id = "S03"
+start = 21.0
+end = 30.0
+summary = "static wide from the door end; Saeko tiny at the far stool, Mama small at the kitchen pass, each facing away"
+lens = 35.0
+why = "Holding wide as Mama moves off: the two small figures at either end of the counter share a room and not a word"
+vertical = [0.7]
+size = "WS"
+angle = "eye level from the door end of the stools"
+move = "static"
+action = "Mama goes back to the pass and leaves Saeko to eat."
+plate = "toward-far-end"
+motion = "Static. Mama moves to the kitchen pass and turns her back; Saeko sits still, a bowl before her; steam rises."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 9.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "quiet, watchful"
+C2 = "composed, unmoving"
+
+[frame]
+C1 = "small, at the pass on the left, back three-quarter"
+C2 = "tiny, seated far right, back three-quarter"
+
+[at_start]
+C1 = "walking to the pass"
+C2 = "seated, a bowl before her"
+
+[at_end]
+C1 = "at the pass, back to camera"
+C2 = "unchanged"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "walk"
+camera = "ws-back"
+feet = [0.7, 0.75]
+height = 0.25
+
+[[board]]
+which = "start"
+figure = "C2"
+pose = "sit-stool"
+camera = "ws-back"
+feet = [0.9, 0.86]
+height = 0.3
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "walk"
+camera = "ws-back"
+feet = [0.7, 0.75]
+height = 0.25
+
+[[board]]
+which = "end"
+figure = "C2"
+pose = "sit-stool"
+camera = "ws-back"
+feet = [0.9, 0.86]
+height = 0.3

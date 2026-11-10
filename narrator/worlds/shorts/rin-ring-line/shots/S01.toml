@@ -1,0 +1,46 @@
+id = "S01"
+start = 0.0
+end = 10.0
+summary = "static extreme wide down the platform; Rin a tiny white-hooded figure walks away along the yellow line"
+lens = 28.0
+why = "Far end of the platform: the long perspective of tiles makes her a small white mark, and the yellow line draws the eye to her"
+vertical = [0.5]
+size = "EWS"
+angle = "eye level from the far end of the platform"
+move = "static"
+action = "Rin walks away along the platform, hands in her hoodie pocket."
+plate = "platform-wide"
+motion = "Static. Rin walks slowly away along the yellow line toward the tunnel mouth; flat light flickers faintly."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 10.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "tired, wired, alone"
+
+[frame]
+C1 = "tiny, walking away, centre"
+
+[at_start]
+C1 = "near camera, walking away"
+
+[at_end]
+C1 = "far down the platform"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "walk"
+camera = "ws-back"
+feet = [0.5, 0.82]
+height = 0.12
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "walk"
+camera = "ws-back"
+feet = [0.52, 0.7]
+height = 0.07

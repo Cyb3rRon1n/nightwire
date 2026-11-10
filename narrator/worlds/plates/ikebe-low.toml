@@ -11,3 +11,15 @@ name = "alley-doorway"
 view = "along the narrow alley toward one lit doorway with a paper screen and a hanging lantern, wet ground reflecting the glow"
 tags = "narrow alley, old wooden building, lit doorway with paper screen, paper lantern, utility pole, power lines, wet ground, puddles, night, light rain"
 avoid = ["daylight", "van", "crowds", "people", "crowds", "text", "logos"]
+
+[[plate]]
+name = "alley-from-doorway"
+view = "from just inside the lit doorway of an old wooden building looking out across the narrow wet alley at an expressway pillar and a dark wall opposite, lantern light on the ground"
+tags = "view from a wooden doorway, narrow alley, wet ground, puddles, expressway pillar, old wooden wall opposite, paper lantern glow, power lines, night, light rain"
+avoid = ["daylight", "people", "crowds", "text", "logos"]
+
+[[plate]]
+name = "alley-corner"
+view = "a quiet corner of the narrow alley: stacked crates, a drain, a pipe, one lantern glow from a doorway far behind, wet ground"
+tags = "alley corner, stacked crates, drain, pipe, old wooden walls, lantern glow in the distance, wet ground, puddles, night, light rain"
+avoid = ["daylight", "people", "crowds", "text", "logos"]

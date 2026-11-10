@@ -1,0 +1,46 @@
+id = "S02"
+start = 9.0
+end = 20.0
+summary = "static medium-wide over the chair; Rin sits; one monitor holds a small amber window among the blue"
+lens = 35.0
+why = "From behind the chair: one amber window among blue ones is the hopecore beat, small and unreadable"
+vertical = [0.5]
+size = "MWS"
+angle = "eye level over the desk chair"
+move = "static"
+action = "Rin sits and looks at the one amber window."
+plate = "desk-screens"
+motion = "Static. Rin sits with her back to camera; the left monitor shows a small amber window; the others are blue; the desk lamp glows."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 11.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "quiet, undecided"
+
+[frame]
+C1 = "small, seated, back to camera, centre"
+
+[at_start]
+C1 = "seated, hands near the keyboard"
+
+[at_end]
+C1 = "unchanged"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "sit-stool"
+camera = "ws-back"
+feet = [0.5, 0.95]
+height = 0.4
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "sit-stool"
+camera = "ws-back"
+feet = [0.5, 0.95]
+height = 0.4

@@ -1,4 +1,5 @@
-# Pilot short: Saeko Kirigaya (C1) and Rin Kageyama (C2) at Mama Sato's izakaya, night, ~24 s.
+# Saeko's day film, scene 4, re-planned in the look-book grammar: four slow mostly-wide shots, ~38 s. Saeko (C1) and Rin (C2) at Mama Sato's izakaya, night.
+# Backs, profiles and two small figures; the old 24 s pilot had close-ups and an over-the-shoulder pair. Room facts below still apply.
 # Room in metres from design-data/mama-satos-izakaya/play.png: the counter runs along X, guests sit on the
 # -Y side facing +Y (facing 90), the bottle shelf is +Y behind the counter, the door (noren) is in the -X wall.
 # Low counter (top 0.85 m), 0.4 m box stools; seated C1 has hips at stool height (tool drops `sit`).
@@ -14,11 +15,10 @@ retry_cap = 2
 avoid = ["open jacket", "cleavage"]
 beats = [
   "strange event: C1's chrome hand locks shut around a sake cup, an amber light blinking on its wrist (S01)",
-  "immediate goal: C1 covers the hand before the newcomer sees it; C2 walks straight to her (S01)",
+  "immediate goal: C1 hides the hand; C2 arrives beside her and sees it (S02)",
   "unbreakable rule: nobody names a status light - C2 says 'jammed', C1 says 'resting' (S02)",
-  "ticking clock: the amber blink quickens while C1 bargains (S03)",
   "reveal: C2's price is her own name off C1's repo list, and C1 already knew (S03)",
-  "open question: C1 turns the data jack over and does not connect it (S03)",
+  "open question: C1 turns the data jack over and does not connect it (S04)",
 ]
 
 [cast]
@@ -113,17 +113,17 @@ at = [2.4, -0.55, 0.0]
 [figures.C1]
 tier = "mannequin"
 pose = "sit"
-keys = [[0.0, 0.8, -0.65, 90.0], [8.4, 0.8, -0.65, 90.0], [9.4, 0.8, -0.65, 65.0]]
+keys = [[0.0, 0.8, -0.65, 90.0], [38.0, 0.8, -0.65, 90.0]]
 
 [figures.C2]
 tier = "mannequin"
 pose = "stand"
-keys = [[0.0, -4.0, -2.6, 0.0], [1.8, -4.0, -2.6, 0.0], [2.6, -3.3, -1.35, 0.0],
-        [6.0, 0.6, -1.3, 0.0], [6.6, 1.3, -1.2, 30.0], [7.4, 1.6, -0.6, 175.0]]
+keys = [[0.0, -4.0, -2.6, 0.0], [10.0, -4.0, -2.6, 0.0], [12.0, -3.3, -1.35, 0.0],
+        [17.0, 0.0, -1.3, 0.0], [19.0, 0.0, -0.55, 90.0], [38.0, 0.0, -0.55, 90.0]]
 
 [locks]
 C1 = "chrome right hand with an amber ring light on the wrist, cropped navy jacket with red trim zipped shut up to the high collar, fully covered, long straight black hair"
-C2 = "black undercut with pink tips, black lips, white hoodie, white-silver cyberdeck on a strap"
+C2 = "black pixie undercut with pink tips, black lips, white oversized hoodie with black straps, white-silver cyberdeck on a strap"
 
 [scene]
 time = "late night, about 01:00"
@@ -137,4 +137,4 @@ C1 = "cropped navy jacket with red trim zipped shut to the high collar, black tr
 C2 = "white hoodie, white-silver cyberdeck on a strap across her chest"
 
 [blocking]
-seating = "C1 sits on a guest stool facing the counter; C2 ends on the stool to C1's left, turned toward her"
+seating = "C1 sits on a guest stool facing the counter; C2 ends on the stool to C1's left, also facing the counter; both are small in frame and seen from behind or in profile, never a close-up"

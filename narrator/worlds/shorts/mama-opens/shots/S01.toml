@@ -1,0 +1,46 @@
+id = "S01"
+start = 0.0
+end = 10.0
+summary = "static extreme wide from above; Mama a tiny figure at the doorway of the alley, a lantern not yet lit"
+lens = 28.0
+why = "From high above: the alley is a dark slot and her lantern is the one warm point, which is the whole film in one image"
+vertical = [0.5]
+size = "EWS"
+angle = "high above looking down the alley"
+move = "static"
+action = "Mama steps out into the alley with the lantern lit last."
+plate = "alley-from-above"
+motion = "Static. Rain falls on the wet ground; Mama, tiny, steps out of the doorway and reaches up; the lantern warms from dark to amber."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 10.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "calm, practised"
+
+[frame]
+C1 = "tiny at the doorway, lower centre"
+
+[at_start]
+C1 = "stepping out of the doorway"
+
+[at_end]
+C1 = "reaching to light the lantern"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "stand-back"
+camera = "ews-high"
+feet = [0.5, 0.82]
+height = 0.07
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand-back"
+camera = "ews-high"
+feet = [0.5, 0.82]
+height = 0.07

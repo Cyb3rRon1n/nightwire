@@ -1,0 +1,46 @@
+id = "S01"
+start = 0.0
+end = 10.0
+summary = "static wide from the guest side; Mama stands behind the counter ladling broth, small, the shelves and lanterns above"
+lens = 35.0
+why = "From the guest side, Mama small behind her own counter with the whole wall of bottles around her: she is a keeper of this room"
+vertical = [0.62]
+size = "WS"
+angle = "eye level from the guest side of the counter"
+move = "static"
+action = "Mama tastes the broth."
+plate = "toward-shelves"
+motion = "Static. Steam from the pot rises past the lanterns; Mama stirs, tastes, and nods once."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 10.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "calm, quietly proud"
+
+[frame]
+C1 = "small, behind the counter, facing camera, centre right"
+
+[at_start]
+C1 = "stirring the pot"
+
+[at_end]
+C1 = "setting the ladle down"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "stand"
+camera = "ws-front"
+feet = [0.62, 0.62]
+height = 0.3
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand"
+camera = "ws-front"
+feet = [0.62, 0.62]
+height = 0.3

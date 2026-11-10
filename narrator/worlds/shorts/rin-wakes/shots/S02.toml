@@ -1,0 +1,46 @@
+id = "S02"
+start = 10.0
+end = 19.0
+summary = "static wide from the doorway; Rin, small, walks to the desk and pulls out the chair"
+lens = 35.0
+why = "Long still wide from the doorway: the walk to the desk is the whole action, and the dark room around her stays bigger than she is"
+vertical = [0.5]
+size = "WS"
+angle = "eye level from the doorway across the room"
+move = "static"
+action = "Rin crosses the room to the desk."
+plate = "desk-wide"
+motion = "Static. Rin walks from the right edge toward the desk, sweater sleeves over her hands; the monitors are still dark."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 9.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "slow, unhurried"
+
+[frame]
+C1 = "small, walking, back three-quarter, crossing toward the desk"
+
+[at_start]
+C1 = "starting from the bed side"
+
+[at_end]
+C1 = "standing at the chair"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "walk"
+camera = "ws-back"
+feet = [0.75, 0.88]
+height = 0.34
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand-back"
+camera = "ws-back"
+feet = [0.5, 0.88]
+height = 0.34

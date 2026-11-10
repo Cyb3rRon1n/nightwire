@@ -1,0 +1,46 @@
+id = "S03"
+start = 20.0
+end = 29.0
+summary = "static medium-wide from the guest side; Mama's back at the counter reaching beneath the bottle shelf with the two envelopes"
+lens = 35.0
+why = "Back to camera at the bottle wall: she tucks the envelopes away under the shelf, the action is small and hidden, as her secret is"
+vertical = [0.45]
+size = "MWS"
+angle = "eye level from the guest side"
+move = "static"
+action = "Mama tucks the two envelopes under the shelf."
+plate = "toward-shelves"
+motion = "Static. Mama stands behind the counter and tucks two envelopes beneath the bottle shelf; the lanterns hold still."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 9.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "resolved"
+
+[frame]
+C1 = "behind the counter, back three-quarter, centre"
+
+[at_start]
+C1 = "reaching under the shelf"
+
+[at_end]
+C1 = "standing, hands empty"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "stand-back"
+camera = "ws-back"
+feet = [0.6, 0.62]
+height = 0.4
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand-back"
+camera = "ws-back"
+feet = [0.6, 0.62]
+height = 0.4

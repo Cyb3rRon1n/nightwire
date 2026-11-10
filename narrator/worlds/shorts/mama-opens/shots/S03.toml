@@ -1,0 +1,46 @@
+id = "S03"
+start = 20.0
+end = 29.0
+summary = "static extreme wide from inside the doorway; Mama a small silhouette at the threshold looking out at the empty alley"
+lens = 28.0
+why = "From the doorway out: she looks at the empty alley for a held beat; the wide leaves the question of who she is waiting for unanswered"
+vertical = [0.5]
+size = "EWS"
+angle = "eye level from inside the doorway looking out"
+move = "static"
+action = "Mama looks out at the alley, waiting."
+plate = "alley-from-doorway"
+motion = "Static. Rain; Mama stands at the threshold in silhouette, lantern light on the ground; nothing moves in the alley."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 9.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "waiting"
+
+[frame]
+C1 = "small silhouette at the threshold, back to camera, left of centre"
+
+[at_start]
+C1 = "standing at the threshold"
+
+[at_end]
+C1 = "unchanged"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "stand"
+camera = "ws-back"
+feet = [0.35, 0.9]
+height = 0.3
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand"
+camera = "ws-back"
+feet = [0.35, 0.9]
+height = 0.3

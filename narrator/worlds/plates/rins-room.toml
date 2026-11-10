@@ -1,0 +1,19 @@
+# Empty-room plates of Rin's room. Night, no people.
+
+[[plate]]
+name = "desk-wide"
+view = "from the doorway across a small lived-in room to the desk wall: three dark monitors, keyboard, bundled cables, energy drink cans, a chair pulled out"
+tags = "small apartment room, desk with three monitors, keyboard, bundled cables, energy drink cans, gaming chair, posters, cool dark room, neon glow on the wall, night, indoors"
+avoid = ["daylight", "people", "crowds", "text", "logos"]
+
+[[plate]]
+name = "bed-window"
+view = "from beside the desk toward the bed in the corner and a large window with pink and cyan neon city light falling across the blanket"
+tags = "small apartment room, unmade bed, blanket, large window, neon signs outside, city lights, pink and cyan glow, figurines on a shelf, night, indoors"
+avoid = ["daylight", "people", "crowds", "text", "logos"]
+
+[[plate]]
+name = "desk-screens"
+view = "over the back of the desk chair at three glowing monitors, a keyboard and a small warm desk lamp, the dark room around"
+tags = "three glowing monitors, keyboard, small warm desk lamp, bundled cables, energy drink cans, dark room, blue screen glow, night, indoors"
+avoid = ["daylight", "people", "crowds", "text", "logos"]

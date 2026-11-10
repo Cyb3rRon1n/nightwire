@@ -1,0 +1,46 @@
+id = "S03"
+start = 20.0
+end = 29.0
+summary = "static wide from the guest side; Mama behind the counter, small, looking out at the empty stools with the one lantern above"
+lens = 35.0
+why = "Last image from the guest stools, the bottle wall dark and her small figure behind the counter looking out: the day ends before she says anything"
+vertical = [0.5]
+size = "WS"
+angle = "eye level from the guest side"
+move = "static"
+action = "Mama looks at the empty room."
+plate = "toward-shelves"
+motion = "Static. Mama stands behind the counter looking out; the last lantern's glow lies on the counter; the steam from her cup rises."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 9.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "content"
+
+[frame]
+C1 = "small, behind the counter, facing camera, centre"
+
+[at_start]
+C1 = "standing, cup in hand"
+
+[at_end]
+C1 = "unchanged"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "stand"
+camera = "ws-front"
+feet = [0.55, 0.62]
+height = 0.3
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand"
+camera = "ws-front"
+feet = [0.55, 0.62]
+height = 0.3

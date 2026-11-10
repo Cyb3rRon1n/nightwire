@@ -1,0 +1,66 @@
+id = "S01"
+start = 0.0
+end = 10.0
+summary = "static wide from behind the guest stools; Mama behind the counter sets down a bowl in front of Rin"
+lens = 35.0
+why = "From the guest side we see Mama's back-lit bowl arrive over Rin's shoulder at her level: care is shown as an act, with no dialogue"
+vertical = [0.45]
+size = "WS"
+angle = "eye level from behind the stools"
+move = "static"
+action = "Mama sets a bowl down in front of Rin."
+plate = "toward-shelves"
+motion = "Static. Mama ladles broth into a bowl and sets it on the counter; steam rises; Rin sits with her back to camera and does not look up."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 10.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "tired, wired"
+C2 = "warm and brusque, caring without asking"
+
+[frame]
+C1 = "seated foreground, back to camera, left"
+C2 = "behind the counter, small, facing camera, centre right"
+
+[at_start]
+C1 = "seated, hands in her lap"
+C2 = "ladling broth"
+
+[at_end]
+C1 = "seated, a bowl before her"
+C2 = "stepping back"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "sit-stool"
+camera = "ws-back"
+feet = [0.3, 0.97]
+height = 0.4
+
+[[board]]
+which = "start"
+figure = "C2"
+pose = "stand"
+camera = "ws-front"
+feet = [0.62, 0.62]
+height = 0.3
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "sit-stool"
+camera = "ws-back"
+feet = [0.3, 0.97]
+height = 0.4
+
+[[board]]
+which = "end"
+figure = "C2"
+pose = "stand"
+camera = "ws-front"
+feet = [0.62, 0.62]
+height = 0.3

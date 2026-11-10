@@ -1,69 +1,88 @@
 id = "S02"
-start = 8.0
-end = 15.5
-summary = "over-the-shoulder single on C2: C2 alone fills the frame from the chest up; only the blurred back of C1's head at the right edge; static"
-lens = 40.0
-size = "MCU"
-angle = "eye level, tight over C1's shoulder, camera close behind C1"
+start = 10.0
+end = 21.0
+summary = "static wide toward the far end; Rin walks into frame and stops one stool from Saeko; two small backs; 'Your chrome hand's jammed.' 'It's resting.'"
+lens = 35.0
+why = "Still wide from the door end: two small figures and the long counter between them and the far wall keeps the exchange lonely, and neither face is shown"
+vertical = [0.7]
+size = "WS"
+angle = "eye level from the door end of the stools, looking along the counter"
 move = "static"
-action = "Rin offers to unlock the hand and slides her cable toward it."
+action = "Rin walks up beside Saeko and speaks to her; Saeko covers her hand and answers without turning."
 plate = "toward-far-end"
-motion = "Static. C2 speaks to C1, then lays the data cable's metal jack on the counter and slides it toward C1's chrome hand."
+motion = "Static. Rin enters from the left foreground and stops one stool away from Saeko; Saeko's left hand slides over her chrome hand; neither turns to face the camera."
+end_frame = true
 camera = [
-  { t = 0.0, at = [-0.08, -0.35, 1.15], look = [1.6, -0.8, 1.4] },
-  { t = 7.5, at = [-0.03, -0.36, 1.15], look = [1.6, -0.8, 1.4] },
+  { t = 0.0, at = [-3.0, -1.0, 1.5], look = [3.0, -0.3, 1.1] },
+  { t = 11.0, at = [-3.0, -1.0, 1.5], look = [3.0, -0.3, 1.1] },
 ]
 
 [state]
 C1 = "guarded and polite, embarrassed under it"
-C2 = "deadpan, quietly sure of her leverage"
+C2 = "damp hood down, deadpan, watchful"
 
 [[beats]]
-t = [8.0, 15.5]
-text = "Medium close-up single on C2, chest up, facing camera, screen left of centre, filling most of the frame. C1 is seen only from behind: the out-of-focus back of her head and one shoulder at the right edge of frame; C1's face is never visible. Not a side-by-side two-shot. C2 looks at C1"
+t = [10.0, 14.0]
+text = "Rin walks along the stools from screen left toward Saeko, small in frame, seen from behind and the side"
 
 [[beats]]
-t = [11.5, 13.0]
-text = "C2 draws a thin data cable from her cyberdeck and lays the cable's metal data jack on the counter top, sliding it out of the bottom of frame toward C1's chrome prosthetic hand"
-
-[[acting]]
-who = "C2"
-t = [8.0, 15.5]
-goal = "make C1 ask for help without saying the word"
-emotion = "deadpan, then a flicker of nerves as she makes the offer"
-trigger = "unlock"
-face = "AU12 small one-sided lip-corner pull B on 'jammed' (peak 1.0 s, offset 1.6 s); AU1+AU2 brow raise A at 'resting'; AU17 chin raiser B after 'unlock it' (peak 5.4 s)"
-gaze = "holds C1's eyes, drops to the hand at 3.0 s, back up on 'unlock'"
-voice = "flat and low; a small dry exhale before 'I can'"
-end = "waits, two fingers on the cable plug; C1's shoulder stays still"
+t = [14.0, 21.0]
+text = "Rin stops one stool from Saeko; Saeko's human left hand covers the chrome hand; the two small figures hold, side by side, facing the counter"
 
 [[lines]]
 who = "C2"
-t = 8.6
+t = 15.0
 text = "Your chrome hand's jammed."
 
 [[lines]]
 who = "C1"
-t = 10.0
+t = 18.0
 text = "It's resting."
 
-[[lines]]
-who = "C2"
-t = 12.4
-text = "I can unlock it."
-
 [frame]
-C2 = "screen-left of centre, facing camera"
-C1 = "foreground screen-right edge, out-of-focus back of head and shoulder only, face not visible"
+C1 = "seated, profile-back, screen right of centre, small"
+C2 = "standing then seated one stool to C1's left, back three-quarter, small"
 
 [at_start]
-C1 = "left hand covering the chrome hand on the cup"
-C2 = "seated on the stool beside C1, turned toward her, hands near her cyberdeck"
+C1 = "seated, chrome hand locked round the cup"
+C2 = "walking in from the door end, hands in her hoodie pocket"
 
 [at_end]
-C1 = "still, shoulder only"
-C2 = "two fingers on the cable's data jack on the counter"
+C1 = "left hand over the chrome hand, eyes on the counter"
+C2 = "seated one stool away, eyes on the covered hand"
 
 [props]
 C1 = "sake cup locked in the chrome right hand"
 C2 = "cyberdeck on a strap across her chest"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "sit-stool"
+camera = "ws-back"
+feet = [0.75, 0.82]
+height = 0.4
+
+[[board]]
+which = "start"
+figure = "C2"
+pose = "walk"
+camera = "ws-back"
+feet = [0.35, 0.9]
+height = 0.5
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "sit-stool"
+camera = "ws-back"
+feet = [0.75, 0.82]
+height = 0.4
+
+[[board]]
+which = "end"
+figure = "C2"
+pose = "sit-stool"
+camera = "ws-back"
+feet = [0.58, 0.84]
+height = 0.4

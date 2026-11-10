@@ -1,0 +1,29 @@
+# Mama Sato's day film, scene 2 of 6. Plates: narrator/worlds/plates/mama-satos-izakaya.toml (existing; toward-door avoided).
+title = "Mama Sato preps"
+logline = "Alone in her izakaya Mama Sato tends the broth and lines up the bottles before the first customer."
+place = "mama-satos-izakaya"
+style = "anime screenshot coloring, cel shading, thick outlines, night, vast empty spaces, tiny figure, a small warm light in a big dark world, high contrast, bloom, quiet mature cyberpunk"
+budget_usd = 25.0
+model = "seedance-2.0-fast"
+retry_cap = 2
+avoid = ["cleavage", "open jacket", "readable text", "logos"]
+beats = ["immediate goal: broth ready, bottles straight", "ticking clock: the first customer is minutes away"]
+
+[cast]
+C1 = "mama-sato"
+
+[locks]
+C1 = "grey hair in a high bun with gold hairsticks, brown eyes with red eyeliner, gold cybernetic ear piece, slender mature woman"
+
+[scene]
+time = "evening, about 19:00"
+weather = "indoors; no windows"
+set = "Mama Sato's izakaya: one long wooden counter with guest stools on one side, bottle shelves and paper lanterns behind it, the noren doorway in the left wall, a small kitchen pass at the far end"
+light = ["amber paper lanterns over the counter", "red neon sign on the back wall", "yellow strip light under the top shelf", "steam from the broth pot"]
+not_visible = ["windows", "street", "rain", "daylight", "other customers"]
+
+[wardrobe]
+C1 = "Red kimono with gold floral embroidery closed at the collar over a white inner collar, wide gold obi with a bow, ankle-length hem, black tabi socks and black platform sandals, with a black techwear apron over it."
+
+[blocking]
+staging = "figures are small in frame and mostly seen from behind or in profile; wide shots, slow, long holds"

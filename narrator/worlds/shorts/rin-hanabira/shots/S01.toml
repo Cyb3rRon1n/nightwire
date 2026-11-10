@@ -1,0 +1,46 @@
+id = "S01"
+start = 0.0
+end = 10.0
+summary = "static extreme wide down the neon street; Rin tiny, walking away"
+lens = 28.0
+why = "Vanishing-point street: the neon canyon is the world and Rin is a small figure walking away into it"
+vertical = [0.5]
+size = "EWS"
+angle = "eye level at the start of the street"
+move = "static"
+action = "Rin walks down the wet neon street."
+plate = "street-vanishing"
+motion = "Static. Rin walks away slowly down the middle of the street; neon flickers on the wet ground; steam drifts."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 10.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "tired, hungry"
+
+[frame]
+C1 = "tiny, walking away, centre"
+
+[at_start]
+C1 = "walking away"
+
+[at_end]
+C1 = "further down the street"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "walk"
+camera = "ws-back"
+feet = [0.5, 0.9]
+height = 0.12
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "walk"
+camera = "ws-back"
+feet = [0.5, 0.78]
+height = 0.07

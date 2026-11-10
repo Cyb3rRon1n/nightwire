@@ -1,0 +1,46 @@
+id = "S02"
+start = 10.0
+end = 20.0
+summary = "static wide on the stand; Rin stands at the little counter in profile, the lantern beside her"
+lens = 35.0
+why = "The lantern is the only warm light for a hundred metres; we hold wide so the stand and her small shape beside it read as one island"
+vertical = [0.35]
+size = "WS"
+angle = "eye level, profile across the counter"
+move = "static"
+action = "Rin waits at the stand while the grill smokes."
+plate = "yakitori-stand"
+motion = "Static. Smoke rises from the grill; Rin waits in profile at the counter, hands in her pockets; the lantern sways a little."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 10.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "waiting, a little less tired"
+
+[frame]
+C1 = "small, standing in profile, centre left"
+
+[at_start]
+C1 = "standing at the counter"
+
+[at_end]
+C1 = "unchanged"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "stand"
+camera = "ws-profile"
+feet = [0.35, 0.9]
+height = 0.34
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand"
+camera = "ws-profile"
+feet = [0.35, 0.9]
+height = 0.34

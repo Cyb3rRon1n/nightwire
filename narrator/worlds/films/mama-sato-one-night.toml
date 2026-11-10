@@ -1,0 +1,5 @@
+title = "Mama Sato: one night"
+character = "mama-sato"
+logline = "Mama Sato lights her lantern at nightfall, tends her counter, feeds a tired woman before asking a thing, pays the two envelopes, feeds a stray cat in the rain, and leaves one lantern burning."
+mood = "lonely, warm, Blade Runner 2049 / Dune: a small figure and one lantern in a big dark alley"
+scenes = ["mama-opens", "mama-prep", "mama-serves", "mama-envelopes", "mama-stray-cat", "mama-closes"]

@@ -1,0 +1,29 @@
+# Mama Sato's day film, scene 5 of 6. Plates: narrator/worlds/plates/ikebe-low.toml (alley-corner new). The cat is not a figure on boards.
+title = "Mama Sato and the stray cat"
+logline = "Mama Sato carries a dish of scraps out into the rainy alley for a stray cat."
+place = "ikebe-low"
+style = "anime screenshot coloring, cel shading, thick outlines, night, vast empty spaces, tiny figure, a small warm light in a big dark world, high contrast, bloom, quiet mature cyberpunk"
+budget_usd = 25.0
+model = "seedance-2.0-fast"
+retry_cap = 2
+avoid = ["cleavage", "open jacket", "readable text", "logos"]
+beats = ["immediate goal: put out the dish before bed", "open question: something small in the dark eats it"]
+
+[cast]
+C1 = "mama-sato"
+
+[locks]
+C1 = "grey hair in a high bun with gold hairsticks, brown eyes with red eyeliner, gold cybernetic ear piece, slender mature woman"
+
+[scene]
+time = "late night, about 03:15"
+weather = "outdoors; light rain, wet ground"
+set = "Ikebe Low: a narrow wooden-era alley under the expressway, wet ground, power lines, Mama Sato's lit doorway with a hanging lantern; a quiet corner with crates and a drain"
+light = ["lantern glow from the doorway", "wet ground reflections", "far orange expressway glow"]
+not_visible = ["daylight", "crowds", "readable text"]
+
+[wardrobe]
+C1 = "Red kimono with gold floral embroidery closed at the collar over a white inner collar, wide gold obi with a bow, ankle-length hem, black tabi socks and black platform sandals, with a black techwear apron over it."
+
+[blocking]
+staging = "figures are small in frame and mostly seen from behind or in profile; wide shots, slow, long holds"

@@ -1,0 +1,46 @@
+id = "S01"
+start = 0.0
+end = 10.0
+summary = "static extreme wide from above; Mama tiny, a dish in her hands, walks out of her doorway along the alley"
+lens = 28.0
+why = "High again from the film's first angle: the same alley and the same tiny figure, now carrying a dish, so the day is bookended"
+vertical = [0.5]
+size = "EWS"
+angle = "high above looking down the alley"
+move = "static"
+action = "Mama carries a dish out of the doorway."
+plate = "alley-from-above"
+motion = "Static. Rain; Mama, tiny, walks out of the lit doorway carrying a small dish; the lantern glows behind her."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 10.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "gentle"
+
+[frame]
+C1 = "tiny, walking, lower centre"
+
+[at_start]
+C1 = "stepping out with a dish"
+
+[at_end]
+C1 = "further along the alley"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "walk"
+camera = "ews-high"
+feet = [0.5, 0.82]
+height = 0.07
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "walk"
+camera = "ews-high"
+feet = [0.5, 0.65]
+height = 0.05

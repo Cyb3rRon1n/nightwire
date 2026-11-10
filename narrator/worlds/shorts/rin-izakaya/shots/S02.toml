@@ -1,0 +1,46 @@
+id = "S02"
+start = 10.0
+end = 21.0
+summary = "static extreme wide along the counter; Rin tiny at the far stool eating"
+lens = 28.0
+why = "Back to the far end: Rin is one small warm shape at the counter, and the big dark room has finally something in it"
+vertical = [0.86]
+size = "EWS"
+angle = "low eye level from the far end of the counter"
+move = "static"
+action = "Rin eats."
+plate = "along-counter"
+motion = "Static. Steam rises from her bowl; Rin eats slowly with her back three-quarter to camera."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 11.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "quietly eating"
+
+[frame]
+C1 = "tiny, seated, back three-quarter, far right"
+
+[at_start]
+C1 = "eating"
+
+[at_end]
+C1 = "eating"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "sit-stool"
+camera = "ws-back"
+feet = [0.88, 0.88]
+height = 0.3
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "sit-stool"
+camera = "ws-back"
+feet = [0.88, 0.88]
+height = 0.3

@@ -1,0 +1,66 @@
+id = "S02"
+start = 10.0
+end = 21.0
+summary = "static wide from behind the stool; Saeko's back foreground, Mama sets a bowl down in front of her"
+lens = 35.0
+why = "From the guest side we see only Saeko's back and Mama's hands: feeding comes before asking, the kindness is an action, not a line"
+vertical = [0.45]
+size = "WS"
+angle = "eye level from behind the stool"
+move = "static"
+action = "Mama sets a bowl in front of Saeko."
+plate = "toward-shelves"
+motion = "Static. Mama sets down a steaming bowl and pushes it a little closer with two fingers; Saeko keeps her left hand over her chrome hand."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 11.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "gentle, scolding in her silence"
+C2 = "guarded, grateful"
+
+[frame]
+C1 = "small, behind the counter, facing camera, centre"
+C2 = "foreground, seated, back to camera, left"
+
+[at_start]
+C1 = "bowl in both hands"
+C2 = "seated, left hand covering the chrome hand"
+
+[at_end]
+C1 = "hands empty, stepping back"
+C2 = "unchanged"
+
+[[board]]
+which = "start"
+figure = "C2"
+pose = "sit-stool"
+camera = "ws-back"
+feet = [0.35, 0.97]
+height = 0.4
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "stand"
+camera = "ws-front"
+feet = [0.55, 0.62]
+height = 0.3
+
+[[board]]
+which = "end"
+figure = "C2"
+pose = "sit-stool"
+camera = "ws-back"
+feet = [0.35, 0.97]
+height = 0.4
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand"
+camera = "ws-front"
+feet = [0.55, 0.62]
+height = 0.3

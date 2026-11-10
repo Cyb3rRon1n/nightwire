@@ -1,0 +1,46 @@
+id = "S02"
+start = 10.0
+end = 20.0
+summary = "static wide inside the carriage; Rin sits alone on a long bench, deck on her lap, profile"
+lens = 35.0
+why = "Profile in an empty carriage: one person among forty seats is loneliness without a word, and the cyberdeck glow is her only warmth"
+vertical = [0.35]
+size = "WS"
+angle = "eye level across the carriage"
+move = "static"
+action = "Rin sits alone with her cyberdeck on her knees."
+plate = "carriage-interior"
+motion = "Static. Rin sits at the far end of the bench, the deck glowing pale on her lap; the dark window opposite flickers with passing lights."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 10.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "tired, wired"
+
+[frame]
+C1 = "small, seated profile on the left bench"
+
+[at_start]
+C1 = "seated, deck on her lap"
+
+[at_end]
+C1 = "unchanged"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "sit-ledge"
+camera = "ws-profile"
+feet = [0.35, 0.85]
+height = 0.32
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "sit-ledge"
+camera = "ws-profile"
+feet = [0.35, 0.85]
+height = 0.32

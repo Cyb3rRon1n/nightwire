@@ -1,0 +1,46 @@
+id = "S02"
+start = 10.0
+end = 20.0
+summary = "static wide along the alley toward the lit doorway; Mama, small, stands in front of it with her back to camera, hanging the noren"
+lens = 35.0
+why = "Back to camera along the alley toward her own lit door: she walks toward her own small light, so the shot feels like a person going home to work"
+vertical = [0.5]
+size = "WS"
+angle = "eye level along the alley"
+move = "static"
+action = "Mama hangs the noren in the doorway."
+plate = "alley-doorway"
+motion = "Static. Mama stands at the doorway, back to camera, and hangs the noren; the lantern glow lies on the wet ground."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 10.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "calm"
+
+[frame]
+C1 = "small, standing at the doorway, back to camera, centre"
+
+[at_start]
+C1 = "reaching up with the noren"
+
+[at_end]
+C1 = "stepping back from the hung noren"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "stand-back"
+camera = "ws-back"
+feet = [0.5, 0.82]
+height = 0.32
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand-back"
+camera = "ws-back"
+feet = [0.5, 0.82]
+height = 0.32

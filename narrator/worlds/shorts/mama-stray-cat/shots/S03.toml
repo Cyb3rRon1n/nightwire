@@ -1,0 +1,46 @@
+id = "S03"
+start = 21.0
+end = 30.0
+summary = "static extreme wide along the alley; Mama a small figure in her lit doorway, lantern glowing"
+lens = 28.0
+why = "From the far end of the alley the small lit doorway with Mama in it is the warmest thing for a hundred metres: the hopecore frame"
+vertical = [0.5]
+size = "EWS"
+angle = "eye level from the far end of the alley"
+move = "static"
+action = "Mama waits in the doorway in the rain."
+plate = "alley-doorway"
+motion = "Static. Mama stands in the doorway under the lantern, watching the dark corner; rain falls on the wet ground."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 9.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "quietly content"
+
+[frame]
+C1 = "small, in the lit doorway, centre"
+
+[at_start]
+C1 = "standing in the doorway"
+
+[at_end]
+C1 = "unchanged"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "stand"
+camera = "ws-front"
+feet = [0.5, 0.82]
+height = 0.25
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand"
+camera = "ws-front"
+feet = [0.5, 0.82]
+height = 0.25

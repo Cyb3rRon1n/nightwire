@@ -1,0 +1,46 @@
+id = "S02"
+start = 10.0
+end = 20.0
+summary = "static extreme wide along the counter; Mama tiny behind it at the far end, straightening bottles"
+lens = 28.0
+why = "Along the empty counter: the length of wood and rows of stools are the loneliness of a place waiting for people"
+vertical = [0.86]
+size = "EWS"
+angle = "low eye level from the far end of the counter"
+move = "static"
+action = "Mama straightens the bottles."
+plate = "along-counter"
+motion = "Static. Mama, tiny behind the counter, aligns the bottles on the shelf one by one; the lanterns hold still."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 10.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "careful, habitual"
+
+[frame]
+C1 = "tiny behind the counter, right of centre, back three-quarter"
+
+[at_start]
+C1 = "reaching for a bottle"
+
+[at_end]
+C1 = "setting a bottle down"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "stand-back"
+camera = "ws-back"
+feet = [0.68, 0.6]
+height = 0.2
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand-back"
+camera = "ws-back"
+feet = [0.68, 0.6]
+height = 0.2

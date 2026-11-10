@@ -1,0 +1,46 @@
+id = "S01"
+start = 0.0
+end = 10.0
+summary = "static extreme wide from a footbridge; Rin tiny at the railing above the light trails"
+lens = 28.0
+why = "From the footbridge: the ring road is a river of light and she is a small still figure above it, the Blade Runner scale"
+vertical = [0.5]
+size = "EWS"
+angle = "high eye level on a footbridge looking over the off-ramp"
+move = "static"
+action = "Rin stands at the footbridge railing and watches the traffic."
+plate = "offramp-arcade"
+motion = "Static. Light trails stream by below; Rin stands at the railing, hands in her pockets; light rain."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 10.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "watching"
+
+[frame]
+C1 = "tiny at the railing, lower centre, back to camera"
+
+[at_start]
+C1 = "standing, hands in pockets"
+
+[at_end]
+C1 = "unchanged"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "stand"
+camera = "ews-high"
+feet = [0.5, 0.85]
+height = 0.1
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "stand"
+camera = "ews-high"
+feet = [0.5, 0.85]
+height = 0.1

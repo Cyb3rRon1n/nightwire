@@ -1,0 +1,46 @@
+id = "S02"
+start = 10.0
+end = 20.0
+summary = "static wide under the pillars; Rin crosses to a dry patch and sits down cross-legged with her deck"
+lens = 35.0
+why = "Slow wide between pillars: the scale of the concrete against one crouching figure says how small a person is on the Loop"
+vertical = [0.4]
+size = "WS"
+angle = "eye level at street level between pillars"
+move = "static"
+action = "Rin sits down cross-legged between two pillars and opens her deck."
+plate = "underpass-wide"
+motion = "Static. Rin walks into frame, sits cross-legged on a dry patch, opens her cyberdeck on her knees; light trails overhead."
+end_frame = true
+camera = [
+  { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+  { t = 10.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
+]
+
+[state]
+C1 = "wired, careful"
+
+[frame]
+C1 = "small, centre-left, back to camera"
+
+[at_start]
+C1 = "standing at the edge of the dry patch"
+
+[at_end]
+C1 = "sitting cross-legged, deck open"
+
+[[board]]
+which = "start"
+figure = "C1"
+pose = "stand-back"
+camera = "ws-back"
+feet = [0.4, 0.82]
+height = 0.3
+
+[[board]]
+which = "end"
+figure = "C1"
+pose = "sit-floor"
+camera = "ws-back"
+feet = [0.4, 0.82]
+height = 0.2

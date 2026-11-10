@@ -1,0 +1,29 @@
+# Rin's day film, scene 3 of 6. Plates: narrator/worlds/plates/the-loop.toml (new, not yet generated). No riders or bikes in any plate.
+title = "Rin on the Loop"
+logline = "Under the racing ring road Rin sits cross-legged and jacks in, a pale blue glow among concrete pillars and passing light."
+place = "the-loop"
+style = "anime screenshot coloring, cel shading, thick outlines, night, vast empty spaces, tiny figure, a small warm light in a big dark world, high contrast, bloom, quiet mature cyberpunk"
+budget_usd = 25.0
+model = "seedance-2.0-fast"
+retry_cap = 2
+avoid = ["cleavage", "open jacket", "readable text", "logos"]
+beats = ["immediate goal: find a quiet place to jack in", "ticking clock: the light trails never stop moving overhead"]
+
+[cast]
+C1 = "rin-kageyama"
+
+[locks]
+C1 = "short black pixie undercut with pink tips, black lips, pale grey eyes, silver ear cuff, pale skin, lean frame"
+
+[scene]
+time = "late night, about 23:30"
+weather = "outdoors under an elevated expressway; light rain, wet ground"
+set = "street level beneath the Loop: a long row of concrete pillars, wet road, light trails streaking overhead, an arcade tower with a dim neon sign at an off-ramp"
+light = ["light trails streaking overhead", "dim neon from the arcade tower", "the pale blue glow of her cyberdeck"]
+not_visible = ["daylight", "crowds", "bikers", "riders", "readable text"]
+
+[wardrobe]
+C1 = "Oversized white hoodie with black shoulder straps and a yellow buckle band over a black high-neck underlayer, black fingerless gloves, black leggings with knee pads and chunky white sneakers."
+
+[blocking]
+staging = "figures are small in frame and mostly seen from behind or in profile; wide shots, slow, long holds"
