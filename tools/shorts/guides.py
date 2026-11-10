@@ -3,16 +3,22 @@
 import json
 from pathlib import Path
 
-from PIL import Image, ImageFilter, ImageOps
+from PIL import Image, ImageChops, ImageFilter, ImageOps
 
 KEY_W, KEY_H = 1216, 832
 
 
 def lineart(src: Path, out: Path) -> Path:
-    g = ImageOps.grayscale(Image.open(src)).filter(ImageFilter.FIND_EDGES)
-    g = g.point(lambda v: 255 if v > 40 else 0).filter(ImageFilter.MaxFilter(3))
+    """White lines wherever neighbouring pixels differ in shade (> 8/255), dilated to solid ~4 px lines, specks removed."""
+    g = ImageOps.grayscale(Image.open(src))
+    w, h = g.size
+    dx = ImageChops.difference(g, ImageChops.offset(g, 1, 0))
+    dy = ImageChops.difference(g, ImageChops.offset(g, 0, 1))
+    e = ImageChops.lighter(dx, dy).point(lambda v: 255 if v > 8 else 0)
+    e = e.crop((0, 0, w - 1, h - 1)).filter(ImageFilter.MaxFilter(5))  # crop drops the wrapped-around border
+    e = e.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.MaxFilter(3))  # open: drops specks thinner than 3 px
     out.parent.mkdir(parents=True, exist_ok=True)
-    g.convert("RGB").save(out)
+    e.convert("RGB").save(out)
     return out
 
 

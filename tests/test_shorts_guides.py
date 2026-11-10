@@ -40,3 +40,15 @@ def test_guides_command_writes_lineart_per_guide_png(tmp_path, monkeypatch):
     assert main(["guides", "pilot"]) == 0
     for n in ("start", "end", "start-room", "end-room"):
         assert (sd / "guide" / f"{n}-lineart.png").exists()
+
+
+def test_lineart_joins_touching_shades_with_continuous_line(tmp_path):
+    src = tmp_path / "g.png"
+    im = Image.new("RGB", (100, 100), "black")
+    d = ImageDraw.Draw(im)
+    d.rectangle([20, 20, 49, 79], fill=(120, 120, 120))
+    d.rectangle([50, 20, 79, 79], fill=(160, 160, 160))  # shares an edge at x=49/50, no black gap
+    im.save(src)
+    out = Image.open(lineart(src, tmp_path / "l.png")).convert("L")
+    assert all(max(out.getpixel((x, y)) for x in range(47, 53)) == 255 for y in range(25, 75))
+    assert out.getpixel((35, 50)) == 0 and out.getpixel((65, 50)) == 0

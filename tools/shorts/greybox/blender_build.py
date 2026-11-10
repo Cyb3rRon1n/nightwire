@@ -6,6 +6,7 @@ import json
 import math
 import shutil
 import sys
+import zlib
 from pathlib import Path
 
 import bpy
@@ -127,9 +128,14 @@ def render_guides(shot, cam, start, last):
     guide = out / "shots" / shot["id"] / "guide"
     guide.mkdir(parents=True, exist_ok=True)
     sh, res, world = sc.display.shading, (sc.render.resolution_x, sc.render.resolution_y), tuple(sc.world.color)
-    saved = (sh.light, sh.color_type, sh.single_color[:], sh.show_object_outline)
+    saved = (sh.light, sh.color_type, sh.show_object_outline)
+    fig_shade = {c.name: 0.9 + 0.05 * (i % 3) for i, o in enumerate(figures.values()) for c in (o, *o.children_recursive)}
+    old_colours = {o.name: tuple(o.color) for o in bpy.data.objects}
+    for o in bpy.data.objects:  # one stable shade per room object (0.25..0.85), one near-white shade per figure
+        g = fig_shade[o.name] if o.name in fig_shade else 0.25 + 0.6 * (zlib.crc32(o.name.encode()) % 1000) / 999
+        o.color = (g, g, g, 1)
     sc.render.resolution_x, sc.render.resolution_y = KEY_W, KEY_H
-    sh.light, sh.color_type, sh.single_color, sh.show_object_outline = "FLAT", "SINGLE", (1, 1, 1), True
+    sh.light, sh.color_type, sh.show_object_outline = "FLAT", "OBJECT", True
     sc.world.color = (0, 0, 0)
     boxes = {}
     try:
@@ -150,7 +156,9 @@ def render_guides(shot, cam, start, last):
         (guide / "regions.json").write_text(json.dumps(boxes, indent=1))
     finally:
         sc.render.resolution_x, sc.render.resolution_y = res
-        sh.light, sh.color_type, sh.single_color, sh.show_object_outline = saved
+        sh.light, sh.color_type, sh.show_object_outline = saved
+        for o in bpy.data.objects:
+            o.color = old_colours[o.name]
         sc.world.color = world
 
 
