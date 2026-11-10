@@ -487,8 +487,13 @@ def cmd_wall(a) -> int:
 def cmd_animatic(a) -> int:
     from tools.shorts import animatic, film
     try:
-        f = film.load_film(a.slug, shorts_dir=SHORTS_DIR)
         w, h = (int(v) for v in a.size.split("x"))
+    except ValueError:
+        w = h = 0
+    if w < 2 or h < 2 or w % 2 or h % 2:
+        raise CliError(f"--size must be WxH with even numbers (e.g. 1216x832), got {a.size!r}")
+    try:
+        f = film.load_film(a.slug, shorts_dir=SHORTS_DIR)
     except ValueError as e:
         raise CliError(str(e))
     print(animatic.build(f, a.slug, SHORTS_DIR, data_dir().parent, data_dir() / "_site", a.fps, (w, h)))

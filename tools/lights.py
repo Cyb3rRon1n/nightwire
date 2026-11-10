@@ -182,7 +182,9 @@ def animate(still, out, seconds=60, fps=24, size="1920x1080", seed=1, strength=0
         ff.stdin.write((lt.frame(i) * 255).astype(np.uint8).tobytes())
         if i % 240 == 0:
             print(f"frame {i}/{lt.N}", flush=True)
-    ff.stdin.close(); ff.wait()
+    ff.stdin.close()
+    if ff.wait():
+        raise RuntimeError(f"ffmpeg failed ({ff.returncode})")
 
 
 def main(argv=None):

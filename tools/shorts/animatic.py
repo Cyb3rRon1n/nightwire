@@ -60,26 +60,24 @@ def _fit(path: Path | None, size: tuple[int, int]) -> Image.Image:
 class _Lit:
     """Plate light breathing, one Lights object per plate image (rebuilt only when the plate changes)."""
 
-    def __init__(self, size):
-        self.size, self.key, self.lights = size, None, None
+    def __init__(self, size, fps):
+        self.size, self.fps, self.cache = size, fps, {}
 
     def gain(self, plate: Path | None, i: int):
         if plate is None or not plate.exists():
             return None
-        if self.key != plate:
+        if plate not in self.cache:
             import cv2
 
             from tools.lights import Lights
-            self.key = plate
-            self.lights = Lights(cv2.imread(str(plate)), f"{self.size[0]}x{self.size[1]}", seconds=8, fps=self.fps)
-        return self.lights.gain(i)
+            self.cache[plate] = Lights(cv2.imread(str(plate)), f"{self.size[0]}x{self.size[1]}", seconds=8, fps=self.fps)
+        return self.cache[plate].gain(i)
 
 
 def frames(film, shorts_dir: Path, design_dir: Path, fps: int = 24, size: tuple[int, int] = (1216, 832), lights: bool = True, plates_root: Path | None = None):
     """Yields RGB PIL frames: Σ round(duration*fps) per shot plus GAP_S black between scenes."""
     import numpy as np
-    lit = _Lit(size)
-    lit.fps = fps
+    lit = _Lit(size, fps)
     for n, scene in enumerate(film.scenes):
         if n:
             for _ in range(round(GAP_S * fps)):
@@ -120,7 +118,10 @@ def build(film, film_slug: str, shorts_dir: Path, design_dir: Path, site_root: P
         for fr in frames(film, shorts_dir, design_dir, fps, size, plates_root=plates_root):
             ff.stdin.write(fr.tobytes())
     finally:
-        ff.stdin.close()
+        try:
+            ff.stdin.close()
+        except OSError:
+            pass  # ffmpeg died; the original error is the one to surface
         ff.wait()
     if ff.returncode:
         raise RuntimeError(f"ffmpeg failed ({ff.returncode})")

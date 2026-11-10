@@ -229,3 +229,13 @@ def test_films_producer_skips_bad_film_and_bad_slug(tmp_path, capsys):
     assert [i.id.split("--")[1] for i in items] == ["night"]
     err = capsys.readouterr().err
     assert "ghosty" in err and "Bad_Slug" in err and "broken" in err
+
+
+def test_films_producer_survives_broken_scene_short(tmp_path, capsys):
+    shorts, films, lib, plates, dd = world(tmp_path)
+    (films / "aaa.toml").write_text(FILM.replace('["pilot"]', '["bad"]'))
+    (shorts / "bad").mkdir()
+    (shorts / "bad" / "short.toml").write_text('title = "x"\n')  # loads as a short file, but missing place
+    c = {"shorts_dir": shorts, "films_dir": films, "design_dir": dd, "site": tmp_path / "site"}
+    assert [i.project for i in P.films(c)] == ["night"]
+    assert "aaa" in capsys.readouterr().err

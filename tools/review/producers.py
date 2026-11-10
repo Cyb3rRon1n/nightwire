@@ -301,26 +301,25 @@ def films(ctx) -> list[Item]:
             continue
         try:
             f = film_mod.load_film(path.stem, fdir, root)
-        except (ValueError, KeyError, OSError) as e:
+            h = hashlib.sha256(path.read_bytes())
+            pngs, lines = [], []
+            for scene in f.scenes:
+                short = load_short(root / scene)
+                lines.append(f"Scene {scene}: {short.title} ({short.scene.time if short.scene else ''}, {short.place})")
+                for tf in sorted((root / scene / "shots").glob("*.toml")):
+                    h.update(tf.read_bytes())
+                for sh in short.shots:
+                    lines.append(f"  {sh.id} {sh.size} {sh.move or 'static'} {sh.duration:g} s: {sh.action or sh.summary}")
+                    for which in ("start", "end"):
+                        png = ctx["design_dir"] / "shorts" / scene / "shots" / sh.id / f"board-{which}.png"
+                        if png.exists():
+                            h.update(png.read_bytes())
+                            pngs.append((f"{scene}-{sh.id}-{which}", png))
+            files = [web_copy(png, ctx["site"], f"films/{f.slug}/{name}.jpg", 800) for name, png in pngs[:12]]
+            out.append(Item(f"film--{f.slug}--{h.hexdigest()[:10]}", "wall", "pre-production", f.slug, f"{f.title}: film wall", files,
+                            context="\n".join([f.logline, f"Mood: {f.mood}", *lines])))
+        except (ValueError, KeyError, OSError) as e:  # TOMLDecodeError is a ValueError
             print(f"films: skipping {path.stem}: {e}", file=sys.stderr)
-            continue
-        h = hashlib.sha256(path.read_bytes())
-        pngs, lines = [], []
-        for scene in f.scenes:
-            short = load_short(root / scene)
-            lines.append(f"Scene {scene}: {short.title} ({short.scene.time if short.scene else ''}, {short.place})")
-            for tf in sorted((root / scene / "shots").glob("*.toml")):
-                h.update(tf.read_bytes())
-            for sh in short.shots:
-                lines.append(f"  {sh.id} {sh.size} {sh.move or 'static'} {sh.duration:g} s: {sh.action or sh.summary}")
-                for which in ("start", "end"):
-                    png = ctx["design_dir"] / "shorts" / scene / "shots" / sh.id / f"board-{which}.png"
-                    if png.exists():
-                        h.update(png.read_bytes())
-                        pngs.append((f"{scene}-{sh.id}-{which}", png))
-        files = [web_copy(png, ctx["site"], f"films/{f.slug}/{name}.jpg", 800) for name, png in pngs[:12]]
-        out.append(Item(f"film--{f.slug}--{h.hexdigest()[:10]}", "wall", "pre-production", f.slug, f"{f.title}: film wall", files,
-                        context="\n".join([f.logline, f"Mood: {f.mood}", *lines])))
     return out
 
 
