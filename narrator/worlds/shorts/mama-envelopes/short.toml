@@ -23,7 +23,7 @@ light = ["amber paper lanterns over the counter", "red neon sign on the back wal
 not_visible = ["windows", "street", "rain", "daylight", "other customers"]
 
 [wardrobe]
-C1 = "Red kimono with gold floral embroidery closed at the collar over a white inner collar, wide gold obi with a bow, ankle-length hem, black tabi socks and black platform sandals, with a black techwear apron over it."
+C1 = "work"
 
 [blocking]
 staging = "figures are small in frame and mostly seen from behind or in profile; wide shots, slow, long holds"

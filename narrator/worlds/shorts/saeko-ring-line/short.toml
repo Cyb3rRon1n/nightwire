@@ -23,7 +23,7 @@ light = ["flat fluorescent tubes overhead", "flickering advertisement screens", 
 not_visible = ["daylight", "crowds", "other passengers", "readable text"]
 
 [wardrobe]
-C1 = "cropped navy jacket with red trim over a black bodysuit zipped to the high collar, dark opaque tights and black boots, red-and-black gloves, chrome right hand with an amber ring light on the wrist"
+C1 = "work"
 
 [blocking]
 staging = "Saeko is the only person on screen; she is small in frame and mostly seen from behind or in profile"

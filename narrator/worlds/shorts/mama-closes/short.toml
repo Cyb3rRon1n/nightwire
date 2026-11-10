@@ -23,7 +23,7 @@ light = ["one amber paper lantern left lit", "red neon sign dimming", "faint coo
 not_visible = ["windows", "street", "rain", "daylight", "other customers"]
 
 [wardrobe]
-C1 = "Plain indigo cotton kimono with a narrow grey obi and a knitted black cardigan over it, hair in the same bun."
+C1 = "offduty"
 
 [blocking]
 staging = "figures are small in frame and mostly seen from behind or in profile; wide shots, slow, long holds"

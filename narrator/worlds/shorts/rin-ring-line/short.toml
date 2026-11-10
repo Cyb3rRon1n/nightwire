@@ -23,7 +23,7 @@ light = ["flat fluorescent tubes overhead", "cold cyan reflections on tiles", "t
 not_visible = ["daylight", "crowds", "readable text"]
 
 [wardrobe]
-C1 = "Oversized white hoodie with black shoulder straps and a yellow buckle band over a black high-neck underlayer, black fingerless gloves, black leggings with knee pads and chunky white sneakers."
+C1 = "work"
 
 [blocking]
 staging = "figures are small in frame and mostly seen from behind or in profile; wide shots, slow, long holds"

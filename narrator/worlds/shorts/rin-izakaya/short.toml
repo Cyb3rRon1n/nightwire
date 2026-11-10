@@ -27,9 +27,9 @@ light = ["amber paper lanterns over the counter", "red neon sign on the back wal
 not_visible = ["windows", "street", "daylight", "other customers"]
 
 [wardrobe]
-C1 = "Oversized white hoodie with black shoulder straps and a yellow buckle band over a black high-neck underlayer, black fingerless gloves, black leggings with knee pads and chunky white sneakers."
-C2 = "Red kimono with gold floral embroidery closed at the collar over a white inner collar, wide gold obi with a bow, ankle-length hem, black tabi socks and black platform sandals, with a black techwear apron over it."
-C3 = "cropped navy jacket with red trim zipped shut to the high collar, black trousers, chrome right hand with an amber ring light on the wrist"
+C1 = "work"
+C2 = "work"
+C3 = "work"
 
 [blocking]
 staging = "figures are small in frame and mostly seen from behind or in profile; wide shots, slow, long holds"

@@ -23,7 +23,7 @@ light = ["cold cyan glow from the vending machine below", "faint amber from her 
 not_visible = ["daylight", "other residents", "crowds"]
 
 [wardrobe]
-C1 = "plain long charcoal coat over black leggings and black boots, chrome right hand left bare with an amber ring light on the wrist"
+C1 = "offduty"
 
 [blocking]
 staging = "Saeko is the only person on screen; she is small in frame and mostly seen from behind or in profile"

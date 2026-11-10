@@ -133,8 +133,8 @@ light = ["amber paper lanterns over the counter", "red neon sign on the back wal
 not_visible = ["windows", "street", "rain", "daylight", "other customers"]
 
 [wardrobe]
-C1 = "cropped navy jacket with red trim zipped shut to the high collar, black trousers, chrome right hand with an amber ring light on the wrist"
-C2 = "white hoodie, white-silver cyberdeck on a strap across her chest"
+C1 = "work"
+C2 = "work"
 
 [blocking]
 seating = "C1 sits on a guest stool facing the counter; C2 ends on the stool to C1's left, also facing the counter; both are small in frame and seen from behind or in profile, never a close-up"

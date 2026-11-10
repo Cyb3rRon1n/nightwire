@@ -23,7 +23,7 @@ light = ["cold cyan light from the tower glass", "far orange city glow below", "
 not_visible = ["daylight", "crowds", "other people", "sunset"]
 
 [wardrobe]
-C1 = "cropped navy jacket with red trim over a black bodysuit zipped to the high collar, dark opaque tights and black boots, red-and-black gloves, chrome right hand with an amber ring light on the wrist"
+C1 = "work"
 
 [blocking]
 staging = "Saeko is the only person on screen; she is small in frame and mostly seen from behind or in profile"
