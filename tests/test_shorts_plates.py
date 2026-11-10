@@ -1,3 +1,6 @@
+from pathlib import Path
+
+from narrator.designs import load_designs
 from tools.shorts.plates import load_plates, plate_id, plate_path
 
 TOML = '''
@@ -12,7 +15,7 @@ view = "from behind the counter toward the noren door"
 
 
 def test_load_and_paths(tmp_path):
-    (tmp_path / "izakaya.plates.toml").write_text(TOML)
+    (tmp_path / "izakaya.toml").write_text(TOML)
     p = load_plates("izakaya", tmp_path)
     assert list(p) == ["toward-shelves", "toward-door"] and p["toward-door"].source == ""
     dd = tmp_path / "dd"
@@ -20,3 +23,10 @@ def test_load_and_paths(tmp_path):
     assert plate_path(dd, "izakaya", p["toward-door"]) == dd / "izakaya" / "plates" / "toward-door.png"
     assert plate_id("izakaya", "toward-door") == "plate--izakaya--toward-door"
     assert load_plates("nowhere", tmp_path) == {}
+
+
+def test_plate_catalogues_stay_out_of_the_designs_folder():
+    root = Path(__file__).resolve().parents[1]
+    assert load_designs(root / "narrator/worlds/designs")  # the real folder still loads
+    assert not list((root / "narrator/worlds/designs").glob("*plates*"))
+    assert load_plates("mama-satos-izakaya", root / "narrator/worlds/plates")

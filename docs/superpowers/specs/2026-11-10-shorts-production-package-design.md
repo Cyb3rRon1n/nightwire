@@ -81,7 +81,7 @@ Keyframes live in `design-data/shorts/<slug>/shots/Sxx/keyframe-start.png` and `
 
 ### Place plates
 
-`design-data/<place>/plates/<name>.png` plus `narrator/worlds/designs/<place>.plates.toml`:
+`design-data/<place>/plates/<name>.png` plus `narrator/worlds/plates/<place>.toml`:
 
 ```toml
 [[plate]]

@@ -1,11 +1,12 @@
 """Location plates: the empty room from each camera direction a short needs. A plate is approved once (review id
-plate--<place>--<name>) and reused by every later short at that place."""
+plate--<place>--<name>) and reused by every later short at that place. Catalogues live in narrator/worlds/plates/,
+outside the designs folder, because every design tool globs designs/*.toml as a design."""
 
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
-DESIGNS_ROOT = Path("narrator/worlds/designs")
+PLATES_ROOT = Path("narrator/worlds/plates")
 
 
 @dataclass
@@ -15,8 +16,8 @@ class Plate:
     source: str = ""   # an existing approved image of the place adopted as this plate
 
 
-def load_plates(place: str, designs_root: Path = DESIGNS_ROOT) -> dict[str, Plate]:
-    path = designs_root / f"{place}.plates.toml"
+def load_plates(place: str, plates_root: Path = PLATES_ROOT) -> dict[str, Plate]:
+    path = plates_root / f"{place}.toml"
     if not path.exists():
         return {}
     return {p["name"]: Plate(**p) for p in tomllib.loads(path.read_text()).get("plate", [])}
