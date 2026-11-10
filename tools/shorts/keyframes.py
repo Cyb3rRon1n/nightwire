@@ -1,4 +1,4 @@
-"""Start/end keyframe candidates per shot: the house NoobAI model, guided by the grey-box lineart (ControlNet) and
+"""Start/end keyframe candidates per shot: the house NoobAI model, guided by the room-only grey-box lineart (ControlNet) and
 one prompt per character limited to that character's screen region. Mirrors plates.py (plan_jobs / render / run / choose)."""
 
 import shutil
@@ -105,9 +105,9 @@ def plan_jobs(short, work: Path, shot_id: str | None = None, which: str = "both"
         for w in needed(shot):
             if which != "both" and w != which:
                 continue
-            art = shot_dir / "guide" / f"{w}-lineart.png"
+            art = shot_dir / "guide" / f"{w}-room-lineart.png"
             if not art.exists():
-                skipped.append(f"{shot.id} {w}: no guide lineart (run guides first)")
+                skipped.append(f"{shot.id} {w}: no room-only guide lineart (run guides first)")
                 continue
             if chosen_path(work, shot.id, w).exists():
                 continue

@@ -69,7 +69,7 @@ def test_plan_jobs_choose_and_redo(tmp_path):
     work = tmp_path / "w"
     assert kf.plan_jobs(s, work)[1] and kf.plan_jobs(s, work)[0] == []  # no guide: skipped with a note
     shot_dir = work / "shots" / "S01"
-    png(shot_dir / "guide" / "start-lineart.png")
+    png(shot_dir / "guide" / "start-room-lineart.png")
     (shot_dir / "guide" / "regions.json").write_text(json.dumps(REG))
     jobs, _ = kf.plan_jobs(s, work, "S01", "both", 2)
     assert [(j[0].name, j[2], j[5]) for j in jobs] == [("start-c01.png", "start", 1), ("start-c02.png", "start", 2)]
@@ -138,7 +138,7 @@ def test_subject_not_duplicated_and_boxes_stay_inside(tmp_path):
 def test_plan_jobs_skips_shot_without_character_regions(tmp_path):
     s = short_with(tmp_path / "s")
     work = tmp_path / "w"
-    png(work / "shots" / "S01" / "guide" / "start-lineart.png")
+    png(work / "shots" / "S01" / "guide" / "start-room-lineart.png")
     (work / "shots" / "S01" / "guide" / "regions.json").write_text(json.dumps({"end": REG["start"]}))
     jobs, notes = kf.plan_jobs(s, work)
     assert jobs == [] and "regions" in notes[0]
@@ -237,3 +237,14 @@ def test_weight_groups_sanitised_and_terms_deduped(tmp_path):
     assert "(holding left hand cup:1.3)" in group
     import re
     assert re.findall(r"\([^()]*\)", group).count("(holding left hand cup:1.3)") == 1 and group.count(":") == 1
+
+
+def test_plan_jobs_ignores_full_lineart_and_needs_room_only(tmp_path):
+    s = short_with(tmp_path / "s")
+    work = tmp_path / "w"
+    guide = work / "shots" / "S01" / "guide"
+    png(guide / "start-lineart.png")
+    (guide / "regions.json").write_text(json.dumps(REG))
+    assert kf.plan_jobs(s, work)[0] == []
+    png(guide / "start-room-lineart.png")
+    assert kf.plan_jobs(s, work, seeds=1)[0][0][3].name == "start-room-lineart.png"
