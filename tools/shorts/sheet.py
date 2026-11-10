@@ -17,11 +17,12 @@ HTML = Path(__file__).with_name("sheet.html")
 THUMB = 1024
 
 
-def collect(short, designs, design_dir: Path, work: Path, model: str, plans: dict) -> dict:
+def collect(short, designs, design_dir: Path, work: Path, default: str, plans: dict) -> dict:
     costs = json.loads((work / "costs.json").read_text()) if (work / "costs.json").exists() else []
     shots = []
     for shot in short.shots:
         report, prompt, refs = plans[shot.id]
+        model = fal.shot_model(shot, default)
         used, left_out = fal.usable_refs(model, refs)
         fp = approve.fingerprint(model, prompt, used, int(round(shot.duration)), approve.fp_extra(short, shot, design_dir))
         shots.append({
@@ -29,7 +30,7 @@ def collect(short, designs, design_dir: Path, work: Path, model: str, plans: dic
             "size": shot.size, "angle": shot.angle, "lens": shot.lens, "move": shot.move, "action": shot.action,
             "frame": shot.frame, "at_start": shot.at_start, "at_end": shot.at_end, "props": shot.props,
             "lines": [{"who": ln.who, "t": round(ln.t - shot.start, 2), "text": ln.text} for ln in shot.lines],
-            "refs": [label for label, _ in used], "left_out": left_out, "cost": estimate(model, int(round(shot.duration))),
+            "refs": [label for label, _ in used], "left_out": left_out, "model": model, "cost": estimate(model, int(round(shot.duration))),
             "problems": report.problems, "warnings": report.warnings, "prompt": prompt, "fp": fp,
             "image_id": approve.plan_image_id(short.slug, shot.id, fp), "prefix": f"plan--{short.slug}--{shot.id.lower()}--",
             "still": (work / "shots" / shot.id / "still.png").exists(),
@@ -43,7 +44,7 @@ def collect(short, designs, design_dir: Path, work: Path, model: str, plans: dic
         [*designs[slug].required, *([short.locks[cid]] if cid in short.locks else [])]),
              "sheets": [f.removesuffix(".png") for f in CHARACTER_SHEETS if (design_dir / slug / f).exists()]}
             for cid, slug in short.cast.items()]
-    return {"slug": short.slug, "title": short.title, "logline": short.logline, "model": model,
+    return {"slug": short.slug, "title": short.title, "logline": short.logline, "model": default,
             "runtime": round(sum(s.duration for s in short.shots), 1), "budget": short.budget_usd,
             "spent": round(sum(r["cost"] for r in costs), 2),
             "line_rule": short.line_rule, "style": short.style, "place": short.place,

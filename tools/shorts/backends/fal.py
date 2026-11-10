@@ -47,6 +47,15 @@ MODELS = {
 }
 
 
+def shot_model(shot, default: str) -> str:
+    """The model a shot should use given the short's default: i2v shots take the -i2v sibling, reference shots the plain one."""
+    if shot.mode == "i2v" and not default.endswith("-i2v") and f"{default}-i2v" in MODELS:
+        return f"{default}-i2v"
+    if shot.mode == "reference" and default.endswith("-i2v") and default[:-4] in MODELS:
+        return default[:-4]
+    return default
+
+
 def usable_refs(model: str, refs: list[tuple[str, Path]]) -> tuple[list[tuple[str, Path]], list[str]]:
     """The refs this model can take, and the labels left out (its skip list, and videos when it takes none)."""
     spec = MODELS[model]

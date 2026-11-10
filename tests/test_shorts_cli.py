@@ -325,9 +325,9 @@ def test_i2v_sheet_fp_equals_submit_fp_and_plate_rerender_changes_it(tmp_path, m
     assert main(["sheet", "pilot", "--model", "seedance-2.0-fast"]) == 0
     sheet_fp = json.loads((dd / "shorts" / "_site" / "pilot" / "sheet" / "sheet.json").read_text())["shots"][0]["fp"]
     s = _short("pilot")
-    _, prompt, refs = _preflight(s, s.shots[0], "seedance-2.0-fast", designs())
+    _, prompt, refs = _preflight(s, s.shots[0], "seedance-2.0-fast-i2v", designs())
     extra = approve.fp_extra(s, s.shots[0], dd)
-    assert approve.fingerprint("seedance-2.0-fast", prompt, refs, 5, extra) == sheet_fp
+    assert approve.fingerprint("seedance-2.0-fast-i2v", prompt, refs, 5, extra) == sheet_fp
     (dd / "mama-satos-izakaya" / "plates" / "door.png").write_bytes(b"new render")
     assert approve.fp_extra(s, s.shots[0], dd) != extra
 
@@ -355,4 +355,47 @@ def test_ledger_sync_cli(tmp_path, monkeypatch, capsys):
     from tools.shorts.__main__ import _short, _work
     from tools.shorts.takes import Ledger
     assert round(_short("pilot").budget_usd - Ledger(_work("pilot") / "costs.json").total(), 2) == 3.29
-    assert "now $3.29" in capsys.readouterr().out
+    assert "$3.29 left" in capsys.readouterr().out
+
+
+def test_sheet_uses_per_shot_model_and_matches_submit_fp(tmp_path, monkeypatch, capsys):
+    from test_shorts_model import designs
+    from tools.shorts import approve
+    from tools.shorts.__main__ import _preflight, _short
+    from tools.shorts.backends import fal
+    setup(tmp_path, monkeypatch, shot=PACKAGED.replace('mode = "reference"', 'mode = "i2v"\nmotion = "C2 turns."'))
+    dd = tmp_path / "design-data"
+    (dd / "shorts" / "pilot" / "shots" / "S01" / "keyframe-start.png").write_bytes(b"k")
+    assert main(["sheet", "pilot", "--model", "seedance-2.0-fast"]) == 0
+    shot_json = json.loads((dd / "shorts" / "_site" / "pilot" / "sheet" / "sheet.json").read_text())["shots"][0]
+    assert shot_json["model"] == "seedance-2.0-fast-i2v" and not any("-i2v model" in p for p in shot_json["problems"])
+    s = _short("pilot")
+    _, prompt, refs = _preflight(s, s.shots[0], "seedance-2.0-fast-i2v", designs())
+    refs, _ = fal.usable_refs("seedance-2.0-fast-i2v", refs)
+    assert approve.fingerprint("seedance-2.0-fast-i2v", prompt, refs, 5, approve.fp_extra(s, s.shots[0], dd)) == shot_json["fp"]
+    capsys.readouterr()
+    main(["preflight", "pilot", "--model", "seedance-2.0-fast"])  # explicit mismatch is reported, with the fix
+    assert "use seedance-2.0-fast-i2v" in capsys.readouterr().out
+
+
+def test_mode_problem_names_right_model_and_preflight_default_has_none(tmp_path, monkeypatch, capsys):
+    setup(tmp_path, monkeypatch, shot=PACKAGED.replace('mode = "reference"', 'mode = "i2v"\nmotion = "C2 turns."'))
+    s_toml = tmp_path / "script" / "pilot" / "short.toml"
+    s_toml.write_text(s_toml.read_text().replace('budget_usd = 25.0', 'budget_usd = 25.0\nmodel = "seedance-2.0-fast"', 1))
+    main(["preflight", "pilot"])
+    assert "-i2v model" not in capsys.readouterr().out
+
+
+def test_ledger_sync_refuses_out_of_range_and_is_idempotent(tmp_path, monkeypatch, capsys):
+    from tools.shorts.__main__ import _work
+    from tools.shorts.takes import Ledger
+    setup(tmp_path, monkeypatch)
+    for bad in ("-1", "99"):
+        assert main(["ledger-sync", "pilot", "--balance", bad]) == 1
+        assert "nothing written" in capsys.readouterr().err
+    assert not (_work("pilot") / "costs.json").exists()
+    main(["ledger-sync", "pilot", "--balance", "3.29"])
+    assert "adjusting ledger by" in capsys.readouterr().out
+    t1 = Ledger(_work("pilot") / "costs.json").total()
+    main(["ledger-sync", "pilot", "--balance", "3.29"])
+    assert Ledger(_work("pilot") / "costs.json").total() == t1

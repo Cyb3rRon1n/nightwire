@@ -198,3 +198,17 @@ def test_422_on_result_marks_ledger_row_blocked(tmp_path, monkeypatch):
         fal.run_take(tmp_path, "S01", "seedance-2.0-fast-i2v", "p", [("keyframe-start.png", tmp_path / "k.png")], 5, 25, key="k", client=client)
     rows = json.loads((tmp_path / "costs.json").read_text())
     assert rows[0]["status"] == "blocked" and Ledger(tmp_path / "costs.json").total() == estimate("seedance-2.0-fast-i2v", 5)
+
+
+def test_500_on_result_is_not_blocked(tmp_path, monkeypatch):
+    monkeypatch.setattr(fal, "data_uri", lambda p: "uri")
+    def handler(request):
+        if request.method == "POST":
+            return httpx.Response(200, json={"request_id": "r1", "status_url": "https://q/s/status", "response_url": "https://q/r"})
+        if request.url.path.endswith("/status"):
+            return httpx.Response(200, json={"status": "COMPLETED"})
+        return httpx.Response(500)
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    with pytest.raises(httpx.HTTPStatusError):
+        fal.run_take(tmp_path, "S01", "seedance-2.0-fast-i2v", "p", [("keyframe-start.png", tmp_path / "k.png")], 5, 25, key="k", client=client)
+    assert "status" not in json.loads((tmp_path / "costs.json").read_text())[0]

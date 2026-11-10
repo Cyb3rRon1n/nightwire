@@ -58,7 +58,7 @@ def cmd_prompt(a) -> int:
     try:
         shot = _shot(s, a.shot)
         if s.model:
-            print(_preflight(s, shot, s.model, load_designs())[1])  # the exact text submit would send
+            print(_preflight(s, shot, fal.shot_model(shot, s.model), load_designs())[1])  # the exact text submit would send
         else:
             print(build_prompt(s, shot, load_designs(), has_still=(_work(s.slug) / "shots" / shot.id / "still.png").exists()))
     except ValueError as e:
@@ -200,18 +200,21 @@ def _preflight(s, shot, model, designs):
                            package_problems=preflight.package(s, shot, _prev(s, shot), plates, shot_dir, approvals, data_dir().parent),
                            bible=preflight.bible_words(s, shot))
     if shot.mode == "i2v" and not fal.MODELS[model].get("i2v"):
-        report.problems.append(f"mode i2v needs an -i2v model, got {model}")
+        report.problems.append(f"mode i2v needs an -i2v model, got {model}; use {fal.shot_model(shot, model)}")
     elif shot.mode == "reference" and fal.MODELS[model].get("i2v"):
-        report.problems.append(f"mode reference can't use an -i2v model, got {model}")
+        report.problems.append(f"mode reference can't use an -i2v model, got {model}; use {fal.shot_model(shot, model)}")
     return report, prompt, refs
 
 
 def cmd_ledger_sync(a) -> int:
     s, work = _short(a.slug), _work(a.slug)
     led = Ledger(work / "costs.json")
-    old = round(s.budget_usd - led.total(), 2)
+    if not 0 <= a.balance <= s.budget_usd:
+        raise CliError(f"--balance ${a.balance:.2f} must be between 0 and the ${s.budget_usd:.2f} budget; nothing written")
+    spent = led.total()
+    new = round(s.budget_usd - a.balance, 2)
+    print(f"adjusting ledger by ${new - spent:.2f} (spent ${spent:.2f} -> ${new:.2f}; ${a.balance:.2f} left)")
     led.adjust(a.balance, s.budget_usd, f"ledger-sync to fal balance ${a.balance:.2f}")
-    print(f"remaining was ${old:.2f}, now ${s.budget_usd - led.total():.2f}")
     return 0
 
 
@@ -225,8 +228,7 @@ def cmd_preflight(a) -> int:
         raise CliError(f"unknown model {model!r}; choose from: {', '.join(fal.MODELS)}")
     bad = 0
     for shot in [_shot(s, a.shot)] if a.shot else s.shots:
-        m = model if a.model or not (shot.mode == "i2v" and not fal.MODELS[model].get("i2v")) else "seedance-2.0-fast-i2v"
-        report = _preflight(s, shot, m, designs)[0]  # no --model: an i2v shot gets the preferred i2v model
+        report = _preflight(s, shot, model if a.model else fal.shot_model(shot, model), designs)[0]
         print(f"{shot.id}: {'ok' if report.ok else 'FAIL'}")
         for p in report.problems:
             print(f"  problem: {p}")
@@ -245,7 +247,7 @@ def cmd_sheet(a) -> int:
     from tools.shorts.backends import fal
     if model not in fal.MODELS:
         raise CliError(f"unknown model {model!r}; choose from: {', '.join(fal.MODELS)}")
-    plans = {shot.id: _preflight(s, shot, model, designs) for shot in s.shots}
+    plans = {shot.id: _preflight(s, shot, fal.shot_model(shot, model), designs) for shot in s.shots}
     data = sheet.collect(s, designs, data_dir().parent, _work(a.slug), model, plans)
     site = sheet.build(data, data_dir().parent, _work(a.slug), data_dir() / "_site")
     print(site)
