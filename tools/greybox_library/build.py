@@ -129,7 +129,34 @@ def main(argv=None) -> None:
     b.add_argument("--poses", nargs="+"), b.add_argument("--cameras", nargs="+")
     b.add_argument("--height", type=int, default=presets.REF_HEIGHT_CM, help="figure height in cm")
     b.add_argument("--out", type=Path, default=None, help="default: $NIGHTWIRE_DESIGN_DIR/greybox-library, else design-data/greybox-library")
+    i = sub.add_parser("insert", help="put library stand-ins into a plate -> grey draft board")
+    i.add_argument("plate", type=Path), i.add_argument("pose"), i.add_argument("camera")
+    i.add_argument("--feet", help="x,y 0..1"), i.add_argument("--height", type=float, dest="h", help="figure height as a fraction of frame height")
+    i.add_argument("--label", default=""), i.add_argument("--out", type=Path, dest="board", required=True)
+    i.add_argument("--lib", type=Path, default=None)
+    i.add_argument("--figure", nargs=5, action="append", metavar=("POSE", "CAMERA", "FEET", "HEIGHT", "LABEL"),
+                   help="extra figure, repeatable: POSE CAMERA x,y HEIGHT LABEL")
+    sub.add_parser("page", help="write the browse-only HTML gallery to design-data/shorts/_site/library/")
     a = ap.parse_args(argv)
+    if a.cmd == "page":
+        from tools.greybox_library import page
+        print(page.build(default_out(), page.site_dir()))
+        return
+    if a.cmd == "insert":
+        from tools.greybox_library import insert
+        lib = a.lib or default_out()
+        figs = [(a.pose, a.camera, a.feet, a.h, a.label)] if a.feet else []
+        figs += [tuple(f) for f in a.figure or []]
+        if not figs:
+            raise SystemExit("give --feet/--height (first figure) and/or --figure groups")
+        todo = []
+        for pose, cam, feet, h, label in figs:
+            entry = lib / pose / cam
+            if not (entry / "board.png").exists():
+                raise SystemExit(f"no library cell {pose}/{cam} in {lib}")
+            todo.append({"entry": entry, "feet": tuple(float(v) for v in feet.split(",")), "height": float(h), "label": label or f"{pose}"})
+        print(insert.insert_many(a.plate, todo, a.board))
+        return
     out = a.out or default_out()
     done = build(a.poses, a.cameras, a.height, out)
     print(f"{len(done)} cells -> {out}")

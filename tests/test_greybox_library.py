@@ -168,3 +168,94 @@ def test_ots_cameras_get_a_foreground_figure_on_the_matching_side(tmp_path):
         lateral = -d[0] * fwd[1] + d[1] * fwd[0]  # + = camera-left (left = forward rotated +90 deg)
         assert along == pytest.approx(1.4, abs=0.01) and sign * lateral == pytest.approx(0.5, abs=0.01)
         assert cam["fg"]["rot"] == presets.POSES["stand"]["rot"]
+
+
+# --- insert -----------------------------------------------------------------------------------------------------------------
+
+def _cell(tmp, name="c", box=(500, 300, 600, 700)):
+    """Synthetic library cell: 1216x832, floor depth by row, a nearer rectangle = the figure; feet at the box bottom centre."""
+    import numpy as np
+    from PIL import Image
+    d = tmp / name
+    d.mkdir()
+    depth = np.tile(np.linspace(0, 200, 832, dtype=np.uint8)[:, None], (1, 1216))
+    depth[box[1]:box[3], box[0]:box[2]] = 250
+    Image.fromarray(depth).convert("RGB").save(d / "depth.png")
+    Image.new("RGB", (1216, 832), (120, 120, 120)).save(d / "board.png")
+    fx, fy = (box[0] + box[2]) / 2 / 1216, box[3] / 832
+    (d / "meta.json").write_text(json.dumps({"feet": [fx, fy], "figure_height_px": box[3] - box[1]}))
+    (d / "pose.json").write_text(json.dumps({"points": {"neck": [fx, box[1] / 832], "rank": [fx, fy]}, "back": False}))
+    return d
+
+
+def _plate(tmp, size=(1000, 600)):
+    from PIL import Image
+    p = tmp / "plate.png"
+    Image.new("RGB", size, (200, 180, 160)).save(p)
+    return p
+
+
+def _grey_box(img_path):
+    """bbox of the figure from its depth patch (the label tag's anti-aliased text also has grey pixels)."""
+    import numpy as np
+    from PIL import Image
+    ys, xs = np.nonzero(np.asarray(Image.open(img_path)))
+    return xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
+
+
+def test_insert_places_feet_and_scale_within_2px(tmp_path):
+    from PIL import Image
+    from tools.greybox_library import insert
+    out = insert.insert(_plate(tmp_path), _cell(tmp_path), (0.4, 0.9), 0.5, "C1", tmp_path / "o" / "board.png")
+    img = Image.open(out)
+    assert img.size == (1000, 600)
+    x0, y0, x1, y1 = _grey_box(tmp_path / 'o' / 'board.depth.png')
+    assert abs(y1 - 0.9 * 600) <= 2 and abs((y1 - y0) - 0.5 * 600) <= 2
+    assert abs((x0 + x1) / 2 - 0.4 * 1000) <= 2
+    assert img.getpixel((5, 590)) == (110, 99, 88)  # plate darkened to 55%
+
+
+def test_insert_label_pose_depth_outputs(tmp_path):
+    from PIL import Image
+    from tools.greybox_library import insert
+    plate = _plate(tmp_path)
+    cell = _cell(tmp_path)
+    with_label = insert.insert(plate, cell, (0.4, 0.9), 0.5, "C1 sit-stool", tmp_path / "a.png")
+    insert.insert(plate, cell, (0.4, 0.9), 0.5, "", tmp_path / "b.png")
+    import numpy as np
+    assert (np.asarray(Image.open(with_label)) != np.asarray(Image.open(tmp_path / "b.png"))).any()  # tag drawn
+    pose = json.loads((tmp_path / "a.pose.json").read_text())["C1 sit-stool"]
+    assert pose["points"]["rank"] == pytest.approx([0.4, 0.9], abs=0.003)
+    assert pose["points"]["neck"][1] == pytest.approx(0.4, abs=0.003)
+    assert Image.open(tmp_path / "a.pose.png").size == (1000, 600) and Image.open(tmp_path / "a.depth.png").size == (1000, 600)
+    dep = np.asarray(Image.open(tmp_path / "a.depth.png"))
+    assert dep[300, 400] > 200 and dep[10, 10] == 0
+
+
+def test_insert_two_figures_and_cli(tmp_path, monkeypatch):
+    from PIL import Image
+    from tools.greybox_library import build as b
+    lib = tmp_path / "lib"
+    for pose, cam in (("stand", "ws-front"), ("walk", "ws-front")):
+        (lib / pose).mkdir(parents=True, exist_ok=True)
+        (lib / pose / cam).mkdir()
+        c = _cell(tmp_path, f"{pose}x")
+        for f in c.iterdir():
+            f.rename(lib / pose / cam / f.name)
+    plate = _plate(tmp_path)
+    b.main(["insert", str(plate), "stand", "ws-front", "--feet", "0.25,0.9", "--height", "0.5", "--label", "C1",
+            "--figure", "walk", "ws-front", "0.75,0.9", "0.5", "C2", "--lib", str(lib), "--out", str(tmp_path / "two.png")])
+    poses = json.loads((tmp_path / "two.pose.json").read_text())
+    assert set(poses) == {"C1", "C2"} and poses["C2"]["points"]["rank"][0] == pytest.approx(0.75, abs=0.003)
+    assert Image.open(tmp_path / "two.png").size == (1000, 600)
+
+
+def test_page_is_static_and_browse_only(tmp_path):
+    from tools.greybox_library import page
+    c = _cell(tmp_path)
+    lib = tmp_path / "lib" / "stand"
+    lib.mkdir(parents=True)
+    c.rename(lib / "ws-front")
+    idx = page.build(tmp_path / "lib", tmp_path / "site").read_text()
+    assert "stand/ws-front/board.jpg" in idx and (tmp_path / "site/stand/ws-front/board.jpg").exists()
+    assert "<button" not in idx and "innerHTML" not in idx
