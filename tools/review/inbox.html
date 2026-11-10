@@ -100,7 +100,7 @@ function card(it) {
   const c = el("div", {className: "card"}, el("div", {className: "kind", textContent: `${it.kind} · ${it.project}`}),
                el("h3", {textContent: it.title}), files);
   if (v) c.append(el("p", {className: "state", textContent: `Your answer: ${v.verdict}${v.note ? " — " + v.note : ""}`}));
-  if (it.context) c.append(el("details", {}, el("summary", {textContent: "Details"}), el("pre", {textContent: it.context})));
+  if (it.context) c.append(el("details", {open: it.kind === "bible"}, el("summary", {textContent: it.kind === "bible" ? "Bible text (what you are approving)" : "Details"}), el("pre", {textContent: it.context})));
   c.append(controls(it));
   return c;
 }

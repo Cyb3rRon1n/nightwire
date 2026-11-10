@@ -70,7 +70,7 @@ def bibles(ctx) -> list[Item]:
         dec = ctx["design_dir"] / "bibles" / f"{slug}-decisions.md"
         if dec.exists():
             text += "\n\nOpen decisions (answer in the Fix note):\n" + dec.read_text()
-        out.append(Item(bible_id(d, slug), "bible", "designs", slug, f"{d.name}: character bible (text)", files, context=text))
+        out.append(Item(bible_id(d, slug), "bible", "designs", slug, f"{d.name}: bible TEXT to approve — pictures are the OLD sheets, for comparison; Keep to render new matching sheets", files, context=text))
     return out
 
 
