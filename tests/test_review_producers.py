@@ -74,3 +74,53 @@ def test_sheet_version_ignores_props_like_the_review_page(tmp_path):
     (item,) = P.sheets(c)
     want = max((folder / f"{s}.png").stat().st_mtime_ns for s in CHARACTER_SHEETS if (folder / f"{s}.png").exists())
     assert item.id == f"sheet--saeko--{want}" and len(item.files) == 3
+
+
+def _shorts_world(tmp_path, with_scene=True):
+    from tests.test_shorts_model import SHORT, SHOT, write
+    scene = '\n[scene]\ntime = "late night"\nweather = "indoors"\nset = "a bar"\n[wardrobe]\nC1 = "coat"\n' if with_scene else ""
+    write(tmp_path / "shorts" / "pilot", SHORT + scene, SHOT.replace("lens = 35.0", 'lens = 35.0\nplate = "toward-door"'))
+    (tmp_path / "plates").mkdir()
+    (tmp_path / "plates" / "mama-satos-izakaya.toml").write_text(
+        '[[plate]]\nname = "toward-door"\nview = "toward the door"\n[[plate]]\nname = "toward-shelves"\nview = "v"\nsource = "play.png"\n')
+    c = ctx(tmp_path)
+    c.update(shorts_dir=tmp_path / "shorts", plates_root=tmp_path / "plates")
+    return c
+
+
+def test_plates_item_per_plate_with_candidates_then_chosen(tmp_path):
+    c = _shorts_world(tmp_path)
+    base = c["design_dir"] / "mama-satos-izakaya"
+    assert P.plates(c) == []  # nothing rendered yet
+    png(base / "play.png")
+    png(base / "plates" / "toward-door-c01.png")
+    png(base / "plates" / "toward-door-c02.png")
+    (item,) = P.plates(c)
+    assert item.id == "plate--mama-satos-izakaya--toward-door" and item.kind == "plate" and item.stage == "pre-production"
+    assert len(item.files) == 2 and item.context == "toward the door"
+    assert item.compare[0]["label"] == "Approved room"
+    png(base / "plates" / "toward-door.png")
+    (item,) = P.plates(c)
+    assert len(item.files) == 1 and item.files[0].endswith("toward-door.jpg")
+
+
+def test_plates_adopted_source_still_gets_an_item(tmp_path):
+    c = _shorts_world(tmp_path)
+    c["plates_root"].joinpath("mama-satos-izakaya.toml").write_text(
+        '[[plate]]\nname = "toward-door"\nview = "v"\nsource = "play.png"\n')
+    png(c["design_dir"] / "mama-satos-izakaya" / "play.png")
+    (item,) = P.plates(c)
+    assert item.id == "plate--mama-satos-izakaya--toward-door" and len(item.files) == 1
+
+
+def test_scenes_item_carries_bible_wardrobe_and_fingerprint_id(tmp_path):
+    from tools.shorts.approve import scene_fp
+    from tools.shorts.model import load_short
+    c = _shorts_world(tmp_path)
+    png(c["design_dir"] / "mama-satos-izakaya" / "play.png")
+    (item,) = P.scenes(c)
+    fp = scene_fp(load_short(tmp_path / "shorts" / "pilot"))
+    assert item.id == f"plan--pilot--scene--{fp}" and item.kind == "scene" and len(item.files) == 1
+    assert "late night" in item.context and "Wardrobe C1: coat" in item.context
+    assert P.plates in P.ALL and P.scenes in P.ALL
+    assert P.scenes(_shorts_world(tmp_path / "x", with_scene=False)) == []

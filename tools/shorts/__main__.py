@@ -13,7 +13,7 @@ from narrator import designs as _designs
 from tools.shorts import SHORTS_DIR, approve, data_dir, guides, remote
 from tools.shorts.backends import manual
 from tools.shorts.greybox.scene import FPS, scene_json
-from tools.shorts.model import load_short, validate_short
+from tools.shorts.model import load_short, scene_text, validate_short
 from tools.shorts.prompt import build_prompt, expected_refs, ref_files
 from tools.shorts.takes import BudgetError, Ledger, apply_verdicts, estimate
 
@@ -298,6 +298,35 @@ def cmd_stills(a) -> int:
     return 1 if errors else 0
 
 
+def cmd_plates(a) -> int:
+    from tools.design_scenes import gpu_busy
+    from tools.shorts import plates
+    s, designs, work = _short(a.slug), load_designs(), _work(a.slug)
+    design_dir = Path(os.environ.get("NIGHTWIRE_DESIGN_DIR", "design-data"))
+    if a.choose:
+        name, n = a.choose
+        plate = plates.load_plates(s.place).get(name)
+        if plate is None:
+            raise CliError(f"no plate {name!r} for {s.place}")
+        try:
+            print(plates.choose(design_dir, s.place, plate, int(n)))
+        except ValueError as e:
+            raise CliError(str(e))
+        return 0
+    url = os.environ.get("COMFYUI_URL", "http://192.168.10.19:8188")
+    jobs = plates.plan_jobs(s, work, design_dir, seeds=a.seeds)
+    if jobs and gpu_busy(url):
+        print("ComfyUI is busy; wait for the current job to finish.", file=sys.stderr)
+        return 1
+    for out, plate, art in jobs:
+        if art is None:
+            print(f"note: {plate.name} has no guide lineart (run guides first); rendering without it", file=sys.stderr)
+    errors = plates.run(jobs, url, designs[s.place], scene_text(s), a.seed)
+    for e in errors:
+        print(e, file=sys.stderr)
+    return 1 if errors else 0
+
+
 def cmd_verdicts(a) -> int:
     with urllib.request.urlopen(PICKS_API, timeout=10) as r:
         api = json.load(r)
@@ -389,6 +418,8 @@ def main(argv=None) -> int:
     q = sub.add_parser("sheet"); q.add_argument("slug"); q.add_argument("--model")
     q = sub.add_parser("stills"); q.add_argument("slug"); q.add_argument("shot", nargs="?")
     q.add_argument("--seed", type=int, default=703); q.add_argument("--redo", action="store_true")
+    q = sub.add_parser("plates"); q.add_argument("slug"); q.add_argument("--seeds", type=int, default=3)
+    q.add_argument("--seed", type=int, default=703); q.add_argument("--choose", nargs=2, metavar=("NAME", "N"))
     sub.add_parser("page")
     q = sub.add_parser("assemble"); q.add_argument("slug"); q.add_argument("--music", type=Path)
     a = p.parse_args(argv)

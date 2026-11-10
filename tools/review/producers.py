@@ -78,4 +78,51 @@ def wallpapers(ctx) -> list[Item]:
                  context=w.get("note", "")) for w in json.loads(path.read_text())["wallpapers"]]
 
 
-ALL = [sheets, candidates, world, takes, wallpapers]
+def _shorts(ctx):
+    from tools.shorts import SHORTS_DIR
+    from tools.shorts.model import load_short
+    root = Path(ctx.get("shorts_dir") or SHORTS_DIR)
+    return [load_short(p.parent) for p in sorted(root.glob("*/short.toml"))]
+
+
+def plates(ctx) -> list[Item]:
+    from tools.shorts import plates as pl
+    out, seen = [], set()
+    for short in _shorts(ctx):
+        catalogue = pl.load_plates(short.place, ctx.get("plates_root"))
+        base = ctx["design_dir"] / short.place
+        for shot in short.shots:
+            plate = catalogue.get(shot.plate)
+            if plate is None or (short.place, plate.name) in seen:
+                continue
+            seen.add((short.place, plate.name))
+            chosen = pl.plate_path(ctx["design_dir"], short.place, plate)
+            srcs = [chosen] if chosen.exists() else sorted((base / "plates").glob(f"{plate.name}-c*.png"))
+            if not srcs:
+                continue
+            rel = f"plates/{short.place}"
+            files = [web_copy(f, ctx["site"], f"{rel}/{f.stem}.jpg") for f in srcs]
+            compare = ([{"label": "Approved room", "url": web_copy(base / "play.png", ctx["site"], f"{rel}/play.jpg")}]
+                       if (base / "play.png").exists() else [])
+            out.append(Item(pl.plate_id(short.place, plate.name), "plate", "pre-production", short.place,
+                            f"{short.place}: plate {plate.name}", files, compare, context=plate.view))
+    return out
+
+
+def scenes(ctx) -> list[Item]:
+    from tools.shorts.approve import scene_fp
+    from tools.shorts.model import scene_text
+    out = []
+    for s in _shorts(ctx):
+        if s.scene is None:
+            continue
+        play = ctx["design_dir"] / s.place / "play.png"
+        files = [web_copy(play, ctx["site"], f"plates/{s.place}/play.jpg")] if play.exists() else []
+        context = "\n".join([scene_text(s)] + [f"Wardrobe {k}: {v}" for k, v in sorted(s.wardrobe.items())]
+                            + [f"Blocking {k}: {v}" for k, v in sorted(s.blocking.items())])
+        out.append(Item(f"plan--{s.slug}--scene--{scene_fp(s)}", "scene", "pre-production", s.slug,
+                        f"{s.title}: scene", files, context=context))
+    return out
+
+
+ALL = [sheets, candidates, world, takes, wallpapers, plates, scenes]
