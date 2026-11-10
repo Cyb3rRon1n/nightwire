@@ -31,7 +31,7 @@ def setup(tmp_path, monkeypatch, shot=PLANNED, approved=True):
 
 
 def test_check_ok_and_prompt_prints_layers(tmp_path, monkeypatch, capsys):
-    setup(tmp_path, monkeypatch)
+    setup(tmp_path, monkeypatch, shot=PLANNED.replace("lens = 35.0", 'lens = 35.0\nmode = "reference"'))
     assert main(["check", "pilot"]) == 0
     assert main(["prompt", "pilot", "S01"]) == 0
     assert "C1 = Saeko Kirigaya" in capsys.readouterr().out

@@ -4,7 +4,7 @@ Each fact lives in one layer; positions only in the floor plan / grey-box and in
 import re
 from pathlib import Path
 
-from tools.shorts.model import Short, Shot
+from tools.shorts.model import Short, Shot, scene_text
 
 POSITION_WORDS = re.compile(
     r"\b(left|right|behind|beside|next to|in front of|across from|opposite|near|corner|at the (?:counter|door|bar|table|window))\b",
@@ -33,6 +33,30 @@ def ref_roles(short: Short, designs: dict, sent: list[str]) -> str:
     return "Use the references as follows: " + "; ".join(rows) + "."
 
 
+def _package_lines(short: Short, designs: dict) -> list[str]:
+    out = [scene_text(short)] if short.scene else []
+    if short.wardrobe:
+        out.append("Wardrobe: " + "; ".join(f"{cid} {designs[short.cast[cid]].name}: {w}" for cid, w in short.wardrobe.items()) + ".")
+    if short.blocking:
+        out.append("Seating: " + "; ".join(short.blocking.values()) + ".")
+    return [x for x in out if x]
+
+
+def _positions(short: Short, shot: Shot) -> str:
+    parts = [f"{c} {w}" for c, w in shot.frame.items()] + ([short.line_rule] if short.line_rule else [])
+    return ("Screen positions: " + "; ".join(parts) + ".") if parts else ""
+
+
+def i2v_prompt(short: Short, shot: Shot, designs: dict) -> str:
+    """Image-to-video: the start (and end) keyframe already shows the room, people and outfits; the text says what
+    moves, restates what must not change, and lists what must not appear."""
+    head = [shot.motion or shot.action, *_package_lines(short, designs), _positions(short, shot)]
+    if shot.move == "static":
+        head.append("Keep the camera completely locked off.")
+    l5 = layers(short, shot, designs)["L5"]
+    return "\n\n".join([" ".join(x for x in head if x), short.style, l5])
+
+
 def _t(a: float, b: float) -> str:
     return f"{a:.1f}-{b:.1f}s"
 
@@ -48,10 +72,12 @@ def layers(short: Short, shot: Shot, designs: dict, has_still: bool = False,
         l1 += " Shot: " + ", ".join(x for x in plan if x) + "."
     if shot.action:
         l1 += f" Main action: {shot.action}"
-    if shot.frame or short.line_rule:
-        l1 += " Screen positions: " + "; ".join([f"{c} {w}" for c, w in shot.frame.items()] + [short.line_rule]) + "."
+    if _positions(short, shot):
+        l1 += " " + _positions(short, shot)
     if shot.move == "static":
         l1 += " Keep the camera completely locked off."
+    if shot.mode == "reference":
+        l1 += "".join(" " + x for x in _package_lines(short, designs))
     if has_still:
         l1 += " start_frame.png is the approved opening frame: match its composition, characters and light at 0 s."
     # The design's required tags name what must not drift (hair, eyes, signature clothes).
@@ -98,6 +124,8 @@ def position_problems(L: dict[str, str]) -> list[str]:
 def build_prompt(short: Short, shot: Shot, designs: dict, has_still: bool = False,
                  sent: list[str] | None = None) -> str:
     """sent: labels of the references this model will get, in order; names them @Image1.. in the prompt."""
+    if shot.mode == "i2v":
+        return i2v_prompt(short, shot, designs)
     L = layers(short, shot, designs, has_still, sent)
     problems = position_problems(L)
     if problems:
@@ -111,13 +139,13 @@ def _sheet(design: Path, name: str) -> Path:
     return alt if alt.exists() else design / name
 
 
-def expected_refs(short: Short, design_dir: Path, shot_dir: Path) -> list[tuple[str, Path]]:
+def expected_refs(short: Short, design_dir: Path, shot_dir: Path, plate: Path | None = None) -> list[tuple[str, Path]]:
     """Every reference a shot should send, whether or not the file exists yet (pre-flight reports the missing ones)."""
     out = []
     for cid, slug in short.cast.items():
         out += [(f"{cid}_{f}", _sheet(design_dir / slug, f)) for f in CHARACTER_SHEETS]
     still = shot_dir / "still.png"
-    out.append(("start_frame.png", still) if still.exists() else ("place.png", design_dir / short.place / "play.png"))
+    out.append(("start_frame.png", still) if still.exists() else ("place.png", plate or design_dir / short.place / "play.png"))
     out.append(("floorplan.png", shot_dir.parent.parent / "floorplan.png"))
     out.append(("greybox.mp4", shot_dir / "greybox.mp4"))
     return out

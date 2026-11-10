@@ -171,7 +171,10 @@ def _preflight(s, shot, model, designs):
     work = _work(s.slug)
     shot_dir = work / "shots" / shot.id
     from tools.shorts.backends import fal
-    expected = expected_refs(s, data_dir().parent, shot_dir)
+    from tools.shorts.plates import load_plates, plate_path
+    plates = load_plates(s.place)
+    plate = plate_path(data_dir().parent, s.place, plates[shot.plate]) if shot.plate in plates else None
+    expected = expected_refs(s, data_dir().parent, shot_dir, plate=plate)
     refs = [(label, p) for label, p in expected if p.exists()]  # what is sent and fingerprinted
     sent = [label for label, _ in fal.usable_refs(model, refs)[0]]
     prompt = build_prompt(s, shot, designs, has_still=(shot_dir / "still.png").exists(), sent=sent)

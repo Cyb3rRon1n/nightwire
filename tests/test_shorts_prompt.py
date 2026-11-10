@@ -7,8 +7,11 @@ from tools.shorts.prompt import build_prompt, layers, position_problems, ref_fil
 SHORT_WITH_LOCKS = SHORT + '\n[locks]\nC1 = "chrome right hand, silver ring"\n'
 
 
+REF = 'lens = 35.0\nmode = "reference"'  # top-level keys go before the first table
+
+
 def short_and_shot(tmp_path):
-    s = load_short(write(tmp_path / "pilot"))
+    s = load_short(write(tmp_path / "pilot", shot=SHOT.replace("lens = 35.0", REF)))
     return s, s.shots[0]
 
 
@@ -74,7 +77,7 @@ def test_still_replaces_place_and_l1_says_so(tmp_path):
     from test_shorts_model import designs, write
     from tools.shorts.model import load_short
     from tools.shorts.prompt import build_prompt, ref_files
-    s = load_short(write(tmp_path / "script"))
+    s = load_short(write(tmp_path / "script", shot=SHOT.replace("lens = 35.0", REF)))
     dd = tmp_path / "dd"
     (dd / "mama-satos-izakaya").mkdir(parents=True)
     (dd / "mama-satos-izakaya" / "play.png").write_bytes(b"p")
@@ -91,7 +94,7 @@ def test_still_replaces_place_and_l1_says_so(tmp_path):
 def test_locks_and_plan_fields_reach_the_prompt(tmp_path):
     from test_shorts_model import PLANNED
     short = SHORT_WITH_LOCKS
-    s = load_short(write(tmp_path / "pilot", short=short, shot=PLANNED))
+    s = load_short(write(tmp_path / "pilot", short=short, shot=PLANNED.replace("lens = 35.0", REF)))
     L = layers(s, s.shots[0], designs())
     assert "C1 = Saeko Kirigaya" in L["L2"] and "; locks: chrome right hand, silver ring" in L["L2"]
     assert "C2 = Rin Kageyama" in L["L2"] and L["L2"].count("locks:") == 1
@@ -114,7 +117,7 @@ def test_position_word_before_locks_still_fails():
 
 
 def test_sent_refs_are_named_by_image_number_with_roles(tmp_path):
-    s = load_short(write(tmp_path, shot=PLANNED))
+    s = load_short(write(tmp_path, shot=PLANNED.replace("lens = 35.0", REF)))
     sent = ["C1_turnaround.png", "C1_portrait.png", "place.png", "greybox.mp4"]
     p = build_prompt(s, s.shots[0], designs(), sent=sent)
     assert "@Image1 is C1" in p and "@Image3 is the location" in p and "@Video1 is the grey-box" in p
@@ -126,3 +129,43 @@ def test_sent_refs_are_named_by_image_number_with_roles(tmp_path):
 def test_static_shot_locks_the_camera(tmp_path):
     s = load_short(write(tmp_path, shot=PLANNED.replace('move = "slow push-in"', 'move = "static"')))
     assert "completely locked off" in build_prompt(s, s.shots[0], designs())
+
+
+SCENE_SHORT = SHORT + '''
+[scene]
+time = "late night"
+weather = "indoors; no windows"
+set = "a narrow izakaya"
+light = ["paper lanterns"]
+not_visible = ["rain", "street"]
+
+[wardrobe]
+C1 = "navy jacket zipped"
+
+[blocking]
+seating = "side by side, C2 on C1's left"
+'''
+
+
+def test_i2v_prompt_has_motion_bible_wardrobe_seating_and_no_ref_header(tmp_path):
+    shot = PLANNED.replace("lens = 35.0", 'lens = 35.0\nmotion = "C2 turns to C1."')
+    s = load_short(write(tmp_path, short=SCENE_SHORT, shot=shot))
+    p = build_prompt(s, s.shots[0], designs())
+    assert p.startswith("C2 turns to C1.")
+    assert "Not visible: rain, street." in p and "Wardrobe: C1 " in p and "navy jacket zipped" in p
+    assert "Seating: side by side, C2 on C1's left." in p and "@Image" not in p and "grey-box" not in p
+
+
+def test_reference_mode_keeps_roles_and_adds_bible(tmp_path):
+    shot = PLANNED.replace("lens = 35.0", REF)
+    s = load_short(write(tmp_path, short=SCENE_SHORT, shot=shot))
+    p = build_prompt(s, s.shots[0], designs(), sent=["C1_turnaround.png", "place.png", "greybox.mp4"])
+    assert "@Image2 is the location" in p and "Time: late night." in p and "Seating:" in p
+
+
+def test_expected_refs_uses_the_shot_plate(tmp_path):
+    from tools.shorts.prompt import expected_refs
+    s = load_short(write(tmp_path, shot=PLANNED))
+    plate = tmp_path / "plate.png"
+    refs = dict(expected_refs(s, tmp_path / "dd", tmp_path / "sd", plate=plate))
+    assert refs["place.png"] == plate
