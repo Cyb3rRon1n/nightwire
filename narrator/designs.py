@@ -14,13 +14,21 @@ KINDS = ("character", "location")
 STATUSES = ("draft", "candidates", "approved")
 PRESENTATIONS = ("feminine", "masculine", "androgynous")
 _ORDER = ("name", "kind", "source", "presentation", "height_cm", "bio", "tags", "required", "held", "negative", "alt_tags", "props",
-          "status", "seed", "palette", "notes")
+          "status", "seed", "palette", "notes", "identity", "wardrobe")
+_STATE_NAME = re.compile(r"[a-z][a-z0-9-]*")
 
 
 def slugify(name: str) -> str:
     ascii_name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
     ascii_name = ascii_name.lower().replace("'", "")
     return re.sub(r"[^a-z0-9]+", "-", ascii_name).strip("-")
+
+
+@dataclass
+class WardrobeState:
+    text: str  # prose outfit description
+    tags: str  # prompt tags for the outfit
+    props: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -41,6 +49,8 @@ class Design:
     notes: list[str] = field(default_factory=list)
     height_cm: int = 0  # 0 = not set; characters only, drives line-ups and group scale
     bio: str = ""  # for characters without a world card
+    identity: list[str] = field(default_factory=list)  # marks that stay constant across every wardrobe state
+    wardrobe: dict[str, WardrobeState] = field(default_factory=dict)
 
     @property
     def slug(self) -> str:
@@ -65,6 +75,15 @@ def validate(d: Design) -> None:
         raise ValueError(f"{d.name}: presentation is for characters only")
     elif d.held or d.required or d.height_cm or d.bio:
         raise ValueError(f"{d.name}: held, required, height_cm and bio are for characters only")
+    if d.kind != "character" and (d.identity or d.wardrobe):
+        raise ValueError(f"{d.name}: identity and wardrobe are for characters only")
+    if d.wardrobe and not any(m.strip() for m in d.identity):
+        raise ValueError(f"{d.name}: a character with wardrobe states needs identity marks")
+    for state, w in d.wardrobe.items():
+        if not _STATE_NAME.fullmatch(state):
+            raise ValueError(f"{d.name}: wardrobe state name {state!r} must match [a-z][a-z0-9-]*")
+        if not w.text.strip() or not w.tags.strip():
+            raise ValueError(f"{d.name}: wardrobe state {state!r} needs text and tags")
     if d.height_cm and not 100 <= d.height_cm <= 250:
         raise ValueError(f"{d.name}: height_cm must be between 100 and 250")
     if d.status == "approved" and not d.seed:
@@ -102,9 +121,15 @@ def save_design(d: Design, path: Path) -> None:
             continue
         if key in ("held", "required") and d.kind != "character":
             continue
-        if key in ("height_cm", "bio") and not value:
+        if key in ("height_cm", "bio", "identity") and not value:
+            continue
+        if key == "wardrobe":
             continue
         lines.append(f"{key} = {_toml_value(value)}")
+    for state, w in d.wardrobe.items():
+        lines += ["", f"[wardrobe.{state}]", f"text = {_toml_value(w.text)}", f"tags = {_toml_value(w.tags)}"]
+        if w.props:
+            lines.append(f"props = {_toml_value(w.props)}")
     path.write_text("\n".join(lines) + "\n")
 
 
@@ -114,6 +139,10 @@ def load_design(path: Path) -> Design:
     unknown = set(data) - set(_ORDER)
     if unknown:
         raise ValueError(f"{path.name}: unknown fields {sorted(unknown)}")
+    try:
+        data["wardrobe"] = {k: WardrobeState(**v) for k, v in data.get("wardrobe", {}).items()}
+    except TypeError as e:
+        raise ValueError(f"{path.name}: bad wardrobe state: {e}") from e
     d = Design(**data)
     validate(d)
     return d

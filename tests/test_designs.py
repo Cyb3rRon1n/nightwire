@@ -118,3 +118,61 @@ def test_pilot_places_load_as_new_locations():
         d = designs[slug]
         assert d.kind == "location" and d.source.startswith("new:") and d.status == "approved", slug
         assert "night" in d.tags and "neon" in d.tags, slug  # cyberpunk always shows
+
+
+def _bible(**kw):
+    from narrator.designs import WardrobeState
+    base = dict(name="Mira", kind="character", source="new:test", tags="1girl, red hair",
+                identity=["scar over left brow", "silver ring"],
+                wardrobe={"work": WardrobeState("grey coverall", "coverall, grey", ["wrench"]),
+                          "night-out": WardrobeState('red "jacket"', "jacket, red")})
+    base.update(kw)
+    return Design(**base)
+
+
+def test_identity_and_wardrobe_round_trip(tmp_path):
+    p = tmp_path / "m.toml"
+    d = _bible()
+    save_design(d, p)
+    assert load_design(p) == d
+    save_design(load_design(p), tmp_path / "m2.toml")
+    assert p.read_bytes() == (tmp_path / "m2.toml").read_bytes()
+
+
+def test_state_unknown_key_rejected(tmp_path):
+    p = tmp_path / "m.toml"
+    p.write_text('name="M"\nkind="character"\nsource="x"\ntags="t"\nidentity=["a"]\n'
+                 '[wardrobe.work]\ntext="a"\ntags="b"\nbogus="c"\n')
+    with pytest.raises(ValueError, match="bogus"):
+        load_design(p)
+
+
+@pytest.mark.parametrize("bad", ["Work", "1work", "wo rk", "wo_rk", ""])
+def test_bad_state_name_rejected(bad):
+    from narrator.designs import WardrobeState
+    with pytest.raises(ValueError, match="state name"):
+        validate(_bible(wardrobe={bad: WardrobeState("a", "b")}))
+
+
+@pytest.mark.parametrize("text,tags", [("", "b"), ("a", " "), ("  ", "b")])
+def test_empty_state_text_or_tags_rejected(text, tags):
+    from narrator.designs import WardrobeState
+    with pytest.raises(ValueError, match="text and tags"):
+        validate(_bible(wardrobe={"work": WardrobeState(text, tags)}))
+
+
+def test_wardrobe_requires_identity_and_characters_only():
+    with pytest.raises(ValueError, match="identity"):
+        validate(_bible(identity=[]))
+    with pytest.raises(ValueError, match="characters only"):
+        validate(_bible(kind="location"))
+
+
+def test_real_designs_save_byte_identical(tmp_path):
+    from narrator.designs import DESIGNS_DIR
+    paths = sorted(DESIGNS_DIR.glob("*.toml"))
+    assert len(paths) >= 21
+    for src in paths:
+        out = tmp_path / src.name
+        save_design(load_design(src), out)
+        assert out.read_bytes() == src.read_bytes(), src.name
