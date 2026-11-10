@@ -150,7 +150,7 @@ sheet (review id `plate--<place>--<name>`), so later shorts at the same place re
    (S01's view from the far end) → owner approves.
 3. Keyframes for S01 (start without Rin, end with Rin), S02 (start), S03 (start, end with the data jack turned over)
    → owner approves.
-4. Sync the ledger to the real balance; re-shoot what $3.29 allows, owner approving each shot first.
+4. Sync the ledger to the real balance; re-shoot every shot that needs it, owner approving each shot first (the owner tops up fal as needed; plans are not cut to fit the current balance).
 
 The GPU queue for this is long; Nightwire play tests can be slotted between keyframe batches on request.
 
