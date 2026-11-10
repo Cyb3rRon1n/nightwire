@@ -42,8 +42,14 @@ def _cam(c, height_cm, focus):
     yaw = math.radians(c["yaw"])
     right = (-math.cos(yaw), math.sin(yaw))  # camera's right-hand direction on the floor
     dx = c.get("look_dx", 0.0) * s
-    return {"at": [c["dist"] * s * math.sin(yaw), c["dist"] * s * math.cos(yaw), c["height"] * s], "lens": c["lens"],
-            "look": [dx * right[0], dx * right[1], c["look"] * s * focus], "dist": c["dist"] * s}
+    at = [c["dist"] * s * math.sin(yaw), c["dist"] * s * math.cos(yaw), c["height"] * s]
+    cam = {"at": at, "lens": c["lens"], "look": [dx * right[0], dx * right[1], c["look"] * s * focus], "dist": c["dist"] * s}
+    if "fg" in c:  # stand-in "shoulder" figure just in front of the camera, facing the same way the camera looks
+        fwd, left = (-math.sin(yaw), -math.cos(yaw)), (-right[0], -right[1])
+        f, side = c["fg"]["forward"] * s, c["fg"]["side"] * s
+        cam["fg"] = {"at": [at[0] + fwd[0] * f + left[0] * side, at[1] + fwd[1] * f + left[1] * side, 0.0],
+                     "rz": 180 - c["yaw"], "scale": height_cm / presets.RIG_HEIGHT_CM, "rot": presets.POSES["stand"]["rot"]}
+    return cam
 
 
 def jobs(poses, cameras, height_cm, out: Path) -> list[dict]:

@@ -135,3 +135,36 @@ def test_stale_remote_cells_are_cleared_and_not_pulled(tmp_path):
     assert "rm -rf" in run[-1] and run[-1].index("rm -rf") < run[-1].index("-b -P")
     assert "--include=stand/ws-front/***" in down and "--include=walk/" in down
     assert down.index("--exclude=*") < down.index(down[-2])
+
+
+def test_window_frame_is_upright_centred_and_in_front_of_the_face():
+    p = presets.POSES["stand-window-back"]
+    assert p["euler"][2] == 180  # faces -Y, the window is at -Y
+    xs = [(b["at"][0] - b["size"][0] / 2, b["at"][0] + b["size"][0] / 2) for b in p["blocks"]]
+    assert min(x[0] for x in xs) == pytest.approx(-0.6) and max(x[1] for x in xs) == pytest.approx(0.6)
+    sill = next(b for b in p["blocks"] if b["name"] == "win.sill")
+    assert sill["at"][2] == 0.9 and sill["at"][1] < -0.6
+    top = max(b["at"][2] + b["size"][2] for b in p["blocks"])
+    assert top - 0.9 == pytest.approx(1.6, abs=0.02)
+
+
+def test_arm_only_and_lying_poses_actually_move_big_bones():
+    assert presets.POSES["lean-rail"]["rot"]["spine"][0] == -20
+    assert max(abs(v) for v in presets.POSES["lean-rail"]["rot"]["forearm.L"]) >= 20  # assert_posed checks these in Blender
+    assert presets.POSES["lie-side"]["euler"][1] == 90 and 0.2 <= presets.POSES["lie-side"]["pos"][2] <= 0.3
+
+
+def test_ots_cameras_get_a_foreground_figure_on_the_matching_side(tmp_path):
+    left = build.jobs(["stand"], ["ots-left"], 165, tmp_path)[0]["cam"]
+    right = build.jobs(["stand"], ["ots-right"], 165, tmp_path)[0]["cam"]
+    assert "fg" not in build.jobs(["stand"], ["ms-front"], 165, tmp_path)[0]["cam"]
+    for cam, sign in ((left, 1), (right, -1)):
+        import math
+        d = [cam["fg"]["at"][0] - cam["at"][0], cam["fg"]["at"][1] - cam["at"][1]]
+        view = [-cam["at"][0], -cam["at"][1]]  # camera looks at the origin (horizontally)
+        n = math.hypot(*view)
+        fwd = [view[0] / n, view[1] / n]
+        along = d[0] * fwd[0] + d[1] * fwd[1]
+        lateral = d[0] * fwd[1] * -1 + d[1] * fwd[0]  # + = camera-left (left = forward rotated +90 deg)
+        assert along == pytest.approx(0.9 * 165 / 165, abs=0.01) and sign * lateral == pytest.approx(0.45, abs=0.01)
+        assert cam["fg"]["rot"] == presets.POSES["stand"]["rot"]

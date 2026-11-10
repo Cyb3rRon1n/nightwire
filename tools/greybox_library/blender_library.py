@@ -97,13 +97,14 @@ def feet(pose, box_):
 
 
 def assert_posed(rig_obj, cell):
-    """Fail loudly if a pose with leg rotations left the evaluated leg bones at rest (the skeleton and board would both be standing)."""
-    if not any(cell["rig"]["rot"].get(b) and any(cell["rig"]["rot"][b]) for b in ("thigh.L", "thigh.R", "shin.L", "shin.R")):
+    """Fail loudly if bones rotated by >= 20 deg in the preset (legs, arms, spine...) are still at rest in the evaluated rig."""
+    big = [n for n, r in cell["rig"]["rot"].items() if max(abs(v) for v in r) >= 20]
+    if not big:
         return
     ev = rig_obj.evaluated_get(bpy.context.evaluated_depsgraph_get())
-    moved = max((ev.pose.bones[n].tail - ev.data.bones[n].tail_local).length for n in ("shin.L", "shin.R", "thigh.L", "thigh.R"))
+    moved = max((ev.pose.bones[n].tail - ev.data.bones[n].tail_local).length for n in big)
     if moved < 0.05:
-        raise SystemExit(f"pose '{cell['pose']}' not applied: leg bones still at rest (moved {moved:.3f} m)")
+        raise SystemExit(f"pose '{cell['pose']}' not applied: bones {big} still at rest (moved {moved:.3f} m)")
 
 
 current = None
@@ -128,6 +129,12 @@ for cell in J["cells"]:
     sc.frame_set(sc.frame_current)
     bpy.context.view_layer.update()
     assert_posed(rig, cell)
+    fg = None
+    if "fg" in c:  # generic foreground figure for over-the-shoulder shots; never measured (figure_box / feet / pose use `rig` only)
+        f = c["fg"]
+        fg = mannequin("foreground", GREY, {k: tuple(v) for k, v in f["rot"].items()})
+        fg.scale, fg.location, fg.rotation_euler = (f["scale"],) * 3, f["at"], (0, 0, math.radians(f["rz"]))
+        bpy.context.view_layer.update()
     cell_dir = out / cell["dir"]
     cell_dir.mkdir(parents=True, exist_ok=True)
     render_still(cell_dir / "board.png")
@@ -143,8 +150,10 @@ for cell in J["cells"]:
                        "pitch_down_deg": round(90 - math.degrees(cam.rotation_euler.x), 2),
                        "yaw_deg": round(math.degrees(math.atan2(c["at"][0], c["at"][1])), 2)},
             "figure_box": box_, "feet": feet(pose, box_), "figure_height_px": round((box_[3] - box_[1]) * J["res"][1]) if box_ else 0,
-            "horizon_y": horizon_y(cam), "back": pose["back"], "res": J["res"]}
+            "horizon_y": horizon_y(cam), "back": pose["back"], "res": J["res"], "foreground_figure": fg is not None}
     (cell_dir / "meta.json").write_text(json.dumps(meta, indent=1))
     data = cam.data
+    if fg is not None:
+        delete([fg, *fg.children_recursive])
     delete([cam])
     bpy.data.cameras.remove(data)
