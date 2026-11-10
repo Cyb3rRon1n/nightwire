@@ -11,12 +11,12 @@ status = "approved"
 seed = 1988844254
 palette = ["#232239", "#39344e", "#07040f", "#f2e1e2", "#a32768", "#b2738a"]
 notes = ["2026-10-28 draft from world card", "2026-10-29 round 1: 4 candidates", "2026-10-29 art direction: mature cyberpunk pass", "2026-10-29 round 2: 4 candidates", "2026-10-29 owner note: females more sexy, voluptuous (no nudity, adult)", "2026-10-29 round 3: 4 candidates", "2026-10-29 owner note: idol proportions - slender, narrow waist, slightly larger bust, long legs, beautiful idol face; not wide hips", "2026-10-29 round 4: 4 candidates", "2026-10-29 approved r4 #4 (seed 1988844254)"]
-identity = ["very long straight light-pink hair with blunt bangs", "bright blue eyes with swirl highlights, soft practised look", "glowing choker/neck implant ring", "pale smooth skin", "tall slender, narrow waist, long legs"]
+identity = ["very long straight light-pink hair with blunt bangs, deeper hot pink at the inner layers and ends", "bright blue eyes with swirl highlights, calm, practised look, small cyan mark by the eye", "glowing cyan choker/neck implant ring with a cross-shaped centre", "pale smooth skin", "tall slender, narrow waist, long legs"]
 appearance = "1girl, mature female, very long hair, straight hair, pink hair, blunt bangs, blue eyes, swirl eyes, glowing choker, neck implant, pale skin, slender, narrow waist, long legs, large breasts"
 
 [wardrobe.stage]
-text = "Black latex stage bodysuit with long sleeves zipped to a high collar with a glowing cyan neck ring, worn over opaque black tights with black thigh-high boots and pink heels."
-tags = "black latex bodysuit, long sleeves, high neck, zipper, glowing collar, cyan trim, black tights, opaque tights, thigh high boots, pink heels, orange studs"
+text = "Glossy black high-neck long-sleeved bodysuit zipped to the collar, with a glowing cyan cross-shaped neck ring and orange stud accents, worn over opaque black tights with black thigh-high boots and pink heels."
+tags = "glossy black bodysuit, long sleeves, high neck, covered, zipper, glowing cyan collar, cross collar, orange studs, black tights, opaque tights, thigh high boots, pink heels"
 
 [wardrobe.offduty]
 text = "Oversized pastel pink knit sweater over black leggings with white sneakers, hair loose."

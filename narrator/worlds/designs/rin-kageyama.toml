@@ -12,8 +12,8 @@ status = "approved"
 seed = 2593853592
 palette = ["#e3e8e6", "#cad0cf", "#242829", "#a0adb2", "#f5fdfc", "#3d4244"]
 notes = ["2026-10-29 draft: netrunner, lean and tired, wired-in", "2026-10-29 round 2: 4 candidates", "2026-10-31 approved r1 #1 (seed 3654015602)", "2026-11-01 approved r2 #4 (seed 2593853592)", "2026-11-03 owner: approved white hoodie, black cargo pants, white sneakers"]
-identity = ["black undercut with pink tips: mostly black hair, shaved grey-blue side, long swept bangs ending in pink tips", "black lips", "grey eyes, sharp tired look", "ear piercings: a silver ear cuff and a black stud on the shaved side", "pale skin, lean wiry frame, small chest, long legs"]
-appearance = "1girl, mature female, short hair, undercut, shaved side, black hair, pink hair tips, swept bangs, grey eyes, black lips, ear piercing, ear cuff, pale skin, lean, wiry, small breasts, long legs"
+identity = ["short black pixie undercut: mostly black hair, shaved grey-blue side, a short swept fringe that stops at cheek level and ends in pink tips", "black lips", "pale grey eyes, sharp tired look", "ear piercings: a silver ear cuff and a black stud on the shaved side", "pale skin, lean wiry frame, small chest, long legs"]
+appearance = "1girl, mature female, very short hair, pixie cut, undercut, shaved side, black hair, pink hair tips, swept bangs, short bangs, grey eyes, black lips, ear piercing, ear cuff, pale skin, lean, wiry, small breasts, long legs"
 
 [wardrobe.work]
 text = "Oversized white hoodie with black shoulder straps and a yellow buckle band over a black high-neck underlayer, black fingerless gloves, black leggings with knee pads and chunky white sneakers."

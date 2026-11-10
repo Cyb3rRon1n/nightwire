@@ -11,14 +11,14 @@ status = "approved"
 seed = 2284112963
 palette = ["#080a08", "#ccd4d8", "#182025", "#2e3235", "#555c5f"]
 notes = ["2026-11-04 draft: Lantern Guild keeper", "2026-11-04 round 1: 4 candidates", "2026-11-04 approved r1 #2 (seed 2284112963)"]
-identity = ["short black hair with a long swept fringe", "light grey eyes, tired heavy-lidded calm look", "pale light skin", "tall slender adult woman with a composed, androgynous presence"]
-appearance = "1girl, mature female, short hair, black hair, long bangs, grey eyes, tired eyes, calm, pale skin, tall, slender"
+identity = ["short black hair slicked back off the face into a small low bun at the nape, with a short side-swept fringe", "grey heavy-lidded eyes, tired calm look, red lips", "pale light skin", "tall adult woman with a composed, androgynous presence"]
+appearance = "1girl, mature female, short hair, black hair, slicked back hair, low bun, side-swept bangs, grey eyes, tired eyes, heavy-lidded eyes, red lips, calm, pale skin, tall, slender"
 
 [wardrobe.work]
-text = "Long black-navy coat worn open with a high collar over a white collared shirt, black trousers and black work shoes."
-tags = "long coat, black coat, open coat, high collar, white collared shirt, black pants, black work shoes, armband pocket"
+text = "Long black coat worn open with a high collar and a small sleeve patch over a white turtleneck, black trousers and black work shoes."
+tags = "long coat, black coat, open coat, high collar, sleeve patch, white turtleneck, black pants, black work shoes"
 props = ["glowing paper lantern"]
 
 [wardrobe.offduty]
-text = "Plain grey wool sweater with a white shirt collar showing, dark straight trousers and black shoes, hair worn the same."
-tags = "grey sweater, wool sweater, white shirt collar, dark trousers, black shoes"
+text = "Plain grey wool sweater with a white shirt collar showing, dark straight trousers and black shoes, hair in the same low bun."
+tags = "grey sweater, wool sweater, white shirt collar, dark trousers, black shoes, low bun"

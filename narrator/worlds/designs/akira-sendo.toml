@@ -12,13 +12,13 @@ status = "approved"
 seed = 1591239200
 palette = ["#2b3540", "#010102", "#21262c", "#314754", "#52a7ab", "#555664"]
 notes = ["2026-11-01 draft: freelance blade for hire, The Loop", "2026-10-31 round 1: 4 candidates", "2026-11-01 approved r1 #4 (seed 1591239200)"]
-identity = ["long silver-white hair tied in a low ponytail, combed straight back off a high forehead", "violet-purple eyes with a hard, narrow, frowning stare", "stern mature adult face with deep frown lines, no facial hair", "tall lean adult man", "cybernetic spine: glowing cyan vertebrae down the back, chrome spine and cable bundle visible at the nape"]
-appearance = "1boy, mature male, long hair, silver hair, low ponytail, purple eyes, frown lines, stern, tall, slender, cybernetic spine, glowing spine, data cables, pale skin"
+identity = ["long silver-white hair, loose and slightly messy, combed back off a high forehead and tied in a low ponytail", "violet-purple eyes with a hard, narrow, frowning stare", "stern mature adult face with deep frown lines, no facial hair", "tall lean adult man", "cybernetic spine: chrome vertebrae with yellow lights at the nape of the neck, cable bundle visible at the collar"]
+appearance = "1boy, mature male, long hair, silver hair, messy hair, low ponytail, purple eyes, glowing eyes, frown lines, stern, tall, slender, cybernetic spine, chrome spine, yellow lights, data cables, pale skin"
 
 [wardrobe.work]
-text = "Oversized black techwear haori jacket with cyan light strips and a tall collar over a black high-neck bodysuit, black pleated hakama and black chunky sneakers with purple soles."
-tags = "black haori, oversized jacket, high collar, cyan trim, glowing trim, black bodysuit, high neck bodysuit, black hakama, pleated hakama, chunky sneakers, purple soles, techwear, japanese clothes"
-props = ["glowing cyan katana"]
+text = "Glossy black techwear jacket with a tall stiff collar lined in bright yellow and yellow light strips and yellow stud plates, over a black high-neck bodysuit, black pleated hakama and black chunky sneakers with purple soles."
+tags = "black jacket, glossy jacket, high collar, yellow collar lining, yellow trim, yellow light strips, yellow plates, black bodysuit, high neck bodysuit, black hakama, pleated hakama, chunky sneakers, purple soles, techwear, japanese clothes"
+props = ["katana with a glowing yellow edge"]
 
 [wardrobe.offduty]
 text = "Plain unlit dark grey wrap jacket over a black turtleneck, loose black trousers and black boots, katana wrapped in cloth or left at home."

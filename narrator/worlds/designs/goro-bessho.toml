@@ -12,12 +12,12 @@ status = "approved"
 seed = 961023264
 palette = ["#020202", "#323d3f", "#212a2c", "#111111", "#c5bca9", "#514139"]
 notes = ["2026-10-29 draft: techie, junkyard veteran, prosthetic leg", "2026-10-29 round 1: 4 candidates", "2026-11-01 approved r1 #4 (seed 961023264)", "2026-11-01 eye colour recorded from earlier sheets: brown eyes, panels drifted without one"]
-identity = ["grey buzz-cut hair, thin to almost bald-looking on the turnaround side and back", "brown eyes under a heavy furrowed brow, gruff rugged weathered face", "grey stubble beard around the jaw and chin", "one large yellow-orange mechanical arm on the character's right", "tall, broad, heavily muscular build"]
-appearance = "1boy, mature male, buzz cut, grey hair, stubble, grey beard, brown eyes, thick eyebrows, wrinkled, rugged face, gruff, mechanical arm, single mechanical arm, yellow mechanical arm, tall, muscular male, broad shoulders"
+identity = ["grey buzz-cut hair under yellow-rimmed welding goggles pushed up on the forehead", "brown eyes under a heavy furrowed brow, gruff rugged weathered face with deep lines", "grey stubble beard around the jaw and chin", "one large dark gunmetal mechanical arm with yellow accents on the character's right (viewer's left in front view)", "tall, broad, heavily muscular build"]
+appearance = "1boy, mature male, buzz cut, grey hair, stubble, grey beard, brown eyes, thick eyebrows, wrinkled, rugged face, gruff, goggles on forehead, yellow goggles, mechanical right arm, single mechanical arm, gunmetal mechanical arm, yellow accents, tall, muscular male, broad shoulders"
 
 [wardrobe.work]
-text = "Black insulated work jacket zipped high with shoulder straps and a tool belt, black work trousers with knee pads, black boots and yellow-orange gloves."
-tags = "black work jacket, insulated jacket, high collar, shoulder straps, tool belt, black work pants, knee pads, black boots, yellow gloves, orange gloves, welding goggles on forehead"
+text = "Black insulated work jacket with a big padded high collar, shoulder straps and a tool belt, black work trousers with knee pads and black boots, yellow-rimmed welding goggles pushed up on the forehead."
+tags = "black work jacket, insulated jacket, padded high collar, shoulder straps, tool belt, black work pants, knee pads, black boots, yellow-rimmed goggles, welding goggles on forehead"
 props = ["welding goggles on forehead", "tool belt"]
 
 [wardrobe.offduty]

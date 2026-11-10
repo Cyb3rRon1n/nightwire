@@ -11,14 +11,14 @@ status = "approved"
 seed = 1553498808
 palette = ["#000000", "#e4d9cb", "#0d1010", "#414848", "#333c3d", "#1a1e1f"]
 notes = ["2026-10-28 draft from world card", "2026-10-28 round 1: 4 candidates", "2026-10-29 art direction: mature cyberpunk pass", "2026-10-29 round 2: 4 candidates", "2026-10-29 approved r2 #2 (seed 1553498808)"]
-identity = ["black hair slicked back with a spiky crown", "pointed goatee with short stubble", "brown-amber eyes, sharp and amused", "tan skin, strong square jaw", "broad-shouldered, tall adult man", "gold earpiece headset with a boom mic on his left ear"]
-appearance = "1boy, mature male, black hair, slicked back hair, spiked hair, goatee, stubble, brown eyes, sharp eyes, tan skin, strong jaw, tall, broad shoulders, lean, headset, earpiece, cheek plate"
+identity = ["black hair slicked back with spiky tufts at the crown and sides", "pointed goatee with short stubble", "brown-amber eyes, sharp, stern and watchful", "dark tan skin, strong square jaw, gold plate mark on the cheek and gold glowing lines on the neck", "broad-shouldered, tall adult man", "gold earpiece headset with a boom mic curving down his left cheek"]
+appearance = "1boy, mature male, black hair, slicked back hair, spiked hair, goatee, stubble, brown eyes, sharp eyes, dark tan skin, strong jaw, tall, broad shoulders, lean, gold headset, gold earpiece, boom mic, gold cheek plate, glowing gold neck lines, gold chain collar"
 
 [wardrobe.work]
-text = "Open black techwear coat with white inner collar and yellow piping over a white shirt with a loose black necktie, black trousers and black shoes, gold chain at the collar."
-tags = "black coat, techwear coat, white collar, yellow trim, white shirt, open collar, loose necktie, black necktie, gold necklace, black pants, black shoes"
+text = "Open black techwear coat with gold trim over a black shirt open at the collar with a loose black necktie, black trousers and black shoes, gold segmented chain collar at the neck."
+tags = "black coat, techwear coat, gold trim, black shirt, open collar, loose necktie, black necktie, gold chain collar, gold necklace, black pants, black shoes"
 props = ["notebook", "pen"]
 
 [wardrobe.offduty]
-text = "Black silk shirt open at the collar, slim charcoal trousers and black loafers, gold chain on."
-tags = "black shirt, silk shirt, open collar, charcoal trousers, black loafers, gold necklace"
+text = "Black silk shirt open at the collar, slim charcoal trousers and black loafers, gold chain collar on."
+tags = "black shirt, silk shirt, open collar, charcoal trousers, black loafers, gold chain collar"

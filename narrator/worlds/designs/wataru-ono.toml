@@ -11,12 +11,12 @@ status = "approved"
 seed = 1228695734
 palette = ["#040d13", "#11534b", "#033033", "#464a48", "#589991", "#b2dabb"]
 notes = ["2026-11-04 draft: Lantern Guild steward", "2026-11-04 round 1: 4 candidates", "2026-11-04 approved r1 #1 (seed 1228695734)", "2026-11-04 turnaround seed 3699854649: the picked seed rendered black on black with the coat"]
-identity = ["black hair swept back, grey temples", "stubble with a short chin beard", "pale grey eyes, weary gaze under heavy brows", "thin cables from both ears hanging down the chest to the collar", "tall broad adult man, tan skin"]
-appearance = "1boy, mature male, middle-aged, black hair, swept back hair, grey temples, stubble, goatee, grey eyes, tired eyes, thick eyebrows, ear cables, neck port, tan skin, tall, broad shoulders"
+identity = ["thick black hair swept back, grey temples", "short dark stubble along the jaw and chin", "pale grey-blue eyes, weary hard gaze under heavy brows", "thin purple cables from both ears hanging down the chest to the collar", "tall broad adult man, tan skin, lined face"]
+appearance = "1boy, mature male, middle-aged, black hair, swept back hair, grey temples, stubble, grey eyes, tired eyes, thick eyebrows, purple ear cables, neck port, tan skin, tall, broad shoulders"
 
 [wardrobe.work]
-text = "Long dark navy coat with a high collar and green trim lines open over a pale shirt, dark trousers and black dress shoes."
-tags = "long dark navy coat, high collar, green trim, open coat, pale shirt, dark trousers, black dress shoes, gold studs"
+text = "Long dark navy-black coat with a high collar and gold stud plates on the shoulders, open over a pale blue-grey shirt, dark trousers and black dress shoes."
+tags = "long dark navy coat, black coat, high collar, gold studs, gold shoulder plates, open coat, pale blue shirt, dark trousers, black dress shoes"
 props = ["glowing lantern"]
 
 [wardrobe.offduty]
