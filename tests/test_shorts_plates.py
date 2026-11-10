@@ -133,3 +133,23 @@ def test_negative_comes_from_not_visible_and_positive_leaves_it_out():
     assert "windows" in wf["7"]["inputs"]["text"] and "windows" not in wf["6"]["inputs"]["text"]
     assert "street" not in wf["7"]["inputs"]["text"] and "rain" not in wf["7"]["inputs"]["text"]
     assert scene_look(types.SimpleNamespace(scene=None)) == ""
+
+
+def test_plate_tags_replace_place_tags_and_set_and_avoid_goes_negative():
+    from tools.shorts.model import Scene, scene_look, scene_mood
+    import types
+    sc = Scene(time="late night", weather="indoors", set="a bar with a counter", light=["lanterns"], not_visible=["windows"])
+    short = types.SimpleNamespace(scene=sc)
+    plate = pl.Plate("d", "v", tags="coat hooks, noren", avoid=["bottle shelves"])
+    wf = pl.plate_workflow(PLACE, scene_look(short), sc.not_visible, plate, None, 1, scene_mood(short))
+    pos, neg = wf["6"]["inputs"]["text"], wf["7"]["inputs"]["text"]
+    assert "coat hooks, noren" in pos and "izakaya, night" not in pos and "Set:" not in pos and "Time: late night." in pos and "Light: lanterns." in pos
+    assert "bottle shelves" in neg and "windows" in neg and pl.NO_TEXT in neg
+    plain = pl.plate_workflow(PLACE, scene_look(short), sc.not_visible, pl.Plate("d", "v"), None, 1, scene_mood(short))
+    assert "izakaya, night" in plain["6"]["inputs"]["text"] and "Set: a bar" in plain["6"]["inputs"]["text"]
+    assert pl.NO_TEXT in plain["7"]["inputs"]["text"]
+
+
+def test_real_toward_door_plate_has_tags_and_avoid():
+    p = load_plates("mama-satos-izakaya")["toward-door"]
+    assert "noren curtain" in p.tags and "bottle shelves" in p.avoid

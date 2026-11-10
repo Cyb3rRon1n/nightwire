@@ -78,6 +78,15 @@ def scene_look(short) -> str:
                      f"Light: {'; '.join(s.light)}." if s.light else ""]).strip()
 
 
+def scene_mood(short) -> str:
+    """Time, weather and light sources only (no "Set:"): for plates whose own tags say what the room shows."""
+    s = short.scene
+    if s is None:
+        return ""
+    return " ".join([f"Time: {s.time}.", f"Weather: {s.weather}.",
+                     f"Light: {'; '.join(s.light)}." if s.light else ""]).strip()
+
+
 @dataclass
 class Shot:
     id: str

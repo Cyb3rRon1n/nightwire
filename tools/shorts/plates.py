@@ -3,7 +3,7 @@ plate--<place>--<name>) and reused by every later short at that place. Catalogue
 outside the designs folder, because every design tool globs designs/*.toml as a design."""
 
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 GUIDE_STRENGTH = 0.8  # lineart ControlNet: strong enough that each direction shows its own wall
@@ -16,6 +16,8 @@ class Plate:
     name: str
     view: str
     source: str = ""   # an existing approved image of the place adopted as this plate
+    tags: str = ""     # replaces the place tags for this direction (they would pull in the wrong wall)
+    avoid: list[str] = field(default_factory=list)  # extra negative terms for this direction
 
 
 def load_plates(place: str, plates_root: Path | None = None) -> dict[str, Plate]:
@@ -33,12 +35,18 @@ def plate_id(place: str, name: str) -> str:
     return f"plate--{place}--{name}"
 
 
-def plate_workflow(place, look: str, not_visible, plate: Plate, lineart_name: str | None, seed: int) -> dict:
-    """look = model.scene_look(short); not_visible = the bible's list, which becomes the negative."""
+NO_TEXT = "text, english text, latin letters, signature, watermark"
+
+
+def plate_workflow(place, look: str, not_visible, plate: Plate, lineart_name: str | None, seed: int, mood: str = "") -> dict:
+    """look = model.scene_look(short); not_visible = the bible's list, which becomes the negative.
+    A plate with its own tags uses them instead of the place tags, and mood (model.scene_mood) instead of look."""
     from tools.imagegen import build
-    tags = place.alt_tags or place.tags
+    tags = plate.tags or place.alt_tags or place.tags
+    if plate.tags:
+        look = mood
     wf = build(f"({plate.view}:1.3), empty room, no humans, {look}, {tags}", "scene", False,
-               ", ".join(["people, person, 1girl, 1boy", *not_visible]), "base", seed)
+               ", ".join(["people, person, 1girl, 1boy", *not_visible, *plate.avoid, NO_TEXT]), "base", seed)
     wf["5"]["inputs"].update(width=1216, height=832)
     if lineart_name:
         wf["60"] = {"class_type": "ControlNetLoader", "inputs": {"control_net_name": "noob-sdxl-controlnet-lineart_anime.fp16.safetensors"}}
@@ -89,21 +97,21 @@ def choose(design_dir: Path, place: str, plate: Plate, n: int) -> Path:
     return dst
 
 
-async def render(jobs, backend, designs_place, look: str, not_visible, seed: int) -> list[str]:
+async def render(jobs, backend, designs_place, look: str, not_visible, seed: int, mood: str = "") -> list[str]:
     """jobs from plan_jobs. One failure does not stop the rest."""
     errors = []
     for out, plate, art, n in jobs:
         try:
             name = await backend.upload_image(f"plate-guide-{plate.name}.png", art.read_bytes()) if art else None
             out.parent.mkdir(parents=True, exist_ok=True)
-            out.write_bytes(await backend.run_workflow(plate_workflow(designs_place, look, not_visible, plate, name, seed + n - 1)))
+            out.write_bytes(await backend.run_workflow(plate_workflow(designs_place, look, not_visible, plate, name, seed + n - 1, mood)))
             print(out, flush=True)
         except Exception as e:  # noqa: BLE001 - keep the batch going
             errors.append(f"{out.name}: {e}")
     return errors
 
 
-def run(jobs, url: str, designs_place, look: str, not_visible, seed: int) -> list[str]:
+def run(jobs, url: str, designs_place, look: str, not_visible, seed: int, mood: str = "") -> list[str]:
     if not jobs:
         return []
     import asyncio
@@ -112,6 +120,6 @@ def run(jobs, url: str, designs_place, look: str, not_visible, seed: int) -> lis
     from tools.design_studio import _gpu_etiquette
     _gpu_etiquette(url, before=True)
     try:
-        return asyncio.run(render(jobs, ComfyUIBackend(base_url=url, profile="noobai", timeout=600.0), designs_place, look, not_visible, seed))
+        return asyncio.run(render(jobs, ComfyUIBackend(base_url=url, profile="noobai", timeout=600.0), designs_place, look, not_visible, seed, mood))
     finally:
         _gpu_etiquette(url, before=False)  # frees VRAM for the narrator

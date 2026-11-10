@@ -13,7 +13,7 @@ from narrator import designs as _designs
 from tools.shorts import SHORTS_DIR, approve, data_dir, guides, remote
 from tools.shorts.backends import manual
 from tools.shorts.greybox.scene import FPS, scene_json
-from tools.shorts.model import load_short, scene_look, validate_short
+from tools.shorts.model import load_short, scene_look, scene_mood, validate_short
 from tools.shorts.prompt import build_prompt, expected_refs, ref_files
 from tools.shorts.takes import BudgetError, Ledger, apply_verdicts, estimate
 
@@ -332,7 +332,7 @@ def cmd_plates(a) -> int:
         if art is None:
             print(f"note: {plate.name} has no guide lineart (run guides first); rendering without it", file=sys.stderr)
     errors = plates.run(jobs, url, designs[s.place], scene_look(s),
-                        s.scene.not_visible if s.scene else [], a.seed)
+                        s.scene.not_visible if s.scene else [], a.seed, scene_mood(s))
     for e in errors:
         print(e, file=sys.stderr)
     return 1 if errors else 0

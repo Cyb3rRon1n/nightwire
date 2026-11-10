@@ -7,6 +7,8 @@ source = "play.png"
 [[plate]]
 name = "toward-door"
 view = "from behind the counter toward the guest stools and the noren doorway in the left wall"
+tags = "izakaya interior, guest side, wooden wall panels, coat hooks, row of bar stools seen from behind the counter, noren curtain hanging in a doorway on the left, paper lantern glow from above, night, indoors"
+avoid = ["bottle shelves", "sake bottles", "liquor shelf", "bar counter in background"]
 
 [[plate]]
 name = "along-counter"
