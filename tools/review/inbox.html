@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Review inbox</title>
+<style>
+:root{--bg:#0e1015;--card:#181b22;--fg:#e8e8ee;--dim:#9aa0ad;--ok:#3fb27f;--fix:#d9a03a;--no:#d0565b;--line:#2a2e38}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#f4f4f6;--card:#fff;--fg:#16181d;--dim:#5b6070;--line:#dde0e6}}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,sans-serif}
+main{max-width:1200px;margin:0 auto;padding:16px}
+h1{margin:.2em 0} h2{margin:1.4em 0 .4em;font-size:1.1em;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+h3{margin:.8em 0 .3em;font-size:1em}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center} .bar select{background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px}
+.card img,.card video{width:100%;border-radius:6px;display:block;cursor:zoom-in}
+.files{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px}
+.kind{font-size:.75em;color:var(--dim);text-transform:uppercase}
+.ctl{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px} .ctl input{flex:1 1 140px;min-width:0;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:5px}
+button{border:0;border-radius:6px;padding:6px 10px;font-weight:600;cursor:pointer;color:#fff}
+.keep,.pick{background:var(--ok)} .fix,.reroll{background:var(--fix)} .reject,.skip{background:var(--no)} .undo{background:var(--line);color:var(--fg)}
+.state{font-size:.85em;color:var(--dim)} details{margin-top:6px} pre{white-space:pre-wrap;font-size:.8em;color:var(--dim)}
+#full{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;overflow:auto;padding:16px;z-index:9}
+#full.on{display:block} #full .row{display:flex;gap:10px;flex-wrap:wrap} #full figure{margin:0;flex:1 1 380px}
+#full img,#full video{width:100%} #full figcaption{color:#ccc;font-size:.85em}
+</style></head><body><main>
+<h1>Review inbox</h1>
+<p class="state">Everything waiting on you, in pipeline order. Click a picture to see it full size beside what it must match.</p>
+<div class="bar"><label>Kind <select id="kind"><option value="">all</option></select></label>
+<label>Project <select id="project"><option value="">all</option></select></label><span id="count" class="state"></span></div>
+<div id="app"></div>
+<div id="full" role="dialog" aria-modal="true"></div>
+</main>
+<script>
+const API = "/designs/api/images", PICKS = "/designs/api/picks";
+const STAGES = ["designs", "pre-production", "production", "finished"];
+const NAMES = {"designs": "Designs", "pre-production": "Pre-production", "production": "Production", "finished": "Finished"};
+let items = [], verdicts = {}, picks = {};
+const q = new URLSearchParams(location.search);
+const el = (t, a = {}, ...kids) => { const e = Object.assign(document.createElement(t), a); e.append(...kids); return e; };
+const media = (url, full) => url.endsWith(".mp4")
+  ? el("video", {src: url, controls: true, muted: true, loop: true, playsInline: true, preload: "metadata"})
+  : el("img", {src: url, loading: "lazy", alt: ""});
+const done = it => it.kind === "pick" ? !!picks[it.extra.slug] && picks[it.extra.slug].round === it.extra.round : !!verdicts[it.id];
+
+async function load() {
+  const [a, b, c] = await Promise.all([fetch("items.json").then(r => r.json()), fetch(API).then(r => r.json()),
+                                       fetch(PICKS).then(r => r.json())]);
+  items = a.items; verdicts = b; picks = c;
+  for (const [id, key] of [["kind", "kind"], ["project", "project"]]) {
+    const s = document.getElementById(id);
+    for (const v of [...new Set(items.map(i => i[key]))].sort()) s.append(el("option", {value: v, textContent: v}));
+    s.value = q.get(id) || ""; s.onchange = () => { q.set(id, s.value); history.replaceState(null, "", "?" + q); render(); };
+  }
+  render();
+}
+
+async function send(url, method, body) {
+  const r = await fetch(url, {method, headers: {"Content-Type": "application/json"}, body: body ? JSON.stringify(body) : undefined});
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+function open(it) {
+  const f = document.getElementById("full"); f.textContent = "";
+  const row = el("div", {className: "row"});
+  for (const u of it.files) row.append(el("figure", {}, media(u), el("figcaption", {textContent: it.title})));
+  for (const c of it.compare) row.append(el("figure", {}, media(c.url), el("figcaption", {textContent: c.label})));
+  f.append(el("button", {className: "undo", textContent: "Close (Esc)", onclick: () => f.classList.remove("on")}), row);
+  if (it.context) f.append(el("pre", {textContent: it.context}));
+  f.classList.add("on");
+}
+document.addEventListener("keydown", e => { if (e.key === "Escape") document.getElementById("full").classList.remove("on"); });
+
+function controls(it) {
+  const st = el("span", {className: "state", role: "status"});
+  const note = el("input", {type: "text", maxLength: 500, placeholder: it.kind === "pick" ? "Note for a reroll" : "What needs fixing?"});
+  const box = el("div", {className: "ctl"});
+  const act = async (fn, msg) => { try { await fn(); st.textContent = msg; render(); } catch (e) { st.textContent = "Not saved: " + e.message; } };
+  if (it.kind === "pick") {
+    it.extra.n.forEach((n, i) => box.append(el("button", {className: "pick", textContent: `Pick ${i + 1}`, onclick: () => act(async () => {
+      picks = await send(`${PICKS}/${it.extra.slug}`, "PUT", {action: "pick", n, round: it.extra.round}); }, "Saved")})));
+    box.append(note, el("button", {className: "reroll", textContent: "Reroll", onclick: () => act(async () => {
+      picks = await send(`${PICKS}/${it.extra.slug}`, "PUT", {action: "reroll", note: note.value}); }, "Saved")}));
+  } else {
+    const put = v => act(async () => { verdicts = await send(`${API}/${it.id}`, "PUT", v === "fix" ? {verdict: v, note: note.value} : {verdict: v}); }, "Saved");
+    box.append(el("button", {className: "keep", textContent: "Keep", onclick: () => put("keep")}), note,
+               el("button", {className: "fix", textContent: "Needs a fix", onclick: () => { if (!note.value.trim()) { st.textContent = "Say what to fix first."; return; } put("fix"); }}),
+               el("button", {className: "reject", textContent: "Reject", onclick: () => put("reject")}));
+  }
+  if (done(it)) box.append(el("button", {className: "undo", textContent: "Undo", onclick: () => act(async () => {
+    if (it.kind === "pick") picks = await send(`${PICKS}/${it.extra.slug}`, "DELETE"); else verdicts = await send(`${API}/${it.id}`, "DELETE"); }, "Undone")}));
+  box.append(st);
+  return box;
+}
+
+function card(it) {
+  const v = verdicts[it.id];
+  const files = el("div", {className: "files"});
+  it.files.slice(0, 6).forEach(u => { const m = media(u); m.onclick = () => open(it); files.append(m); });
+  const c = el("div", {className: "card"}, el("div", {className: "kind", textContent: `${it.kind} · ${it.project}`}),
+               el("h3", {textContent: it.title}), files);
+  if (v) c.append(el("p", {className: "state", textContent: `Your answer: ${v.verdict}${v.note ? " — " + v.note : ""}`}));
+  if (it.context) c.append(el("details", {}, el("summary", {textContent: "Details"}), el("pre", {textContent: it.context})));
+  c.append(controls(it));
+  return c;
+}
+
+function render() {
+  const app = document.getElementById("app"); app.textContent = "";
+  const shown = items.filter(i => (!q.get("kind") || i.kind === q.get("kind")) && (!q.get("project") || i.project === q.get("project")));
+  const todo = shown.filter(i => !done(i));
+  document.getElementById("count").textContent = `${todo.length} waiting on you`;
+  for (const s of STAGES) {
+    const mine = todo.filter(i => i.stage === s);
+    if (!mine.length) continue;
+    app.append(el("h2", {textContent: `${NAMES[s]} · ${mine.length}`}));
+    for (const p of [...new Set(mine.map(i => i.project))]) {
+      const grid = el("div", {className: "grid"}); mine.filter(i => i.project === p).forEach(i => grid.append(card(i)));
+      app.append(el("h3", {textContent: p}), grid);
+    }
+  }
+  const old = shown.filter(done);
+  if (old.length) {
+    const grid = el("div", {className: "grid"}); old.forEach(i => grid.append(card(i)));
+    app.append(el("details", {}, el("summary", {textContent: `Reviewed · ${old.length}`}), grid));
+  }
+}
+load().catch(e => { document.getElementById("app").textContent = "Couldn't load the inbox: " + e.message; });
+</script></body></html>
