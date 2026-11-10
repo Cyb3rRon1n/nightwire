@@ -200,3 +200,26 @@ def test_producers_version_ids_by_pixels_and_candidates_not_approvable(tmp_path)
     png(base / "plates" / "toward-door.png")
     (plate,) = P.plates(c)
     assert plate.choices and len(plate.id.split("--")[-1]) == 10
+
+
+def test_lead_pose_no_text_and_stronger_guides(tmp_path):
+    from tools.shorts.plates import NO_TEXT
+    s = short_with(tmp_path)
+    shot = s.shots[0]
+    shot.size, shot.angle = "MCU", "eye level"
+    shot.at_start = {"C1": "seated, hand on cup", "C2": "standing"}
+    shot.at_end = {"C1": "leaning forward"}
+    shot.frame = {"C1": "screen-right, back of head", "C2": "screen-left, facing camera"}
+    wf = kf.keyframe_workflow(s, shot, DESIGNS, "start", REG, "g", 1)
+    pos = wf["6"]["inputs"]["text"]
+    assert "(upper body, eye level:1.4)" in pos
+    assert pos.index("eye level:1.4") < pos.index("izakaya")
+    assert NO_TEXT in wf["7"]["inputs"]["text"]
+    c2, c1 = wf["70"]["inputs"]["text"], wf["73"]["inputs"]["text"]
+    assert "(seated, hand on cup:1.3)" in c1 and "(from behind, back of head:1.4)" in c1
+    assert "(standing:1.3)" in c2 and "from behind" not in c2
+    assert "(leaning forward:1.3)" in kf.keyframe_workflow(s, shot, DESIGNS, "end", REG | {"end": REG["start"]}, "g", 1)["73"]["inputs"]["text"]
+    assert [wf[k]["inputs"]["strength"] for k in ("71", "74")] == [1.5, 1.5]
+    assert wf["62"]["inputs"]["strength"] == 0.85 and wf["62"]["inputs"]["end_percent"] == 0.9
+    shot.size = "WS"
+    assert "full body, wide shot" in kf.keyframe_workflow(s, shot, DESIGNS, "start", REG, "g", 1)["6"]["inputs"]["text"]

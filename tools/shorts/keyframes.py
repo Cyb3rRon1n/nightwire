@@ -26,11 +26,18 @@ def candidate_path(work: Path, shot_id: str, which: str, n: int) -> Path:
     return work / "shots" / shot_id / "keyframes" / f"{which}-c{n:02d}.png"
 
 
+REGION_STRENGTH = 1.5
+KF_GUIDE_STRENGTH, KF_GUIDE_END = 0.85, 0.9
+SIZE_EXTRA = {"MCU": "upper body", "CU": "close-up", "ECU": "close-up", "WS": "full body, wide shot", "EWS": "full body, wide shot"}
+BEHIND = ("back of head", "from behind", "face not visible")
+
+
 def keyframe_workflow(short, shot, designs, which, regions, lineart_name, seed, plate=None) -> dict:
     from tools.design_scenes import _crowd, _region_tags
     from tools.image_studio import _subject
     from tools.imagegen import MATURE_18, MATURE_18_MALE, MATURE_18_OTHER, build
     from tools.shorts.model import scene_look, scene_mood
+    from tools.shorts.plates import NO_TEXT
     from tools.shorts.stills import SIZE_WORDS
     place = designs[short.place]
     boxes = regions.get(which, {})
@@ -44,9 +51,10 @@ def keyframe_workflow(short, shot, designs, which, regions, lineart_name, seed, 
     elif len(who) >= 2:  # the crowd text is the subject so nothing is prepended twice
         kw["subject"] = _crowd(designs[short.cast[who[0]]], designs[short.cast[who[1]]])
     tags, look = (plate.tags, scene_mood(short)) if plate and plate.tags else (place.alt_tags or place.tags, scene_look(short))  # as plate_workflow
-    words = ", ".join(x for x in ("solo" if len(who) == 1 else "", SIZE_WORDS.get(shot.size, ""), shot.angle, tags, look) if x)
+    lead = ", ".join(dict.fromkeys(x for x in (SIZE_WORDS.get(shot.size, ""), SIZE_EXTRA.get(shot.size, ""), shot.angle) if x))
+    words = ", ".join(x for x in (f"({lead}:1.4)" if lead else "", "solo" if len(who) == 1 else "", tags, look) if x)
     negative = ", ".join(["merged bodies, fused faces, extra arms", *(short.scene.not_visible if short.scene else []),
-                          *short.avoid, *(plate.avoid if plate else [])])
+                          *short.avoid, *(plate.avoid if plate else []), NO_TEXT])
     wf = build(words, "subject" if who else "scene", False, negative, "base", seed, **kw)
     wf["5"]["inputs"].update(width=W, height=H)
     clip, combined = wf["6"]["inputs"]["clip"], ["6", 0]
@@ -54,21 +62,23 @@ def keyframe_workflow(short, shot, designs, which, regions, lineart_name, seed, 
         d = designs[short.cast[cid]]
         x0, y0, x1, y1 = boxes[cid]
         adult = {"1girl": MATURE_18, "1boy": MATURE_18_MALE}.get(_subject(d), MATURE_18_OTHER)
-        text = ", ".join(x for x in (_subject(d), adult, _region_tags(d), short.locks.get(cid, ""), short.wardrobe.get(cid, ""),
+        pose = (shot.at_start if which == "start" else shot.at_end).get(cid, "")
+        behind = "(from behind, back of head:1.4)" if any(b in shot.frame.get(cid, "").lower() for b in BEHIND) else ""
+        text = ", ".join(x for x in (_subject(d), adult, f"({pose}:1.3)" if pose else "", behind, _region_tags(d), short.locks.get(cid, ""), short.wardrobe.get(cid, ""),
                                       shot.props.get(cid, "")) if x)
         n = 70 + i * 3
         wf[str(n)] = {"class_type": "CLIPTextEncode", "inputs": {"text": text, "clip": clip}}
         bw, bh = max(64, int((x1 - x0) * W) // 8 * 8), max(64, int((y1 - y0) * H) // 8 * 8)
         bx, by = min(int(x0 * W) // 8 * 8, W - bw), min(int(y0 * H) // 8 * 8, H - bh)
         wf[str(n + 1)] = {"class_type": "ConditioningSetArea", "inputs": {
-            "conditioning": [str(n), 0], "width": bw, "height": bh, "x": bx, "y": by, "strength": 1.2}}
+            "conditioning": [str(n), 0], "width": bw, "height": bh, "x": bx, "y": by, "strength": REGION_STRENGTH}}
         wf[str(n + 2)] = {"class_type": "ConditioningCombine", "inputs": {"conditioning_1": combined, "conditioning_2": [str(n + 1), 0]}}
         combined = [str(n + 2), 0]
     wf["60"] = {"class_type": "ControlNetLoader", "inputs": {"control_net_name": "noob-sdxl-controlnet-lineart_anime.fp16.safetensors"}}
     wf["61"] = {"class_type": "LoadImage", "inputs": {"image": lineart_name}}
     wf["62"] = {"class_type": "ControlNetApplyAdvanced", "inputs": {
         "positive": combined, "negative": wf["3"]["inputs"]["negative"], "control_net": ["60", 0], "image": ["61", 0],
-        "strength": 0.6, "start_percent": 0.0, "end_percent": 0.65}}
+        "strength": KF_GUIDE_STRENGTH, "start_percent": 0.0, "end_percent": KF_GUIDE_END}}
     wf["3"]["inputs"].update(positive=["62", 0], negative=["62", 1])
     if "34" in wf:  # high-res second pass (not in the "base" size, handled in case that changes)
         wf["34"]["inputs"].update(positive=["62", 0], negative=["62", 1])
