@@ -11,7 +11,7 @@ status = "approved"
 seed = 3206090721
 palette = ["#252934", "#06070b", "#f6e2d3", "#16161e", "#641520", "#33414e"]
 notes = ["2026-10-28 draft from world card", "2026-10-29 round 1: 4 candidates", "2026-10-29 art direction: mature cyberpunk pass", "2026-10-29 round 2: 4 candidates", "2026-10-29 owner note: females more sexy, voluptuous (no nudity, adult)", "2026-10-29 round 3: 4 candidates", "2026-10-29 owner note: idol proportions - slender, narrow waist, slightly larger bust, long legs, beautiful idol face; not wide hips", "2026-10-29 round 4: 4 candidates", "2026-10-29 approved r4 #4 (seed 3206090721)", "2026-11-01 eye colour recorded from earlier sheets: brown eyes, panels drifted without one"]
-identity = ["long glossy black hair with heavy blunt bangs", "brown eyes, half-lidded, calm and polite", "X-shaped scar on the right cheek", "chrome right hand with an amber ring light on the wrist", "tall slender woman, narrow waist, long legs, pale skin"]
+identity = ["long glossy black hair with heavy blunt bangs", "brown eyes, half-lidded, calm and polite", "X-shaped scar on the left cheek", "chrome right hand with an amber ring light on the wrist", "tall slender woman, narrow waist, long legs, pale skin"]
 appearance = "1girl, mature female, long hair, black hair, blunt bangs, brown eyes, half-closed eyes, scar on cheek, x-shaped scar, cross scar, mechanical right hand, single mechanical arm, amber wrist light, pale skin, tall, slender, narrow waist, long legs, large breasts"
 
 [wardrobe.work]
