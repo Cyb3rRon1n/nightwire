@@ -160,10 +160,10 @@ def figure_pose(obj, cam):
     return {"points": out, "back": face.dot(centre - cam.matrix_world.translation) > 0}
 
 
-def render_depth(path, cam):
+def render_depth(path, cam, zrange=None):
     """White = near, black = far, normalised over the visible range. The Z pass goes through a compositor File Output node as a float
     OpenEXR (the Viewer node image is empty in background mode), is read back with numpy at the scene resolution and saved as an
-    8-bit PNG. Compositor state is restored."""
+    8-bit PNG. Compositor state is restored. zrange=(lo, hi) reuses another render's near/far (values clip to it); returns the (lo, hi) used."""
     import tempfile
     import numpy as np
     vl, old_nodes, old_z = bpy.context.view_layer, sc.use_nodes, bpy.context.view_layer.use_pass_z
@@ -199,14 +199,15 @@ def render_depth(path, cam):
             seen = z < 1e4  # background is ~1e10
             out_z = np.zeros_like(z)
             if seen.any():
-                lo, hi = float(z[seen].min()), float(z[seen].max())
-                out_z[seen] = 0.08 + 0.92 * (1 - (z[seen] - lo) / max(hi - lo, 1e-6))  # nearest = 1.0, farthest visible stays above black
+                lo, hi = zrange or (float(z[seen].min()), float(z[seen].max()))
+                out_z[seen] = 0.08 + 0.92 * np.clip(1 - (z[seen] - lo) / max(hi - lo, 1e-6), 0, 1)  # nearest = 1.0, farthest visible stays above black
             res = bpy.data.images.new("depth_out", w, h, alpha=False, float_buffer=False)
             res.colorspace_settings.name = "Non-Color"
             res.pixels = np.dstack([out_z, out_z, out_z, np.ones_like(out_z)]).ravel().tolist()
             res.filepath_raw, res.file_format = str(path), "PNG"
             res.save()
             bpy.data.images.remove(res)
+            return (lo, hi) if seen.any() else zrange
         finally:
             for n in list(tree.nodes):
                 tree.nodes.remove(n)

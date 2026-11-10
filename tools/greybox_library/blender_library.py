@@ -1,6 +1,6 @@
 """Inside Blender: blender -b -P blender_library.py -- job.json outdir
 Renders every job cell (pose x camera) of a mannequin on a neutral void: flat grey figure and props on a lighter grey floor with a
-1 m grid. Per cell: board.png, depth.png (white = near), pose.json (18-point OpenPose + back flag), meta.json.
+1 m grid. Per cell: board.png, depth.png (white = near), floor-depth.png / figure-depth.png (same range, objects hidden), pose.json (18-point OpenPose + back flag), meta.json.
 
 The mannequin, screen-box, pose-point and depth helpers are NOT copied: blender_build.py (shipped next to this file) runs a whole
 scene on import, so only its LAYOUT / helper definitions are pulled out with ast and executed here."""
@@ -144,7 +144,15 @@ for cell in J["cells"]:
     # depth: no grid, far clip just behind the figure so the floor to the horizon doesn't crush the range
     grid.hide_render = True
     cam.data.clip_end = math.hypot(c["dist"], c["at"][2]) + 6
-    render_depth(cell_dir / "depth.png", cam)
+    zr = render_depth(cell_dir / "depth.png", cam)
+    # exact masks for insert: the same view with only the floor, then floor + figure (props and foreground figure hidden), on depth.png's near/far range
+    movers = {"figure": [rig, *rig.children_recursive], "props": [*props], "fg": [fg, *fg.children_recursive] if fg else []}
+    shown = lambda keep: [o.__setattr__("hide_render", not any(o in movers[k] for k in keep)) for g in movers.values() for o in g]  # noqa: E731
+    shown([])
+    render_depth(cell_dir / "floor-depth.png", cam, zr)
+    shown(["figure"])
+    render_depth(cell_dir / "figure-depth.png", cam, zr)
+    shown(["figure", "props", "fg"])
     grid.hide_render = False
     meta = {"camera": {"height": round(c["at"][2], 3), "distance": round(c["dist"], 3), "lens": c["lens"],
                        "pitch_down_deg": round(90 - math.degrees(cam.rotation_euler.x), 2),

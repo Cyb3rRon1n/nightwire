@@ -70,7 +70,7 @@ def jobs(poses, cameras, height_cm, out: Path) -> list[dict]:
     return result
 
 
-NEEDED = ("board.png", "depth.png", "pose.json", "meta.json")
+NEEDED = ("board.png", "depth.png", "floor-depth.png", "figure-depth.png", "pose.json", "meta.json")
 
 
 def commands(out: Path, job: Path = Path("job.json"), todo: list[dict] | None = None) -> list[list[str]]:

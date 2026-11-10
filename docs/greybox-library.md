@@ -4,7 +4,7 @@ A library of ready-made grey stand-ins: every **pose** seen from every **camera*
 props: stool, ledge, rail, window frame) on a grey floor grid with a horizon line. Nothing here is a character; it only says
 "someone sits on a stool, seen from the side, from 4.5 m away". Browse it at `/shorts/library/` (view only).
 
-Each cell `<pose>/<camera>/` holds `board.png` (the picture), `depth.png` (white = near), `pose.json` / `pose.png` (OpenPose skeleton)
+Each cell `<pose>/<camera>/` holds `board.png` (the picture), `depth.png` (white = near), `floor-depth.png` and `figure-depth.png` (the same view with everything hidden / only the figure, on the same near-far range; `insert` compares them to cut out the figure exactly), `pose.json` / `pose.png` (OpenPose skeleton)
 and `meta.json` (camera, where the feet and figure box are).
 
 ## Poses
@@ -46,6 +46,7 @@ python -m tools.greybox_library insert PLATE POSE CAMERA --feet 0.45,0.9 --heigh
 - Two people: add `--figure POSE CAMERA x,y HEIGHT LABEL` (repeat for more), e.g. `--figure walk ws-front 0.75,0.9 0.5 "C2"`.
 - `--lib DIR` points at another library (default `design-data/greybox-library`).
 - Besides `board.png` you get `board.pose.json`, `board.pose.png` (the skeletons moved and scaled to match) and `board.depth.png`
-  (a plate-sized depth patch, black where no figure), which later guided renders use.
+  (a plate-sized depth patch, black where nothing is pasted), which later guided renders use. The patch is *per-figure relative depth*: values compare within one figure, not between two figures or against the plate.
+- On the board the figure is mid-grey, its props (stool, rail, window) darker, and an over-the-shoulder foreground figure darker still, each with a light outline.
 
 Rebuild the browse page with `python -m tools.greybox_library page`.

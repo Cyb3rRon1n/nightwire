@@ -11,27 +11,47 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 from tools.shorts import guides
 
-GREY, EDGE, DIM = (128, 128, 132), (190, 190, 196), 0.55
-MARGIN = 8  # depth levels (of 255) above the floor row to count as figure/prop; ponytail: tiny fixed margin, a steep top-down floor gradient may leak
+FIGURE, PROPS, FOREGROUND, EDGE, DIM = (150, 150, 155), (105, 105, 110), (90, 90, 95), (200, 200, 206), 0.55
+MARGIN = 4  # depth levels (of 255) a pixel must be nearer than the empty floor to count as an object
 
 
-def cutout(entry: Path) -> tuple[Image.Image, Image.Image, tuple[int, int], float]:
-    """(mask L, depth L, feet px, figure height px) of a library cell. The floor depth is constant along a screen row, so
-    figure + props (+ OTS foreground figure) are whatever is nearer than the row minimum."""
+def _depth(entry: Path, name: str) -> np.ndarray:
+    return np.asarray(Image.open(entry / name).convert("L"), dtype=np.int16)
+
+
+def cutout(entry: Path) -> dict:
+    """Exact masks of a library cell, cropped to their union box: {"layers": [(mask, shade)] back to front, "depth": L, "feet": (x, y) in
+    crop px, "height": figure px, "size"}. figure = figure-depth nearer than floor-depth; props = the rest of depth.png's near pixels;
+    the OTS foreground figure (when the cell has one) = leftovers nearer than the figure itself."""
     meta = json.loads((entry / "meta.json").read_text())
-    depth = np.asarray(Image.open(entry / "depth.png").convert("L"), dtype=np.int16)
-    mask = depth > depth.min(axis=1, keepdims=True) + MARGIN
-    mask = np.asarray(Image.fromarray((mask * 255).astype(np.uint8)).filter(ImageFilter.MedianFilter(3)))
-    h, w = mask.shape
-    return (Image.fromarray(mask), Image.fromarray(depth.astype(np.uint8)), (meta["feet"][0] * w, meta["feet"][1] * h), meta["figure_height_px"])
+    if meta.get("figure_height_px", 0) <= 0:
+        raise ValueError(f"{entry}: figure_height_px is 0 (figure off screen?), cannot scale")
+    depth, floor, fig_d = _depth(entry, "depth.png"), _depth(entry, "floor-depth.png"), _depth(entry, "figure-depth.png")
+    figure, near = fig_d > floor + MARGIN, depth > floor + MARGIN
+    if not figure.any():
+        raise ValueError(f"{entry}: empty figure mask")
+    rest = near & ~figure
+    fg = rest & (depth > fig_d[figure].max() + MARGIN) if meta.get("foreground_figure") else np.zeros_like(rest)
+    layers = [(rest & ~fg, PROPS), (figure, FIGURE), (fg, FOREGROUND)]
+    ys, xs = np.nonzero(near | figure)
+    x0, y0, x1, y1 = xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
+    h, w = depth.shape
+    return {"layers": [(Image.fromarray((m[y0:y1, x0:x1] * 255).astype(np.uint8)), c) for m, c in layers if m.any()],
+            "depth": Image.fromarray(np.where(near | figure, depth, 0).astype(np.uint8)[y0:y1, x0:x1]),
+            "feet": (meta["feet"][0] * w - x0, meta["feet"][1] * h - y0), "height": meta["figure_height_px"]}
 
 
 def _outline(mask: Image.Image) -> Image.Image:
-    return ImageChops.subtract(mask, mask.filter(ImageFilter.MinFilter(3)))
+    return ImageChops.subtract(mask, mask.filter(ImageFilter.MinFilter(5)))  # 2 px band inside the edge
+
+
+def _shape(mask: Image.Image, size) -> Image.Image:
+    return mask.resize(size, Image.BILINEAR).point(lambda v: 255 if v > 127 else 0).filter(ImageFilter.MedianFilter(3))  # smoothing after scaling
 
 
 def insert_many(plate: Path, figures: list[dict], out: Path) -> Path:
-    """figures: [{entry, feet: (x, y) 0..1, height: 0..1, label}]. Writes out plus <stem>.pose.json / .pose.png / .depth.png beside it."""
+    """figures: [{entry, feet: (x, y) 0..1, height: 0..1, label}]. Writes out plus <stem>.pose.json / .pose.png / .depth.png beside it.
+    The depth patch holds each figure's own relative depth (comparable inside one figure, not between figures)."""
     out = Path(out)
     base = Image.open(plate).convert("RGB")
     W, H = base.size
@@ -40,25 +60,31 @@ def insert_many(plate: Path, figures: list[dict], out: Path) -> Path:
     poses, tags = {}, []
     for f in figures:
         entry = Path(f["entry"])
-        mask, dep, (fx, fy), fig_h = cutout(entry)
-        s = f["height"] * H / fig_h
-        size = (max(1, round(mask.width * s)), max(1, round(mask.height * s)))
+        cut = cutout(entry)
+        fx, fy = cut["feet"]
+        s = f["height"] * H / cut["height"]
+        size = (max(1, round(cut["depth"].width * s)), max(1, round(cut["depth"].height * s)))
         ox, oy = f["feet"][0] * W - fx * s, f["feet"][1] * H - fy * s
         pos = (round(ox), round(oy))
-        m = mask.resize(size, Image.BILINEAR).point(lambda v: 255 if v > 127 else 0)
-        board.paste(Image.new("RGB", size, GREY), pos, m)
-        board.paste(Image.new("RGB", size, EDGE), pos, _outline(m))
+        union = Image.new("L", size, 0)
+        for mask, shade in cut["layers"]:
+            m = _shape(mask, size)
+            board.paste(Image.new("RGB", size, shade), pos, m)
+            board.paste(Image.new("RGB", size, EDGE), pos, _outline(m))
+            union = ImageChops.lighter(union, m)
         canvas = Image.new("L", (W, H), 0)
-        canvas.paste(dep.resize(size, Image.BILINEAR), pos, m)
+        canvas.paste(cut["depth"].resize(size, Image.BILINEAR), pos, union)
         depth = np.maximum(depth, np.asarray(canvas))
         pose = json.loads((entry / "pose.json").read_text())
-        # pose points are 0..1 of the board; the whole board maps to `size` at `pos`
-        pts = {k: [(ox + v[0] * size[0]) / W, (oy + v[1] * size[1]) / H] for k, v in pose["points"].items() if v}
+        meta = json.loads((entry / "meta.json").read_text())
+        bw, bh = meta["res"]  # pose points are 0..1 of the whole board: move them relative to the feet, scale, re-anchor
+        pts = {k: [f["feet"][0] + (v[0] - meta["feet"][0]) * bw * s / W, f["feet"][1] + (v[1] - meta["feet"][1]) * bh * s / H]
+               for k, v in pose["points"].items() if v}
         label = f["label"]
         while label in poses:
             label += "'"
         poses[label] = {"points": pts, "back": pose.get("back", False)}
-        ys, xs = np.nonzero(np.asarray(m))
+        ys, xs = np.nonzero(np.asarray(union))
         tags.append((label, (pos[0] + (xs.min() if len(xs) else 0), pos[1] + (ys.min() if len(ys) else 0))))
     d = ImageDraw.Draw(board)
     font = ImageFont.load_default(size=18)

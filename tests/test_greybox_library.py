@@ -79,7 +79,8 @@ def test_build_runs_remote_then_writes_pose_png(tmp_path, monkeypatch):
             from PIL import Image
             Image.new("RGB", (1216, 832), "grey").save(d / "board.png")
             (d / "pose.json").write_text(json.dumps({"points": {"neck": [0.5, 0.4], "nose": [0.5, 0.3]}, "back": False}))
-            Image.new("L", (1216, 832)).save(d / "depth.png")
+            for n in ("depth", "floor-depth", "figure-depth"):
+                Image.new("L", (1216, 832)).save(d / f"{n}.png")
             (d / "meta.json").write_text(json.dumps({"horizon_y": 0.3}))
 
     monkeypatch.setattr(build.subprocess, "run", fake_run)
@@ -172,18 +173,28 @@ def test_ots_cameras_get_a_foreground_figure_on_the_matching_side(tmp_path):
 
 # --- insert -----------------------------------------------------------------------------------------------------------------
 
-def _cell(tmp, name="c", box=(500, 300, 600, 700)):
-    """Synthetic library cell: 1216x832, floor depth by row, a nearer rectangle = the figure; feet at the box bottom centre."""
+def _cell(tmp, name="c", box=(500, 300, 600, 700), props=None, fg=None, wide=False):
+    """Synthetic library cell 1216x832: floor depth by row; the figure is a nearer rectangle (full-row wide if `wide`, so a row-minimum
+    would fail); optional prop / foreground rectangles. Feet at the figure box's bottom centre."""
     import numpy as np
     from PIL import Image
     d = tmp / name
     d.mkdir()
-    depth = np.tile(np.linspace(0, 200, 832, dtype=np.uint8)[:, None], (1, 1216))
+    floor = np.tile(np.linspace(0, 200, 832, dtype=np.uint8)[:, None], (1, 1216))
+    if wide:
+        box = (0, box[1], 1216, box[3])
+    figd, depth = floor.copy(), floor.copy()
+    figd[box[1]:box[3], box[0]:box[2]] = 250
     depth[box[1]:box[3], box[0]:box[2]] = 250
-    Image.fromarray(depth).convert("RGB").save(d / "depth.png")
+    if props:
+        depth[props[1]:props[3], props[0]:props[2]] = 240
+    if fg:
+        depth[fg[1]:fg[3], fg[0]:fg[2]] = 255
+    for n, a in (("depth", depth), ("floor-depth", floor), ("figure-depth", figd)):
+        Image.fromarray(a).convert("RGB").save(d / f"{n}.png")
     Image.new("RGB", (1216, 832), (120, 120, 120)).save(d / "board.png")
     fx, fy = (box[0] + box[2]) / 2 / 1216, box[3] / 832
-    (d / "meta.json").write_text(json.dumps({"feet": [fx, fy], "figure_height_px": box[3] - box[1]}))
+    (d / "meta.json").write_text(json.dumps({"feet": [fx, fy], "figure_height_px": box[3] - box[1], "res": [1216, 832], "foreground_figure": bool(fg)}))
     (d / "pose.json").write_text(json.dumps({"points": {"neck": [fx, box[1] / 832], "rank": [fx, fy]}, "back": False}))
     return d
 
@@ -259,3 +270,40 @@ def test_page_is_static_and_browse_only(tmp_path):
     idx = page.build(tmp_path / "lib", tmp_path / "site").read_text()
     assert "stand/ws-front/board.jpg" in idx and (tmp_path / "site/stand/ws-front/board.jpg").exists()
     assert "<button" not in idx and "innerHTML" not in idx
+
+
+def test_full_row_figure_has_no_holes_props_and_foreground_shaded_separately(tmp_path):
+    import numpy as np
+    from tools.greybox_library import insert
+    c = _cell(tmp_path, box=(400, 300, 800, 700), props=(300, 500, 400, 700), fg=(0, 100, 100, 832))
+    cut = insert.cutout(c)
+    assert [col for _, col in cut["layers"]] == [insert.PROPS, insert.FIGURE, insert.FOREGROUND]
+    figure = np.asarray(cut["layers"][1][0]) > 0
+    assert figure.sum() == 400 * 400  # the whole rectangle, no holes
+    assert (np.asarray(cut["layers"][0][0]) > 0).sum() == 100 * 200
+    wide = insert.cutout(_cell(tmp_path, "w", wide=True))
+    assert (np.asarray(wide["layers"][0][0]) > 0).all()  # a figure spanning every column of its rows is still found
+
+
+def test_props_are_darker_than_figure_on_the_board(tmp_path):
+    from PIL import Image
+    from tools.greybox_library import insert
+    c = _cell(tmp_path, box=(400, 300, 800, 700), props=(300, 500, 400, 700))
+    img = Image.open(insert.insert(_plate(tmp_path, (1216, 832)), c, (0.5, 0.84), 0.48, "C1", tmp_path / "p.png"))
+    assert img.getpixel((600, 500)) == insert.FIGURE and img.getpixel((350, 650)) == insert.PROPS
+
+
+def test_tiny_figure_never_allocates_a_full_cell_upscale_and_zero_height_raises(tmp_path, monkeypatch):
+    from PIL import Image
+    from tools.greybox_library import insert
+    sizes = []
+    real = Image.Image.resize
+    monkeypatch.setattr(Image.Image, "resize", lambda self, size, *a, **k: (sizes.append(size), real(self, size, *a, **k))[1])
+    insert.insert(_plate(tmp_path), _cell(tmp_path, box=(500, 400, 510, 420)), (0.5, 0.9), 0.5, "T", tmp_path / "t.png")
+    assert max(w * h for w, h in sizes) <= 1000 * 600  # crop-sized work, bounded by the plate-sized pose.png resize
+    bad = _cell(tmp_path, "z")
+    meta = json.loads((bad / "meta.json").read_text())
+    meta["figure_height_px"] = 0
+    (bad / "meta.json").write_text(json.dumps(meta))
+    with pytest.raises(ValueError, match="figure_height_px is 0"):
+        insert.insert(_plate(tmp_path), bad, (0.5, 0.9), 0.5, "Z", tmp_path / "z.png")
