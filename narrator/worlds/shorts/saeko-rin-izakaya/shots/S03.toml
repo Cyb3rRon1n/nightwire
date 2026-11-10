@@ -8,6 +8,9 @@ angle = "eye level, reverse over C2's shoulder"
 move = "slow push-in"
 action = "Saeko hears Rin's price, turns the data jack over and does not connect it."
 prop_change = ["C1"]
+plate = "toward-door"
+motion = "Slow push in. The amber wrist light blinks faster; C1 answers, turns the data jack over once and does not connect it."
+end_frame = true
 camera = [
   { t = 0.0, at = [2.3, 0.25, 1.4], look = [0.86, -0.72, 0.98] },
   { t = 8.5, at = [2.2, 0.2, 1.38], look = [0.86, -0.72, 0.99] },

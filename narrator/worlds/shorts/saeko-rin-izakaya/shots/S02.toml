@@ -7,6 +7,8 @@ size = "MCU"
 angle = "eye level, tight over C1's shoulder, camera close behind C1"
 move = "static"
 action = "Rin offers to unlock the hand and slides her cable toward it."
+plate = "toward-far-end"
+motion = "Static. C2 speaks to C1, then lays the data cable's metal jack on the counter and slides it toward C1's chrome hand."
 camera = [
   { t = 0.0, at = [-0.08, -0.35, 1.15], look = [1.6, -0.8, 1.4] },
   { t = 7.5, at = [-0.03, -0.36, 1.15], look = [1.6, -0.8, 1.4] },
