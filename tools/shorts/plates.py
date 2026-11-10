@@ -6,6 +6,8 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
+GUIDE_STRENGTH = 0.8  # lineart ControlNet: strong enough that each direction shows its own wall
+GUIDE_END = 0.85
 PLATES_ROOT = Path(__file__).resolve().parents[2] / "narrator" / "worlds" / "plates"
 
 
@@ -35,7 +37,7 @@ def plate_workflow(place, look: str, not_visible, plate: Plate, lineart_name: st
     """look = model.scene_look(short); not_visible = the bible's list, which becomes the negative."""
     from tools.imagegen import build
     tags = place.alt_tags or place.tags
-    wf = build(f"{tags}, {plate.view}, empty room, no humans, {look}", "scene", False,
+    wf = build(f"({plate.view}:1.3), empty room, no humans, {look}, {tags}", "scene", False,
                ", ".join(["people, person, 1girl, 1boy", *not_visible]), "base", seed)
     wf["5"]["inputs"].update(width=1216, height=832)
     if lineart_name:
@@ -43,7 +45,7 @@ def plate_workflow(place, look: str, not_visible, plate: Plate, lineart_name: st
         wf["61"] = {"class_type": "LoadImage", "inputs": {"image": lineart_name}}
         wf["62"] = {"class_type": "ControlNetApplyAdvanced", "inputs": {"positive": wf["3"]["inputs"]["positive"],
                     "negative": wf["3"]["inputs"]["negative"], "control_net": ["60", 0], "image": ["61", 0],
-                    "strength": 0.55, "start_percent": 0.0, "end_percent": 0.6}}
+                    "strength": GUIDE_STRENGTH, "start_percent": 0.0, "end_percent": GUIDE_END}}
         wf["3"]["inputs"].update(positive=["62", 0], negative=["62", 1])
         if "34" in wf:  # high-res second pass (not in the "base" size, handled in case that changes)
             wf["34"]["inputs"].update(positive=["62", 0], negative=["62", 1])

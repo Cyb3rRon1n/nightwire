@@ -53,7 +53,9 @@ def test_plate_workflow_adds_controlnet_and_rewires_sampler():
     assert wf["3"]["inputs"]["positive"] == ["62", 0] and wf["3"]["inputs"]["negative"] == ["62", 1]
     assert wf["5"]["inputs"]["width"] == 1216 and wf["5"]["inputs"]["height"] == 832
     text = wf["6"]["inputs"]["text"]
-    assert plate.view in text and "no humans" in text and "izakaya, night" in text and "Time: late." in text
+    assert text.split(", empty room")[0].endswith(f"({plate.view}:1.3)") and plate.view in text and "no humans" in text and "izakaya, night" in text and "Time: late." in text
+    assert text.index("1.3") < text.index("izakaya, night")  # room tags are the tail
+    assert (wf["62"]["inputs"]["strength"], wf["62"]["inputs"]["end_percent"]) == (0.8, 0.85)
     assert wf["9"]["inputs"]["filename_prefix"] == "nightwire_plates/toward-door"
     assert "34" not in wf  # base size has no second pass
 
