@@ -44,11 +44,14 @@ def _cam(c, height_cm, focus):
     dx = c.get("look_dx", 0.0) * s
     at = [c["dist"] * s * math.sin(yaw), c["dist"] * s * math.cos(yaw), c["height"] * s]
     cam = {"at": at, "lens": c["lens"], "look": [dx * right[0], dx * right[1], c["look"] * s * focus], "dist": c["dist"] * s}
-    if "fg" in c:  # stand-in "shoulder" figure just in front of the camera, facing the same way the camera looks
-        fwd, left = (-math.sin(yaw), -math.cos(yaw)), (-right[0], -right[1])
+    if "fg" in c:  # stand-in "shoulder" figure just in front of the camera, along the real view axis (which look_dx turns), facing the same way
+        vx, vy = cam["look"][0] - at[0], cam["look"][1] - at[1]
+        n = math.hypot(vx, vy)
+        fwd = (vx / n, vy / n)
+        left = (-fwd[1], fwd[0])
         f, side = c["fg"]["forward"] * s, c["fg"]["side"] * s
         cam["fg"] = {"at": [at[0] + fwd[0] * f + left[0] * side, at[1] + fwd[1] * f + left[1] * side, 0.0],
-                     "rz": 180 - c["yaw"], "scale": height_cm / presets.RIG_HEIGHT_CM, "rot": presets.POSES["stand"]["rot"]}
+                     "rz": math.degrees(math.atan2(-fwd[0], fwd[1])), "scale": height_cm / presets.RIG_HEIGHT_CM, "rot": presets.POSES["stand"]["rot"]}
     return cam
 
 

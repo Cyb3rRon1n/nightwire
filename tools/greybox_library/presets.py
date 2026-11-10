@@ -53,11 +53,11 @@ POSES = {
                   "rot": {"spine": (-20, 0, 0), "head": (15, 0, 0), "upper_arm.L": (55, 0, -20), "upper_arm.R": (55, 0, 20),
                           "forearm.L": (100, -70, 0), "forearm.R": (100, 70, 0)}},
     "stand-back": {"euler": (0, 0, 180), "rot": {"upper_arm.L": (0, 0, -4), "upper_arm.R": (0, 0, 4)}},
-    # figure faces -Y (back to the default front camera); frame 1.2 m wide x 1.6 m tall, sill at 0.9 m, 0.6 m in front of the face, centred
-    "stand-window-back": {"euler": (0, 0, 180), "rot": {"upper_arm.L": (0, 0, -4), "upper_arm.R": (0, 0, 4)},
-                          "blocks": [_blk("win.sill", (1.2, 0.1, 0.08), (0, -0.7, 0.9)), _blk("win.top", (1.2, 0.1, 0.08), (0, -0.7, 2.42)),
-                                     _blk("win.L", (0.08, 0.1, 1.6), (-0.56, -0.7, 0.9)), _blk("win.R", (0.08, 0.1, 1.6), (0.56, -0.7, 0.9)),
-                                     _blk("win.mullion", (0.04, 0.08, 1.5), (0, -0.7, 0.95))]},
+    # figure faces +Y, away from the ws-back camera (which sees its back, window beyond); frame 1.2 m wide x 1.6 m tall, sill at 0.9 m, 0.6 m in front of the face, centred
+    "stand-window-back": {"euler": (0, 0, 0), "rot": {"upper_arm.L": (0, 0, -4), "upper_arm.R": (0, 0, 4)},
+                          "blocks": [_blk("win.sill", (1.2, 0.1, 0.08), (0, 0.7, 0.9)), _blk("win.top", (1.2, 0.1, 0.08), (0, 0.7, 2.42)),
+                                     _blk("win.L", (0.08, 0.1, 1.6), (-0.56, 0.7, 0.9)), _blk("win.R", (0.08, 0.1, 1.6), (0.56, 0.7, 0.9)),
+                                     _blk("win.mullion", (0.04, 0.08, 1.5), (0, 0.7, 0.95))]},
     "crouch": {"pos": (0, -0.15, -0.555), "focus": 0.6,
                "rot": {"thigh.L": (100, 0, 0), "thigh.R": (100, 0, 0), "shin.L": (-120, 0, 0), "shin.R": (-120, 0, 0),
                        "spine": (-35, 0, 0), "head": (30, 0, 0),
@@ -82,8 +82,8 @@ CAMERAS = {
     "ms-front": {"dist": 2.4, "height": 1.35, "yaw": 0, "lens": 50, "look": 1.05},
     "ms-profile": {"dist": 2.4, "height": 1.35, "yaw": 90, "lens": 50, "look": 1.05},
     "mcu-front": {"dist": 1.3, "height": 1.4, "yaw": 0, "lens": 50, "look": 1.3},
-    "ots-left": {"dist": 2.2, "height": 1.5, "yaw": -20, "lens": 50, "look": 1.2, "look_dx": -0.5, "fg": {"forward": 0.9, "side": 0.45}},
-    "ots-right": {"dist": 2.2, "height": 1.5, "yaw": 20, "lens": 50, "look": 1.2, "look_dx": 0.5, "fg": {"forward": 0.9, "side": -0.45}},
+    "ots-left": {"dist": 2.2, "height": 1.5, "yaw": -20, "lens": 50, "look": 1.2, "look_dx": -0.5, "fg": {"forward": 1.4, "side": 0.5}},
+    "ots-right": {"dist": 2.2, "height": 1.5, "yaw": 20, "lens": 50, "look": 1.2, "look_dx": 0.5, "fg": {"forward": 1.4, "side": -0.5}},
     "low-hero": {"dist": 3.2, "height": 0.35, "yaw": 0, "lens": 28, "look": 1.0},
     "top-down": {"dist": 0.05, "height": 6.0, "yaw": 0, "lens": 35, "look": 0.0},
 }

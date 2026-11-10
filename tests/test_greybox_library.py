@@ -139,11 +139,11 @@ def test_stale_remote_cells_are_cleared_and_not_pulled(tmp_path):
 
 def test_window_frame_is_upright_centred_and_in_front_of_the_face():
     p = presets.POSES["stand-window-back"]
-    assert p["euler"][2] == 180  # faces -Y, the window is at -Y
+    assert p["euler"][2] == 0  # faces +Y, the window is at +Y beyond the figure for the ws-back camera
     xs = [(b["at"][0] - b["size"][0] / 2, b["at"][0] + b["size"][0] / 2) for b in p["blocks"]]
     assert min(x[0] for x in xs) == pytest.approx(-0.6) and max(x[1] for x in xs) == pytest.approx(0.6)
     sill = next(b for b in p["blocks"] if b["name"] == "win.sill")
-    assert sill["at"][2] == 0.9 and sill["at"][1] < -0.6
+    assert sill["at"][2] == 0.9 and sill["at"][1] > 0.6
     top = max(b["at"][2] + b["size"][2] for b in p["blocks"])
     assert top - 0.9 == pytest.approx(1.6, abs=0.02)
 
@@ -161,10 +161,10 @@ def test_ots_cameras_get_a_foreground_figure_on_the_matching_side(tmp_path):
     for cam, sign in ((left, 1), (right, -1)):
         import math
         d = [cam["fg"]["at"][0] - cam["at"][0], cam["fg"]["at"][1] - cam["at"][1]]
-        view = [-cam["at"][0], -cam["at"][1]]  # camera looks at the origin (horizontally)
+        view = [cam["look"][0] - cam["at"][0], cam["look"][1] - cam["at"][1]]  # the real view axis
         n = math.hypot(*view)
         fwd = [view[0] / n, view[1] / n]
         along = d[0] * fwd[0] + d[1] * fwd[1]
-        lateral = d[0] * fwd[1] * -1 + d[1] * fwd[0]  # + = camera-left (left = forward rotated +90 deg)
-        assert along == pytest.approx(0.9 * 165 / 165, abs=0.01) and sign * lateral == pytest.approx(0.45, abs=0.01)
+        lateral = -d[0] * fwd[1] + d[1] * fwd[0]  # + = camera-left (left = forward rotated +90 deg)
+        assert along == pytest.approx(1.4, abs=0.01) and sign * lateral == pytest.approx(0.5, abs=0.01)
         assert cam["fg"]["rot"] == presets.POSES["stand"]["rot"]
