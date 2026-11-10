@@ -415,3 +415,42 @@ def test_flatten_background_refuses_to_return_a_blank_sheet(monkeypatch):
     Image.new("RGB", (100, 100), (20, 20, 20)).save(out, "PNG")
     with pytest.raises(ValueError, match="no figure"):
         ds.flatten_background(out.getvalue())
+
+
+def _warded():
+    from narrator.designs import WardrobeState
+    return _char(identity=["scar over left eye", "silver ring"], required=["yellow eyes"],
+                 wardrobe={"work": WardrobeState(text="office wear", tags="white blouse, pencil skirt", props=["clipboard"])})
+
+
+def test_state_turnaround_swaps_outfit_keeps_identity():
+    from narrator.design_sheets import sheet_prompt
+    pos, _ = sheet_prompt(_warded(), "turnaround", state="work")
+    assert "white blouse, pencil skirt" in pos and "scar over left eye, silver ring" in pos and "yellow eyes" in pos
+    assert "black bomber jacket" not in pos and "mechanical left arm" not in pos
+
+
+def test_state_portrait_and_expressions_use_neutral_light():
+    from narrator.design_sheets import NEUTRAL_LIGHT, expression_prompts, portrait_prompt
+    d = _warded()
+    pos, neg = portrait_prompt(d, state="work")
+    assert NEUTRAL_LIGHT in pos and "blue light" in neg and "neon lights" not in pos.split(NEUTRAL_LIGHT)[0] and "silver ring" in pos
+    assert "bomber" not in pos
+    for _l, p, n in expression_prompts(d, state="work"):
+        assert NEUTRAL_LIGHT in p and "cyan tint" in n and "scar over left eye" in p
+    assert "night" not in pos.split(", ")
+
+
+def test_state_props_prompt_uses_state_props_or_falls_back():
+    from narrator.design_sheets import state_props_prompt
+    d = _warded()
+    pos, _ = state_props_prompt(d, "work")
+    assert "clipboard" in pos and "grey background" in pos
+    d.wardrobe["work"].props = []
+    assert "white blouse" in state_props_prompt(d, "work")[0]
+
+
+def test_unknown_state_raises():
+    from narrator.design_sheets import sheet_prompt
+    with pytest.raises(ValueError):
+        sheet_prompt(_warded(), "turnaround", state="nope")

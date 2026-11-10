@@ -33,7 +33,7 @@ from tools.batch_status import Batch, batch_url
 from narrator.design_sheets import (
     CHARACTER_SHEETS, EXPRESSION_SIZE, LOCATION_SHEETS, MOOD_SUFFIXES, candidate_prompt, candidate_workflow,
     face_workflow, front_figure, height_pose, lift_blacks, natural_scene_workflow, portrait_prompt, scene_prompt, scene_workflow, upscale_workflow, SCENE_MOOD, SCENE_SIZE, _join,
-    height_lineup, colour_guide, expression_grid, expression_prompts, extract_palette, flatten_background, join_strip, sheet_prompt, sheet_workflow,
+    height_lineup, colour_guide, state_props_prompt, expression_grid, expression_prompts, extract_palette, flatten_background, join_strip, sheet_prompt, sheet_workflow,
 )
 from narrator.designs import DESIGNS_DIR, Design, load_design, load_designs, save_design
 from narrator.world import kuroshio
@@ -153,7 +153,10 @@ async def cmd_sheets(designs, slugs: list[str], args, backend) -> int:
     batch = Batch(f"{only.capitalize()} sheets" if only else "Sheets", len(slugs), getattr(args, "batch_url", None))
     for slug in slugs:
         try:
-            await _sheets_one(slug, args, backend)
+            if getattr(args, "state", None):
+                await _state_sheets_one(slug, args, backend)
+            else:
+                await _sheets_one(slug, args, backend)
             batch.step(designs[slug].name)
         except Exception as e:
             failed += 1
@@ -203,6 +206,50 @@ async def _sheets_one(slug: str, args, backend) -> None:
     if (slug_dir / f"{key}.png").exists():
         d.palette = extract_palette((slug_dir / f"{key}.png").read_bytes(), skip_background=d.kind == "character")
     save_design(d, args.designs_dir / f"{slug}.toml")
+
+
+STATE_SHEETS = ("turnaround", "expressions", "portrait", "props", "colorguide")
+
+
+async def _state_sheets_one(slug: str, args, backend) -> None:
+    """v2 sheet set per wardrobe state, in neutral light, into wardrobe/<state>/. The top-level originals are never touched."""
+    d = load_design(args.designs_dir / f"{slug}.toml")
+    if d.kind != "character" or not d.wardrobe:
+        raise ValueError("--state needs a character with wardrobe states")
+    states = list(d.wardrobe) if args.state == "all" else [args.state]
+    if unknown := [s for s in states if s not in d.wardrobe]:
+        raise ValueError(f"no wardrobe state {unknown[0]!r} (has: {', '.join(d.wardrobe)})")
+    seed = getattr(args, "seed", None) or d.seed
+    for state in states:
+        out = args.design_dir / slug / "wardrobe" / state
+        out.mkdir(parents=True, exist_ok=True)
+        for sheet in STATE_SHEETS:
+            if getattr(args, "only", None) not in (None, sheet):
+                continue
+            target = out / f"{sheet}.png"
+            if target.exists() and not getattr(args, "redo", False):
+                continue
+            if sheet == "expressions":
+                panels = []
+                for label, pos, neg in expression_prompts(d, state):
+                    wf = candidate_workflow(pos, neg, seed)
+                    wf["5"]["inputs"].update(width=EXPRESSION_SIZE[0], height=EXPRESSION_SIZE[1])
+                    panels.append((label, await backend.run_workflow(wf)))
+                png = expression_grid(panels)
+            elif sheet == "colorguide":
+                source = (out / "turnaround.png").read_bytes()
+                png = colour_guide(source, extract_palette(source), _front_head(source))
+            elif sheet == "props":
+                png = await backend.run_workflow(sheet_workflow(*state_props_prompt(d, state), seed))
+            else:
+                pos, neg = sheet_prompt(d, sheet, state=state)
+                pose = await _turnaround_pose(d, backend) if sheet == "turnaround" else None
+                size = EXPRESSION_SIZE if sheet == "portrait" else None
+                png = await backend.run_workflow(sheet_workflow(pos, neg, seed, size=size, pose=pose))
+                if sheet == "turnaround":
+                    png = flatten_background(png)
+            target.write_bytes(png)
+            print(f"{slug}/{state}: {sheet}", flush=True)
 
 
 async def _turnaround_pose(d: Design, backend) -> str:
@@ -522,8 +569,10 @@ def _parser() -> argparse.ArgumentParser:
     a = sub.add_parser("approve"); a.add_argument("slug"); a.add_argument("n", type=int); a.add_argument("--round", type=int)
     r = sub.add_parser("reroll"); r.add_argument("slug"); r.add_argument("note")
     s = sub.add_parser("sheets"); s.add_argument("slugs", nargs="*"); s.add_argument("--approved-missing", action="store_true")
-    s.add_argument("--only", choices=(*CHARACTER_SHEETS, *LOCATION_SHEETS), help="redo just this sheet; keeps the others")
+    s.add_argument("--only", choices=(*CHARACTER_SHEETS, *LOCATION_SHEETS, "props"), help="redo just this sheet; keeps the others")
     s.add_argument("--seed", type=int, help="render with this seed instead of the design's; not saved")
+    s.add_argument("--state", help="render the v2 sheet set for this wardrobe state (or 'all') into wardrobe/<state>/; originals untouched")
+    s.add_argument("--redo", action="store_true", help="with --state: overwrite existing state sheets")
     sc = sub.add_parser("scene"); sc.add_argument("slug"); sc.add_argument("what", help="place and action tags"); sc.add_argument("--name", required=True, help="file name, e.g. alley")
     sc.add_argument("--place", type=Path, help="empty location image to start from, so the character takes its light")
     sc.add_argument("--standing", action="store_true", help="old recipe: full-body skeleton, no starting image")

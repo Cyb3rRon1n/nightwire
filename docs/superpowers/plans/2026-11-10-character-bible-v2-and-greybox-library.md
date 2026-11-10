@@ -104,3 +104,11 @@ Plus `docs/greybox-library.md`: what the library is, the pose and camera names w
 ---
 
 Final: whole-branch review of Tasks 1-3, 6-7 (most capable model), fixes, then ask the owner before merge/push.
+
+### Task 8: Retire the old sheets (owner request 2026-11-10)
+
+Per character, only after the owner has approved ALL of that character's v2 sets:
+- [ ] Move `design-data/<slug>/{turnaround,portrait,expressions,colorguide,props}.png` (and `-old.png` variants, and `design-data/<slug>/shorts/`) into `/home/sentinel/projects/github/repos/nightwire-design-backup-<YYYY-MM-DD>/<slug>/` (archive, not delete); list what moved in the ledger.
+- [ ] Point every consumer at the v2 set: the default sheet for a character becomes its first wardrobe state (`work`) — `tools/shorts/prompt.py` expected_refs, `tools/review/producers.py` sheets, `tools/design_studio.py` gallery/review pages, image_studio/stills subject references, `tools/shorts/keyframes.py` compare list. One helper `narrator.designs.sheet_path(design_dir, slug, sheet, state=None)` used everywhere; tests.
+- [ ] Rebuild and publish gallery, inbox and wall pages; confirm no page links a moved file (grep the built sites for the old paths).
+Permanent deletion of the archive only if the owner asks again.

@@ -307,3 +307,40 @@ async def test_gallery_and_review_show_a_hand_made_props_sheet(studio):
     assert await ds.main(_args(studio, "gallery")) == 0
     assert (data / "gallery" / "img" / "mama-sato" / "props.jpg").exists()
     assert "Hands and props: now" in (data / "gallery" / "review" / "index.html").read_text()
+
+
+async def _warded_studio(studio):
+    from narrator.designs import WardrobeState
+    designs, data = studio
+    backend = FakeBackend()
+    await ds.main(_args(studio, "candidates", "mama-sato"), backend=backend)
+    await ds.main(_args(studio, "approve", "mama-sato", "1"))
+    d = load_design(designs / "mama-sato.toml")
+    d.identity = ["mole under eye"]
+    d.wardrobe = {"work": WardrobeState(text="shop", tags="kimono", props=["ladle"]), "rest": WardrobeState(text="home", tags="yukata")}
+    save_design(d, designs / "mama-sato.toml")
+    return designs, data, backend
+
+
+async def test_state_sheets_go_to_wardrobe_folder_never_the_originals(studio):
+    designs, data, backend = await _warded_studio(studio)
+    await ds.main(_args(studio, "sheets", "mama-sato"), backend=backend)
+    orig = {p.name: p.read_bytes() for p in (data / "mama-sato").glob("*.png")}
+    backend.workflows.clear()
+    assert await ds.main(_args(studio, "sheets", "mama-sato", "--state", "work", "--redo"), backend=backend) == 0
+    out = data / "mama-sato" / "wardrobe" / "work"
+    assert sorted(p.name for p in out.glob("*.png")) == ["colorguide.png", "expressions.png", "portrait.png", "props.png", "turnaround.png"]
+    assert {p.name: p.read_bytes() for p in (data / "mama-sato").glob("*.png")} == orig
+    assert len(backend.workflows) == 1 + 1 + 6 + 1
+    backend.workflows.clear()
+    await ds.main(_args(studio, "sheets", "mama-sato", "--state", "work"), backend=backend)
+    assert backend.workflows == []  # skips existing without --redo
+
+
+async def test_state_all_and_unknown_state(studio):
+    designs, data, backend = await _warded_studio(studio)
+    assert await ds.main(_args(studio, "sheets", "mama-sato", "--state", "all"), backend=backend) == 0
+    assert (data / "mama-sato" / "wardrobe" / "rest" / "turnaround.png").exists()
+    assert (data / "mama-sato" / "wardrobe" / "work" / "props.png").exists()
+    assert not (data / "mama-sato" / "turnaround.png").exists()
+    assert await ds.main(_args(studio, "sheets", "mama-sato", "--state", "nope"), backend=backend) == 1
