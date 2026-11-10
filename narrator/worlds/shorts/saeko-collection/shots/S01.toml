@@ -3,6 +3,8 @@ start = 0.0
 end = 9.0
 summary = "static extreme wide down onto the alley in rain; a tow van's amber hazards, Saeko tiny at the mouth"
 lens = 28.0
+why = "EWS looking down the alley: rain and a tow van's hazards dwarf her, a job done in the margins of the city"
+vertical = [0.4]
 size = "EWS"
 angle = "high above the alley mouth"
 move = "static"
@@ -32,7 +34,7 @@ which = "start"
 figure = "C1"
 pose = "stand-back"
 camera = "ews-high"
-feet = [0.4, 0.6]
+feet = [0.4, 0.62]
 height = 0.08
 
 [[board]]
@@ -40,5 +42,5 @@ which = "end"
 figure = "C1"
 pose = "stand-back"
 camera = "ews-high"
-feet = [0.4, 0.6]
+feet = [0.4, 0.62]
 height = 0.08

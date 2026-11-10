@@ -3,6 +3,8 @@ start = 17.0
 end = 24.0
 summary = "slow push-in from behind as she lifts the charcoal coat from the wall hook"
 lens = 40.0
+why = "Back to camera, push-in: we follow her decision to go out instead of seeing her face"
+vertical = [0.5]
 size = "MS"
 angle = "eye level behind her"
 move = "slow push-in"
@@ -32,13 +34,13 @@ which = "start"
 figure = "C1"
 pose = "stand-back"
 camera = "ws-back"
-feet = [0.5, 0.95]
-height = 0.75
+feet = [0.5, 0.93]
+height = 0.45
 
 [[board]]
 which = "end"
 figure = "C1"
 pose = "stand-back"
 camera = "ws-back"
-feet = [0.5, 0.95]
-height = 0.75
+feet = [0.5, 0.93]
+height = 0.45

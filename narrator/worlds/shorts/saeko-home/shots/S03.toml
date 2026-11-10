@@ -3,6 +3,8 @@ start = 17.0
 end = 27.0
 summary = "slow push-in on her lying on her side on the futon, chrome hand by her face, amber light blinking"
 lens = 35.0
+why = "Low eye level along the floor: lying down, she is the smallest thing in the dark flat"
+vertical = [0.5]
 size = "WS"
 angle = "low eye level, along the floor"
 move = "slow push-in"
@@ -32,13 +34,13 @@ which = "start"
 figure = "C1"
 pose = "lie-side"
 camera = "ws-front"
-feet = [0.5, 0.85]
-height = 0.25
+feet = [0.5, 0.9]
+height = 0.1
 
 [[board]]
 which = "end"
 figure = "C1"
 pose = "lie-side"
 camera = "ws-front"
-feet = [0.5, 0.85]
-height = 0.25
+feet = [0.5, 0.9]
+height = 0.1

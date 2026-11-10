@@ -3,6 +3,8 @@ start = 0.0
 end = 8.0
 summary = "static wide from behind as she walks the empty corridor toward her door"
 lens = 35.0
+why = "Back view up the corridor: she walks away from us toward her door, small under cyan tubes"
+vertical = [0.5]
 size = "WS"
 angle = "eye level, up the corridor from behind her"
 move = "static"
@@ -32,8 +34,8 @@ which = "start"
 figure = "C1"
 pose = "walk"
 camera = "ws-back"
-feet = [0.5, 0.75]
-height = 0.32
+feet = [0.5, 0.8]
+height = 0.28
 
 [[board]]
 which = "end"

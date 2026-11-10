@@ -3,6 +3,8 @@ start = 18.0
 end = 27.0
 summary = "slow push-in close on the chrome hand on the railing; the amber ring light blinks against cold cyan"
 lens = 50.0
+why = "Tighter than the rest: the chrome hand and blinking light are the story, so we come close for the first time"
+vertical = [0.5]
 size = "CU"
 angle = "eye level, close on her chrome wrist"
 move = "slow push-in"
@@ -36,7 +38,7 @@ figure = "C1"
 pose = "lean-rail"
 camera = "mcu-front"
 feet = [0.5, 0.95]
-height = 0.8
+height = 0.3
 
 [[board]]
 which = "end"
@@ -44,4 +46,4 @@ figure = "C1"
 pose = "lean-rail"
 camera = "mcu-front"
 feet = [0.5, 0.95]
-height = 0.8
+height = 0.3

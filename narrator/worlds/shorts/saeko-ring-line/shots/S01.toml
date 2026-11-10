@@ -3,6 +3,8 @@ start = 0.0
 end = 8.0
 summary = "static extreme wide of the empty platform under flat tubes; she stands tiny at the yellow line"
 lens = 28.0
+why = "EWS high down the platform: empty tubes and a tiny figure on the yellow line say waiting alone"
+vertical = [0.5]
 size = "EWS"
 angle = "high and far down the platform"
 move = "static"
@@ -32,13 +34,13 @@ which = "start"
 figure = "C1"
 pose = "stand-back"
 camera = "ews-high"
-feet = [0.5, 0.55]
-height = 0.08
+feet = [0.5, 0.7]
+height = 0.09
 
 [[board]]
 which = "end"
 figure = "C1"
 pose = "stand-back"
 camera = "ews-high"
-feet = [0.5, 0.55]
-height = 0.08
+feet = [0.5, 0.7]
+height = 0.09

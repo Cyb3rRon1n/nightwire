@@ -3,6 +3,8 @@ start = 0.0
 end = 8.0
 summary = "static extreme wide of the danchi block after dark; one corridor door glows; Saeko a tiny back at the rail"
 lens = 28.0
+why = "EWS, figure in the lower third: the empty block above her is the loneliness"
+vertical = [0.62]
 size = "EWS"
 angle = "high across the courtyard, level with the fourth floor"
 move = "static"
@@ -32,7 +34,7 @@ which = "start"
 figure = "C1"
 pose = "stand-back"
 camera = "ews-high"
-feet = [0.62, 0.5]
+feet = [0.62, 0.6]
 height = 0.08
 
 [[board]]
@@ -40,5 +42,5 @@ which = "end"
 figure = "C1"
 pose = "stand-back"
 camera = "ews-high"
-feet = [0.62, 0.5]
+feet = [0.62, 0.6]
 height = 0.08

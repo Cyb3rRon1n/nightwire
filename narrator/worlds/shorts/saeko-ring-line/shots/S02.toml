@@ -3,6 +3,8 @@ start = 8.0
 end = 16.0
 summary = "static wide profile; the train blurs past, light flickering across her motionless face"
 lens = 35.0
+why = "Profile across the tracks, left of centre: the train's streaking light moves, she does not"
+vertical = [0.4]
 size = "WS"
 angle = "eye level across the tracks, profile"
 move = "static"
@@ -33,7 +35,7 @@ figure = "C1"
 pose = "stand"
 camera = "ws-profile"
 feet = [0.4, 0.9]
-height = 0.45
+height = 0.34
 
 [[board]]
 which = "end"
@@ -41,4 +43,4 @@ figure = "C1"
 pose = "stand"
 camera = "ws-profile"
 feet = [0.4, 0.9]
-height = 0.45
+height = 0.34

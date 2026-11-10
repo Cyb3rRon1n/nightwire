@@ -3,6 +3,8 @@ start = 9.0
 end = 18.0
 summary = "static wide from behind; she stands at the lit doorway in the rain, a shadow moving on the screen"
 lens = 35.0
+why = "Back to camera facing the lit doorway: we share her view of the shadow, so the unseen person is the subject"
+vertical = [0.5]
 size = "WS"
 angle = "eye level from behind her down the alley"
 move = "static"
@@ -32,13 +34,13 @@ which = "start"
 figure = "C1"
 pose = "stand-back"
 camera = "ws-back"
-feet = [0.5, 0.85]
-height = 0.55
+feet = [0.5, 0.88]
+height = 0.36
 
 [[board]]
 which = "end"
 figure = "C1"
 pose = "stand-back"
 camera = "ws-back"
-feet = [0.5, 0.85]
-height = 0.55
+feet = [0.5, 0.88]
+height = 0.36

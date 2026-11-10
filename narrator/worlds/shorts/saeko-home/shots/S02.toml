@@ -3,6 +3,8 @@ start = 8.0
 end = 17.0
 summary = "static medium profile; she sits against the bed and the chrome fingers close only halfway"
 lens = 50.0
+why = "Profile at floor level: the half-closed hand is private, so we watch from across the room"
+vertical = [0.5]
 size = "MS"
 angle = "eye level, profile across the flat"
 move = "static"
@@ -32,13 +34,13 @@ which = "start"
 figure = "C1"
 pose = "sit-floor"
 camera = "ms-profile"
-feet = [0.5, 0.95]
-height = 0.45
+feet = [0.5, 0.92]
+height = 0.24
 
 [[board]]
 which = "end"
 figure = "C1"
 pose = "sit-floor"
 camera = "ms-profile"
-feet = [0.5, 0.95]
-height = 0.45
+feet = [0.5, 0.92]
+height = 0.24

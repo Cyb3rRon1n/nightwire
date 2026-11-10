@@ -3,6 +3,8 @@ start = 27.0
 end = 35.0
 summary = "static wide profile; she sits on the low parapet, small, amber blink on her wrist"
 lens = 35.0
+why = "Wide profile, off-centre: she sits small on the parapet, the city behind her gives scale"
+vertical = [0.45]
 size = "WS"
 angle = "eye level, profile, wide of the railing"
 move = "static"
@@ -32,13 +34,13 @@ which = "start"
 figure = "C1"
 pose = "sit-ledge"
 camera = "ws-profile"
-feet = [0.5, 0.9]
-height = 0.4
+feet = [0.45, 0.9]
+height = 0.18
 
 [[board]]
 which = "end"
 figure = "C1"
 pose = "sit-ledge"
 camera = "ws-profile"
-feet = [0.5, 0.9]
-height = 0.4
+feet = [0.45, 0.9]
+height = 0.18

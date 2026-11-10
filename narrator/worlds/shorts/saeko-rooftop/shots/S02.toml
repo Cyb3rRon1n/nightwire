@@ -3,6 +3,8 @@ start = 9.0
 end = 18.0
 summary = "slow push-in on her leaning on the railing in profile, city lights beyond"
 lens = 35.0
+why = "Profile along the rail, push-in: leaning on the railing is a held breath, the city is only background"
+vertical = [0.5]
 size = "WS"
 angle = "eye level, profile along the railing"
 move = "slow push-in"
@@ -33,7 +35,7 @@ figure = "C1"
 pose = "lean-rail"
 camera = "ws-profile"
 feet = [0.5, 0.9]
-height = 0.4
+height = 0.3
 
 [[board]]
 which = "end"
@@ -41,4 +43,4 @@ figure = "C1"
 pose = "lean-rail"
 camera = "ws-profile"
 feet = [0.5, 0.9]
-height = 0.4
+height = 0.3
