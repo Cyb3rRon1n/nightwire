@@ -7,7 +7,6 @@ from pathlib import Path
 
 from narrator.designs import load_designs
 from tools.shorts import SHORTS_DIR
-from tools.shorts.plates import PLATES_ROOT
 from tools.review import migrate, producers
 from tools.review.registry import build_items, write_items
 
@@ -39,8 +38,7 @@ def main(argv=None) -> int:
     world_ids = a.world_ids or (archives[-1] if archives else None)
     ctx = {"design_dir": dd, "site": site, "world_ids": world_ids, "shorts_site": dd / "shorts" / "_site",
            "designs": load_designs(), "images": _fetch_images(),
-           "shorts_dir": Path(os.environ.get("NIGHTWIRE_SHORTS_DIR", SHORTS_DIR)),
-           "plates_root": Path(os.environ.get("NIGHTWIRE_PLATES_DIR", PLATES_ROOT))}
+           "shorts_dir": Path(os.environ.get("NIGHTWIRE_SHORTS_DIR", SHORTS_DIR))}
     items, errors = build_items(producers.ALL, ctx)
     write_items(items, site)
     (site / "index.html").write_text(PAGE.read_text())

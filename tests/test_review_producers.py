@@ -157,9 +157,13 @@ def test_plans_item_when_only_approvals_pending_and_cut_item(tmp_path, monkeypat
     assert P.cuts(c)[0].id != cut.id
 
 
-def test_plans_use_ctx_paths_not_env_defaults(tmp_path, monkeypatch):
+def test_plans_fp_follows_plate_pixels_and_equals_submit_fp(tmp_path, monkeypatch):
     from test_shorts_cli import PACKAGED, setup
     from test_shorts_model import designs
+    from tools.shorts import __main__ as cli
+    from tools.shorts import approve
+    from tools.shorts.backends import fal
+    from tools.shorts.model import load_short
     setup(tmp_path, monkeypatch, shot=PACKAGED, approved=False)
     toml = tmp_path / "script" / "pilot" / "short.toml"
     toml.write_text('model = "seedance-2.0-fast"\n' + toml.read_text())
@@ -167,8 +171,18 @@ def test_plans_use_ctx_paths_not_env_defaults(tmp_path, monkeypatch):
     c = {"design_dir": dd, "site": tmp_path / "site", "shorts_dir": tmp_path / "script", "plates_root": tmp_path / "plates",
          "designs": designs(), "images": {}}
     (item,) = P.plans(c)
-    # the environment now points somewhere else entirely; ctx paths must still decide
-    monkeypatch.setenv("NIGHTWIRE_DESIGN_DIR", str(tmp_path / "elsewhere"))
+    s = load_short(tmp_path / "script" / "pilot")
+    shot = s.shots[0]
+    model = fal.shot_model(shot, s.model)
+    _, prompt, refs = cli._preflight(s, shot, model, designs())  # submit's path: module defaults
+    refs, _ = fal.usable_refs(model, refs)
+    fp = approve.fingerprint(model, prompt, refs, int(round(shot.duration)), approve.fp_extra(s, shot, dd))
+    assert item.id == approve.plan_image_id("pilot", shot.id, fp)
+    png(dd / "mama-satos-izakaya" / "plates" / "door.png", size=(16, 16))  # plate re-rendered
+    (changed,) = P.plans(c)
+    assert changed.id != item.id
+    # env var is the one override for every consumer
+    monkeypatch.setenv("NIGHTWIRE_PLATES_DIR", str(tmp_path / "plates"))
     monkeypatch.setattr("tools.shorts.plates.PLATES_ROOT", tmp_path / "nowhere")
-    (again,) = P.plans(c)
-    assert again.id == item.id
+    del c["plates_root"]
+    assert P.plans(c)[0].id == changed.id

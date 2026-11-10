@@ -2,6 +2,7 @@
 plate--<place>--<name>) and reused by every later short at that place. Catalogues live in narrator/worlds/plates/,
 outside the designs folder, because every design tool globs designs/*.toml as a design."""
 
+import os
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -9,6 +10,12 @@ from pathlib import Path
 GUIDE_STRENGTH = 0.8  # lineart ControlNet: strong enough that each direction shows its own wall
 GUIDE_END = 0.85
 PLATES_ROOT = Path(__file__).resolve().parents[2] / "narrator" / "worlds" / "plates"
+
+
+def default_root() -> Path:
+    """One plates root for sheet, submit, preflight and the review inbox; resolved at call time."""
+    env = os.environ.get("NIGHTWIRE_PLATES_DIR")
+    return Path(env) if env else PLATES_ROOT
 
 
 @dataclass
@@ -21,7 +28,7 @@ class Plate:
 
 
 def load_plates(place: str, plates_root: Path | None = None) -> dict[str, Plate]:
-    path = (plates_root or PLATES_ROOT) / f"{place}.toml"
+    path = (plates_root or default_root()) / f"{place}.toml"
     if not path.exists():
         return {}
     return {p["name"]: Plate(**p) for p in tomllib.loads(path.read_text()).get("plate", [])}
