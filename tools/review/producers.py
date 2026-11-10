@@ -125,4 +125,46 @@ def scenes(ctx) -> list[Item]:
     return out
 
 
-ALL = [sheets, candidates, world, takes, wallpapers, plates, scenes]
+def keyframes(ctx) -> list[Item]:
+    from tools.shorts import keyframes as kf
+    from tools.shorts import plates as pl
+    out = []
+    for short in _shorts(ctx):
+        work = ctx["design_dir"] / "shorts" / short.slug
+        catalogue = pl.load_plates(short.place, ctx.get("plates_root"))
+        for shot in short.shots:
+            for which in kf.needed(shot):
+                chosen = kf.chosen_path(work, shot.id, which)
+                srcs = [chosen] if chosen.exists() else sorted((work / "shots" / shot.id / "keyframes").glob(f"{which}-c*.png"))[:6]
+                if not srcs:
+                    continue
+                rel = f"keyframes/{short.slug}/{shot.id.lower()}"
+                files = [web_copy(f, ctx["site"], f"{rel}/{f.stem}.jpg") for f in srcs]
+                compare = []
+                for cid in shot.frame:
+                    if cid not in short.cast:
+                        continue
+                    folder = ctx["design_dir"] / short.cast[cid]
+                    turn = folder / "shorts" / "turnaround.png"
+                    for label, f in ((f"{cid} turnaround", turn if turn.exists() else folder / "turnaround.png"),
+                                     (f"{cid} portrait", folder / "portrait.png")):
+                        if f.exists():
+                            compare.append({"label": label, "url": web_copy(f, ctx["site"], f"{rel}/{cid}-{f.stem}.jpg")})
+                if shot.plate in catalogue:
+                    plate = pl.plate_path(ctx["design_dir"], short.place, catalogue[shot.plate])
+                    if plate.exists():
+                        compare.append({"label": "Plate", "url": web_copy(plate, ctx["site"], f"{rel}/plate.jpg")})
+                guide = work / "shots" / shot.id / "guide" / f"{which}.png"
+                if guide.exists():
+                    compare.append({"label": "Grey-box", "url": web_copy(guide, ctx["site"], f"{rel}/{which}-greybox.jpg")})
+                moves = shot.at_start if which == "start" else shot.at_end
+                context = "\n".join([f"Frame {k}: {v}" for k, v in sorted(shot.frame.items())]
+                                    + [f"At {which} {k}: {v}" for k, v in sorted(moves.items())]
+                                    + [f"Props {k}: {v}" for k, v in sorted(shot.props.items())]
+                                    + [f"Wardrobe {k}: {v}" for k, v in sorted(short.wardrobe.items())])
+                out.append(Item(f"key--{short.slug}--{shot.id.lower()}--{which}", "keyframe", "pre-production", short.slug,
+                                f"{short.title}: {shot.id} {which} keyframe", files, compare, context=context))
+    return out
+
+
+ALL = [sheets, candidates, world, takes, wallpapers, plates, scenes, keyframes]

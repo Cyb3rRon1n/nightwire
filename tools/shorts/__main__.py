@@ -334,6 +334,38 @@ def cmd_plates(a) -> int:
     return 1 if errors else 0
 
 
+def cmd_keyframes(a) -> int:
+    from tools.design_scenes import gpu_busy
+    from tools.shorts import keyframes
+    s, designs, work = _short(a.slug), load_designs(), _work(a.slug)
+    shot = _shot(s, a.shot) if a.shot else None
+    if a.choose:
+        if shot is None:
+            raise CliError("--choose needs a shot")
+        try:
+            print(keyframes.choose(work, shot.id, a.choose[0], int(a.choose[1])))
+        except ValueError as e:
+            raise CliError(str(e))
+        return 0
+    url = os.environ.get("COMFYUI_URL", "http://192.168.10.19:8188")
+    jobs, skipped = keyframes.plan_jobs(s, work, shot.id if shot else None, a.which, a.seeds, a.redo)
+    for line in skipped:
+        print(f"note: {line}", file=sys.stderr)
+    if jobs:
+        print("Run `python -m tools.taste` first if you haven't this session.", file=sys.stderr)
+        try:
+            busy = gpu_busy(url)
+        except OSError:  # URLError is an OSError
+            raise CliError(f"ComfyUI is not reachable at {url}")
+        if busy:
+            print("ComfyUI is busy; wait for the current job to finish.", file=sys.stderr)
+            return 1
+    errors = keyframes.run(jobs, url, s, designs, a.seed)
+    for e in errors:
+        print(e, file=sys.stderr)
+    return 1 if errors else 0
+
+
 def cmd_verdicts(a) -> int:
     with urllib.request.urlopen(PICKS_API, timeout=10) as r:
         api = json.load(r)
@@ -428,6 +460,10 @@ def main(argv=None) -> int:
     q = sub.add_parser("plates"); q.add_argument("slug"); q.add_argument("--seeds", type=int, default=3)
     q.add_argument("--seed", type=int, default=703); q.add_argument("--redo", action="store_true")
     q.add_argument("--choose", nargs=2, metavar=("NAME", "N"))
+    q = sub.add_parser("keyframes"); q.add_argument("slug"); q.add_argument("shot", nargs="?")
+    q.add_argument("--which", choices=("start", "end", "both"), default="both"); q.add_argument("--seeds", type=int, default=4)
+    q.add_argument("--seed", type=int, default=703); q.add_argument("--redo", action="store_true")
+    q.add_argument("--choose", nargs=2, metavar=("WHICH", "N"))
     sub.add_parser("page")
     q = sub.add_parser("assemble"); q.add_argument("slug"); q.add_argument("--music", type=Path)
     a = p.parse_args(argv)
