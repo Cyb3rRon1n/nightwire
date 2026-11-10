@@ -11,3 +11,14 @@ status = "approved"
 seed = 100355588
 palette = ["#020203", "#0b161f", "#132532", "#303235", "#68453b", "#c1cac2"]
 notes = ["2026-10-28 draft from world card", "2026-10-28 round 1: 4 candidates", "2026-10-29 art direction: mature cyberpunk pass", "2026-10-29 round 2: 4 candidates", "2026-10-29 approved r2 #1 (seed 100355587)", "2026-11-01 owner style pick: new seed, F rework (seed 100355588)", "2026-11-01 eye colour recorded from earlier sheets: red eyes, panels drifted without one"]
+identity = ["white hair slicked straight back", "thin white mustache, with a small wisp of white beard on the chin", "small round gold-rimmed glasses with red-tinted lenses, red eyes behind them", "very old, deeply wrinkled, extremely pale skin", "thin frail frame, short stature"]
+appearance = "1boy, old man, white hair, slicked back hair, thin mustache, small goatee, red eyes, round eyewear, red-tinted eyewear, wrinkled skin, pale skin, thin, short"
+
+[wardrobe.work]
+text = "Black haori with gold embroidery and a tall collar lined in red over a white kimono, black pleated hakama, black leather shoes, and a short sword tucked in the obi."
+tags = "black haori, gold embroidery, family crest, high collar, red collar lining, white kimono, black hakama, pleated hakama, black shoes, japanese clothes, sword in obi"
+props = ["cane"]
+
+[wardrobe.offduty]
+text = "Plain dark grey kimono with a black unembroidered haori, white tabi and zori, hands tucked into the sleeves."
+tags = "grey kimono, black haori, plain haori, white tabi, zori, hands in sleeves, japanese clothes"

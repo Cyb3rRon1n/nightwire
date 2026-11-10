@@ -12,3 +12,14 @@ status = "approved"
 seed = 1784598690
 palette = ["#151413", "#000000", "#373532", "#cbc8c3", "#6f6c68", "#242220"]
 notes = ["2026-11-01 draft: jaded KPD detective, half-owned by the Hoshikawa", "2026-10-31 round 1: 4 candidates", "2026-11-01 approved r1 #3 (seed 1784598690)"]
+identity = ["messy dark hair", "rough stubble and a deeply lined, tired face", "scar running down the face through the eye and cheek", "one mechanical eye with a glowing yellow iris - the portrait/expressions show it on the character's left, the design file says right; needs a decision", "heavy-shouldered large build in the turnaround, mid-forties"]
+appearance = "1boy, mature male, 40 years old, messy hair, dark grey hair, stubble, tired eyes, scar on face, scar through eye, mechanical eye, glowing yellow eye, single mechanical eye, tall, large build, broad shoulders"
+
+[wardrobe.work]
+text = "Long black police trench coat with blue shoulder panels and white reflective bands worn open over a white shirt with a loose black tie, navy trousers, black boots, gold badge on the chest and a holstered sidearm."
+tags = "black trench coat, police coat, blue shoulder pads, reflective stripe, white shirt, loose necktie, black tie, navy trousers, black boots, gold badge, holster"
+props = ["cigarette", "gold badge", "holstered sidearm"]
+
+[wardrobe.offduty]
+text = "Creased charcoal shirt with a loosened tie under a plain dark overcoat with no police markings, dark jeans and scuffed black boots."
+tags = "charcoal shirt, loose necktie, dark overcoat, plain coat, dark jeans, black boots"

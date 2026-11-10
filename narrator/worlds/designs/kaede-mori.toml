@@ -12,3 +12,14 @@ status = "approved"
 seed = 2109678757
 palette = ["#f95793", "#83474c", "#f5f3f1", "#a73153", "#f6a86e", "#d98e63"]
 notes = ["2026-11-01 draft: Yomi Line courier and street racer", "2026-10-31 round 1: 4 candidates", "2026-11-01 approved r1 #4 (seed 2109678757)"]
+identity = ["very long bright orange hair in a high ponytail, with a yellow-lime streak in a front lock", "green eyes, wide cheerful grin", "slender with narrow waist, long legs and an athletic build", "fair skin, bright open face"]
+appearance = "1girl, mature female, very long hair, orange hair, high ponytail, streaked hair, yellow streak, green eyes, grin, slender, narrow waist, long legs, athletic, large breasts, light skin"
+
+[wardrobe.work]
+text = "Pink-and-white racing jacket with yellow epaulettes zipped over a black high-neck underlayer, matching pink racing trousers with white panels, black fingerless gloves and white-and-pink platform boots."
+tags = "pink racing suit, cropped racing jacket, zipped jacket, white panels, teal trim, yellow epaulettes, black turtleneck, fingerless gloves, black gloves, white boots, platform boots, belt"
+props = ["pink-and-white racing helmet"]
+
+[wardrobe.offduty]
+text = "Oversized white zip hoodie with pink cuffs over a black tee, black leggings and white sneakers, hair in the same high ponytail."
+tags = "oversized hoodie, white hoodie, zip hoodie, black t-shirt, black leggings, white sneakers"

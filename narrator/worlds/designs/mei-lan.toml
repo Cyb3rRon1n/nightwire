@@ -12,3 +12,14 @@ status = "approved"
 seed = 3425832934
 palette = ["#f7e7d8", "#444829", "#020203", "#131d1b", "#a6a074", "#cfc1a6"]
 notes = ["2026-11-01 draft: Hanabira-cho club singer and information broker", "2026-10-31 round 1: 4 candidates", "2026-11-01 approved r1 #4 (seed 3425832934)", "2026-11-01 eye colour recorded from earlier sheets: blue eyes, panels drifted without one", "2026-11-01 light skin: renders came out darker than her design"]
+identity = ["black hair in a high bun with a gold hair ornament, long face-framing side locks and swept bangs", "glowing blue eyes", "red lips and a beauty mark under the eye on the viewer's-left cheek", "glowing tattoos: pink pattern across the upper back, white-gold glowing pattern on the chest and neck", "light skin, slender with narrow waist and long legs", "gold drop earrings"]
+appearance = "1girl, mature female, black hair, hair bun, hair ornament, sidelocks, swept bangs, blue eyes, glowing eyes, red lips, mole under eye, glowing tattoo, neck tattoo, chest tattoo, back tattoo, drop earrings, light skin, slender, narrow waist, long legs, large breasts"
+
+[wardrobe.work]
+text = "Black high-collar qipao with gold dragon-knot trim and a closed chest, ankle-length with side slits over opaque black tights, long black gloves and black high heels."
+tags = "black qipao, china dress, gold trim, mandarin collar, closed chest, long dress, side slit, black tights, elbow gloves, black gloves, black high heels"
+props = ["microphone"]
+
+[wardrobe.offduty]
+text = "Loose black silk mandarin-collar shirt with gold frog buttons, wide black trousers and black flats, hair in the same bun."
+tags = "black silk shirt, mandarin collar, frog buttons, gold trim, wide black pants, black flats"

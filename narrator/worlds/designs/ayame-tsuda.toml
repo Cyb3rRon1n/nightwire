@@ -12,3 +12,14 @@ status = "approved"
 seed = 612940568
 palette = ["#04050b", "#2d3237", "#161a1e", "#a51117", "#835a54", "#f6e0d3"]
 notes = ["2026-10-29 draft: fixer, sharp suit, deals in favours", "2026-10-29 round 1: 4 candidates", "2026-11-01 approved r1 #3 (seed 612940567)", "2026-11-01 owner style pick: E portrait seed 2 (seed 612940568)", "2026-11-03 owner: chose the black suit with yellow leopard lapels"]
+identity = ["long vivid red hair slicked straight back from the forehead, falling past the shoulders", "violet-purple eyes, sharp narrow upswept eyes, confident hard stare", "scar running through the eyebrow and down across the eye to the cheek on the viewer's-right side of the face, plus a fainter nick above the viewer's-left brow", "tall slender adult woman, narrow waist, long legs", "defined jaw and strong cheekbones, mature face"]
+appearance = "1girl, mature female, long hair, red hair, slicked back, purple eyes, sharp eyes, scar through eyebrow, scar across eye, scar on cheek, tall, slender, narrow waist, long legs, large breasts, strong jaw, light skin"
+
+[wardrobe.work]
+text = "Fitted black suit jacket buttoned over a black shirt, plain black sleeves and yellow leopard-print lapels, slim black trousers and black pointed high heels."
+tags = "black suit jacket, fitted jacket, leopard print lapels, yellow leopard print, black shirt, buttoned jacket, black trousers, tailored pants, pointed heels, black high heels, formal"
+props = ["cigarette", "gold rings"]
+
+[wardrobe.offduty]
+text = "Black satin shirt buttoned to the collar with a yellow leopard-print collar, slim black trousers and black ankle boots, gold rings still on."
+tags = "black satin shirt, leopard print collar, yellow leopard print, collared shirt, buttoned shirt, black trousers, black ankle boots, gold rings"

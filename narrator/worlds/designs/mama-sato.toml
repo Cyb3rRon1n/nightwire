@@ -11,3 +11,14 @@ status = "approved"
 seed = 1159170696
 palette = ["#d52c2a", "#41161a", "#bb2425", "#71151a", "#981f20", "#81473f"]
 notes = ["2026-10-28 draft from world card", "2026-10-29 round 1: 4 candidates", "2026-10-29 art direction: mature cyberpunk pass", "2026-10-29 round 2: 4 candidates", "2026-10-29 owner note: females more sexy, voluptuous (no nudity, adult)", "2026-10-29 round 3: 4 candidates", "2026-10-29 owner note: idol proportions - slender, narrow waist, slightly larger bust, long legs, beautiful idol face; not wide hips", "2026-10-29 round 4: 4 candidates", "2026-10-29 approved r4 #3 (seed 1159170696)"]
+identity = ["grey hair pinned in a high bun held by three gold hairsticks with tassels", "brown eyes with red eyeliner, warm knowing half-smile", "gold cybernetic ear piece", "circuit-line tech marks and a glowing circle implant on the neck", "floral tattoos over both shoulders and upper arms", "mature woman, slender with narrow waist and long legs"]
+appearance = "1girl, mature female, grey hair, hair bun, hair stick, brown eyes, red eyeliner, seductive smile, cybernetic ear, neck implant, circuit tattoo, shoulder tattoo, arm tattoo, slender, narrow waist, long legs, large breasts, light skin"
+
+[wardrobe.work]
+text = "Red kimono with gold floral embroidery closed at the collar over a white inner collar, wide gold obi with a bow, ankle-length hem, black tabi socks and black platform sandals, with a black techwear apron over it."
+tags = "red kimono, gold embroidery, floral embroidery, closed collar, white inner collar, gold obi, long sleeves, ankle length, black tabi, platform sandals, black apron, fingerless gloves"
+props = ["techwear apron"]
+
+[wardrobe.offduty]
+text = "Plain indigo cotton kimono with a narrow grey obi and a knitted black cardigan over it, hair in the same bun."
+tags = "indigo kimono, cotton kimono, narrow obi, black cardigan, long sleeves, black tabi, geta"

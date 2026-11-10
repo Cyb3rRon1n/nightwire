@@ -11,3 +11,14 @@ status = "approved"
 seed = 3529186270
 palette = ["#3e434e", "#0a0c0f", "#cccfc0", "#252a31", "#313741", "#61676c"]
 notes = ["2026-10-28 draft from world card", "2026-10-28 round 1: 4 candidates", "2026-10-29 art direction: mature cyberpunk pass", "2026-10-29 round 2: 4 candidates", "2026-10-29 approved r2 #2 (seed 3529186269)", "2026-11-01 owner style pick: seed 2 (seed 3529186270)", "2026-11-01 eye colour recorded from earlier sheets: black eyes, panels drifted without one"]
+identity = ["short black hair, grey at the temples", "black eyes, heavy-lidded, stern middle-aged face", "rectangular glasses", "thin mustache and short goatee with stubble", "diagonal scar down the viewer's-left cheek", "broad, heavy, muscular build"]
+appearance = "1boy, mature male, middle-aged, short hair, black hair, grey temples, black eyes, rectangular eyewear, mustache, goatee, stubble, scar on cheek, muscular male, broad shoulders, stern"
+
+[wardrobe.work]
+text = "Black armoured police uniform with a tactical vest, neon yellow-green armbands, orange-striped trousers, knee pads, black gloves and boots, and a black peaked cap with a gold crest."
+tags = "black police uniform, tactical vest, plate carrier, peaked cap, gold cap badge, yellow green armband, orange stripe trousers, knee pads, black gloves, combat boots, earpiece, headset microphone"
+props = ["clipboard"]
+
+[wardrobe.offduty]
+text = "Dark navy zip-up work jacket over a grey sweater, plain dark trousers and black shoes, no cap, glasses on."
+tags = "dark navy jacket, zip jacket, grey sweater, dark trousers, black shoes, no hat, rectangular glasses"

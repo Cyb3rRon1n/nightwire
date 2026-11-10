@@ -11,3 +11,14 @@ status = "approved"
 seed = 1266373671
 palette = ["#252830", "#0a090c", "#fcf6ef", "#5e636b", "#a42171", "#9df2f5"]
 notes = ["2026-10-28 draft from world card", "2026-10-28 round 1: 4 candidates", "2026-10-29 art direction: mature cyberpunk pass", "2026-10-29 round 2: 4 candidates", "2026-10-29 owner note: females more sexy, voluptuous (no nudity, adult)", "2026-10-29 round 3: 4 candidates", "2026-10-29 owner note: idol proportions - slender, narrow waist, slightly larger bust, long legs, beautiful idol face; not wide hips", "2026-10-29 round 4: 4 candidates", "2026-10-29 approved r4 #2 (seed 1266373671)", "2026-11-01 eye colour recorded from earlier sheets: blue eyes, panels drifted without one", "2026-11-03 owner: pink is fine but not all pink heavy: black outfit with magenta accents"]
+identity = ["light aqua-blue bob with blunt bangs, chin length", "pale blue eyes with an empty, unblinking look", "porcelain-white skin", "visible doll-like ball joints at the wrists, knees and hips, segmented plates at the waist", "slender with narrow waist and long legs"]
+appearance = "1girl, mature female, android, robot joints, ball joints, doll joints, short hair, bob cut, blunt bangs, light blue hair, aqua hair, blue eyes, blank eyes, expressionless, porcelain skin, pale skin, slender, narrow waist, long legs, large breasts"
+
+[wardrobe.work]
+text = "Black cropped jacket with magenta trim over a full-length white collared shirt and magenta necktie, black pencil skirt over opaque black tights, and black leg-armour boots with magenta soles."
+tags = "black cropped jacket, magenta trim, white collared shirt, magenta necktie, black pencil skirt, black tights, opaque tights, black boots, magenta soles, high collar jacket"
+props = ["delivery parcel"]
+
+[wardrobe.offduty]
+text = "Long cream knit cardigan over a black turtleneck, black leggings and white sneakers, jacket and tie left at the depot."
+tags = "cream cardigan, long cardigan, black turtleneck, black leggings, white sneakers"

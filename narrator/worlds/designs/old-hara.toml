@@ -11,3 +11,14 @@ status = "approved"
 seed = 1024394434
 palette = ["#384c40", "#232a28", "#2c3d33", "#0b0f0f", "#c7d0c4", "#62695d"]
 notes = ["2026-10-28 draft from world card", "2026-10-29 round 1: 4 candidates", "2026-10-29 art direction: mature cyberpunk pass", "2026-10-29 round 2: 4 candidates", "2026-10-29 approved r2 #1 (seed 1024394433)", "2026-11-01 owner style pick: seed 2 (seed 1024394434)", "2026-11-01 eye colour recorded from earlier sheets: black eyes, panels drifted without one"]
+identity = ["completely bald head", "bushy white eyebrows, deep wrinkles and heavy bags under black eyes", "mechanical right eye behind a gold monocle ring with a glowing spiral", "forearms covered in dark swirling tattoos", "old, thin and slightly hunched"]
+appearance = "1boy, old man, bald, white eyebrows, bushy eyebrows, bags under eyes, wrinkled skin, black eyes, mechanical right eye, monocle, forearm tattoo, thin, hunched over"
+
+[wardrobe.work]
+text = "Short-sleeved dark green surgical scrubs under a dark green apron with an id badge, yellow-green rubber gloves, black trousers and lime-and-white sneakers, black face mask worn pulled down under the chin."
+tags = "green scrubs, short sleeves, green apron, surgical apron, id badge, rubber gloves, yellow green gloves, black trousers, lime sneakers, mask pull, mask under chin, black face mask"
+props = ["id badge"]
+
+[wardrobe.offduty]
+text = "Worn brown knit cardigan over a grey collared shirt, dark trousers and plain slip-on shoes, monocle still on."
+tags = "brown cardigan, knit cardigan, grey collared shirt, dark trousers, slip-on shoes, monocle"

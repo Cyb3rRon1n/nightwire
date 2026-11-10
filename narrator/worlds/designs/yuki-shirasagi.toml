@@ -12,3 +12,14 @@ status = "approved"
 seed = 2620231515
 palette = ["#182026", "#dfe1db", "#f7fdfc", "#7e94a1", "#b6c7cf", "#444f56"]
 notes = ["2026-11-01 draft: Hoshikawa corp security chief, ice-cold, Tenjo Heights", "2026-10-31 round 1: 4 candidates", "2026-11-01 approved r1 #3 (seed 2620231515)"]
+identity = ["platinum blonde bob with blunt bangs", "red eyes with a cold flat stare, no smile", "pale smooth skin", "mechanical armoured legs with orange glow plates, black plating", "tall slender woman, narrow waist, long legs"]
+appearance = "1girl, mature female, short hair, bob cut, blunt bangs, platinum blonde hair, red eyes, cold expression, mechanical left eye, mechanical legs, pale skin, slender, narrow waist, long legs, large breasts"
+
+[wardrobe.work]
+text = "Long white trench coat with a high collar worn open over a black armoured high-collar bodysuit with orange glow lines, opaque black leggings under the black leg armour, black gloves and black block-heel boots, with a katana at the hip and a holographic visor."
+tags = "white trench coat, long coat, high collar, open coat, black armored bodysuit, high neck bodysuit, orange trim, glowing trim, opaque black leggings, black gloves, black boots, block heels"
+props = ["katana at hip", "holographic visor"]
+
+[wardrobe.offduty]
+text = "Cream wool turtleneck sweater under a short white wool coat, black tailored trousers and black boots."
+tags = "cream turtleneck sweater, short white coat, wool coat, black tailored trousers, black boots"

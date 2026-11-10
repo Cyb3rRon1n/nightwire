@@ -12,3 +12,14 @@ status = "approved"
 seed = 961023264
 palette = ["#020202", "#323d3f", "#212a2c", "#111111", "#c5bca9", "#514139"]
 notes = ["2026-10-29 draft: techie, junkyard veteran, prosthetic leg", "2026-10-29 round 1: 4 candidates", "2026-11-01 approved r1 #4 (seed 961023264)", "2026-11-01 eye colour recorded from earlier sheets: brown eyes, panels drifted without one"]
+identity = ["grey buzz-cut hair, thin to almost bald-looking on the turnaround side and back", "brown eyes under a heavy furrowed brow, gruff rugged weathered face", "grey stubble beard around the jaw and chin", "one large yellow-orange mechanical arm on the character's right", "tall, broad, heavily muscular build"]
+appearance = "1boy, mature male, buzz cut, grey hair, stubble, grey beard, brown eyes, thick eyebrows, wrinkled, rugged face, gruff, mechanical arm, single mechanical arm, yellow mechanical arm, tall, muscular male, broad shoulders"
+
+[wardrobe.work]
+text = "Black insulated work jacket zipped high with shoulder straps and a tool belt, black work trousers with knee pads, black boots and yellow-orange gloves."
+tags = "black work jacket, insulated jacket, high collar, shoulder straps, tool belt, black work pants, knee pads, black boots, yellow gloves, orange gloves, welding goggles on forehead"
+props = ["welding goggles on forehead", "tool belt"]
+
+[wardrobe.offduty]
+text = "Oil-stained dark grey zip hoodie over a black t-shirt, worn black jeans and black boots."
+tags = "dark grey hoodie, zip hoodie, black t-shirt, black jeans, black boots, oil stains"
