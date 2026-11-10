@@ -69,6 +69,15 @@ def scene_text(short) -> str:
                      f"Not visible: {', '.join(s.not_visible)}." if s.not_visible else ""]).strip()
 
 
+def scene_look(short) -> str:
+    """The scene bible without its "Not visible" sentence: what a plate prompt may describe."""
+    s = short.scene
+    if s is None:
+        return ""
+    return " ".join([f"Time: {s.time}.", f"Weather: {s.weather}.", f"Set: {s.set}.",
+                     f"Light: {'; '.join(s.light)}." if s.light else ""]).strip()
+
+
 @dataclass
 class Shot:
     id: str

@@ -31,11 +31,12 @@ def plate_id(place: str, name: str) -> str:
     return f"plate--{place}--{name}"
 
 
-def plate_workflow(place, scene: str, plate: Plate, lineart_name: str | None, seed: int) -> dict:
+def plate_workflow(place, look: str, not_visible, plate: Plate, lineart_name: str | None, seed: int) -> dict:
+    """look = model.scene_look(short); not_visible = the bible's list, which becomes the negative."""
     from tools.imagegen import build
     tags = place.alt_tags or place.tags
-    wf = build(f"{tags}, {plate.view}, empty room, no humans, {scene}", "scene", False,
-               "people, person, 1girl, 1boy, window, street, rain, daylight", "base", seed)
+    wf = build(f"{tags}, {plate.view}, empty room, no humans, {look}", "scene", False,
+               ", ".join(["people, person, 1girl, 1boy", *not_visible]), "base", seed)
     wf["5"]["inputs"].update(width=1216, height=832)
     if lineart_name:
         wf["60"] = {"class_type": "ControlNetLoader", "inputs": {"control_net_name": "noob-sdxl-controlnet-lineart_anime.fp16.safetensors"}}
@@ -54,9 +55,9 @@ def candidate_path(design_dir: Path, place: str, name: str, n: int) -> Path:
     return design_dir / place / "plates" / f"{name}-c{n:02d}.png"
 
 
-def plan_jobs(short, work: Path, design_dir: Path, plates_root: Path | None = None, seeds: int = 3):
-    """[(out_path, plate, lineart_path_or_None)] for each plate a shot names that has no file and no candidates yet.
-    Uses the lineart of the first shot (shot order) that names the plate."""
+def plan_jobs(short, work: Path, design_dir: Path, plates_root: Path | None = None, seeds: int = 3, redo: bool = False):
+    """[(out_path, plate, lineart_path_or_None, n)] for each plate a shot names that has no chosen file.
+    Existing candidates are kept unless redo. Uses the lineart of the first shot (shot order) that names the plate."""
     catalogue = load_plates(short.place, plates_root)
     jobs, seen = [], set()
     for shot in short.shots:
@@ -69,8 +70,8 @@ def plan_jobs(short, work: Path, design_dir: Path, plates_root: Path | None = No
         art = work / "shots" / shot.id / "guide" / "start-room-lineart.png"
         for n in range(1, seeds + 1):
             out = candidate_path(design_dir, short.place, plate.name, n)
-            if not out.exists():
-                jobs.append((out, plate, art if art.exists() else None))
+            if redo or not out.exists():
+                jobs.append((out, plate, art if art.exists() else None, n))
     return jobs
 
 
@@ -86,21 +87,21 @@ def choose(design_dir: Path, place: str, plate: Plate, n: int) -> Path:
     return dst
 
 
-async def render(jobs, backend, designs_place, scene: str, seed: int) -> list[str]:
+async def render(jobs, backend, designs_place, look: str, not_visible, seed: int) -> list[str]:
     """jobs from plan_jobs. One failure does not stop the rest."""
     errors = []
-    for i, (out, plate, art) in enumerate(jobs):
+    for out, plate, art, n in jobs:
         try:
             name = await backend.upload_image(f"plate-guide-{plate.name}.png", art.read_bytes()) if art else None
             out.parent.mkdir(parents=True, exist_ok=True)
-            out.write_bytes(await backend.run_workflow(plate_workflow(designs_place, scene, plate, name, seed + i)))
+            out.write_bytes(await backend.run_workflow(plate_workflow(designs_place, look, not_visible, plate, name, seed + n - 1)))
             print(out, flush=True)
         except Exception as e:  # noqa: BLE001 - keep the batch going
             errors.append(f"{out.name}: {e}")
     return errors
 
 
-def run(jobs, url: str, designs_place, scene: str, seed: int) -> list[str]:
+def run(jobs, url: str, designs_place, look: str, not_visible, seed: int) -> list[str]:
     if not jobs:
         return []
     import asyncio
@@ -109,6 +110,6 @@ def run(jobs, url: str, designs_place, scene: str, seed: int) -> list[str]:
     from tools.design_studio import _gpu_etiquette
     _gpu_etiquette(url, before=True)
     try:
-        return asyncio.run(render(jobs, ComfyUIBackend(base_url=url, profile="noobai", timeout=600.0), designs_place, scene, seed))
+        return asyncio.run(render(jobs, ComfyUIBackend(base_url=url, profile="noobai", timeout=600.0), designs_place, look, not_visible, seed))
     finally:
         _gpu_etiquette(url, before=False)  # frees VRAM for the narrator

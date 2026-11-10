@@ -48,7 +48,7 @@ PLACE = Design(name="Izakaya", kind="location", source="t", tags="izakaya, lante
 
 def test_plate_workflow_adds_controlnet_and_rewires_sampler():
     plate = pl.Plate("toward-door", "from the counter toward the door")
-    wf = pl.plate_workflow(PLACE, "Time: late.", plate, "guide.png", 5)
+    wf = pl.plate_workflow(PLACE, "Time: late.", ["windows"], plate, "guide.png", 5)
     assert wf["61"]["inputs"]["image"] == "guide.png" and wf["60"]["class_type"] == "ControlNetLoader"
     assert wf["3"]["inputs"]["positive"] == ["62", 0] and wf["3"]["inputs"]["negative"] == ["62", 1]
     assert wf["5"]["inputs"]["width"] == 1216 and wf["5"]["inputs"]["height"] == 832
@@ -59,7 +59,7 @@ def test_plate_workflow_adds_controlnet_and_rewires_sampler():
 
 
 def test_plate_workflow_without_lineart_is_plain():
-    wf = pl.plate_workflow(PLACE, "s", pl.Plate("a", "v"), None, 1)
+    wf = pl.plate_workflow(PLACE, "s", [], pl.Plate("a", "v"), None, 1)
     assert "60" not in wf and "62" not in wf and wf["3"]["inputs"]["positive"] != ["62", 0]
 
 
@@ -80,12 +80,13 @@ def test_plan_jobs_uses_first_shot_lineart_and_skips_present(tmp_path):
     art.parent.mkdir(parents=True)
     art.write_bytes(b"x")
     jobs = pl.plan_jobs(s, work, dd, root, seeds=2)
-    assert [(j[0].name, j[1].name, j[2]) for j in jobs] == [("toward-door-c01.png", "toward-door", art), ("toward-door-c02.png", "toward-door", art)]
+    assert [(j[0].name, j[1].name, j[2], j[3]) for j in jobs] == [("toward-door-c01.png", "toward-door", art, 1), ("toward-door-c02.png", "toward-door", art, 2)]
     (dd / "mama-satos-izakaya" / "plates").mkdir(parents=True)
     (dd / "mama-satos-izakaya" / "plates" / "toward-door-c01.png").write_bytes(b"x")
     assert [j[0].name for j in pl.plan_jobs(s, work, dd, root, seeds=2)] == ["toward-door-c02.png"]
+    assert [j[0].name for j in pl.plan_jobs(s, work, dd, root, seeds=2, redo=True)] == ["toward-door-c01.png", "toward-door-c02.png"]
     (dd / "mama-satos-izakaya" / "plates" / "toward-door.png").write_bytes(b"x")
-    assert pl.plan_jobs(s, work, dd, root, seeds=2) == []
+    assert pl.plan_jobs(s, work, dd, root, seeds=2) == [] and pl.plan_jobs(s, work, dd, root, seeds=2, redo=True) == []
 
 
 def test_choose_copies_refuses_missing_and_source(tmp_path):
@@ -113,7 +114,20 @@ def test_render_uploads_lineart_and_keeps_going_after_a_failure(tmp_path):
     art.write_bytes(b"x")
     plate = pl.Plate("toward-door", "v")
     f = Fake()
-    errs = asyncio.run(pl.render([(tmp_path / "o1.png", plate, art), (tmp_path / "o2.png", plate, art)], f, PLACE, "s", 10))
+    errs = asyncio.run(pl.render([(tmp_path / "o1.png", plate, art, 1), (tmp_path / "o2.png", plate, art, 3)], f, PLACE, "s", [], 10))
     assert len(errs) == 1 and "boom" in errs[0] and (tmp_path / "o2.png").read_bytes() == b"png"
     assert f.runs[0]["61"]["inputs"]["image"] == "in-plate-guide-toward-door.png"
-    assert f.runs[0]["3"]["inputs"]["seed"] == 10 and f.runs[1]["3"]["inputs"]["seed"] == 11
+    assert f.runs[0]["3"]["inputs"]["seed"] == 10 and f.runs[1]["3"]["inputs"]["seed"] == 12
+
+
+def test_negative_comes_from_not_visible_and_positive_leaves_it_out():
+    from tools.shorts.model import scene_look
+    from tools.shorts.model import Scene
+    import types
+    sc = Scene(time="late night", weather="indoors", set="a bar", light=["lanterns"], not_visible=["windows"])
+    look = scene_look(types.SimpleNamespace(scene=sc))
+    assert "Not visible" not in look and "windows" not in look and "Light: lanterns." in look
+    wf = pl.plate_workflow(PLACE, look, sc.not_visible, pl.Plate("a", "v"), None, 1)
+    assert "windows" in wf["7"]["inputs"]["text"] and "windows" not in wf["6"]["inputs"]["text"]
+    assert "street" not in wf["7"]["inputs"]["text"] and "rain" not in wf["7"]["inputs"]["text"]
+    assert scene_look(types.SimpleNamespace(scene=None)) == ""

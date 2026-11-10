@@ -399,3 +399,20 @@ def test_ledger_sync_refuses_out_of_range_and_is_idempotent(tmp_path, monkeypatc
     t1 = Ledger(_work("pilot") / "costs.json").total()
     main(["ledger-sync", "pilot", "--balance", "3.29"])
     assert Ledger(_work("pilot") / "costs.json").total() == t1
+
+
+def test_plates_choose_and_busy_gpu_and_unreachable(tmp_path, monkeypatch, capsys):
+    import urllib.error
+    setup(tmp_path, monkeypatch)
+    pdir = tmp_path / "design-data" / "mama-satos-izakaya" / "plates"
+    assert main(["plates", "pilot", "--choose", "door", "2"]) == 1  # no candidate yet
+    (pdir / "door-c02.png").write_bytes(b"two")
+    assert main(["plates", "pilot", "--choose", "door", "2"]) == 0 and (pdir / "door.png").read_bytes() == b"two"
+    (pdir / "door.png").unlink()
+    monkeypatch.setattr("tools.design_scenes.gpu_busy", lambda url: True)
+    assert main(["plates", "pilot"]) == 1
+    err = capsys.readouterr().err
+    assert "tools.taste" in err and "busy" in err
+    def down(url): raise urllib.error.URLError("nope")
+    monkeypatch.setattr("tools.design_scenes.gpu_busy", down)
+    assert main(["plates", "pilot"]) == 1 and "not reachable" in capsys.readouterr().err
