@@ -15,7 +15,7 @@ STATUSES = ("draft", "candidates", "approved")
 PRESENTATIONS = ("feminine", "masculine", "androgynous")
 _ORDER = ("name", "kind", "source", "presentation", "height_cm", "bio", "tags", "required", "held", "negative", "alt_tags", "props",
           "status", "seed", "palette", "notes", "identity", "appearance", "wardrobe")
-_STATE_NAME = re.compile(r"[a-z][a-z0-9-]*")
+_STATE_NAME = re.compile(r"[a-z][a-z0-9]*(-[a-z0-9]+)*")
 
 
 def slugify(name: str) -> str:
@@ -84,7 +84,7 @@ def validate(d: Design) -> None:
         raise ValueError(f"{d.name}: a character with wardrobe states needs appearance tags")
     for state, w in d.wardrobe.items():
         if not _STATE_NAME.fullmatch(state):
-            raise ValueError(f"{d.name}: wardrobe state name {state!r} must match [a-z][a-z0-9-]*")
+            raise ValueError(f"{d.name}: wardrobe state name {state!r} must match [a-z][a-z0-9]*(-[a-z0-9]+)*")
         if not w.text.strip() or not w.tags.strip():
             raise ValueError(f"{d.name}: wardrobe state {state!r} needs text and tags")
     if d.height_cm and not 100 <= d.height_cm <= 250:

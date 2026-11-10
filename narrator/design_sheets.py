@@ -90,6 +90,12 @@ def _styled_negative(d: Design, guard: str, scene: bool = False) -> str:
     return _join(neg, guard)
 
 
+def _unless_in(neg: str, pos: str) -> str:
+    """Under a wardrobe state the bible is the truth: drop negative tags the positive itself asks for."""
+    have = {t.strip().lower() for t in pos.split(",")}
+    return ", ".join(t for t in (x.strip() for x in neg.split(",")) if t and t.lower() not in have)
+
+
 def _location_negative(d: Design) -> str:
     return _join(NEGATIVE, d.negative)
 
@@ -118,12 +124,19 @@ def _identity(d: Design, state: str | None) -> str:
     return ", ".join(d.identity) if state else ""
 
 
+def _face_identity(d: Design, state: str | None) -> str:
+    """Face panels under a state lean on `appearance`; identity text carries moods and body words."""
+    return "" if state else _identity(d, state)
+
+
 def state_props_prompt(d: Design, state: str) -> tuple[str, str]:
     """Hands-and-props close-up for one wardrobe state, on grey."""
+    if state not in d.wardrobe:
+        raise ValueError(f"{d.name}: no wardrobe state {state!r}")
     items = ", ".join(d.wardrobe[state].props) or _state_tags(d, state)
     pos = _join(CHARACTER_QUALITY, _NEUTRAL_STYLE, "hands and props close-up, product sheet, still life, object focus, "
                 "multiple views, grey background, soft even studio light, neutral colors", items)
-    return pos, _styled_negative(d, _join(NEUTRAL_NEGATIVE, "white background, 1girl, 1boy, face"))
+    return pos, _unless_in(_styled_negative(d, _join(NEUTRAL_NEGATIVE, "white background, 1girl, 1boy, face")), pos)
 
 
 def sheet_prompt(d: Design, sheet: str, mood: str | None = None, state: str | None = None) -> tuple[str, str]:
@@ -140,7 +153,8 @@ def sheet_prompt(d: Design, sheet: str, mood: str | None = None, state: str | No
             else (CHARACTER_SHEET_STYLE, CHARACTER_MATURE)
         pos = _join(CHARACTER_QUALITY, style, mature, _SHEET_TAGS[sheet], subject_for(d), "" if state else ", ".join(d.required),
                     _outfit(d, state), _identity(d, state))
-        return pos, _styled_negative(d, _SHEET_GUARD)
+        neg = _styled_negative(d, _SHEET_GUARD)
+        return pos, _unless_in(neg, pos) if state else neg
     if sheet not in LOCATION_SHEETS:
         raise ValueError(f"{sheet!r} is not a location sheet")
     if sheet == "props":
@@ -160,9 +174,13 @@ def expressions_for(d: Design) -> tuple[tuple[str, str], ...]:
     return AI_EXPRESSIONS if "android" in d.tags else EXPRESSIONS
 
 
+def _held(d: Design, state: str | None) -> set[str]:
+    return {h.strip() for h in (d.wardrobe[state].props if state else d.held)}
+
+
 def _face_tags(d: Design, state: str | None = None) -> list[str]:
     """The character's face and upper-body canon: no carried items, lower body or fixed mood."""
-    held = {h.strip() for h in d.held}
+    held = _held(d, state)
     source = _join(d.appearance, _state_tags(d, state)) if state else d.tags
     skip = set() if state else set(d.required)
     return [t for t in dict.fromkeys(x.strip() for x in source.split(",")) if t and t not in held and t not in skip
@@ -178,7 +196,7 @@ def expression_prompts(d: Design, state: str | None = None) -> list[tuple[str, s
     """(label, positive, negative) per panel, in the scene look like the portrait (owner pick, 2026-11-01): the
     character's face and upper-body canon only. Tags for carried items,
     the lower body and a fixed mood are left out, so each panel can only show the face and the mood it's asking for."""
-    held = {h.strip() for h in d.held}
+    held = _held(d, state)
     tags = [t.strip() for t in d.tags.split(",")]
     face = _face_tags(d, state)
     fang = any(w in tags for w in ("fang", "fangs"))
@@ -186,9 +204,12 @@ def expression_prompts(d: Design, state: str | None = None) -> list[tuple[str, s
     if state:  # neutral light replaces the scene's neon look
         negative = _join(negative, NEUTRAL_NEGATIVE)
     style = _join(_NEUTRAL_STYLE, NEUTRAL_LIGHT) if state else STYLE
-    return [(label, _join(CHARACTER_QUALITY, style, "mature, adult, solo, portrait, close-up, face focus, looking at viewer",
-                          subject_for(d), mood, "" if state else ", ".join(d.required), ", ".join(face), _identity(d, state)), negative)
-            for label, mood in expressions_for(d)]
+    out = []
+    for label, mood in expressions_for(d):
+        pos = _join(CHARACTER_QUALITY, style, "mature, adult, solo, portrait, close-up, face focus, looking at viewer",
+                    subject_for(d), mood, "" if state else ", ".join(d.required), ", ".join(face), _face_identity(d, state))
+        out.append((label, pos, _unless_in(negative, pos) if state else negative))
+    return out
 
 
 def _base(positive: str, negative: str, seed: int, *, checkpoint: str = CHECKPOINT, lora: str | None = LORA,

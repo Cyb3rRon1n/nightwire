@@ -147,7 +147,7 @@ def test_state_unknown_key_rejected(tmp_path):
         load_design(p)
 
 
-@pytest.mark.parametrize("bad", ["Work", "1work", "wo rk", "wo_rk", ""])
+@pytest.mark.parametrize("bad", ["Work", "1work", "wo rk", "wo_rk", "wo--rk", ""])
 def test_bad_state_name_rejected(bad):
     from narrator.designs import WardrobeState
     with pytest.raises(ValueError, match="state name"):

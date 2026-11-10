@@ -145,6 +145,8 @@ def main(argv=None) -> None:
     if a.cmd == "insert":
         from tools.greybox_library import insert
         lib = a.lib or default_out()
+        if a.feet and a.h is None:
+            raise SystemExit("--feet needs --height")
         figs = [(a.pose, a.camera, a.feet, a.h, a.label)] if a.feet else []
         figs += [tuple(f) for f in a.figure or []]
         if not figs:

@@ -436,10 +436,10 @@ def test_state_portrait_and_expressions_use_neutral_light():
     from narrator.design_sheets import NEUTRAL_LIGHT, expression_prompts, portrait_prompt
     d = _warded()
     pos, neg = portrait_prompt(d, state="work")
-    assert NEUTRAL_LIGHT in pos and "blue light" in neg and "neon lights" not in pos.split(NEUTRAL_LIGHT)[0] and "silver ring" in pos
+    assert NEUTRAL_LIGHT in pos and "blue light" in neg and "neon lights" not in pos.split(NEUTRAL_LIGHT)[0] and "silver ring" not in pos
     assert "bomber" not in pos and "white hoodie" not in pos and "black hair" in pos and "no neon" not in pos
     for _l, p, n in expression_prompts(d, state="work"):
-        assert NEUTRAL_LIGHT in p and "cyan tint" in n and "scar over left eye" in p and "white hoodie" not in p and "black hair" in p
+        assert NEUTRAL_LIGHT in p and "cyan tint" in n and "scar over left eye" not in p and "white hoodie" not in p and "black hair" in p
     assert "night" not in pos.split(", ")
 
 
@@ -456,3 +456,25 @@ def test_unknown_state_raises():
     from narrator.design_sheets import sheet_prompt
     with pytest.raises(ValueError):
         sheet_prompt(_warded(), "turnaround", state="nope")
+
+
+def test_state_negative_drops_tags_the_positive_asks_for():
+    d = _warded()
+    d.appearance += ", stubble"
+    d.negative = "stubble, extra fingers"
+    for pos, neg in (ds.sheet_prompt(d, "turnaround", state="work"), ds.portrait_prompt(d, "work")):
+        assert "stubble" in pos and "stubble" not in neg.split(", ") and "extra fingers" in neg
+    assert "stubble" in ds.sheet_prompt(d, "turnaround")[1].split(", ")
+
+
+def test_state_expressions_hold_back_state_props_not_v1_held():
+    d = _warded()
+    d.held = ["scars"]
+    d.appearance += ", scars"
+    _l, pos, neg = ds.expression_prompts(d, state="work")[0]
+    assert "scars" in pos and "scars" not in neg.split(", ") and "clipboard" in neg
+
+
+def test_state_props_unknown_state_is_value_error():
+    with pytest.raises(ValueError):
+        ds.state_props_prompt(_warded(), "nope")
