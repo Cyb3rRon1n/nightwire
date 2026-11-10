@@ -90,3 +90,15 @@ def test_missing_expected_ref_is_a_problem_but_floorplan_is_optional(tmp_path):
     assert "C1_expressions.png" not in [l for l, _ in ref_files(s, dd, sd)]
     p = preflight.run(s, s.shots[0], None, "p", expected, "seedance-2.5", 0).problems
     assert any("C1_expressions.png: file missing" in x for x in p) and not any("floorplan" in x for x in p)
+
+
+def test_shorts_copy_of_a_sheet_wins(tmp_path):
+    from tools.shorts.prompt import expected_refs
+    s = shot(tmp_path)
+    dd, sd = tmp_path / "dd", tmp_path / "sd"
+    alt = dd / "saeko-kirigaya" / "shorts" / "turnaround.png"
+    alt.parent.mkdir(parents=True)
+    alt.write_bytes(b"x")
+    refs = dict(expected_refs(s, dd, sd))
+    assert refs["C1_turnaround.png"] == alt
+    assert refs["C1_portrait.png"] == dd / "saeko-kirigaya" / "portrait.png"
