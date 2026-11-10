@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from tools.shorts.approve import keyframe_id, scene_fp
+from tools.shorts import lookbook
 from tools.shorts.backends import fal
 from tools.shorts.model import Shot, Short
 from tools.shorts.plates import plate_id, plate_path
@@ -180,4 +181,5 @@ def run(short: Short, shot: Shot, prev: Shot | None, prompt: str, ref_list, mode
     used, _ = fal.usable_refs(model, ref_list)
     return Report(problems=required(shot) + pace(shot) + one_action(shot) + continuity(prev, shot) + refs(model, used)
                   + budget(short, shot, model, spent) + list(package_problems) + list(bible[0]),
-                  warnings=filter_words(prompt) + list(bible[1]) + ([] if shot.why.strip() else ["missing why (one line: the cinematographic reason for this shot)"]))
+                  warnings=filter_words(prompt) + list(bible[1]) + lookbook.warnings(short, shot)
+                  + ([] if shot.why.strip() else [f"missing why (one line: the cinematographic reason for this shot). Hint: {h}" if (h := lookbook.why_hint(shot)) else "missing why (one line: the cinematographic reason for this shot)"]))

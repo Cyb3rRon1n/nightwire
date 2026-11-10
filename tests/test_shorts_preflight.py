@@ -3,7 +3,7 @@ from pathlib import Path
 from test_shorts_model import PLANNED, SHORT, write
 from tools.shorts import preflight
 from tools.shorts.backends import fal
-from tools.shorts.model import load_short
+from tools.shorts.model import Line, load_short
 
 
 def shot(tmp_path, text=PLANNED):
@@ -247,3 +247,53 @@ def test_missing_why_warns_only(tmp_path):
     assert r.ok and any("missing why" in w for w in r.warnings)
     s = shot(tmp_path / "b", PLANNED.replace("lens = 35.0", 'lens = 35.0\nwhy = "x"'))
     assert not any("why" in w for w in preflight.run(s, s.shots[0], None, "p", [], "seedance-2.0-fast", 0).warnings)
+
+
+def _lb(tmp_path, text=PLANNED):
+    s = shot(tmp_path, text)
+    return s, s.shots[0]
+
+
+def test_lookbook_talking_close_face(tmp_path):
+    from tools.shorts import lookbook
+    s, sh = _lb(tmp_path)
+    sh.size, sh.lines = "MCU", [object()]
+    assert any("talking face" in w for w in lookbook.warnings(s, sh))
+    sh.size = "WS"
+    assert not any("talking face" in w for w in lookbook.warnings(s, sh))
+
+
+def test_lookbook_lines_cast_move_and_dialogue_heavy(tmp_path):
+    from tools.shorts import lookbook
+    s, sh = _lb(tmp_path)
+    sh.size, sh.lines, sh.frame, sh.move, sh.action = "WS", [object(), object()], {"C1": "a", "C2": "b", "C3": "c"}, "static", "C1 sits."
+    w = lookbook.warnings(s, sh)
+    assert any("2 lines" in x for x in w) and any("3 people" in x for x in w)
+    assert not any("camera move" in x for x in w)
+    assert any("dialogue-heavy" in x for x in w)
+    sh.move = "slow pan"
+    assert any("camera move" in x for x in lookbook.warnings(s, sh))
+    sh.action = ""
+    assert not any("camera move" in x for x in lookbook.warnings(s, sh))
+
+
+def test_lookbook_quiet_shot_has_no_warnings_and_preflight_stays_ok(tmp_path):
+    from tools.shorts import lookbook
+    s, sh = _lb(tmp_path)
+    sh.size, sh.lines, sh.frame, sh.move, sh.action = "EWS", [], {"C1": "from behind"}, "static", ""
+    assert lookbook.warnings(s, sh) == []
+    sh.lines, sh.size = [Line("C1", 0.0, "hi")], "CU"
+    r = preflight.run(s, sh, None, "p", [], "seedance-2.0-fast", 0)
+    assert any("talking face" in w for w in r.warnings) and not any("talking face" in p for p in r.problems)
+
+
+def test_why_hint(tmp_path):
+    from tools.shorts import lookbook
+    s, sh = _lb(tmp_path)
+    sh.size, sh.move, sh.frame = "EWS", "slow push-in", {"C1": "seen from behind"}
+    h = lookbook.why_hint(sh)
+    assert "enormous" in h and "drifting closer" in h and "behind" in h
+    sh.size, sh.move, sh.frame = "", "", {}
+    assert lookbook.why_hint(sh) == ""
+    r = preflight.run(s, sh, None, "p", [], "seedance-2.0-fast", 0)
+    assert any("missing why" in w for w in r.warnings)
