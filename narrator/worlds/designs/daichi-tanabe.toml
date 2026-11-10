@@ -7,13 +7,13 @@ bio = "A gang enforcer from Ikebe Low. Huge, tattooed and blunt, with a mechanic
 tags = "(mechanical right arm:1.4), metal right forearm, buzz cut, black hair, thick eyebrows, scowl, mature male, tall, muscular body, broad shoulders, thick neck, irezumi tattoo on left arm, tattooed left forearm, bare left hand, black bomber jacket, open jacket, dark gold embroidery, gold chain, black cargo pants, black boots, tan skin"
 required = ["buzz cut", "black hair", "thick eyebrows", "black eyes", "single mechanical arm", "mechanical right arm", "metal arm", "prosthetic arm"]
 held = []
-negative = "gold gloves, gauntlets, bare right arm, gold on face, gold lines on face, facial markings, face tattoo, circuit lines on face, blue eyes, purple eyes, mechanical jaw, metal jaw, chrome jaw, mask, mouth mask, face mask, teeth mask, beard, stubble, two mechanical arms, metal left hand, gauntlet, child, teen, young, bishounen, pretty boy, eyepatch"
+negative = "gold gloves, gauntlets, gold on face, gold lines on face, facial markings, face tattoo, circuit lines on face, blue eyes, purple eyes, mechanical jaw, metal jaw, chrome jaw, mask, mouth mask, face mask, teeth mask, beard, two mechanical arms, metal left hand, gauntlet, child, teen, young, bishounen, pretty boy, eyepatch"
 status = "approved"
 seed = 810349482
 palette = ["#0d1317", "#253638", "#cec1a7", "#020203", "#695f4b", "#86806c"]
 notes = ["2026-11-01 draft: Ikebe Low gang enforcer, irezumi and chrome jaw", "2026-10-31 round 1: 4 candidates", "2026-11-01 approved r1 #4 (seed 810349481)", "2026-11-01 eye colour recorded from earlier sheets: black eyes, panels drifted without one", "2026-11-03 owner removed the chrome jaw; outfit taken from the approved group-photo master", "2026-11-03 owner: keep the mechanical right arm; approved draft heights"]
 identity = ["black buzz cut, thick black eyebrows, permanent scowl", "dark eyes", "mechanical right arm in silver-grey chrome with gold accents, bare from the elbow down", "irezumi tattoos: swirling patterns across the neck and chest, a rose-like mark on the abdomen", "huge, very tall, muscular build with a thick neck and broad shoulders, tan skin", "short dark stubble along the jaw and chin"]
-appearance = "1boy, mature male, buzz cut, black hair, thick eyebrows, scowl, black eyes, stubble, mechanical right arm, single mechanical arm, metal right forearm, irezumi, neck tattoo, chest tattoo, stomach tattoo, tan skin, tall, huge, muscular male, thick neck, broad shoulders"
+appearance = "1boy, mature male, buzz cut, black hair, thick eyebrows, scowl, black eyes, stubble, mechanical right arm, single mechanical arm, metal right forearm, irezumi, neck tattoo, tan skin, tall, huge, muscular male, thick neck, broad shoulders"
 
 [wardrobe.work]
 text = "Black bomber jacket with dark-gold embroidery and a fur-trimmed collar, zipped over a black t-shirt, black cargo pants and black lace-up boots, with the right sleeve ending at the elbow so the chrome forearm shows."

@@ -13,7 +13,7 @@ seed = 1591239200
 palette = ["#2b3540", "#010102", "#21262c", "#314754", "#52a7ab", "#555664"]
 notes = ["2026-11-01 draft: freelance blade for hire, The Loop", "2026-10-31 round 1: 4 candidates", "2026-11-01 approved r1 #4 (seed 1591239200)"]
 identity = ["long silver-white hair tied in a low ponytail, combed straight back off a high forehead", "violet-purple eyes with a hard, narrow, frowning stare", "stern mature adult face with deep frown lines, no facial hair", "tall lean adult man", "cybernetic spine: glowing cyan vertebrae down the back, chrome spine and cable bundle visible at the nape"]
-appearance = "1boy, mature male, long hair, silver hair, low ponytail, purple eyes, frown lines, stern, tall, slender, cybernetic spine, glowing spine, exposed spine, data cables, pale skin"
+appearance = "1boy, mature male, long hair, silver hair, low ponytail, purple eyes, frown lines, stern, tall, slender, cybernetic spine, glowing spine, data cables, pale skin"
 
 [wardrobe.work]
 text = "Oversized black techwear haori jacket with cyan light strips and a tall collar over a black high-neck bodysuit, black pleated hakama and black chunky sneakers with purple soles."
