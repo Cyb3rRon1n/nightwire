@@ -32,6 +32,12 @@ SIZE_EXTRA = {"MCU": "upper body", "CU": "close-up", "ECU": "close-up", "WS": "f
 BEHIND = ("back of head", "from behind", "face not visible")
 
 
+def _weight(text: str, w: float) -> str:
+    """A ComfyUI weight group; parens and colons in the text would break the weighting syntax."""
+    text = " ".join(text.translate({ord(c): " " for c in "():"}).split())
+    return f"({text}:{w})" if text else ""
+
+
 def keyframe_workflow(short, shot, designs, which, regions, lineart_name, seed, plate=None) -> dict:
     from tools.design_scenes import _crowd, _region_tags
     from tools.image_studio import _subject
@@ -51,8 +57,9 @@ def keyframe_workflow(short, shot, designs, which, regions, lineart_name, seed, 
     elif len(who) >= 2:  # the crowd text is the subject so nothing is prepended twice
         kw["subject"] = _crowd(designs[short.cast[who[0]]], designs[short.cast[who[1]]])
     tags, look = (plate.tags, scene_mood(short)) if plate and plate.tags else (place.alt_tags or place.tags, scene_look(short))  # as plate_workflow
-    lead = ", ".join(dict.fromkeys(x for x in (SIZE_WORDS.get(shot.size, ""), SIZE_EXTRA.get(shot.size, ""), shot.angle) if x))
-    words = ", ".join(x for x in (f"({lead}:1.4)" if lead else "", "solo" if len(who) == 1 else "", tags, look) if x)
+    terms = [t.strip() for x in (SIZE_WORDS.get(shot.size, ""), SIZE_EXTRA.get(shot.size, ""), shot.angle) for t in x.split(",")]
+    lead = _weight(", ".join(dict.fromkeys(t for t in terms if t)).replace(",", " ,"), 1.4).replace(" ,", ",")
+    words = ", ".join(x for x in (lead, "solo" if len(who) == 1 else "", tags, look) if x)
     negative = ", ".join(["merged bodies, fused faces, extra arms", *(short.scene.not_visible if short.scene else []),
                           *short.avoid, *(plate.avoid if plate else []), NO_TEXT])
     wf = build(words, "subject" if who else "scene", False, negative, "base", seed, **kw)
@@ -63,8 +70,8 @@ def keyframe_workflow(short, shot, designs, which, regions, lineart_name, seed, 
         x0, y0, x1, y1 = boxes[cid]
         adult = {"1girl": MATURE_18, "1boy": MATURE_18_MALE}.get(_subject(d), MATURE_18_OTHER)
         pose = (shot.at_start if which == "start" else shot.at_end).get(cid, "")
-        behind = "(from behind, back of head:1.4)" if any(b in shot.frame.get(cid, "").lower() for b in BEHIND) else ""
-        text = ", ".join(x for x in (_subject(d), adult, f"({pose}:1.3)" if pose else "", behind, _region_tags(d), short.locks.get(cid, ""), short.wardrobe.get(cid, ""),
+        behind = _weight("from behind, back of head", 1.4) if any(b in shot.frame.get(cid, "").lower() for b in BEHIND) else ""
+        text = ", ".join(x for x in (_subject(d), adult, _weight(pose, 1.3), behind, _region_tags(d), short.locks.get(cid, ""), short.wardrobe.get(cid, ""),
                                       shot.props.get(cid, "")) if x)
         n = 70 + i * 3
         wf[str(n)] = {"class_type": "CLIPTextEncode", "inputs": {"text": text, "clip": clip}}

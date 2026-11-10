@@ -223,3 +223,17 @@ def test_lead_pose_no_text_and_stronger_guides(tmp_path):
     assert wf["62"]["inputs"]["strength"] == 0.85 and wf["62"]["inputs"]["end_percent"] == 0.9
     shot.size = "WS"
     assert "full body, wide shot" in kf.keyframe_workflow(s, shot, DESIGNS, "start", REG, "g", 1)["6"]["inputs"]["text"]
+
+
+def test_weight_groups_sanitised_and_terms_deduped(tmp_path):
+    s = short_with(tmp_path)
+    shot = s.shots[0]
+    shot.size, shot.angle = "CU", "low (dutch): tilt"
+    shot.at_start = {"C1": "holding (left hand): cup"}
+    wf = kf.keyframe_workflow(s, shot, DESIGNS, "start", REG, "g", 1)
+    pos = wf["6"]["inputs"]["text"]
+    assert pos.count("close-up") == 1 and "low dutch tilt:1.4)" in pos and "(close-up, portrait" in pos
+    group = wf["73"]["inputs"]["text"]
+    assert "(holding left hand cup:1.3)" in group
+    import re
+    assert re.findall(r"\([^()]*\)", group).count("(holding left hand cup:1.3)") == 1 and group.count(":") == 1
