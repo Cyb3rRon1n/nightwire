@@ -1,7 +1,7 @@
 # Shorts production package: nothing left for the video model to guess
 
 Date: 2026-11-10. Status: design approved in chat by the owner (approach A with B as fallback; owner signs off every
-visual). Builds on `2026-11-09-shorts-production-sheet-design.md` (sheet, pre-flight, approval fingerprint, money gate),
+visual; AI Lab restructure added 2026-11-10). Builds on `2026-11-09-shorts-production-sheet-design.md` (sheet, pre-flight, approval fingerprint, money gate),
 which stays in force; this spec adds to it and changes how a shot is generated.
 
 ## Why
@@ -110,8 +110,11 @@ sheet (review id `plate--<place>--<name>`), so later shorts at the same place re
    turnarounds. Several seeds per keyframe; Claude picks the best 2-3 per keyframe, reviews each at full size beside the
    turnaround (house rule), and the owner approves one on the production sheet. Fallback B after 3 failed rounds:
    a fal image model given the character sheets + plate + grey-box frame, owner OK first.
-   *To verify in the plan:* a depth ControlNet (or equivalent) that works with the house SDXL v-pred model on 8 GB; if a
-   download is needed it goes to the owner for OK.
+   Guide models (checked 2026-11-10): the GPU box already has NoobAI ControlNets for anime lineart, openpose, tile and
+   inpainting. First choice is the grey-box frame rendered as lineart (Blender Freestyle/edge pass) plus an openpose
+   skeleton from the mannequin joints — no download. Only if those cannot hold composition: Eugeoter
+   `noob-sdxl-controlnet-depth` (`noob_sdxl_controlnet_depth.safetensors`, 5 GB, likely fp32, trained on early NoobAI
+   eps — empty model card, so test before relying on it); downloading it needs the owner's OK.
 4. **Prompt** — i2v prompt = `motion` + the scene bible (time, weather, set, light) + wardrobe + seating +
    screen positions (`[frame]`, `line_rule`) + "not visible: …" as an inline exclusion sentence + style + timed lines.
    Locked-off camera sentence for `static`. Reference mode keeps the `@ImageN` role header (commit dfc4bc8) and adds the
@@ -130,8 +133,9 @@ sheet (review id `plate--<place>--<name>`), so later shorts at the same place re
 ## 3. fal backend and ledger
 
 - Add `seedance-2.0-fast-i2v` and `seedance-2.0-i2v` (`bytedance/seedance-2.0[/fast]/image-to-video`, fields
-  `image_url`, `end_image_url`, `prompt`, `duration`, `resolution`). Rates are checked on fal's pricing page in the plan
-  and written into `RATES`; the sheet shows the estimate.
+  `image_url`, `end_image_url`, `prompt`, `duration`, `resolution`, `aspect_ratio="auto"` = taken from the start image).
+  Rates (fal model pages, 2026-11-10): fast 720p $0.2419/s, standard 720p $0.3024/s, standard 1080p $0.682/s; the end
+  frame costs nothing extra; 4-15 s. Same per-second rate as fast reference mode.
 - A job that fails with fal's content block (422 on result fetch, `partner_validation_failed`) is recorded as
   `status = "blocked"` with the shot, mode and ref labels, and the message says "blocked by moderation" (not "network
   error").
@@ -150,15 +154,44 @@ sheet (review id `plate--<place>--<name>`), so later shorts at the same place re
 
 The GPU queue for this is long; Nightwire play tests can be slotted between keyframe batches on request.
 
-## 5. Out of scope
+## 5. AI Lab restructure: one review inbox
+
+Today reviews are spread over five pages with their own buttons (/world, /designs/review, /shorts/…/sheet, /shorts,
+/shorts/loops) and three verdict stores (`picks`, `reviews`, `images` in `tools/design_picks.py`). The package adds plates,
+the scene bible and keyframes. Instead of more pages:
+
+- **Item registry.** `python -m tools.review build` collects every reviewable item from small producers (design sheets,
+  candidates, gallery renders, plates, scene bibles, keyframes, shot plans, takes, wallpapers) into one
+  `review/items.json`. Each item: `id`, `kind`, `stage` (designs / pre-production / production / finished), `project`
+  (character, place or short slug), `title`, `files` (image or video), `compare` (files it must match, e.g. a keyframe's
+  turnarounds and plate; a take's keyframe; a sheet's previous version), `context` (text: prompt, bible, notes) and
+  `choices` (default keep / fix-with-note / reject). A new kind of work needs a producer, never a new page.
+- **One verdict store.** All verdicts go through `/designs/api/images/<id>` (the generic store). Existing sheet reviews
+  (`reviews`) are migrated to ids `sheet--<slug>--<sheet>--<version>`; the old endpoints keep answering reads until
+  every page uses the registry. `picks` (choose candidate n of a round) stays as its own action type inside the inbox.
+- **Review inbox (`/review/`).** Everything waiting on the owner, grouped by stage then project; full-size view with the
+  `compare` files side by side; the same buttons for every kind; reviewed items fold below with undo. The AI Lab badge
+  counts this one queue.
+- **One page per short (`/shorts/<slug>/`)** replacing the production sheet: stage tabs Bible → Plates → Keyframes →
+  Shots → Takes → Cut, each showing its gate (locked / waiting on you / approved) and linking its items into the inbox.
+- **Dashboard regrouped:** Review (inbox) · Productions (each short and its current stage) · Make (studio, design
+  candidates) · Library (approved art, kept wallpapers, final cuts — browse only, no buttons) · Machine (GPU, queue,
+  services). Old review pages redirect to the inbox filtered to their kind.
+- **Written down:** an AI Lab "How the pipeline works" page, and a rule in nightwire `CLAUDE.md` that every new
+  reviewable output goes through the registry.
+
+Order: the registry and inbox are built first, so plates, bible and keyframes land in the inbox from day one.
+
+## 6. Out of scope
 
 Music and sound design; multi-location shorts (one place per short for now); editing plates or keyframes from the web
 page (the owner comments, Claude edits); automatic take picking.
 
-## 6. Testing
+## 7. Testing
 
 Unit tests for: scene/wardrobe/blocking parsing and validation; each new pre-flight check (pass and fail); i2v prompt
 assembly (bible present, exclusions sentence, no frame description duplicated from the keyframe); fingerprint changes
 when the bible text or a keyframe file changes; fal i2v request body (start, optional end, no extra refs) with the backend
 faked; blocked-job ledger row; ledger-sync arithmetic. Real verification: plates and keyframes rendered on the GPU box and
-approved by the owner; one paid i2v shot whose room, light, weather, wardrobe and seating match its keyframe.
+approved by the owner; the inbox shows every pending kind and a verdict there reaches the same store the CLI reads
+(`verdicts`); one paid i2v shot whose room, light, weather, wardrobe and seating match its keyframe.
