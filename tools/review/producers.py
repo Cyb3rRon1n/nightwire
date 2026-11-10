@@ -2,6 +2,7 @@
 URLs point at pages already published on the AI Lab box (/designs, /world, /shorts) or at copies made with web_copy."""
 
 import json
+import shutil
 from pathlib import Path
 
 from narrator.design_sheets import CHARACTER_SHEETS
@@ -167,4 +168,43 @@ def keyframes(ctx) -> list[Item]:
     return out
 
 
-ALL = [sheets, candidates, world, takes, wallpapers, plates, scenes, keyframes]
+def plans(ctx) -> list[Item]:
+    """One item per shot plan that is ready to approve: its only pre-flight problems are approvals still pending."""
+    from tools.shorts import __main__ as cli
+    from tools.shorts import sheet
+    from tools.shorts.backends import fal
+    out = []
+    images = ctx.get("images") or {}
+    for short in _shorts(ctx):
+        if not short.model or short.model not in fal.MODELS:
+            continue
+        work = ctx["design_dir"] / "shorts" / short.slug
+        pre = {shot.id: cli._preflight(short, shot, fal.shot_model(shot, short.model), ctx["designs"], images) for shot in short.shots}
+        data = sheet.collect(short, ctx["designs"], ctx["design_dir"], work, short.model, pre, cli._approvals(work, images))
+        for row in data["shots"]:
+            if any("not approved" not in p for p in row["problems"]):
+                continue
+            sd = work / "shots" / row["id"]
+            src = next((f for f in (sd / "keyframe-start.png", sd / "preview" / "start.png") if f.exists()), None)
+            files = [web_copy(src, ctx["site"], f"plans/{short.slug}/{row['id'].lower()}.jpg")] if src else []
+            context = "\n".join([f"Model: {row['model']}", f"Cost: about ${row['cost']:.2f}", *[f"Waiting on: {p}" for p in row["problems"]],
+                                 "Prompt:", row["prompt"]])
+            out.append(Item(row["image_id"], "plan", "pre-production", short.slug, f"{short.title}: {row['id']} plan", files, context=context))
+    return out
+
+
+def cuts(ctx) -> list[Item]:
+    from tools.shorts import sheet
+    out = []
+    for short in _shorts(ctx):
+        f = sheet.cut_file(ctx["design_dir"] / "shorts" / short.slug)
+        if f:
+            dst = ctx["site"] / "media" / "cuts" / short.slug / f.name
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(f, dst)  # a video: web_copy makes JPEGs
+            out.append(Item(sheet.cut_id(short.slug), "cut", "finished", short.slug, f"{short.title}: cut",
+                            [f"/review/media/cuts/{short.slug}/{f.name}"]))
+    return out
+
+
+ALL = [sheets, candidates, world, takes, wallpapers, plates, scenes, keyframes, plans, cuts]

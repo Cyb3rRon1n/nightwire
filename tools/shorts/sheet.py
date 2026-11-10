@@ -1,5 +1,5 @@
-"""The production sheet: one page per short with everything a shot needs before money is spent, and the owner's
-Approve / Change / Reject per shot (stored through the existing /designs/api/images review API)."""
+"""The per-short page: stage tabs (Bible, Plates, Keyframes, Shots, Takes, Cut), each with its gate status, and
+everything a shot needs before money is spent. Read-only: decisions happen in the review inbox at /review/."""
 
 import json
 import re
@@ -8,7 +8,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from tools.shorts import approve
+from tools.shorts import approve, keyframes, plates as plate_mod
 from tools.shorts.backends import fal
 from tools.shorts.prompt import CHARACTER_SHEETS
 from tools.shorts.takes import estimate
@@ -17,7 +17,53 @@ HTML = Path(__file__).with_name("sheet.html")
 THUMB = 1024
 
 
-def collect(short, designs, design_dir: Path, work: Path, default: str, plans: dict) -> dict:
+STAGES = ("Bible", "Plates", "Keyframes", "Shots", "Takes", "Cut")
+
+
+def cut_id(slug: str) -> str:
+    return f"cut--{slug}"
+
+
+def cut_file(work: Path) -> Path | None:
+    return next((p for p in (work / "cut.mp4", work / "draft.mp4") if p.exists()), None)
+
+
+def stages(short, plans: list[dict], plates: dict, approvals: dict, work: Path) -> list[dict]:
+    """Gate status per stage; a stage is locked until every earlier one is approved. plans = collect()'s shot rows."""
+    images = approvals.get("images", {})
+    keep = lambda v: (v or {}).get("verdict") == "keep"  # noqa: E731
+    named = sorted({sh.plate for sh in short.shots if sh.plate})
+    i2v = [sh for sh in short.shots if sh.mode == "i2v"]
+    keys = [(sh, w) for sh in i2v for w in keyframes.needed(sh)]
+    kept_takes = [sh for sh in short.shots if any(
+        (v or {}).get("verdict") == "keep" for v in _verdicts(work, sh.id).values())]
+    cut = cut_file(work)
+    checks = [
+        ("Bible", short.scene is not None and keep(approvals.get("SCENE", {}).get(approve.scene_fp(short))),
+         "the scene, wardrobe and seating"),
+        ("Plates", bool(named) and all(n in plates and keep(images.get(plate_mod.plate_id(short.place, n))) for n in named),
+         f"{len(named)} room view(s)"),
+        ("Keyframes", all(keyframes.chosen_path(work, sh.id, w).exists()
+                          and keep(images.get(f"key--{short.slug}--{sh.id.lower()}--{w}")) for sh, w in keys),
+         f"{len(keys)} opening/closing picture(s)"),
+        ("Shots", all(keep(approvals.get(p["id"], {}).get(p["fp"])) for p in plans), f"{len(plans)} shot plan(s)"),
+        ("Takes", len(kept_takes) == len(short.shots), f"{len(short.shots)} shot(s) need a chosen take"),
+        ("Cut", cut is not None and keep(images.get(cut_id(short.slug))), "the assembled film"),
+    ]
+    out, open_ = [], True
+    for name, ok, detail in checks:
+        status = "locked" if not open_ else "approved" if ok else "waiting"
+        out.append({"name": name, "status": status, "detail": detail})
+        open_ = open_ and ok
+    return out
+
+
+def _verdicts(work: Path, shot_id: str) -> dict:
+    f = work / "shots" / shot_id / "verdicts.json"
+    return json.loads(f.read_text()) if f.exists() else {}
+
+
+def collect(short, designs, design_dir: Path, work: Path, default: str, plans: dict, approvals: dict | None = None) -> dict:
     costs = json.loads((work / "costs.json").read_text()) if (work / "costs.json").exists() else []
     shots = []
     for shot in short.shots:
@@ -44,14 +90,26 @@ def collect(short, designs, design_dir: Path, work: Path, default: str, plans: d
         [*designs[slug].required, *([short.locks[cid]] if cid in short.locks else [])]),
              "sheets": [f.removesuffix(".png") for f in CHARACTER_SHEETS if (design_dir / slug / f).exists()]}
             for cid, slug in short.cast.items()]
+    catalogue = plate_mod.load_plates(short.place)
+    approvals = approvals or {"images": {}}
+    kf = {sh.id: [w for w in keyframes.needed(sh) if keyframes.chosen_path(work, sh.id, w).exists()] for sh in short.shots}
+    from tools.shorts.model import scene_text
     return {"slug": short.slug, "title": short.title, "logline": short.logline, "model": default,
             "runtime": round(sum(s.duration for s in short.shots), 1), "budget": short.budget_usd,
             "spent": round(sum(r["cost"] for r in costs), 2),
             "line_rule": short.line_rule, "style": short.style, "place": short.place,
             "beats": [{"text": b, "shot": (re.findall(r"\((S\d+)\)", b) or [""])[0]} for b in short.beats],
-            "cast": cast, "shots": shots, "continuity": continuity,
+            "cast": cast, "shots": shots, "stages": stages(short, shots, catalogue, approvals, work),
+            "bible": {"scene": scene_text(short) if short.scene else "", "wardrobe": dict(short.wardrobe), "blocking": dict(short.blocking)},
+            "plates": [{"name": n, "view": catalogue[n].view,
+                        "img": plate_path_ok(design_dir, short.place, catalogue[n])} for n in sorted({sh.plate for sh in short.shots} & set(catalogue))],
+            "keyframes": kf, "continuity": continuity,
             "lines": sorted(({"who": ln.who, "t": ln.t, "text": ln.text, "shot": sh.id} for sh in short.shots for ln in sh.lines),
                             key=lambda x: x["t"])}
+
+
+def plate_path_ok(design_dir, place, plate) -> bool:
+    return plate_mod.plate_path(design_dir, place, plate).exists()
 
 
 def _thumb(src: Path, dst: Path) -> None:
@@ -62,8 +120,20 @@ def _thumb(src: Path, dst: Path) -> None:
 
 
 def build(data: dict, design_dir: Path, work: Path, site_root: Path) -> Path:
-    site = site_root / data["slug"] / "sheet"
+    site = site_root / data["slug"]
     site.mkdir(parents=True, exist_ok=True)
+    (site / "sheet").mkdir(exist_ok=True)  # old links and homelab tiles point here
+    (site / "sheet" / "index.html").write_text('<!doctype html><meta http-equiv="refresh" content="0; url=../">')
+    for p in data["plates"]:
+        if p["img"]:
+            cat = plate_mod.load_plates(data["place"])[p["name"]]
+            _thumb(plate_mod.plate_path(design_dir, data["place"], cat), site / "plates" / f"{p['name']}.jpg")
+    for sid, whiches in data["keyframes"].items():
+        for w in whiches:
+            try:
+                _thumb(keyframes.chosen_path(work, sid, w), site / "keyframes" / f"{sid}-{w}.jpg")
+            except OSError:
+                pass  # an unreadable picture just shows no thumbnail
     for c in data["cast"]:
         for name in c["sheets"]:
             _thumb(design_dir / c["slug"] / f"{name}.png", site / "cast" / f"{c['slug']}-{name}.jpg")

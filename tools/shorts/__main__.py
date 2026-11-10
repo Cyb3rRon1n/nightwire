@@ -192,7 +192,12 @@ def _images_api() -> dict:
         return {}
 
 
-def _preflight(s, shot, model, designs):
+def _approvals(work, images=None) -> dict:
+    f = work / "approvals.json"
+    return {**(json.loads(f.read_text()) if f.exists() else {}), "images": _images_api() if images is None else images}
+
+
+def _preflight(s, shot, model, designs, images=None):
     from tools.shorts import preflight
     work = _work(s.slug)
     shot_dir = work / "shots" / shot.id
@@ -208,8 +213,7 @@ def _preflight(s, shot, model, designs):
     refs = [(label, p) for label, p in expected if p.exists()]  # what is sent and fingerprinted
     sent = [label for label, _ in fal.usable_refs(model, refs)[0]]
     prompt = build_prompt(s, shot, designs, has_still=(shot_dir / "still.png").exists(), sent=sent)
-    approvals_file = work / "approvals.json"
-    approvals = {**(json.loads(approvals_file.read_text()) if approvals_file.exists() else {}), "images": _images_api()}
+    approvals = _approvals(work, images)
     report = preflight.run(s, shot, _prev(s, shot), prompt, expected, model, Ledger(work / "costs.json").total(),
                            package_problems=preflight.package(s, shot, _prev(s, shot), plates, shot_dir, approvals, data_dir().parent),
                            bible=preflight.bible_words(s, shot))
@@ -262,7 +266,7 @@ def cmd_sheet(a) -> int:
     if model not in fal.MODELS:
         raise CliError(f"unknown model {model!r}; choose from: {', '.join(fal.MODELS)}")
     plans = {shot.id: _preflight(s, shot, fal.shot_model(shot, model), designs) for shot in s.shots}
-    data = sheet.collect(s, designs, data_dir().parent, _work(a.slug), model, plans)
+    data = sheet.collect(s, designs, data_dir().parent, _work(a.slug), model, plans, _approvals(_work(a.slug)))
     site = sheet.build(data, data_dir().parent, _work(a.slug), data_dir() / "_site")
     print(site)
     print(f"rsync -a {data_dir() / '_site'}/ 192.168.10.19:anvil-deploy/stack/dashboard/shorts/")

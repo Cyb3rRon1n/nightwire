@@ -124,3 +124,26 @@ def test_scenes_item_carries_bible_wardrobe_and_fingerprint_id(tmp_path):
     assert "late night" in item.context and "Wardrobe C1: coat" in item.context
     assert P.plates in P.ALL and P.scenes in P.ALL
     assert P.scenes(_shorts_world(tmp_path / "x", with_scene=False)) == []
+
+
+def test_plans_item_when_only_approvals_pending_and_cut_item(tmp_path, monkeypatch):
+    from test_shorts_cli import PACKAGED, setup
+    from test_shorts_model import designs
+    setup(tmp_path, monkeypatch, shot=PACKAGED, approved=False)
+    toml = tmp_path / "script" / "pilot" / "short.toml"
+    toml.write_text('model = "seedance-2.0-fast"\n' + toml.read_text())
+    dd = tmp_path / "design-data"
+    c = {"design_dir": dd, "site": tmp_path / "site", "shorts_dir": tmp_path / "script", "plates_root": tmp_path / "plates",
+         "designs": designs(), "images": {}}
+    png(dd / "shorts" / "pilot" / "shots" / "S01" / "preview" / "start.png")
+    (item,) = P.plans(c)  # the plate is unapproved: an approval-pending problem only
+    assert item.kind == "plan" and item.stage == "pre-production" and item.id.startswith("plan--pilot--s01--")
+    assert len(item.files) == 1 and "Cost: about $" in item.context and "Waiting on: plate door not approved" in item.context
+    shot = tmp_path / "script" / "pilot" / "shots" / "S01.toml"
+    shot.write_text(shot.read_text().replace("C2 asks who paid her tab.", ""))
+    assert P.plans(c) == []  # a real problem (empty action) hides it
+    assert P.plans in P.ALL and P.cuts in P.ALL
+    assert P.cuts(c) == []
+    (dd / "shorts" / "pilot" / "draft.mp4").write_bytes(b"v")
+    (cut,) = P.cuts(c)
+    assert cut.id == "cut--pilot" and cut.kind == "cut" and cut.stage == "finished"

@@ -233,7 +233,7 @@ def test_preflight_unknown_model_rejected(tmp_path, monkeypatch, capsys):
 def test_sheet_fingerprint_matches_submit(tmp_path, monkeypatch, capsys):
     setup(tmp_path, monkeypatch, approved=False)
     assert main(["sheet", "pilot", "--model", "seedance-2.0-fast"]) == 0
-    data = json.loads((tmp_path / "design-data" / "shorts" / "_site" / "pilot" / "sheet" / "sheet.json").read_text())
+    data = json.loads((tmp_path / "design-data" / "shorts" / "_site" / "pilot" / "sheet.json").read_text())
     fp = data["shots"][0]["fp"]
     work = tmp_path / "design-data" / "shorts" / "pilot"
     approvals(work, {"S01": {fp: {"verdict": "keep"}}})
@@ -260,7 +260,7 @@ def test_preflight_reports_missing_cast_sheet(tmp_path, monkeypatch, capsys):
 def test_submit_with_other_seconds_than_approved_is_refused(tmp_path, monkeypatch, capsys):
     setup(tmp_path, monkeypatch, approved=False)
     assert main(["sheet", "pilot", "--model", "seedance-2.0-fast"]) == 0
-    fp = json.loads((tmp_path / "design-data" / "shorts" / "_site" / "pilot" / "sheet" / "sheet.json").read_text())["shots"][0]["fp"]
+    fp = json.loads((tmp_path / "design-data" / "shorts" / "_site" / "pilot" / "sheet.json").read_text())["shots"][0]["fp"]
     approvals(tmp_path / "design-data" / "shorts" / "pilot", {"S01": {fp: {"verdict": "keep"}}})
     monkeypatch.setattr("tools.shorts.backends.fal.load_key", lambda *a: "k")
     called = []
@@ -323,7 +323,7 @@ def test_i2v_sheet_fp_equals_submit_fp_and_plate_rerender_changes_it(tmp_path, m
     dd = tmp_path / "design-data"
     (dd / "shorts" / "pilot" / "shots" / "S01" / "keyframe-start.png").write_bytes(b"k")
     assert main(["sheet", "pilot", "--model", "seedance-2.0-fast"]) == 0
-    sheet_fp = json.loads((dd / "shorts" / "_site" / "pilot" / "sheet" / "sheet.json").read_text())["shots"][0]["fp"]
+    sheet_fp = json.loads((dd / "shorts" / "_site" / "pilot" / "sheet.json").read_text())["shots"][0]["fp"]
     s = _short("pilot")
     _, prompt, refs = _preflight(s, s.shots[0], "seedance-2.0-fast-i2v", designs())
     extra = approve.fp_extra(s, s.shots[0], dd)
@@ -367,7 +367,7 @@ def test_sheet_uses_per_shot_model_and_matches_submit_fp(tmp_path, monkeypatch, 
     dd = tmp_path / "design-data"
     (dd / "shorts" / "pilot" / "shots" / "S01" / "keyframe-start.png").write_bytes(b"k")
     assert main(["sheet", "pilot", "--model", "seedance-2.0-fast"]) == 0
-    shot_json = json.loads((dd / "shorts" / "_site" / "pilot" / "sheet" / "sheet.json").read_text())["shots"][0]
+    shot_json = json.loads((dd / "shorts" / "_site" / "pilot" / "sheet.json").read_text())["shots"][0]
     assert shot_json["model"] == "seedance-2.0-fast-i2v" and not any("-i2v model" in p for p in shot_json["problems"])
     s = _short("pilot")
     _, prompt, refs = _preflight(s, s.shots[0], "seedance-2.0-fast-i2v", designs())

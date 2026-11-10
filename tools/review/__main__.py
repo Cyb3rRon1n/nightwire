@@ -19,6 +19,11 @@ def design_dir() -> Path:
     return Path(os.environ.get("NIGHTWIRE_DESIGN_DIR", "design-data"))
 
 
+def _fetch_images() -> dict:
+    from tools.shorts.__main__ import _images_api
+    return _images_api()
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="python -m tools.review")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -33,7 +38,7 @@ def main(argv=None) -> int:
     archives = sorted(dd.glob("lab-archive/*/world-page/ids.json"))  # dated names: last is newest
     world_ids = a.world_ids or (archives[-1] if archives else None)
     ctx = {"design_dir": dd, "site": site, "world_ids": world_ids, "shorts_site": dd / "shorts" / "_site",
-           "designs": load_designs(),
+           "designs": load_designs(), "images": _fetch_images(),
            "shorts_dir": Path(os.environ.get("NIGHTWIRE_SHORTS_DIR", SHORTS_DIR)),
            "plates_root": Path(os.environ.get("NIGHTWIRE_PLATES_DIR", PLATES_ROOT))}
     items, errors = build_items(producers.ALL, ctx)
