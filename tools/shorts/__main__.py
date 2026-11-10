@@ -10,7 +10,7 @@ import urllib.request
 from pathlib import Path
 
 from narrator import designs as _designs
-from tools.shorts import SHORTS_DIR, approve, data_dir, remote
+from tools.shorts import SHORTS_DIR, approve, data_dir, guides, remote
 from tools.shorts.backends import manual
 from tools.shorts.greybox.scene import FPS, scene_json
 from tools.shorts.model import load_short, validate_short
@@ -82,6 +82,18 @@ def cmd_greybox(a) -> int:
         sd = work / "shots" / shot.id
         subprocess.run(remote.encode(sd / "frames", sd / "greybox.mp4", FPS), check=True)
         print(sd / "greybox.mp4")
+    return 0
+
+
+def cmd_guides(a) -> int:
+    """Guide renders come out of the same Blender job as the grey-box; this adds the lineart post-processing."""
+    cmd_greybox(a)
+    work = _work(a.slug)
+    for shot in _short(a.slug).shots:
+        g = work / "shots" / shot.id / "guide"
+        for n in ("start", "end", "start-room", "end-room"):
+            if (g / f"{n}.png").exists():
+                print(guides.lineart(g / f"{n}.png", g / f"{n}-lineart.png"))
     return 0
 
 
@@ -364,6 +376,7 @@ def main(argv=None) -> int:
         q = sub.add_parser(name)
         q.add_argument("slug"); q.add_argument("shot")
     q = sub.add_parser("greybox"); q.add_argument("slug"); q.add_argument("--tint", action="store_true"); q.add_argument("--local", action="store_true")
+    q = sub.add_parser("guides"); q.add_argument("slug"); q.set_defaults(tint=False, local=False)
     q = sub.add_parser("inbox"); q.add_argument("slug"); q.add_argument("shot"); q.add_argument("--cost", type=float, required=True); q.add_argument("--model", required=True)
     q = sub.add_parser("submit"); q.add_argument("slug"); q.add_argument("shot"); q.add_argument("--model", required=True)
     q.add_argument("--seconds", type=float); q.add_argument("--yes", action="store_true")

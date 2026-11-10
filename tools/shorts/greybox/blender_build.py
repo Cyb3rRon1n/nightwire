@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 import bpy
+from bpy_extras.object_utils import world_to_camera_view
 from mathutils import Vector
 
 args = sys.argv[sys.argv.index("--") + 1:]
@@ -103,6 +104,56 @@ def render_still(path):
     sc.render.filepath = str(path)
     bpy.ops.render.render(write_still=True)
 
+KEY_W, KEY_H = 1216, 832  # keep in step with tools/shorts/guides.py
+
+
+def screen_box(obj, cam):
+    """0..1 image-fraction box of a figure (own box + all child parts, deformed by the pose), or None if off screen."""
+    dg = bpy.context.evaluated_depsgraph_get()
+    pts = []
+    for o in (obj, *obj.children_recursive):
+        ev = o.evaluated_get(dg)
+        if ev.type in {"MESH", "CURVE"}:  # empties/armatures have no usable bound_box
+            pts += [world_to_camera_view(sc, cam, ev.matrix_world @ Vector(c)) for c in ev.bound_box]
+    xs = [min(max(p.x, 0), 1) for p in pts if p.z > 0]
+    ys = [min(max(1 - p.y, 0), 1) for p in pts if p.z > 0]
+    if not xs or max(xs) - min(xs) < 0.01:
+        return None
+    return [round(min(xs), 4), round(min(ys), 4), round(max(xs), 4), round(max(ys), 4)]
+
+
+def render_guides(shot, cam, start, last):
+    """Flat white-on-black renders at keyframe size (with and without figures) plus figure screen regions; restores all state."""
+    guide = out / "shots" / shot["id"] / "guide"
+    guide.mkdir(parents=True, exist_ok=True)
+    sh, res, world = sc.display.shading, (sc.render.resolution_x, sc.render.resolution_y), tuple(sc.world.color)
+    saved = (sh.light, sh.color_type, sh.single_color[:], sh.show_object_outline)
+    sc.render.resolution_x, sc.render.resolution_y = KEY_W, KEY_H
+    sh.light, sh.color_type, sh.single_color, sh.show_object_outline = "FLAT", "SINGLE", (1, 1, 1), True
+    sc.world.color = (0, 0, 0)
+    boxes = {}
+    try:
+        for label, frame in (("start", start), ("end", last)):
+            sc.frame_set(frame)
+            bpy.context.view_layer.update()
+            render_still(guide / f"{label}.png")
+            boxes[label] = {fid: b for fid, o in figures.items() if (b := screen_box(o, cam))}
+            for o in figures.values():
+                o.hide_render = True
+                for c in o.children_recursive:
+                    c.hide_render = True
+            render_still(guide / f"{label}-room.png")
+            for o in figures.values():
+                o.hide_render = False
+                for c in o.children_recursive:
+                    c.hide_render = False
+        (guide / "regions.json").write_text(json.dumps(boxes, indent=1))
+    finally:
+        sc.render.resolution_x, sc.render.resolution_y = res
+        sh.light, sh.color_type, sh.single_color, sh.show_object_outline = saved
+        sc.world.color = world
+
+
 for shot in S["shots"]:
     cam = bpy.data.objects.new(shot["id"], bpy.data.cameras.new(shot["id"]))
     sc.collection.objects.link(cam)
@@ -125,6 +176,7 @@ for shot in S["shots"]:
     for label, frame in (("start", start), ("middle", (start + last) // 2), ("end", last)):
         sc.frame_set(frame)
         render_still(preview / f"{label}.png")
+    render_guides(shot, cam, start, last)
 
 # Overhead floor plan with C labels, figures at the first frame.
 sc.frame_set(0)
