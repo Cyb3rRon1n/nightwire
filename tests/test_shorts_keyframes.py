@@ -102,7 +102,7 @@ def test_render_uploads_unique_guide_seeds_and_survives_failure(tmp_path):
     jobs = [(tmp_path / f"o{n}.png", s.shots[0], "start", art, REG, n) for n in (1, 3)]
     errs = asyncio.run(kf.render(jobs, f, s, DESIGNS, 10))
     assert len(errs) == 1 and "boom" in errs[0] and (tmp_path / "o3.png").read_bytes() == b"png"
-    assert f.uploads[0] == "key-guide-pilot-S01-start.png" or f.uploads[0].startswith("key-guide-")
+    assert f.uploads[0] == f"key-guide-{s.slug}-S01-start.png" and s.slug
     assert f.runs[0]["3"]["inputs"]["seed"] == 10 and f.runs[1]["3"]["inputs"]["seed"] == 12
 
 
@@ -122,3 +122,23 @@ def test_producer_candidates_then_chosen_with_compare(tmp_path):
     (item,) = P.keyframes(c)
     assert len(item.files) == 1 and item.files[0].endswith("keyframe-start.jpg")
     assert P.keyframes in P.ALL
+
+
+def test_subject_not_duplicated_and_boxes_stay_inside(tmp_path):
+    s = short_with(tmp_path)
+    d = dict(DESIGNS, **{"saeko-kirigaya": D("Saeko", "1boy, short hair")})
+    solo = kf.keyframe_workflow(s, s.shots[0], d, "start", {"start": {"C1": [0.97, 0.0, 1.0, 1.0]}}, "g", 1)
+    assert "1girl" not in solo["6"]["inputs"]["text"]
+    (area,) = [n for n in solo.values() if n["class_type"] == "ConditioningSetArea"]
+    assert area["inputs"]["x"] + area["inputs"]["width"] <= 1216 and area["inputs"]["x"] % 8 == 0
+    two = kf.keyframe_workflow(s, s.shots[0], DESIGNS, "start", REG, "g", 1)["6"]["inputs"]["text"]
+    assert two.count("2girls") == 1 and "1girl" not in two
+
+
+def test_plan_jobs_skips_shot_without_character_regions(tmp_path):
+    s = short_with(tmp_path / "s")
+    work = tmp_path / "w"
+    png(work / "shots" / "S01" / "guide" / "start-lineart.png")
+    (work / "shots" / "S01" / "guide" / "regions.json").write_text(json.dumps({"end": REG["start"]}))
+    jobs, notes = kf.plan_jobs(s, work)
+    assert jobs == [] and "regions" in notes[0]

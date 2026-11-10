@@ -7,6 +7,8 @@ def test_build_writes_page_and_items(tmp_path, monkeypatch):
     dd = tmp_path / "dd"
     (dd / "shorts" / "_site").mkdir(parents=True)
     monkeypatch.setenv("NIGHTWIRE_DESIGN_DIR", str(dd))
+    monkeypatch.setenv("NIGHTWIRE_SHORTS_DIR", str(tmp_path / "no-shorts"))
+    monkeypatch.setenv("NIGHTWIRE_PLATES_DIR", str(tmp_path / "no-plates"))
     monkeypatch.setattr("tools.review.__main__.load_designs", lambda: {})
     assert main(["build"]) == 0
     site = dd / "review" / "_site"
@@ -21,6 +23,8 @@ def test_build_defaults_to_newest_lab_archive(tmp_path, monkeypatch):
         (dd / "lab-archive" / name / "world-page").mkdir(parents=True)
         (dd / "lab-archive" / name / "world-page" / "ids.json").write_text(json.dumps(ids))
     monkeypatch.setenv("NIGHTWIRE_DESIGN_DIR", str(dd))
+    monkeypatch.setenv("NIGHTWIRE_SHORTS_DIR", str(tmp_path / "no-shorts"))
+    monkeypatch.setenv("NIGHTWIRE_PLATES_DIR", str(tmp_path / "no-plates"))
     monkeypatch.setattr("tools.review.__main__.load_designs", lambda: {})
     assert main(["build"]) == 0
     assert [i["id"] for i in json.loads((dd / "review" / "_site" / "items.json").read_text())["items"]] == ["new-y"]
