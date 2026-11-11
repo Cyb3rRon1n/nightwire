@@ -20,6 +20,28 @@ from tools.shorts import plates as plate_mod
 HERE = Path(__file__).parent / "greybox"
 SCRIPT, ADDON, HELPERS = HERE / "blender_stage.py", HERE / "nightwire_stage_addon.py", HERE / "blender_build.py"
 BLENDER = Path(os.environ.get("NIGHTWIRE_LOCAL_BLENDER", Path.home() / "opt" / "blender" / "blender"))
+# The browser Blender on the GPU box (homelab-ops gpubox blender-stage, AI Lab tile :3100) sees this folder as /stages.
+REMOTE = os.environ.get("NIGHTWIRE_STAGE_REMOTE", "192.168.10.19:nightwire-stages")
+REMOTE_ADDONS = "anvil-deploy/stack/data/blender/.config/blender/4.5/scripts/addons"
+_STAGE_FILES = ["--include=*/", "--include=stage.blend", "--include=stage-plate.png"]
+_OWNER_FILES = ["--include=*/", "--include=*.owner.*"]
+
+
+def push(shorts_dir: Path) -> list[list[str]]:
+    """Commands: stage files up to the GPU box, plus the add-on into the container's Blender (enabled once)."""
+    host = REMOTE.split(":")[0]
+    addon = Path(tempfile.gettempdir()) / "nightwire_stage.py"
+    addon.write_text(addon_source())
+    enable = ("docker exec -u abc blender-stage blender -b --python-expr "
+              "\"import bpy; bpy.ops.preferences.addon_enable(module='nightwire_stage'); bpy.ops.wm.save_userpref()\" >/dev/null 2>&1")
+    return [["rsync", "-a", "-m", *_STAGE_FILES, "--exclude=*", f"{shorts_dir}/", f"{REMOTE}/"],
+            ["rsync", "-a", "--mkpath", str(addon), f"{host}:{REMOTE_ADDONS}/"],
+            ["ssh", host, enable]]
+
+
+def pull(shorts_dir: Path) -> list[str]:
+    """Command: the owner's exports from the browser Blender back into design-data (newer file wins)."""
+    return ["rsync", "-a", "-u", "-m", *_OWNER_FILES, "--exclude=*", f"{REMOTE}/", f"{shorts_dir}/"]
 
 
 def job(short, shot, design_dir: Path, work: Path, heights_cm: dict, plates_root: Path | None = None) -> dict:

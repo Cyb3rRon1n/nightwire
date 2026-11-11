@@ -1,5 +1,6 @@
 import json
 import subprocess
+from pathlib import Path
 
 import pytest
 from PIL import Image
@@ -63,3 +64,11 @@ def test_real_blender_builds_a_stage_and_exports_a_board(tmp_path):
     assert board.size == (1000, 600)
     pose = json.loads((sd / "board-start.owner.pose.json").read_text())["C1"]["points"]
     assert pose["lank"] is not None and abs(pose["lank"][1] - 0.9) < 0.03  # the feet stand where the board put them
+
+
+def test_sync_commands_move_only_stage_files_up_and_owner_exports_down(tmp_path):
+    up = stage.push(tmp_path)
+    assert up[0][:2] == ["rsync", "-a"] and "--include=stage.blend" in up[0] and up[0][-1].endswith("nightwire-stages/")
+    assert up[1][-2].endswith("nightwire_stage.py") and "HELPER_SRC = ''" not in Path(up[1][-2]).read_text()
+    down = stage.pull(tmp_path)
+    assert "--include=*.owner.*" in down and "-u" in down and down[-1] == f"{tmp_path}/"

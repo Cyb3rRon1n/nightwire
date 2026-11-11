@@ -481,6 +481,9 @@ def cmd_boards(a) -> int:
     s = _short(a.slug)
     if a.shot:
         _shot(s, a.shot)
+    from tools.shorts import stage
+    if subprocess.run(stage.pull(_work(a.slug).parent), capture_output=True).returncode != 0:
+        print("warning: could not pull stage exports from the browser Blender", file=sys.stderr)
     designs, warnings = load_designs(), []
     heights = {cid: designs[slug].height_cm for cid, slug in s.cast.items() if slug in designs}
     try:
@@ -509,6 +512,10 @@ def cmd_stage(a) -> int:
             print(f)
     except (ValueError, RuntimeError) as e:
         raise CliError(str(e))
+    for cmd in stage.push(_work(a.slug).parent):
+        if subprocess.run(cmd).returncode != 0:
+            print(f"warning: browser Blender sync failed: {' '.join(cmd[:2])}", file=sys.stderr)
+            break
     return 0
 
 
