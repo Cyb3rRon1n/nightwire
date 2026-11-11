@@ -7,6 +7,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from tools.greybox_library import build as lib_build
 from tools.greybox_library import insert
+from tools.greybox_library.presets import CAMERA_TWINS
 from tools.shorts import plate_camera
 from tools.shorts import plates as plate_mod
 
@@ -78,6 +79,9 @@ def build(short, design_dir: Path, work: Path, lib: Path | None = None, plates_r
                 entry = lib / b.pose / b.camera
                 if not (entry / "board.png").exists():
                     raise ValueError(f"{sh.id}: no library cell {b.pose}/{b.camera} in {lib} (python -m tools.greybox_library build)")
+                if cam is not None:  # the twin of the named camera whose horizon is nearest the plate's
+                    twins = [lib / b.pose / c for c in CAMERA_TWINS.get(b.camera, (b.camera,)) if (lib / b.pose / c / "meta.json").exists()]
+                    entry = min(twins or [entry], key=lambda e: abs(json.loads((e / "meta.json").read_text())["horizon_y"] - cam["horizon_y"]))
                 meta = json.loads((entry / "meta.json").read_text())
                 height = b.height
                 if height is None:
@@ -90,7 +94,7 @@ def build(short, design_dir: Path, work: Path, lib: Path | None = None, plates_r
                     except ValueError as e:
                         raise ValueError(f"{sh.id} {b.figure}: {e}")
                 if cam is not None and abs(meta["horizon_y"] - cam["horizon_y"]) > PITCH_GAP:
-                    warnings.append(f"{sh.id} {b.figure}: camera {b.camera} sees the figure from a different height than plate "
+                    warnings.append(f"{sh.id} {b.figure}: camera {entry.name} sees the figure from a different height than plate "
                                     f"{sh.plate} (horizon {meta['horizon_y']:.2f} vs {cam['horizon_y']:.2f})")
                 in_front = (plate_camera.in_front_mask(depth, b.feet) if depth is not None and b.hidden_below is None else None)
                 figs.append({"entry": entry, "feet": b.feet, "height": height, "label": b.figure, "hidden_below": b.hidden_below,

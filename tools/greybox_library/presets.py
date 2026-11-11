@@ -430,6 +430,22 @@ CAMERAS = {
     "profile-close": {"dist": 4.1, "height": 1.35, "yaw": 90, "lens": 85, "look": 1.05},
     "high-wide": {"dist": 8.0, "height": 8.0, "yaw": 0, "lens": 35, "look": 0.5},
     "doorway-frame": {"dist": 3.2, "height": 1.25, "yaw": 15, "lens": 28, "look": 1.0},
+    # level and raised twins (2026-11-11): plates are mostly shot at eye level (horizon ~0.55), the cameras above look
+    # down at the figure (horizon ~0.29), so a figure from them stood on an eye-level plate looks wrong. Boards pick the
+    # twin whose horizon is nearest the plate's (CAMERA_TWINS).
+    "ews-eye": {"dist": 12.0, "height": 1.5, "yaw": 0, "lens": 28, "look": 1.5},
+    "ws-front-eye": {"dist": 4.5, "height": 1.5, "yaw": 0, "lens": 35, "look": 1.5},
+    "ws-back-eye": {"dist": 4.5, "height": 1.5, "yaw": 180, "lens": 35, "look": 1.5},
+    "ws-profile-eye": {"dist": 4.5, "height": 1.5, "yaw": 90, "lens": 35, "look": 1.5},
+    "ms-profile-eye": {"dist": 2.4, "height": 1.35, "yaw": 90, "lens": 50, "look": 1.35},
+    "ws-front-above": {"dist": 4.5, "height": 2.6, "yaw": 0, "lens": 35, "look": 1.0},
+    "ws-back-above": {"dist": 4.5, "height": 2.6, "yaw": 180, "lens": 35, "look": 1.0},
 }
+
+# Cameras that show the same view from different heights: a board may name any one, the plate picks.
+_TWIN_GROUPS = (("ews-high", "ews-low", "ews-eye"), ("ws-front", "ws-front-eye", "ws-front-above"),
+                ("ws-back", "ws-back-eye", "ws-back-above", "ws-low-back"), ("ws-profile", "ws-profile-eye"),
+                ("ms-profile", "ms-profile-eye"))
+CAMERA_TWINS = {c: g for g in _TWIN_GROUPS for c in g}
 
 SLUG = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")

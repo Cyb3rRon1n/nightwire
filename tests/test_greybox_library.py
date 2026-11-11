@@ -505,3 +505,9 @@ def test_insert_hides_the_figure_below_a_foreground_line(tmp_path):
     insert.insert_many(_plate(tmp_path), [fig], tmp_path / "o.png")
     x0, y0, x1, y1 = _grey_box(tmp_path / "o.depth.png")
     assert abs(y1 - 0.6 * 600) <= 2 and abs(y0 - 0.4 * 600) <= 2  # legs behind the counter, head where it was
+
+
+def test_camera_twins_exist_and_are_symmetric():
+    for cam, group in presets.CAMERA_TWINS.items():
+        assert cam in group and all(c in presets.CAMERAS for c in group)
+        assert all(presets.CAMERA_TWINS[c] == group for c in group)

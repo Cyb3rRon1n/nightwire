@@ -35,7 +35,6 @@ figure = "C1"
 pose = "stand"
 camera = "ws-front"
 feet = [0.55, 0.78]
-height = 0.34
 hidden_below = 0.6  # behind the counter
 
 [[board]]
@@ -44,5 +43,4 @@ figure = "C1"
 pose = "stand"
 camera = "ws-front"
 feet = [0.55, 0.78]
-height = 0.34
 hidden_below = 0.6  # behind the counter

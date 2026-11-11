@@ -39,7 +39,6 @@ figure = "C1"
 pose = "walk"
 camera = "ws-back"
 feet = [0.6, 0.62]
-height = 0.2
 
 [[board]]
 which = "start"
@@ -47,7 +46,6 @@ figure = "C2"
 pose = "sit-stool"
 camera = "ws-back"
 feet = [0.88, 0.88]
-height = 0.3
 
 [[board]]
 which = "end"
@@ -55,7 +53,6 @@ figure = "C1"
 pose = "stand-back"
 camera = "ws-back"
 feet = [0.76, 0.62]
-height = 0.2
 
 [[board]]
 which = "end"
@@ -63,4 +60,3 @@ figure = "C2"
 pose = "sit-stool"
 camera = "ws-back"
 feet = [0.88, 0.88]
-height = 0.3

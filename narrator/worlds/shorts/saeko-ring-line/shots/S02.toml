@@ -35,7 +35,6 @@ figure = "C1"
 pose = "stand"
 camera = "ws-profile"
 feet = [0.4, 0.9]
-height = 0.34
 
 [[board]]
 which = "end"
@@ -43,4 +42,3 @@ figure = "C1"
 pose = "stand"
 camera = "ws-profile"
 feet = [0.4, 0.9]
-height = 0.34

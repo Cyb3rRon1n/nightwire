@@ -35,7 +35,6 @@ figure = "C1"
 pose = "stand-back"
 camera = "ws-back"
 feet = [0.4, 0.82]
-height = 0.3
 
 [[board]]
 which = "end"
@@ -43,4 +42,3 @@ figure = "C1"
 pose = "sit-floor"
 camera = "ws-back"
 feet = [0.4, 0.82]
-height = 0.2
