@@ -2,10 +2,10 @@
 
 [[plate]]
 name = "block-facade"
-view = "from the courtyard looking up at a long concrete housing block: rows of identical open-air corridors and balconies with laundry, one corridor door glowing amber, the whole building filling the frame"
+view = "wide establishing shot from across the street of a long ten-storey concrete housing block seen straight on: a grid of identical open-air corridors and balconies with laundry, rows of cold corridor lights, one door glowing amber"
 mood = "Time: evening, just after dark. Weather: dry and still. Light: rows of cold fluorescent corridor lights, one warm amber door, far orange city glow on the horizon."
-tags = "outdoors, exterior, apartment building, public housing, danchi, building facade, many balconies, open-air corridors, low angle, from below, night sky, scenery, wide shot"
-avoid = ["rain", "daylight", "people", "crowds", "text", "logos", "indoors", "interior", "hallway", "room", "vending machine", "alley"]
+tags = "outdoors, exterior, apartment building, public housing, danchi, building facade, many balconies, open-air corridors, symmetrical, straight-on view, night sky, scenery, very wide shot, architecture"
+avoid = ["rain", "daylight", "people", "crowds", "text", "logos", "indoors", "interior", "hallway", "room", "vending machine", "alley", "doorway", "close-up", "from below"]
 
 [[plate]]
 name = "corridor"
