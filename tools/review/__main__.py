@@ -28,6 +28,7 @@ def main(argv=None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     b = sub.add_parser("build")
     b.add_argument("--world-ids", type=Path, help="world-page/ids.json (default: the lab archive's, when present)")
+    b.add_argument("--retire", nargs="+", default=[], metavar="KIND", help="set aside every current item of these kinds (superseded)")
     sub.add_parser("migrate")
     a = ap.parse_args(argv)
     if a.cmd == "migrate":
@@ -39,7 +40,16 @@ def main(argv=None) -> int:
     ctx = {"design_dir": dd, "site": site, "world_ids": world_ids, "shorts_site": dd / "shorts" / "_site",
            "designs": load_designs(), "images": _fetch_images(),
            "shorts_dir": Path(os.environ.get("NIGHTWIRE_SHORTS_DIR", SHORTS_DIR))}
+    retired = dd / "review" / "retired.txt"  # one id per line; retire with: build --retire KIND
+    ctx["retired"] = set(retired.read_text().split()) if retired.exists() else set()
     items, errors = build_items(producers.ALL, ctx)
+    if a.retire:
+        gone = [i.id for i in items if i.kind in a.retire]
+        retired.parent.mkdir(parents=True, exist_ok=True)
+        with retired.open("a") as f:
+            f.writelines(i + "\n" for i in gone)
+        items = [i for i in items if i.kind not in a.retire]
+        print(f"retired {len(gone)} item(s) of kind {', '.join(a.retire)}")
     write_items(items, site)
     (site / "index.html").write_text(PAGE.read_text())
     for e in errors:

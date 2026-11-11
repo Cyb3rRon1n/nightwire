@@ -49,6 +49,7 @@ def web_copy(src: Path, site: Path, rel: str, max_side: int = 2048) -> str:
 
 
 def build_items(producers, ctx: dict) -> tuple[list[Item], list[str]]:
+    """ctx["retired"]: ids the owner set aside (superseded work); new work gets new ids, so it still shows."""
     items, errors, seen = [], [], set()
     for p in producers:
         try:
@@ -57,6 +58,8 @@ def build_items(producers, ctx: dict) -> tuple[list[Item], list[str]]:
             errors.append(f"{p.__name__}: {e}")
             continue
         for it in got:
+            if it.id in ctx.get("retired", ()):
+                continue
             if it.id in seen:
                 errors.append(f"{p.__name__}: duplicate id {it.id}")
                 continue

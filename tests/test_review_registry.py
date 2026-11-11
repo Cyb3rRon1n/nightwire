@@ -46,3 +46,10 @@ def test_web_copy_and_write(tmp_path):
     path = write_items([Item("a", "plate", "designs", "p", "A", [url])], tmp_path / "site")
     data = json.loads(path.read_text())
     assert data["items"][0]["id"] == "a" and data["items"][0]["choices"] == ["keep", "fix", "reject"]
+
+
+def test_retired_ids_are_left_out_without_a_duplicate_warning():
+    def two(ctx):
+        return [Item("old-1", "render", "production", "w", "t", []), Item("new-1", "render", "production", "w", "t", [])]
+    items, errors = build_items([two], {"retired": {"old-1"}})
+    assert [i.id for i in items] == ["new-1"] and errors == []
