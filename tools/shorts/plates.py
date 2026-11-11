@@ -58,9 +58,14 @@ def plate_workflow(place, look: str, not_visible, plate: Plate, lineart_name: st
         look = plate.mood or mood
     # "empty room" turned the outdoor block facade into alleys and hallways (2026-11-10, 8 candidates).
     empty = "no humans" if "outdoors" in tags else "empty room, no humans"
-    wf = build(f"({plate.view}:1.3), {empty}, {look}, {tags}", "scene", False,
-               ", ".join(["people, person, 1girl, 1boy", *not_visible, *plate.avoid, NO_TEXT]), "base", seed)
-    wf["5"]["inputs"].update(width=1216, height=832)
+    from narrator.design_sheets import _LOCATION_MOOD, _LOCATION_NEGATIVE, sheet_workflow
+    text = build(f"({plate.view}:1.3), {empty}, {look}, {tags}, {_LOCATION_MOOD}", "scene", False,
+                 ", ".join(["people, person, 1girl, 1boy", *not_visible, *plate.avoid, NO_TEXT, _LOCATION_NEGATIVE]), "base", seed)
+    # The approved location look (2026-11-03 "medium dark"): CFG 3.5 plus the 2x refine pass. A single first pass at CFG 4.5
+    # read as photographic next to the sheets (owner, 2026-11-11). Output 1824x1248, no final 2x upscale.
+    wf = sheet_workflow(text["6"]["inputs"]["text"], text["7"]["inputs"]["text"], seed, size=(1216, 832), cfg=3.5)
+    wf["9"]["inputs"]["images"] = ["35", 0]
+    del wf["40"]
     if lineart_name:
         wf["60"] = {"class_type": "ControlNetLoader", "inputs": {"control_net_name": "noob-sdxl-controlnet-lineart_anime.fp16.safetensors"}}
         wf["61"] = {"class_type": "LoadImage", "inputs": {"image": lineart_name}}

@@ -57,7 +57,9 @@ def test_plate_workflow_adds_controlnet_and_rewires_sampler():
     assert text.index("1.3") < text.index("izakaya, night")  # room tags are the tail
     assert (wf["62"]["inputs"]["strength"], wf["62"]["inputs"]["end_percent"]) == (0.8, 0.85)
     assert wf["9"]["inputs"]["filename_prefix"] == "nightwire_plates/toward-door"
-    assert "34" not in wf  # base size has no second pass
+    assert wf["34"]["inputs"]["positive"] == ["62", 0] and wf["34"]["inputs"]["denoise"] == 0.35  # refine pass keeps the guide
+    assert wf["9"]["inputs"]["images"] == ["35", 0] and "40" not in wf
+    assert wf["3"]["inputs"]["cfg"] == 3.5 and "photorealistic" in wf["7"]["inputs"]["text"]
 
 
 def test_plate_workflow_without_lineart_is_plain():
