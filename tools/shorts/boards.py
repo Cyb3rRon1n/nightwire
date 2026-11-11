@@ -65,7 +65,7 @@ def build(short, design_dir: Path, work: Path, lib: Path | None = None, plates_r
                 entry = lib / b.pose / b.camera
                 if not (entry / "board.png").exists():
                     raise ValueError(f"{sh.id}: no library cell {b.pose}/{b.camera} in {lib} (python -m tools.greybox_library build)")
-                figs.append({"entry": entry, "feet": b.feet, "height": b.height, "label": b.figure})
+                figs.append({"entry": entry, "feet": b.feet, "height": b.height, "label": b.figure, "hidden_below": b.hidden_below})
             if figs:
                 out.append(_safe_zone(insert.insert_many(src, figs, sd / f"board-{which}.png"), sh.vertical))
     return out

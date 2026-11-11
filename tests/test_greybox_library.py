@@ -497,3 +497,11 @@ def test_assert_posed_would_pass_for_every_pose():
         posed = _fk({"rot": p["rot"]})
         moved = max((float(((posed[b][1] - rest[b][1]) ** 2).sum() ** 0.5) for b in big), default=1)
         assert moved >= 0.05, (n, big, moved)
+
+
+def test_insert_hides_the_figure_below_a_foreground_line(tmp_path):
+    from tools.greybox_library import insert
+    fig = {"entry": _cell(tmp_path), "feet": (0.4, 0.9), "height": 0.5, "label": "C1", "hidden_below": 0.6}
+    insert.insert_many(_plate(tmp_path), [fig], tmp_path / "o.png")
+    x0, y0, x1, y1 = _grey_box(tmp_path / "o.depth.png")
+    assert abs(y1 - 0.6 * 600) <= 2 and abs(y0 - 0.4 * 600) <= 2  # legs behind the counter, head where it was

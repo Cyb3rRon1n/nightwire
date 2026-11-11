@@ -56,7 +56,7 @@ def _shape(mask: Image.Image, size) -> Image.Image:
 
 
 def insert_many(plate: Path, figures: list[dict], out: Path) -> Path:
-    """figures: [{entry, feet: (x, y) 0..1, height: 0..1, label}]. Writes out plus <stem>.pose.json / .pose.png / .depth.png beside it.
+    """figures: [{entry, feet: (x, y) 0..1, height: 0..1, label, hidden_below?: 0..1}]. Writes out plus <stem>.pose.json / .pose.png / .depth.png beside it.
     The depth patch holds each figure's own relative depth (comparable inside one figure, not between figures)."""
     out = Path(out)
     base = Image.open(plate).convert("RGB")
@@ -73,8 +73,12 @@ def insert_many(plate: Path, figures: list[dict], out: Path) -> Path:
         ox, oy = f["feet"][0] * W - fx * s, f["feet"][1] * H - fy * s
         pos = (round(ox), round(oy))
         union = Image.new("L", size, 0)
+        # hidden_below: frame y (0..1) where the plate's own foreground (a counter, a rail) hides the figure
+        hide = round(f["hidden_below"] * H) - pos[1] if f.get("hidden_below") is not None else None
         for mask, shade in cut["layers"]:
             m = _shape(mask, size)
+            if hide is not None:
+                m.paste(0, (0, max(0, hide), size[0], size[1]))
             board.paste(Image.new("RGB", size, shade), pos, m)
             board.paste(Image.new("RGB", size, EDGE), pos, _outline(m))
             union = ImageChops.lighter(union, m)
