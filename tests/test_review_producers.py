@@ -216,11 +216,15 @@ def test_sheet_sets_need_all_four_and_id_follows_bytes_and_v1_sheets_skip_states
         png(w / f"{s}.png")
     assert P.sheet_sets(c) == []
     png(w / "props.png"); png(w / "colorguide.png")
+    assert P.sheet_sets(c) == []  # not checked yet
+    (w / "checked").write_text(P.sheet_set_id("mama", "work", w))
     (item,) = P.sheet_sets(c)
     assert item.kind == "sheet-set" and item.id.startswith("sheet--mama--work--") and len(item.files) == 5 and len(item.compare) == 2
     png(w / "colorguide.png", (9, 9))
     assert P.sheet_sets(c)[0].id == item.id  # colour guide is shown, not hashed
     png(w / "props.png", (9, 9))
+    assert P.sheet_sets(c) == []  # changed after the check: hidden until checked again
+    (w / "checked").write_text(P.sheet_set_id("mama", "work", w))
     assert P.sheet_sets(c)[0].id != item.id
     assert P.sheets(c) == []  # v1 item skipped for characters with states
     assert P.bibles in P.ALL and P.sheet_sets in P.ALL

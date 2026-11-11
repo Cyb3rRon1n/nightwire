@@ -91,6 +91,10 @@ def sheet_sets(ctx) -> list[Item]:
             folder = ctx["design_dir"] / slug / "wardrobe" / state
             if not all((folder / f"{s}.png").exists() for s in SET_ORDER):
                 continue
+            sid = sheet_set_id(slug, state, folder)
+            mark = folder / "checked"  # Claude's full-size check passed for exactly these files (spec section 1)
+            if not mark.exists() or mark.read_text().strip() != sid:
+                continue
             names = [*SET_ORDER, "colorguide"]
             files = [web_copy(folder / f"{s}.png", ctx["site"], f"sheets/{slug}/{state}/{s}.jpg")
                      for s in names if (folder / f"{s}.png").exists()]
@@ -98,7 +102,7 @@ def sheet_sets(ctx) -> list[Item]:
             compare = [{"label": f"{s.capitalize()}: original", "url": web_copy(top / f"{s}.png", ctx["site"], f"sheets/{slug}/{state}/orig-{s}.jpg")}
                        for s in ("turnaround", "portrait") if (top / f"{s}.png").exists()]
             context = "\n".join(["Identity:", *[f"- {i}" for i in d.identity], f"State {state}: {w.text}"])
-            out.append(Item(sheet_set_id(slug, state, folder), "sheet-set", "designs", slug,
+            out.append(Item(sid, "sheet-set", "designs", slug,
                             f"{d.name}: {state} sheet set", files, compare, context=context))
     return out
 
