@@ -94,7 +94,7 @@ class Board:
     figure: str                 # cast id
     pose: str
     camera: str
-    feet: tuple[float, float]   # 0..1 of the frame
+    feet: tuple[float, float]   # 0..1 of the frame; y > 1 = below it (close shots: the floor is out of frame)
     height: float | None        # figure height, 0..1 of the frame; None = from the plate's camera (plate_camera.py)
     hidden_below: float | None = None  # frame y (0..1) below which the plate's foreground (counter, rail) hides the figure
     keep_props: bool = False    # also draw the library cell's own props (stool, rail); off: the plate has the real ones
@@ -231,9 +231,9 @@ def _board_problems(s: "Short", shot: Shot, where: str) -> list[str]:
             out.append(f"{tag}: pose {b.pose!r} is not in the grey-box library")
         if b.camera not in presets.CAMERAS:
             out.append(f"{tag}: camera {b.camera!r} is not in the grey-box library")
-        if len(b.feet) != 2 or not all(0 <= v <= 1 for v in b.feet):
-            out.append(f"{tag}: feet must be [x, y] between 0 and 1")
-        if not 0 < b.height <= 1:
+        if len(b.feet) != 2 or not (0 <= b.feet[0] <= 1 and 0 <= b.feet[1] <= 2):
+            out.append(f"{tag}: feet must be [x, y], x 0..1, y 0..2 (above 1 = below the frame, for close shots)")
+        if b.height is not None and not 0 < b.height <= 1:
             out.append(f"{tag}: height must be above 0 and at most 1")
     return out
 

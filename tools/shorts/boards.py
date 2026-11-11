@@ -117,7 +117,7 @@ def build(short, design_dir: Path, work: Path, lib: Path | None = None, plates_r
                 if cam is not None and abs(meta["horizon_y"] - cam["horizon_y"]) > PITCH_GAP:
                     warnings.append(f"{sh.id} {b.figure}: camera {entry.name} sees the figure from a different height than plate "
                                     f"{sh.plate} (horizon {meta['horizon_y']:.2f} vs {cam['horizon_y']:.2f})")
-                in_front = (plate_camera.in_front_mask(depth, b.feet) if depth is not None and b.hidden_below is None else None)
+                in_front = (plate_camera.in_front_mask(depth, b.feet) if depth is not None and b.hidden_below is None and b.feet[1] < 0.97 else None)  # feet at/below the frame edge: nothing is nearer
                 figs.append({"entry": entry, "feet": b.feet, "height": height, "label": b.figure, "hidden_below": b.hidden_below,
                              "in_front": in_front, "figure_only": real and not b.keep_props})
             if figs:
