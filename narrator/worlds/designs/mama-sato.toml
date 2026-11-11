@@ -17,7 +17,7 @@ appearance = "1girl, mature female, grey hair, hair bun, hair stick, brown eyes,
 [wardrobe.work]
 text = "Red kimono with gold floral embroidery closed at the collar over a white inner collar, wide gold obi with a bow, ankle-length hem, black tabi socks and black platform sandals, with a black techwear apron over it."
 tags = "red kimono, gold embroidery, floral embroidery, closed collar, white inner collar, gold obi, long sleeves, ankle length, black tabi, platform sandals, black apron, fingerless gloves"
-props = ["black techwear apron laid flat"]
+props = ["techwear apron"]
 
 [wardrobe.offduty]
 text = "Plain indigo cotton kimono with a narrow grey obi and a knitted black cardigan over it, hair in the same bun."

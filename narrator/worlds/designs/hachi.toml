@@ -17,7 +17,7 @@ appearance = "1girl, mature female, android, robot joints, ball joints, doll joi
 [wardrobe.work]
 text = "Black cropped jacket with magenta trim over a full-length white collared shirt and magenta necktie, black pencil skirt over opaque black tights, and black leg-armour boots with magenta soles."
 tags = "black cropped jacket, magenta trim, white collared shirt, magenta necktie, black pencil skirt, black tights, opaque tights, black boots, magenta soles, high collar jacket"
-props = ["taped cardboard delivery parcel box"]
+props = ["delivery parcel"]
 
 [wardrobe.offduty]
 text = "Long cream knit cardigan over a black turtleneck, black leggings and white sneakers, jacket and tie left at the depot."
