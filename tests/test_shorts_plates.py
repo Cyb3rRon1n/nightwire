@@ -158,3 +158,9 @@ def test_real_toward_door_plate_has_tags_and_avoid():
 def test_outdoor_plate_is_not_an_empty_room():
     out = pl.plate_workflow(PLACE, "s", [], pl.Plate("facade", "a building", tags="outdoors, building facade"), None, 1)
     assert "empty room" not in out["6"]["inputs"]["text"] and "no humans" in out["6"]["inputs"]["text"]
+
+
+def test_plate_mood_replaces_the_scene_mood():
+    p = pl.Plate("facade", "a building", tags="outdoors", mood="Light: corridor lights.")
+    text = pl.plate_workflow(PLACE, "s", [], p, None, 1, mood="Light: ceiling bulb, indoors.")["6"]["inputs"]["text"]
+    assert "corridor lights" in text and "ceiling bulb" not in text

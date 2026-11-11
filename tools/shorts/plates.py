@@ -25,6 +25,7 @@ class Plate:
     source: str = ""   # an existing approved image of the place adopted as this plate
     tags: str = ""     # replaces the place tags for this direction (they would pull in the wrong wall)
     avoid: list[str] = field(default_factory=list)  # extra negative terms for this direction
+    mood: str = ""     # replaces the scene's time/weather/light line (an exterior plate of a mostly-indoor scene)
 
 
 def load_plates(place: str, plates_root: Path | None = None) -> dict[str, Plate]:
@@ -54,7 +55,7 @@ def plate_workflow(place, look: str, not_visible, plate: Plate, lineart_name: st
     from tools.imagegen import build
     tags = plate.tags or place.alt_tags or place.tags
     if plate.tags:
-        look = mood
+        look = plate.mood or mood
     # "empty room" turned the outdoor block facade into alleys and hallways (2026-11-10, 8 candidates).
     empty = "no humans" if "outdoors" in tags else "empty room, no humans"
     wf = build(f"({plate.view}:1.3), {empty}, {look}, {tags}", "scene", False,
