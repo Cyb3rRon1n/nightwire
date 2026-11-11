@@ -52,6 +52,23 @@ def _safe_zone(png: Path, x: float) -> Path:
 PITCH_GAP = 0.25  # cell horizon vs plate horizon (0..1 of the frame) beyond which the figure is seen from the wrong height
 
 
+def _from_owner(owned: Path, board: Path) -> Path:
+    """board-<which>.png (and .pose.json / .pose.png / .depth.png) from the owner's export, never edited in place."""
+    import shutil
+    from tools.greybox_library.insert import write_pose_png
+    shutil.copy(owned, board)
+    stem = board.with_suffix("")
+    for ext in (".pose.json", ".depth.png"):
+        src = owned.with_name(owned.stem + ext)
+        if src.exists():
+            shutil.copy(src, stem.with_name(stem.name + ext))
+    pj = stem.with_name(stem.name + ".pose.json")
+    if pj.exists():
+        W, H = Image.open(board).size
+        write_pose_png(json.loads(pj.read_text()), stem.with_name(stem.name + ".pose.png"), W, H)
+    return board
+
+
 def build(short, design_dir: Path, work: Path, lib: Path | None = None, plates_root: Path | None = None, shot: str | None = None,
           heights_cm: dict | None = None, warnings: list | None = None) -> list[Path]:
     """Writes work/shots/<id>/board-<which>.png for every shot with [[board]] entries (only `shot` when given).
@@ -74,6 +91,10 @@ def build(short, design_dir: Path, work: Path, lib: Path | None = None, plates_r
         dpath = plate_camera.depth_path(src)
         depth = Image.open(dpath) if real and dpath.exists() else None
         for which in ("start", "end"):
+            owned = sd / f"board-{which}.owner.png"
+            if owned.exists():  # exported from the owner's Blender stage: use it as is
+                out.append(_safe_zone(_from_owner(owned, sd / f"board-{which}.png"), sh.vertical))
+                continue
             figs = []
             for b in (b for b in sh.boards if b.which == which):
                 entry = lib / b.pose / b.camera

@@ -493,6 +493,25 @@ def cmd_boards(a) -> int:
     return 0
 
 
+def cmd_stage(a) -> int:
+    """shots/<id>/stage.blend per shot (local Blender), and the Nightwire add-on installed once."""
+    from tools.shorts import stage
+    s = _short(a.slug)
+    if a.shot:
+        _shot(s, a.shot)
+    designs = load_designs()
+    heights = {cid: designs[slug].height_cm for cid, slug in s.cast.items() if slug in designs}
+    if not stage.BLENDER.exists():
+        raise CliError(f"no Blender at {stage.BLENDER} (set NIGHTWIRE_LOCAL_BLENDER)")
+    stage.install_addon()
+    try:
+        for f in stage.build(s, data_dir().parent, _work(a.slug), heights, shot=a.shot):
+            print(f)
+    except (ValueError, RuntimeError) as e:
+        raise CliError(str(e))
+    return 0
+
+
 def cmd_camera(a) -> int:
     """Each plate the short uses: depth map, horizon and a check image (horizon + person rulers) beside the plate."""
     from tools.shorts import plate_camera, plates
@@ -573,6 +592,7 @@ def main(argv=None) -> int:
     q.add_argument("--choose", nargs=2, metavar=("WHICH", "N"))
     sub.add_parser("page")
     q = sub.add_parser("boards"); q.add_argument("slug"); q.add_argument("shot", nargs="?")
+    q = sub.add_parser("stage"); q.add_argument("slug"); q.add_argument("shot", nargs="?")
     q = sub.add_parser("camera"); q.add_argument("slug"); q.add_argument("--plate"); q.add_argument("--horizon", type=float)
     q.add_argument("--cam-height", type=float); q.add_argument("--redo", action="store_true")
     sub.add_parser("wall").add_argument("slug")

@@ -112,13 +112,18 @@ def insert_many(plate: Path, figures: list[dict], out: Path) -> Path:
     stem = out.with_suffix("")
     Image.fromarray(depth).save(stem.with_name(stem.name + ".depth.png"))
     stem.with_name(stem.name + ".pose.json").write_text(json.dumps(poses, indent=1))
+    write_pose_png(poses, stem.with_name(stem.name + ".pose.png"), W, H)
+    return out
+
+
+def write_pose_png(poses: dict, dest: Path, W: int, H: int) -> Path:
+    """OpenPose skeleton image of {label: {points, back}} at W x H."""
     with tempfile.TemporaryDirectory() as tmp:
         (Path(tmp) / "guide").mkdir()
         (Path(tmp) / "guide" / "p-pose.json").write_text(json.dumps(poses))
-        shutil.copy(guides.pose_image(Path(tmp), "p", set(poses)), stem.with_name(stem.name + ".pose.png"))
-    pp = stem.with_name(stem.name + ".pose.png")
-    Image.open(pp).resize((W, H)).save(pp)
-    return out
+        shutil.copy(guides.pose_image(Path(tmp), "p", set(poses)), dest)
+    Image.open(dest).resize((W, H)).save(dest)
+    return dest
 
 
 def insert(plate: Path, entry: Path, feet_xy: tuple[float, float], height_frac: float, label: str, out: Path) -> Path:
