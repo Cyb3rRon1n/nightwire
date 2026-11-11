@@ -7,11 +7,12 @@ import json
 import urllib.request
 from pathlib import Path
 
+from narrator.design_sheets import _LOCATION_MOOD, _LOCATION_NEGATIVE, SCENE_MOOD, sheet_workflow
+from narrator.image_prompt import NEGATIVE, QUALITY, STYLE
 from tools.imagegen import build
 
 EXAMPLES = {
     "scene": "rainy neon alley, izakaya, paper lanterns, wet street, steam",
-    "scene day": "monorail platform at dawn, empty platform, condensation on glass, city skyline, lens flare",
     "subject": "1girl, mature female, slender, long black hair, leather jacket, standing, rooftop, neon signs, rain",
     "crowd": "pachinko hall, packed, rows of machines, bright lights, smoke, neon",
     "portrait": "1girl, mature female, slender, beautiful face, idol, black hair, long hair, leather jacket, choker, smirk",
@@ -19,29 +20,33 @@ EXAMPLES = {
                  "leather bodysuit, led trim, standing",
     "plain": "rooftop bar, neon signs, city skyline, rain",
 }
-PAINTERLY_PROMPT = ("masterpiece, best quality, painterly, oil painting, dramatic lighting, "
-                    "ancient stone bridge over a misty gorge, autumn forest, distant mountains, golden hour, "
-                    "volumetric light, ruins, moss, epic fantasy landscape, no humans")
-PAINTERLY_NEGATIVE = ("anime, cel shading, flat color, neon, cyberpunk, text, watermark, low quality, blurry, "
-                      "worst quality, signature, logo")
-# Non v-pred checkpoint + a painterly style LoRA - the out-of-Nightwire look, verified live 2026-10-29.
-PAINTERLY = {"checkpoint": "NoobAI-XL-v1.0.safetensors", "lora": "wlop.safetensors", "lora_strength": 0.7,
-             "vpred": False, "sampler": "dpmpp_2m", "scheduler": "karras", "cfg": 6.0, "steps": 30}
+# Day and painterly presets were dropped 2026-11-11: night only, E look only (owner).
+# The owner's approved "medium dark" wording (narrator/design_sheets.py) on scene and subject presets.
+DARK = {"scene": f"{EXAMPLES['scene']}, {_LOCATION_MOOD}", "subject": f"{EXAMPLES['subject']}, {SCENE_MOOD}"}
 WIDE = ("base", "1080p", "4k", "ultrawide", "phone")
 PRESETS = {
-    "scene": {"kind": "scene", "prompt": EXAMPLES["scene"], "sizes": WIDE},
-    "scene day": {"kind": "scene", "prompt": EXAMPLES["scene day"], "sizes": WIDE, "options": {"day": True}},
-    "subject": {"kind": "subject", "prompt": EXAMPLES["subject"], "sizes": ("base", "1080p", "4k", "phone")},
+    "scene": {"kind": "scene", "prompt": DARK["scene"], "sizes": WIDE, "options": {"cfg": 3.5}},
+    "subject": {"kind": "subject", "prompt": DARK["subject"], "sizes": ("base", "1080p", "4k", "phone"), "options": {"cfg": 3.5}},
     "crowd": {"kind": "crowd", "prompt": EXAMPLES["crowd"], "sizes": ("base", "1080p", "4k")},
     "closeup": {"kind": "closeup", "prompt": "casual outfit, sfw", "sizes": ("base", "1080p", "4k", "phone")},
     "portrait": {"kind": "portrait", "prompt": EXAMPLES["portrait"], "sizes": ("portrait",)},
     "character": {"kind": "character", "prompt": EXAMPLES["character"], "sizes": ("base", "4k")},
     "plain": {"kind": "plain", "prompt": EXAMPLES["plain"], "sizes": WIDE},
-    "painterly": {"kind": "plain", "prompt": PAINTERLY_PROMPT, "sizes": ("base", "1080p", "4k"), "raw": True,
-                  "negative": PAINTERLY_NEGATIVE, "options": PAINTERLY},
 }
+LOCATION_EXAMPLE = "izakaya interior, wooden counter, paper lanterns, bottle shelves, empty room, no humans"
+
+
+def location_workflow(prompt: str = LOCATION_EXAMPLE, seed: int = 424242) -> dict:
+    """The approved location look, as the shot plates use it (tools/shorts/plates.py): CFG 3.5, refine pass, anti-photo
+    negatives, 1824x1248."""
+    pos = ", ".join([QUALITY, STYLE, "scenery", prompt, _LOCATION_MOOD])
+    wf = sheet_workflow(pos, ", ".join([NEGATIVE, _LOCATION_NEGATIVE]), seed, size=(1216, 832), cfg=3.5)
+    wf["9"]["inputs"]["images"] = ["35", 0]
+    del wf["40"]
+    wf["9"]["inputs"]["filename_prefix"] = "nightwire_location"
+    return wf
 TITLES = {"6": "Positive prompt (edit me)", "7": "Negative prompt", "3": "Sampler (seed here)", "5": "Image size",
-          "41": "Final wallpaper size", "9": "Save image"}
+          "41": "Final wallpaper size", "9": "Save image", "34": "Refine pass (sharpens detail)", "31": "Upscale 2x"}
 
 
 def to_editor(api: dict, info: dict) -> dict:
@@ -105,6 +110,8 @@ def main():
                         size, 424242, **preset.get("options", {}))
             (a.out / f"Nightwire - {name.title()} - {size}.json").write_text(json.dumps(to_editor(api, info), indent=1))
             print(name, size)
+    (a.out / "Nightwire - Location - approved look.json").write_text(json.dumps(to_editor(location_workflow(), info), indent=1))
+    print("location")
 
 
 if __name__ == "__main__":
