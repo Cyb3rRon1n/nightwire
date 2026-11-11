@@ -36,9 +36,16 @@ def job(short, shot, design_dir: Path, work: Path, heights_cm: dict, plates_root
         cm = heights_cm.get(b.figure) or presets.REF_HEIGHT_CM
         rig = lib_build.jobs([b.pose], [b.camera], cm, Path("."))[0]["rig"]
         figures.append({"label": b.figure, "feet": list(b.feet), "yaw": presets.CAMERAS[b.camera]["yaw"], "rig": rig})
-    return {"title": f"{short.title} {shot.id}", "plate": str(plate.resolve()), "res": list(Image.open(plate).size),
+    shot_dir = (work / "shots" / shot.id).resolve()
+    return {"title": f"{short.title} {shot.id}", "plate": str(shot_dir / "stage-plate.png"), "plate_src": str(plate.resolve()),
+            "res": list(Image.open(plate).size),
             "lens": shot.lens or 35.0, "horizon_y": cam["horizon_y"], "cam_height_m": cam["cam_height_m"],
-            "figures": figures, "shot_dir": str((work / "shots" / shot.id).resolve()), "helpers": str(HELPERS.resolve())}
+            "figures": figures, "shot_dir": str(shot_dir), "helpers": str(HELPERS.resolve())}
+
+
+def addon_source() -> str:
+    """The add-on with the blender_build.py helpers it needs embedded, so a stage works on a machine without this repo."""
+    return ADDON.read_text().replace('HELPER_SRC = ""', f"HELPER_SRC = {HELPERS.read_text()!r}", 1)
 
 
 def install_addon(blender: Path = BLENDER) -> None:
@@ -46,7 +53,7 @@ def install_addon(blender: Path = BLENDER) -> None:
     version = subprocess.run([str(blender), "--version"], capture_output=True, text=True, check=True).stdout.split()[1]
     dest = Path.home() / ".config" / "blender" / ".".join(version.split(".")[:2]) / "scripts" / "addons"
     dest.mkdir(parents=True, exist_ok=True)
-    shutil.copy(ADDON, dest / "nightwire_stage.py")
+    (dest / "nightwire_stage.py").write_text(addon_source())
     subprocess.run([str(blender), "-b", "--python-expr",
                     "import bpy; bpy.ops.preferences.addon_enable(module='nightwire_stage'); bpy.ops.wm.save_userpref()"],
                    capture_output=True, check=True)
@@ -60,6 +67,7 @@ def build(short, design_dir: Path, work: Path, heights_cm: dict, shot: str | Non
         j = job(short, sh, design_dir, work, heights_cm)
         dest = Path(j["shot_dir"]) / "stage.blend"
         dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(j["plate_src"], j["plate"])
         with tempfile.TemporaryDirectory() as tmp:
             jp = Path(tmp) / "job.json"
             jp.write_text(json.dumps(j))

@@ -83,7 +83,7 @@ for f in J["figures"]:
     rig.location = p + Matrix.Rotation(rz, 3, "Z") @ Vector(r["pos"])
     rig["nightwire_label"] = f["label"]
 
-sc["nightwire_stage"] = json.dumps({"shot_dir": J["shot_dir"], "plate": J["plate"], "helpers": J["helpers"]})
+sc["nightwire_stage"] = json.dumps({"shot_dir": "//", "plate": "//stage-plate.png"})  # relative: works on any machine
 for area_hint in ("Use the Nightwire tab in the 3D view sidebar (N): Export start / Export end.",):
     t = bpy.data.texts.new("README")
     t.write("Nightwire stage for " + J["title"] + "\n\n"
@@ -92,4 +92,6 @@ for area_hint in ("Use the Nightwire tab in the 3D view sidebar (N): Export star
             "- " + area_hint + "\n"
             "- An exported board is used by the pipeline and is never overwritten by 'shorts boards'.\n")
 bpy.ops.wm.save_as_mainfile(filepath=str(OUT))
+bpy.ops.file.make_paths_relative()
+bpy.ops.wm.save_mainfile()
 print("stage saved", OUT)

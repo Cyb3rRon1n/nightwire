@@ -17,9 +17,12 @@ from mathutils import Vector  # noqa: F401
 DIM = 0.55  # same dimming as tools/greybox_library/insert.py
 
 
-def _helpers(path):
+HELPER_SRC = ""  # filled in by tools/shorts/stage.py install_addon: figure_pose / render_depth / render_still from blender_build.py
+
+
+def _helpers():
     names = {"figure_pose", "render_depth", "render_still"}
-    tree = ast.parse(Path(path).read_text())
+    tree = ast.parse(HELPER_SRC)
     keep = [n for n in tree.body if (isinstance(n, ast.FunctionDef) and n.name in names)
             or (isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") in {"UP", "CAPSULE_PTS"})]
     g = dict(globals(), sc=bpy.context.scene)
@@ -31,8 +34,8 @@ def export(which):
     import numpy as np
     sc = bpy.context.scene
     info = json.loads(sc["nightwire_stage"])
-    g = _helpers(info["helpers"])
-    shot = Path(info["shot_dir"])
+    g = _helpers()
+    shot = Path(bpy.path.abspath(info["shot_dir"]))
     shot.mkdir(parents=True, exist_ok=True)
     cam = sc.camera
     figs = [o for o in sc.objects if o.type == "ARMATURE" and "nightwire_label" in o]
@@ -40,7 +43,7 @@ def export(which):
         fig_png = Path(tmp) / "figures.png"
         g["render_still"](fig_png)
         top = bpy.data.images.load(str(fig_png))
-        plate = bpy.data.images.load(info["plate"])
+        plate = bpy.data.images.load(bpy.path.abspath(info["plate"]))
         try:
             w, h = top.size
             if tuple(plate.size) != (w, h):

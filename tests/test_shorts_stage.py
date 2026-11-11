@@ -47,9 +47,16 @@ def test_real_blender_builds_a_stage_and_exports_a_board(tmp_path):
     j = stage.job(s, s.shots[0], dd, dd / "shorts" / "pilot", {}, plates)
     jp = tmp_path / "job.json"
     jp.write_text(json.dumps(j))
-    blend = tmp_path / "stage.blend"
+    import shutil
+    from pathlib import Path
+    Path(j["shot_dir"]).mkdir(parents=True)
+    shutil.copy(j["plate_src"], j["plate"])
+    addon = tmp_path / "addon" / "nightwire_stage_addon.py"
+    addon.parent.mkdir()
+    addon.write_text(stage.addon_source())
+    blend = Path(j["shot_dir"]) / "stage.blend"
     subprocess.run([str(stage.BLENDER), "-b", "-P", str(stage.SCRIPT), "--", str(jp), str(blend)], check=True, capture_output=True)
-    expr = (f"import sys; sys.path.insert(0, {str(stage.ADDON.parent)!r}); import nightwire_stage_addon as n; n.export('start')")
+    expr = (f"import sys; sys.path.insert(0, {str(addon.parent)!r}); import nightwire_stage_addon as n; n.export('start')")
     subprocess.run([str(stage.BLENDER), "-b", str(blend), "--python-expr", expr], check=True, capture_output=True)
     sd = dd / "shorts" / "pilot" / "shots" / "S01"
     board = Image.open(sd / "board-start.owner.png").convert("L")
