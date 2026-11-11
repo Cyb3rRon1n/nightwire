@@ -95,8 +95,9 @@ class Board:
     pose: str
     camera: str
     feet: tuple[float, float]   # 0..1 of the frame
-    height: float               # figure height, 0..1 of the frame
+    height: float | None        # figure height, 0..1 of the frame; None = from the plate's camera (plate_camera.py)
     hidden_below: float | None = None  # frame y (0..1) below which the plate's foreground (counter, rail) hides the figure
+    keep_props: bool = False    # also draw the library cell's own props (stool, rail); off: the plate has the real ones
 
 
 @dataclass
@@ -191,8 +192,9 @@ def _shot(d: dict) -> Shot:
         plate=d.get("plate", ""), mode=d.get("mode", "i2v"), motion=d.get("motion", ""),
         end_frame=d.get("end_frame", False), wardrobe_change=list(d.get("wardrobe_change", [])),
         blocking_change=d.get("blocking_change", False),
-        boards=[Board(b["which"], b["figure"], b["pose"], b["camera"], tuple(map(float, b["feet"])), float(b["height"]),
-                             float(b["hidden_below"]) if "hidden_below" in b else None)
+        boards=[Board(b["which"], b["figure"], b["pose"], b["camera"], tuple(map(float, b["feet"])),
+                             float(b["height"]) if "height" in b else None,
+                             float(b["hidden_below"]) if "hidden_below" in b else None, bool(b.get("keep_props", False)))
                 for b in d.get("board", [])],
         why=d.get("why", ""), vertical=float(d.get("vertical", [0.5])[0]),
     )

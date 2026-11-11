@@ -481,11 +481,40 @@ def cmd_boards(a) -> int:
     s = _short(a.slug)
     if a.shot:
         _shot(s, a.shot)
+    designs, warnings = load_designs(), []
+    heights = {cid: designs[slug].height_cm for cid, slug in s.cast.items() if slug in designs}
     try:
-        for f in boards.build(s, data_dir().parent, _work(a.slug), shot=a.shot):
+        for f in boards.build(s, data_dir().parent, _work(a.slug), shot=a.shot, heights_cm=heights, warnings=warnings):
             print(f)
     except ValueError as e:
         raise CliError(str(e))
+    for w in warnings:
+        print(f"warning: {w}", file=sys.stderr)
+    return 0
+
+
+def cmd_camera(a) -> int:
+    """Each plate the short uses: depth map, horizon and a check image (horizon + person rulers) beside the plate."""
+    from tools.shorts import plate_camera, plates
+    s = _short(a.slug)
+    design_dir = data_dir().parent
+    catalogue = plates.load_plates(s.place)
+    if a.horizon is not None and not a.plate:
+        raise CliError("--horizon needs --plate NAME")
+    names = [a.plate] if a.plate else sorted({sh.plate for sh in s.shots if sh.plate in catalogue})
+    for name in names:
+        if name not in catalogue:
+            raise CliError(f"no plate {name!r} for {s.place}")
+        path = plates.plate_path(design_dir, s.place, catalogue[name])
+        if not path.exists():
+            print(f"{name}: no chosen plate yet", file=sys.stderr)
+            continue
+        if a.horizon is not None:
+            cam = plate_camera.set_camera(path, a.horizon, a.cam_height)
+        else:
+            cam = plate_camera.analyse(path, redo=a.redo)
+        check = plate_camera.check_image(path, path.with_name(path.stem + ".check.png"))
+        print(f"{name}: horizon {cam.get('horizon_y')} cam {cam.get('cam_height_m')} m ({cam.get('source')}) -> {check}")
     return 0
 
 
@@ -544,6 +573,8 @@ def main(argv=None) -> int:
     q.add_argument("--choose", nargs=2, metavar=("WHICH", "N"))
     sub.add_parser("page")
     q = sub.add_parser("boards"); q.add_argument("slug"); q.add_argument("shot", nargs="?")
+    q = sub.add_parser("camera"); q.add_argument("slug"); q.add_argument("--plate"); q.add_argument("--horizon", type=float)
+    q.add_argument("--cam-height", type=float); q.add_argument("--redo", action="store_true")
     sub.add_parser("wall").add_argument("slug")
     q = sub.add_parser("animatic"); q.add_argument("slug"); q.add_argument("--fps", type=int, default=24); q.add_argument("--size", default="1216x832"); q.add_argument("--vertical", action="store_true")
     q = sub.add_parser("assemble"); q.add_argument("slug"); q.add_argument("--music", type=Path)

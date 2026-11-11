@@ -1,11 +1,13 @@
 """Draft boards: the shot's plate (or a dark placeholder card) with grey-box library figures inserted per [[board]]."""
 
+import json
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
 from tools.greybox_library import build as lib_build
 from tools.greybox_library import insert
+from tools.shorts import plate_camera
 from tools.shorts import plates as plate_mod
 
 CARD = (1216, 832)
@@ -46,8 +48,15 @@ def _safe_zone(png: Path, x: float) -> Path:
     return png
 
 
-def build(short, design_dir: Path, work: Path, lib: Path | None = None, plates_root: Path | None = None, shot: str | None = None) -> list[Path]:
-    """Writes work/shots/<id>/board-<which>.png for every shot with [[board]] entries (only `shot` when given)."""
+PITCH_GAP = 0.25  # cell horizon vs plate horizon (0..1 of the frame) beyond which the figure is seen from the wrong height
+
+
+def build(short, design_dir: Path, work: Path, lib: Path | None = None, plates_root: Path | None = None, shot: str | None = None,
+          heights_cm: dict | None = None, warnings: list | None = None) -> list[Path]:
+    """Writes work/shots/<id>/board-<which>.png for every shot with [[board]] entries (only `shot` when given).
+    On a plate with a camera file, a figure without `height` gets its size from where its feet stand (heights_cm: cast id
+    -> the character's height), and whatever the depth map shows nearer than its feet hides it."""
+    warnings = [] if warnings is None else warnings
     lib = lib or lib_build.default_out()
     catalogue = plate_mod.load_plates(short.place, plates_root)
     out = []
@@ -57,15 +66,35 @@ def build(short, design_dir: Path, work: Path, lib: Path | None = None, plates_r
         sd = work / "shots" / sh.id
         plate = catalogue.get(sh.plate)
         src = plate_mod.plate_path(design_dir, short.place, plate) if plate else None
-        if src is None or not src.exists():
+        real = src is not None and src.exists()
+        if not real:
             src = _placeholder(sh.plate, sd / "plate-placeholder.png")  # drafting never waits for a plate
+        cam = plate_camera.load(src) if real else None
+        dpath = plate_camera.depth_path(src)
+        depth = Image.open(dpath) if real and dpath.exists() else None
         for which in ("start", "end"):
             figs = []
             for b in (b for b in sh.boards if b.which == which):
                 entry = lib / b.pose / b.camera
                 if not (entry / "board.png").exists():
                     raise ValueError(f"{sh.id}: no library cell {b.pose}/{b.camera} in {lib} (python -m tools.greybox_library build)")
-                figs.append({"entry": entry, "feet": b.feet, "height": b.height, "label": b.figure, "hidden_below": b.hidden_below})
+                meta = json.loads((entry / "meta.json").read_text())
+                height = b.height
+                if height is None:
+                    if cam is None:
+                        raise ValueError(f"{sh.id} {b.figure}: no height and plate {sh.plate!r} has no camera "
+                                         f"(python -m tools.shorts camera {short.slug})")
+                    cm = (heights_cm or {}).get(b.figure) or 165
+                    try:
+                        height = plate_camera.figure_height(b.feet[1], cam, plate_camera.pose_height_m(meta), cm)
+                    except ValueError as e:
+                        raise ValueError(f"{sh.id} {b.figure}: {e}")
+                if cam is not None and abs(meta["horizon_y"] - cam["horizon_y"]) > PITCH_GAP:
+                    warnings.append(f"{sh.id} {b.figure}: camera {b.camera} sees the figure from a different height than plate "
+                                    f"{sh.plate} (horizon {meta['horizon_y']:.2f} vs {cam['horizon_y']:.2f})")
+                in_front = (plate_camera.in_front_mask(depth, b.feet) if depth is not None and b.hidden_below is None else None)
+                figs.append({"entry": entry, "feet": b.feet, "height": height, "label": b.figure, "hidden_below": b.hidden_below,
+                             "in_front": in_front, "figure_only": real and not b.keep_props})
             if figs:
                 out.append(_safe_zone(insert.insert_many(src, figs, sd / f"board-{which}.png"), sh.vertical))
     return out

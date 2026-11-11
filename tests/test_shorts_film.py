@@ -269,3 +269,34 @@ def test_wall_shows_why_and_crop(tmp_path):
     html = page.read_text()
     assert "small figure, big space" in html and "9:16" in html
     assert (tmp_path / "site" / "films" / "night" / "boards" / "pilot-S01-9x16.jpg").exists()
+
+
+def test_board_without_height_takes_it_from_the_plate_camera_and_hides_behind_nearer_depth(tmp_path):
+    import json as _json
+    import numpy as np
+    from tools.shorts import plate_camera
+    shot = with_plate_key(SHOT) + BOARD.replace("height = 0.5\n", "").replace("height = 0.4\n", "")
+    shorts, films, lib, plates, dd = world(tmp_path, shot=shot)
+    s = load_short(shorts / "pilot")
+    plate = dd / "mama-satos-izakaya" / "plates" / "door.png"
+    try:
+        boards.build(s, dd, dd / "shorts" / "pilot", lib, plates)
+    except ValueError as e:
+        assert "camera" in str(e)
+    else:
+        raise AssertionError("a height-less figure on a plate without a camera must fail")
+    meta = _json.loads((lib / "stand" / "ws-front" / "meta.json").read_text())
+    meta.update(horizon_y=0.4, camera={**meta.get("camera", {}), "height": 1.5})
+    (lib / "stand" / "ws-front" / "meta.json").write_text(_json.dumps(meta))
+    plate_camera.set_camera(plate, 0.4, 1.5, who="claude")
+    depth = np.full((600, 1000), 60, np.uint8)
+    depth[480:520, :] = 220  # a near counter across the figure's legs
+    depth[530:, :] = 70
+    Image.fromarray(depth).save(plate_camera.depth_path(plate))
+    warnings = []
+    out = boards.build(s, dd, dd / "shorts" / "pilot", lib, plates, heights_cm={"C1": 170, "C2": 150}, warnings=warnings)
+    board = np.asarray(Image.open(out[0]).convert("L")).astype(int)
+    plain = int(np.asarray(Image.open(plate).convert("L"))[0, 0] * 0.55)  # the dimmed plate
+    col = board[:, 400]
+    assert abs(int(col[500]) - plain) <= 3  # the counter row hides the figure
+    assert (np.abs(col[300:470] - plain) > 10).any()  # the figure shows above the counter
