@@ -45,8 +45,12 @@ LAYOUT = [("hips", None, (0, 0, 0.95), (0, 0, 1.1)), ("spine", "hips", (0, 0, 1.
           ("thigh.L", "hips", (0.1, 0, 0.95), (0.1, 0, 0.5)), ("shin.L", "thigh.L", (0.1, 0, 0.5), (0.1, 0, 0.05)),
           ("thigh.R", "hips", (-0.1, 0, 0.95), (-0.1, 0, 0.5)), ("shin.R", "thigh.R", (-0.1, 0, 0.5), (-0.1, 0, 0.05))]
 
+MANNEQUIN_BUILD = {"hips": (0.155, 0.1), "spine": (0.155, 0.105), "head": (0.1, 0.115), "upper_arm": (0.055, 0.055),
+                   "forearm": (0.045, 0.045), "thigh": (0.085, 0.09), "shin": (0.06, 0.065)}  # half-width x, half-depth y (m)
+
+
 def mannequin(fid, colour, rotations):
-    """11-bone armature at the origin; one cylinder per bone, rigidly skinned with a vertex group + Armature modifier."""
+    """11-bone armature at the origin; one ellipsoid per bone (plus hands, feet, neck), rigidly skinned with a vertex group + Armature modifier."""
     arm_data = bpy.data.armatures.new(fid)
     rig = bpy.data.objects.new(fid, arm_data)
     sc.collection.objects.link(rig)
@@ -58,12 +62,22 @@ def mannequin(fid, colour, rotations):
         if parent:
             b.parent = arm_data.edit_bones[parent]
     bpy.ops.object.mode_set(mode="OBJECT")
-    for name, _parent, head, tail in LAYOUT:
-        length = (Vector(tail) - Vector(head)).length
-        radius = 0.11 if name == "head" else 0.07 if "arm" in name else 0.09
-        bpy.ops.mesh.primitive_cylinder_add(radius=radius, depth=length, location=(Vector(head) + Vector(tail)) / 2)
+    bones = {name: (Vector(head), Vector(tail)) for name, _parent, head, tail in LAYOUT}
+    parts = []  # (bone, centre, half-sizes x/y/z): ellipsoids with an artist's-mannequin build (shoulders ~40 cm, hips ~34 cm)
+    for name, (head, tail) in bones.items():
+        rx, ry = MANNEQUIN_BUILD[name.split(".")[0]]
+        half = (tail - head).length / 2 * (1.0 if name == "head" else 1.12)  # limbs overlap a little at the joints
+        parts.append((name, (head + tail) / 2, (rx, ry, half)))
+    for side, x in (("L", 0.1), ("R", -0.1)):
+        parts.append((f"shin.{side}", Vector((x, 0.05, 0.04)), (0.05, 0.12, 0.045)))   # foot, pointing forward (+Y)
+        parts.append((f"forearm.{side}", Vector((x * 2, 0, 0.82)), (0.04, 0.025, 0.08)))  # hand
+    parts.append(("spine", Vector((0, 0, 1.47)), (0.05, 0.05, 0.06)))                  # neck
+    for i, (name, centre, (sx, sy, sz)) in enumerate(parts):
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=16, ring_count=10, radius=1, location=centre)
         part = bpy.context.object
-        part.name, part.color = f"{fid}.{name}", colour
+        part.scale = (sx, sy, sz)
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+        part.name, part.color = f"{fid}.{name}" + (f".{i}" if i >= len(bones) else ""), colour
         vg = part.vertex_groups.new(name=name)
         vg.add(range(len(part.data.vertices)), 1.0, "REPLACE")
         part.modifiers.new("rig", "ARMATURE").object = rig

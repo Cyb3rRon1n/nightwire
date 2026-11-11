@@ -24,7 +24,7 @@ sc = bpy.context.scene
 here = Path(J["helpers"])
 tree = ast.parse(here.read_text())
 keep = [n for n in tree.body if (isinstance(n, ast.FunctionDef) and n.name == "mannequin")
-        or (isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == "LAYOUT")]
+        or (isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") in {"LAYOUT", "MANNEQUIN_BUILD"})]
 exec(compile(ast.Module(body=keep, type_ignores=[]), "blender_build.py", "exec"), globals())  # noqa: S102
 
 W, H = J["res"]

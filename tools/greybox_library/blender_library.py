@@ -15,7 +15,7 @@ import bpy
 from bpy_extras.object_utils import world_to_camera_view
 from mathutils import Vector
 
-WANT_NAMES = {"LAYOUT", "UP", "CAPSULE_PTS"}
+WANT_NAMES = {"LAYOUT", "MANNEQUIN_BUILD", "UP", "CAPSULE_PTS"}
 WANT_FUNCS = {"mannequin", "screen_box", "figure_pose", "render_depth", "render_still"}
 GREY, FLOOR, SKY, GRID = (0.45, 0.45, 0.47, 1), (0.74, 0.74, 0.76, 1), (0.60, 0.60, 0.62), (0.52, 0.52, 0.55, 1)
 
