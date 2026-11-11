@@ -513,3 +513,22 @@ def test_state_props_prompt_is_objects_only_and_drawn():
     pos, neg = ds.state_props_prompt(_warded(), "work")
     assert "no humans" in pos and "(clipboard:1.3)" in pos and "hands" not in pos
     assert "hands" in neg and "photorealistic" in neg
+
+
+def test_keep_skeleton_figures_drops_blobs_outside_the_figure_columns():
+    import io
+    import numpy as np
+    from PIL import Image
+    pose = np.zeros((40, 200), "uint8"); pose[5:35, 20:40] = 255; pose[5:35, 90:110] = 255; pose[5:35, 150:170] = 255
+    buf = io.BytesIO(); Image.fromarray(pose).save(buf, "PNG")
+    spans = ds.figure_spans(buf.getvalue())
+    assert len(spans) == 3
+    im = np.full((40, 200, 3), 128, "uint8")
+    for x in (20, 90, 150):
+        im[5:35, x:x + 20] = (200, 50, 50)
+    im[10:20, 60:70] = (0, 255, 0)    # inset in the gap
+    im[10:20, 185:195] = (0, 0, 255)  # swatch past the last figure
+    buf = io.BytesIO(); Image.fromarray(im).save(buf, "PNG")
+    out = np.array(Image.open(io.BytesIO(ds.keep_skeleton_figures(buf.getvalue(), spans))))
+    assert (out[10:20, 60:70] == 128).all() and (out[10:20, 185:195] == 128).all()
+    assert (out[5:35, 90:110] == (200, 50, 50)).all()

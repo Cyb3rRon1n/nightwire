@@ -483,6 +483,38 @@ def flatten_background(png: bytes, grey: int = 128) -> bytes:
     return out.getvalue()
 
 
+def figure_spans(pose: bytes) -> list[tuple[float, float]]:
+    """The x ranges (0..1 of the width) of the turnaround skeleton's figures."""
+    import numpy as np
+    from PIL import Image
+    a = np.array(Image.open(io.BytesIO(pose)).convert("L"))
+    cols = np.where(a.max(0) > 30)[0]
+    if not len(cols):
+        return []
+    breaks = np.where(np.diff(cols) > a.shape[1] // 50)[0]
+    starts, ends = [cols[0], *cols[breaks + 1]], [*cols[breaks], cols[-1]]
+    return [(s / a.shape[1], e / a.shape[1]) for s, e in zip(starts, ends)]
+
+
+def keep_skeleton_figures(png: bytes, spans: list[tuple[float, float]], grey: int = 128, pad: float = 0.02) -> bytes:
+    """Paints out anything on a flattened turnaround that touches none of the skeleton's figure columns: face insets,
+    swatches, loose props and text the model adds beside the three views (v2 batch, 2026-11-10)."""
+    import numpy as np
+    from PIL import Image
+    from scipy import ndimage
+    im = np.array(Image.open(io.BytesIO(png)).convert("RGB"))
+    w = im.shape[1]
+    mask = np.abs(im.astype(int) - grey).max(2) > 8
+    labels, n = ndimage.label(mask, structure=np.ones((3, 3)))
+    for i, sl in enumerate(ndimage.find_objects(labels), 1):
+        mid = (sl[1].start + sl[1].stop) / 2 / w  # centre, not overlap: insets hug the last figure's edge
+        if not any(s - pad <= mid <= e + pad for s, e in spans):
+            im[sl][labels[sl] == i] = grey
+    out = io.BytesIO()
+    Image.fromarray(im).save(out, "PNG")
+    return out.getvalue()
+
+
 def colour_guide(turnaround: bytes, palette: list[str], head: tuple[int, int, int, int] | None = None, grey: int = 128) -> bytes:
     """The turnaround plus a close-up cropped from it and its palette. Built, not rendered: two separate renders of one
     character never fully agreed on hair and outfit (pilot, 2026-11-02), and the reference has to have one answer."""

@@ -33,7 +33,7 @@ from tools.batch_status import Batch, batch_url
 from narrator.design_sheets import (
     CHARACTER_SHEETS, EXPRESSION_SIZE, LOCATION_SHEETS, MOOD_SUFFIXES, candidate_prompt, candidate_workflow,
     face_workflow, front_figure, height_pose, lift_blacks, natural_scene_workflow, portrait_prompt, scene_prompt, scene_workflow, upscale_workflow, SCENE_MOOD, SCENE_SIZE, _join,
-    height_lineup, colour_guide, state_props_prompt, expression_grid, expression_prompts, extract_palette, flatten_background, join_strip, sheet_prompt, sheet_workflow,
+    height_lineup, colour_guide, figure_spans, keep_skeleton_figures, state_props_prompt, expression_grid, expression_prompts, extract_palette, flatten_background, join_strip, sheet_prompt, sheet_workflow,
 )
 from narrator.designs import DESIGNS_DIR, Design, load_design, load_designs, save_design
 from narrator.world import kuroshio
@@ -258,15 +258,18 @@ async def _one_state(slug: str, d: Design, state: str, seed: int, args, backend)
             size = EXPRESSION_SIZE if sheet == "portrait" else None
             png = await backend.run_workflow(sheet_workflow(pos, neg, seed, size=size, pose=pose))
             if sheet == "turnaround":
-                png = flatten_background(png)
+                png = keep_skeleton_figures(flatten_background(png), figure_spans(_pose_file(d).read_bytes()))
         target.write_bytes(png)
         print(f"{slug}/{state}: {sheet}", flush=True)
 
 
+def _pose_file(d: Design) -> Path:
+    return Path(__file__).parent / "poses" / f"turnaround_{'masculine' if d.presentation == 'masculine' else 'feminine'}.png"
+
+
 async def _turnaround_pose(d: Design, backend) -> str:
     """Everyone's turnaround is drawn on one front, side and back skeleton, so every sheet has the same three views."""
-    name = f"turnaround_{'masculine' if d.presentation == 'masculine' else 'feminine'}.png"
-    return await backend.upload_image(f"nightwire_{name}", (Path(__file__).parent / "poses" / name).read_bytes())
+    return await backend.upload_image(f"nightwire_{_pose_file(d).name}", _pose_file(d).read_bytes())
 
 
 async def cmd_scene(d: Design, slug: str, what: str, name: str, args, backend) -> int:
