@@ -71,3 +71,9 @@ def test_wrong_figure_count_flagged(tmp_path):
 def test_open_chest_flagged(tmp_path):
     make(tmp_path, open_chest=True)
     assert any("cover" in l for l in flags(tmp_path))
+
+
+def test_black_hair_hue_noise_not_flagged(tmp_path, monkeypatch):
+    monkeypatch.setattr(q, "_hair_tag", lambda d: "black")
+    make(tmp_path, hair=(12, 10, 14), portrait_hair=(10, 12, 16))  # same black, different hue
+    assert not any("hair" in l for l in flags(tmp_path))

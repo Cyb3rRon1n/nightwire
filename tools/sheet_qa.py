@@ -106,6 +106,8 @@ def check_hair(set_dir: Path, design) -> list[str]:
             out.append(f"FLAG hair: no {colour} hair pixels in {name}")
             continue
         dh, ds, dv = _hue_delta(ref[0], got[0]), abs(ref[1] - got[1]), abs(ref[2] - got[2])
+        if min(ref[1], got[1]) < .15 or min(ref[2], got[2]) < .1:
+            dh = 0.0  # black/grey/silver hair: hue of near-neutral pixels is noise (v2 batch flagged every dark-haired set)
         bad = dh > HAIR_TOL["hue"] or ds > HAIR_TOL["sat"] or dv > HAIR_TOL["val"]
         out.append(f"{'FLAG' if bad else 'ok'} hair {name}: H{got[0]:.0f} S{got[1]:.2f} V{got[2]:.2f} (delta H{dh:.0f} S{ds:.2f} V{dv:.2f}; limits H{HAIR_TOL['hue']:.0f} S{HAIR_TOL['sat']} V{HAIR_TOL['val']})")
     return out
