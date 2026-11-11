@@ -4,16 +4,16 @@ source = "new:Ayame Tsuda"
 presentation = "feminine"
 height_cm = 178
 bio = "A fixer who deals in favours. Sharp suit, sharper eyes, and always a deal on the table."
-tags = "long hair, red hair, slicked back, sharp eyes, mature female, tall, slender, narrow waist, large breasts, long legs, beautiful face, fixer, cigarette, gold rings, scar through eyebrow, confident smirk, fitted black suit jacket, plain black sleeves, yellow leopard print lapels, black trousers, black high heels"
+tags = "long hair, red hair, slicked back, sharp eyes, mature female, tall, slender, narrow waist, large breasts, long legs, beautiful face, fixer, cigarette, gold rings, confident smirk, fitted black suit jacket, plain black sleeves, yellow leopard print lapels, black trousers, black high heels"
 required = ["purple eyes"]
 held = ["cigarette", "gold rings"]
-negative = "wide hips, thick thighs, plump, chubby, gigantic breasts, huge breasts, curvy, cute, kawaii, big eyes, child, red suit, burgundy, red clothes, red pants, long coat, trench coat, cape, leopard print sleeves, leopard print shoes"
+negative = "scar, facial scar, wide hips, thick thighs, plump, chubby, gigantic breasts, huge breasts, curvy, cute, kawaii, big eyes, child, red suit, burgundy, red clothes, red pants, long coat, trench coat, cape, leopard print sleeves, leopard print shoes"
 status = "approved"
 seed = 612940568
 palette = ["#04050b", "#2d3237", "#161a1e", "#a51117", "#835a54", "#f6e0d3"]
 notes = ["2026-10-29 draft: fixer, sharp suit, deals in favours", "2026-10-29 round 1: 4 candidates", "2026-11-01 approved r1 #3 (seed 612940567)", "2026-11-01 owner style pick: E portrait seed 2 (seed 612940568)", "2026-11-03 owner: chose the black suit with yellow leopard lapels"]
-identity = ["long vivid red hair slicked straight back from the forehead, falling past the shoulders", "violet-purple eyes, sharp narrow upswept eyes, confident hard stare", "scar running through the eyebrow and down across the eye to the cheek on the viewer's-right side of the face, plus a fainter nick above the viewer's-left brow", "tall slender adult woman, narrow waist, long legs", "defined jaw and strong cheekbones, mature face"]
-appearance = "1girl, mature female, long hair, red hair, slicked back, purple eyes, sharp eyes, scar through eyebrow, scar across eye, scar on cheek, tall, slender, narrow waist, long legs, large breasts, strong jaw, light skin"
+identity = ["long vivid red hair slicked straight back from the forehead, falling past the shoulders", "violet-purple eyes, sharp narrow upswept eyes, confident hard stare", "tall slender adult woman, narrow waist, long legs", "defined jaw and strong cheekbones, mature face"]
+appearance = "1girl, mature female, long hair, red hair, slicked back, purple eyes, sharp eyes, tall, slender, narrow waist, long legs, large breasts, strong jaw, light skin"
 
 [wardrobe.work]
 text = "Fitted black suit jacket buttoned over a black shirt, plain black sleeves and yellow leopard-print lapels, slim black trousers and black pointed high heels."
