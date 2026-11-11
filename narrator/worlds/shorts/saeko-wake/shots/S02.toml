@@ -5,7 +5,7 @@ summary = "static medium profile; she sits on the bed edge in the dark, amber wr
 lens = 50.0
 why = "WS from the bed's foot, figure small in the dark room: the silence of waking, one amber glint as the only warmth"
 vertical = [0.5]
-size = "MS"
+size = "WS"
 angle = "eye level from the foot of the bed, in profile"
 move = "static"
 action = "Saeko sits on the edge of the bed with her chrome hand open on her knee."
@@ -32,7 +32,7 @@ C1 = "head turned toward the balcony door"
 [[board]]
 which = "start"
 figure = "C1"
-pose = "sit-ledge"
+pose = "sit-bed-edge-head-down"
 camera = "ws-profile"
 feet = [0.5, 0.9]
 height = 0.22
@@ -40,7 +40,7 @@ height = 0.22
 [[board]]
 which = "end"
 figure = "C1"
-pose = "sit-ledge"
+pose = "sit-bed-edge-head-down"
 camera = "ws-profile"
 feet = [0.5, 0.9]
 height = 0.22

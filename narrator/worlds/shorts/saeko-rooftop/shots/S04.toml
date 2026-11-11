@@ -32,7 +32,7 @@ C1 = "unchanged, head bowed"
 [[board]]
 which = "start"
 figure = "C1"
-pose = "sit-ledge"
+pose = "sit-bench"
 camera = "ws-profile"
 feet = [0.45, 0.9]
 height = 0.18
@@ -40,7 +40,7 @@ height = 0.18
 [[board]]
 which = "end"
 figure = "C1"
-pose = "sit-ledge"
+pose = "sit-bench"
 camera = "ws-profile"
 feet = [0.45, 0.9]
 height = 0.18

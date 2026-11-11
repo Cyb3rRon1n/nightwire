@@ -32,7 +32,7 @@ C1 = "at her door, back to camera"
 [[board]]
 which = "start"
 figure = "C1"
-pose = "walk"
+pose = "walk-away"
 camera = "ws-back"
 feet = [0.5, 0.8]
 height = 0.28

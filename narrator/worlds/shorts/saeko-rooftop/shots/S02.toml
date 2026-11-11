@@ -32,7 +32,7 @@ C1 = "leaning on the railing, profile, head slightly lowered"
 [[board]]
 which = "start"
 figure = "C1"
-pose = "lean-rail"
+pose = "rail-overlook"
 camera = "ws-profile"
 feet = [0.5, 0.9]
 height = 0.3
@@ -40,7 +40,7 @@ height = 0.3
 [[board]]
 which = "end"
 figure = "C1"
-pose = "lean-rail"
+pose = "rail-overlook"
 camera = "ws-profile"
 feet = [0.5, 0.9]
 height = 0.3

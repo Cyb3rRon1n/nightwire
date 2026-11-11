@@ -5,7 +5,7 @@ summary = "slow push-in on her seated in profile in the empty carriage, streakin
 lens = 40.0
 why = "Wide enough to show the empty carriage around her: nobody else, so the seat count is the loneliness"
 vertical = [0.5]
-size = "MS"
+size = "WS"
 angle = "eye level, across the carriage, profile"
 move = "slow push-in"
 action = "Saeko sits alone in the carriage as lights streak by in the dark glass."
@@ -32,7 +32,7 @@ C1 = "seated, head turned very slightly toward the dark glass"
 [[board]]
 which = "start"
 figure = "C1"
-pose = "sit-ledge"
+pose = "sit-bench"
 camera = "ws-profile"
 feet = [0.5, 0.84]
 height = 0.2
@@ -40,7 +40,7 @@ height = 0.2
 [[board]]
 which = "end"
 figure = "C1"
-pose = "sit-ledge"
+pose = "sit-bench"
 camera = "ws-profile"
 feet = [0.5, 0.84]
 height = 0.2

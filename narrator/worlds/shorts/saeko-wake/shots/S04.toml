@@ -32,7 +32,7 @@ C1 = "far end of the corridor, small, still walking away"
 [[board]]
 which = "start"
 figure = "C1"
-pose = "walk"
+pose = "walk-away"
 camera = "ws-back"
 feet = [0.5, 0.84]
 height = 0.3
@@ -40,7 +40,7 @@ height = 0.3
 [[board]]
 which = "end"
 figure = "C1"
-pose = "walk"
+pose = "walk-away"
 camera = "ws-back"
 feet = [0.5, 0.6]
 height = 0.15
