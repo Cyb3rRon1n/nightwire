@@ -550,7 +550,18 @@ def cmd_wall(a) -> int:
         f = film.load_film(a.slug, shorts_dir=SHORTS_DIR)
     except ValueError as e:
         raise CliError(str(e))
-    print(wall.build(f, a.slug, SHORTS_DIR, data_dir().parent, data_dir() / "_site"))
+    site = data_dir() / "_site"
+    print(wall.build(f, a.slug, SHORTS_DIR, data_dir().parent, site))
+    # films.json: every built wall, for the AI Lab Productions row
+    rows = []
+    for d in sorted((site / "films").glob("*/index.html")):
+        try:
+            ff = film.load_film(d.parent.name, shorts_dir=SHORTS_DIR)
+        except ValueError:
+            continue
+        rows.append({"slug": d.parent.name, "title": ff.title, "logline": ff.logline,
+                     "animatic": (d.parent / "animatic.mp4").exists()})
+    (site / "films" / "films.json").write_text(json.dumps(rows, indent=1))
     return 0
 
 
