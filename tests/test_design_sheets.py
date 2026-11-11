@@ -507,3 +507,9 @@ def test_state_colour_lock_weights_hair_and_eyes_only():
               ds.expression_prompts(d, state="work")[2][1]):
         assert "(red hair:1.25)" in p and "(purple eyes:1.25)" in p and "(short hair:1.25)" not in p
     assert "(red hair:1.25)" not in ds.sheet_prompt(d, "turnaround")[0]
+
+
+def test_state_props_prompt_is_objects_only_and_drawn():
+    pos, neg = ds.state_props_prompt(_warded(), "work")
+    assert "no humans" in pos and "(clipboard:1.3)" in pos and "hands" not in pos
+    assert "hands" in neg and "photorealistic" in neg

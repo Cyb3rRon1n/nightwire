@@ -117,7 +117,7 @@ def _state_tags(d: Design, state: str) -> str:
 _COLOURS = {"red", "black", "white", "blonde", "blond", "brown", "blue", "green", "pink", "purple", "silver", "grey", "gray",
             "orange", "yellow", "aqua", "teal", "cyan", "golden", "gold", "violet", "crimson", "auburn", "lavender", "magenta", "turquoise"}
 # Under a state, a covered outfit must stay covered: the model's mature tags drift to cleavage and open jackets.
-_COVERED = ("cleavage:1.4", "open jacket:1.3", "unbuttoned:1.3", "open shirt:1.3", "midriff:1.3", "navel:1.2", "bare thighs:1.2")
+_COVERED = ("cleavage:1.4", "open jacket:1.3", "unbuttoned:1.3", "open shirt:1.3", "midriff:1.3", "navel:1.2", "bare thighs:1.2", "bare back:1.3", "backless:1.3", "bare shoulders:1.2", "off shoulder:1.3")
 
 
 def _lock(tag: str) -> str:
@@ -157,10 +157,14 @@ def state_props_prompt(d: Design, state: str) -> tuple[str, str]:
     """Hands-and-props close-up for one wardrobe state, on grey."""
     if state not in d.wardrobe:
         raise ValueError(f"{d.name}: no wardrobe state {state!r}")
-    items = ", ".join(d.wardrobe[state].props) or _state_tags(d, state)
-    pos = _join(CHARACTER_QUALITY, _NEUTRAL_STYLE, "hands and props close-up, product sheet, still life, object focus, "
+    # Objects only: "hands" in the prompt gave lone hands, and still-life tags drifted photo-real (2026-11-10 v2 batch).
+    props = d.wardrobe[state].props
+    items = f"({', '.join(props)}:1.3)" if props else f"(clothes laid out, {_state_tags(d, state)}:1.2)"
+    pos = _join(CHARACTER_QUALITY, _NEUTRAL_STYLE, "flat color, lineart, no humans, still life, object focus, item sheet, "
                 "multiple views, grey background, soft even studio light, neutral colors", items)
-    return pos, _join(_unless_in(_styled_negative(d, _join(NEUTRAL_NEGATIVE, "white background, 1girl, 1boy, face")), pos), _covered_negative(d, state))
+    neg = _join(NEUTRAL_NEGATIVE, "white background, 1girl, 1boy, person, face, hand, hands, fingers, legs, feet, "
+                "(photorealistic, realistic, photo, 3d render:1.3)")
+    return pos, _join(_unless_in(_styled_negative(d, neg), pos), _covered_negative(d, state))
 
 
 def sheet_prompt(d: Design, sheet: str, mood: str | None = None, state: str | None = None) -> tuple[str, str]:
