@@ -55,7 +55,9 @@ def plate_workflow(place, look: str, not_visible, plate: Plate, lineart_name: st
     tags = plate.tags or place.alt_tags or place.tags
     if plate.tags:
         look = mood
-    wf = build(f"({plate.view}:1.3), empty room, no humans, {look}, {tags}", "scene", False,
+    # "empty room" turned the outdoor block facade into alleys and hallways (2026-11-10, 8 candidates).
+    empty = "no humans" if "outdoors" in tags else "empty room, no humans"
+    wf = build(f"({plate.view}:1.3), {empty}, {look}, {tags}", "scene", False,
                ", ".join(["people, person, 1girl, 1boy", *not_visible, *plate.avoid, NO_TEXT]), "base", seed)
     wf["5"]["inputs"].update(width=1216, height=832)
     if lineart_name:

@@ -153,3 +153,8 @@ def test_plate_tags_replace_place_tags_and_set_and_avoid_goes_negative():
 def test_real_toward_door_plate_has_tags_and_avoid():
     p = load_plates("mama-satos-izakaya")["toward-door"]
     assert "noren curtain" in p.tags and "bottle shelves" in p.avoid
+
+
+def test_outdoor_plate_is_not_an_empty_room():
+    out = pl.plate_workflow(PLACE, "s", [], pl.Plate("facade", "a building", tags="outdoors, building facade"), None, 1)
+    assert "empty room" not in out["6"]["inputs"]["text"] and "no humans" in out["6"]["inputs"]["text"]
