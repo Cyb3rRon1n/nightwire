@@ -118,7 +118,7 @@ def _state_tags(d: Design, state: str) -> str:
 _COLOURS = {"red", "black", "white", "blonde", "blond", "brown", "blue", "green", "pink", "purple", "silver", "grey", "gray",
             "orange", "yellow", "aqua", "teal", "cyan", "golden", "gold", "violet", "crimson", "auburn", "lavender", "magenta", "turquoise"}
 # Under a state, a covered outfit must stay covered: the model's mature tags drift to cleavage and open jackets.
-_COVERED = ("cleavage:1.4", "open jacket:1.3", "unbuttoned:1.3", "open shirt:1.3", "midriff:1.3", "navel:1.2", "bare thighs:1.2", "bare back:1.3", "backless:1.3", "bare shoulders:1.2", "off shoulder:1.3", "plunging neckline:1.4", "sideboob:1.4")
+_COVERED = ("cleavage:1.4", "open jacket:1.3", "unbuttoned:1.3", "open shirt:1.3", "midriff:1.3", "navel:1.2", "bare thighs:1.2", "bare back:1.3", "backless:1.3", "bare shoulders:1.2", "off shoulder:1.3", "plunging neckline:1.4", "sideboob:1.4", "cleavage cutout:1.4", "keyhole:1.3")
 
 
 def _lock(tag: str) -> str:
