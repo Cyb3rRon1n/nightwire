@@ -15,8 +15,8 @@ identity = ["black spiky hair with shaved sides carrying thin glowing light-bar 
 appearance = "1boy, adult male, black hair, spiked hair, undercut, shaved sides, fang, heterochromia, blue eyes, mechanical eye, glowing eye, arm tattoos, light skin, muscular male, tall"
 
 [wardrobe.work]
-text = "Sleeveless blue racing vest with cyan LED trim and a high collar over a black high-neck sleeveless bodysuit, baggy black cargo pants with blue strap suspenders, black fingerless gloves and black boots with blue straps."
-tags = "blue vest, sleeveless racing jacket, cyan trim, led stripes, high collar, black bodysuit, sleeveless turtleneck, black cargo pants, blue straps, fingerless gloves, black boots"
+text = "Sleeveless blue racing vest (bare arms, no sleeves, no hood) with cyan LED trim and a high collar over a black high-neck sleeveless bodysuit, baggy black cargo pants with blue strap suspenders, black fingerless gloves and black boots with blue straps."
+tags = "sleeveless, bare arms, bare shoulders, blue vest, sleeveless racing vest, cyan trim, led stripes, high collar, black bodysuit, sleeveless turtleneck, black cargo pants, blue straps, fingerless gloves, black boots"
 
 [wardrobe.offduty]
 text = "Black zip hoodie with magenta piping over a black tee, black track pants and black sneakers."
