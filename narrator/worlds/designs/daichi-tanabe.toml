@@ -18,7 +18,7 @@ appearance = "1boy, mature male, buzz cut, black hair, thick eyebrows, scowl, bl
 [wardrobe.work]
 text = "Black bomber jacket with dark-gold embroidery and a fur-trimmed collar, zipped over a black t-shirt, black cargo pants and black lace-up boots, with the right sleeve ending at the elbow so the chrome forearm shows."
 tags = "black bomber jacket, gold embroidery, fur trim collar, black t-shirt, gold chain necklace, wallet chain, black cargo pants, black combat boots, right sleeve rolled up"
-props = ["gold chain"]
+props = ["thick gold chain necklace"]
 
 [wardrobe.offduty]
 text = "Oversized black zip hoodie with sleeves pushed up over a plain grey t-shirt, black track pants and black boots."

@@ -2,6 +2,7 @@
 Pure builders plus two Pillow helpers; no network here."""
 
 import io
+import re
 
 from narrator.designs import Design
 from narrator.image_prompt import NEGATIVE, QUALITY, STYLE, _below_chest, weight
@@ -158,11 +159,12 @@ def state_props_prompt(d: Design, state: str) -> tuple[str, str]:
     if state not in d.wardrobe:
         raise ValueError(f"{d.name}: no wardrobe state {state!r}")
     # Objects only: "hands" in the prompt gave lone hands, and still-life tags drifted photo-real (2026-11-10 v2 batch).
-    props = d.wardrobe[state].props
+    # Where it's worn ("katana at hip", "goggles on forehead") drew a whole figure; the sheet wants the object alone.
+    props = [re.sub(r"\s+(?:at|on|in|around|over)\s+(?:the\s+)?(?:hip|forehead|head|hand|neck|waist|back|belt)s?$", "", p) for p in d.wardrobe[state].props]
     items = f"({', '.join(props)}:1.3)" if props else f"(clothes laid out, {_state_tags(d, state)}:1.2)"
     pos = _join(CHARACTER_QUALITY, _NEUTRAL_STYLE, "flat color, lineart, no humans, still life, object focus, item sheet, "
                 "multiple views, grey background, soft even studio light, neutral colors", items)
-    neg = _join(NEUTRAL_NEGATIVE, "white background, 1girl, 1boy, person, face, hand, hands, fingers, legs, feet, "
+    neg = _join(NEUTRAL_NEGATIVE, "white background, 1girl, 1boy, person, face, hand, hands, fingers, legs, feet, mannequin, armor, bodysuit, "
                 "(photorealistic, realistic, photo, 3d render:1.3)")
     return pos, _join(_unless_in(_styled_negative(d, neg), pos), _covered_negative(d, state))
 
