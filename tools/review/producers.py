@@ -272,6 +272,22 @@ def boards(ctx) -> list[Item]:
     return out
 
 
+def experiments(ctx) -> list[Item]:
+    """Method tests the owner decides on: design-data/review/experiments/<name>/manifest.json
+    {"title", "context", "files": [png...], "compare": [{"label", "file"}]}, file paths relative to that folder."""
+    out = []
+    for m in sorted((ctx["design_dir"] / "review" / "experiments").glob("*/manifest.json")):
+        d, folder = json.loads(m.read_text()), m.parent
+        rel = f"experiments/{folder.name}"
+        files = [web_copy(folder / f, ctx["site"], f"{rel}/{Path(f).stem}.jpg") for f in d["files"]]
+        compare = [{"label": c["label"], "url": web_copy(folder / c["file"], ctx["site"], f"{rel}/cmp-{Path(c['file']).stem}.jpg")}
+                   for c in d.get("compare", [])]
+        digest = hashlib.sha1(m.read_bytes()).hexdigest()[:10]
+        out.append(Item(f"test--{folder.name}--{digest}", "test", "pre-production", folder.name, d["title"], files, compare,
+                        context=d.get("context", "")))
+    return out
+
+
 def plans(ctx) -> list[Item]:
     """One item per shot plan that is ready to approve: its only pre-flight problems are approvals still pending."""
     from tools.shorts import __main__ as cli
@@ -355,4 +371,4 @@ def films(ctx) -> list[Item]:
     return out
 
 
-ALL = [sheets, bibles, sheet_sets, candidates, world, takes, wallpapers, plates, scenes, keyframes, boards, plans, cuts, films]
+ALL = [sheets, bibles, sheet_sets, candidates, world, takes, wallpapers, plates, scenes, keyframes, boards, experiments, plans, cuts, films]

@@ -228,3 +228,17 @@ def test_sheet_sets_need_all_four_and_id_follows_bytes_and_v1_sheets_skip_states
     assert P.sheet_sets(c)[0].id != item.id
     assert P.sheets(c) == []  # v1 item skipped for characters with states
     assert P.bibles in P.ALL and P.sheet_sets in P.ALL
+
+
+def test_experiments_one_item_per_manifest(tmp_path):
+    c = ctx(tmp_path)
+    f = tmp_path / "dd" / "review" / "experiments" / "photo-desk"
+    f.mkdir(parents=True)
+    for n in ("a.png", "plate.png"):
+        Image.new("RGB", (8, 8)).save(f / n)
+    (f / "manifest.json").write_text(json.dumps({"title": "Desk", "context": "why", "files": ["a.png"],
+                                                 "compare": [{"label": "Plate", "file": "plate.png"}]}))
+    [it] = P.experiments(c)
+    assert it.kind == "test" and it.id.startswith("test--photo-desk--") and it.title == "Desk"
+    assert it.files == ["/review/media/experiments/photo-desk/a.jpg"]
+    assert it.compare == [{"label": "Plate", "url": "/review/media/experiments/photo-desk/cmp-plate.jpg"}]
