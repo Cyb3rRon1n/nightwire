@@ -17,3 +17,28 @@ view = "from the far end of the counter looking along it: stools on the left, co
 [[plate]]
 name = "toward-far-end"
 view = "from the door end of the guest stools looking along the counter toward the far end wall and the small kitchen pass; counter and shelves on the left, guest-side wall on the right"
+
+# More directions (2026-11-12): the owner saw the same three plates in every izakaya short.
+[[plate]]
+name = "kitchen-pass"
+view = "close on the small kitchen pass at the far end of the counter: a steel pot steaming on a burner, a ladle, stacked bowls, the serving hatch, one paper lantern above"
+tags = "izakaya kitchen, serving hatch, steaming pot, burner, ladle, stacked bowls, wooden counter, paper lantern, warm light, steam, night, indoors, close-up"
+avoid = ["people", "crowds", "text", "logos", "daylight"]
+
+[[plate]]
+name = "doorway-inside"
+view = "from inside at the entrance looking out through the noren curtain: the backlit cloth panels, the wet alley and a lantern glow beyond, one empty stool in the foreground"
+tags = "izakaya entrance from inside, noren curtain, backlit fabric, doorway, wet alley outside, lantern glow, wooden frame, bar stool, night, indoors"
+avoid = ["people", "crowds", "text", "logos", "daylight", "bottle shelves"]
+
+[[plate]]
+name = "counter-above"
+view = "high angle looking straight down on a stretch of the wooden counter: a bowl, a small sake cup, a folded cloth, chopsticks on a rest, lantern light pooling on the wood, stool tops at the edge"
+tags = "from above, top-down view, wooden counter, ramen bowl, sake cup, folded cloth, chopsticks, chopstick rest, lantern light, warm light, still life, night, indoors"
+avoid = ["people", "crowds", "text", "logos", "daylight"]
+
+[[plate]]
+name = "corner-table"
+view = "a small two-seat table in the corner by the guest-side wall, one chair pulled out, wooden wall panels with blank menu strips, a lantern overhead, the counter soft in the background"
+tags = "izakaya interior, small table, two chairs, corner, wooden wall panels, blank paper menu strips, paper lantern, warm light, cozy, night, indoors"
+avoid = ["people", "crowds", "readable text", "logos", "daylight"]

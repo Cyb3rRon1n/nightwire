@@ -1,16 +1,16 @@
 id = "S01"
 start = 0.0
 end = 9.0
-summary = "static extreme wide from inside the room; Rin a small silhouette in the doorway"
+summary = "static extreme wide from the doorway across the room; Rin a small figure walking in toward the desk"
 lens = 28.0
-why = "Doorway silhouette: she is a dark cut-out against neon as she comes home, the room larger than her for the second time"
+why = "She walks into the frame from the doorway side and stays small: the room is larger than her for the second time"
 vertical = [0.5]
 size = "EWS"
 angle = "eye level from the desk wall"
 move = "static"
-action = "Rin comes home and stands in the doorway."
+action = "Rin steps in and drops her bag by the desk."
 plate = "desk-wide"
-motion = "Static. Pink and cyan neon moves faintly on the wall; Rin's silhouette stands in the open doorway, then steps in."
+motion = "Static. Pink and cyan neon moves faintly on the wall; Rin walks in from the left edge toward the desk and lets her bag slide to the floor."
 end_frame = true
 camera = [
   { t = 0.0, at = [0, -9, 1.7], look = [0, 0, 1.4] },
@@ -21,24 +21,24 @@ camera = [
 C1 = "tired, a little lighter"
 
 [frame]
-C1 = "small, silhouette in the doorway, left of centre"
+C1 = "small, walking in from the left, back three-quarter"
 
 [at_start]
-C1 = "in the doorway"
+C1 = "just inside the room at the left edge, walking in"
 
 [at_end]
-C1 = "one step inside"
+C1 = "by the desk, bag on the floor"
 
 [[board]]
 which = "start"
 figure = "C1"
-pose = "stand"
-camera = "ws-front"
-feet = [0.25, 0.88]
+pose = "walk"
+camera = "ws-back"
+feet = [0.2, 0.9]
 
 [[board]]
 which = "end"
 figure = "C1"
-pose = "stand"
-camera = "ws-front"
-feet = [0.25, 0.88]
+pose = "stand-back"
+camera = "ws-back"
+feet = [0.55, 0.82]

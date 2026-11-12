@@ -20,3 +20,22 @@ avoid = ["rain", "daylight", "daytime view outside", "people", "crowds", "text",
 name = "ticket-gates"
 view = "from beyond the ticket gates looking back at the row of gates and the foot of an escalator, a vending machine and a station clock to one side"
 avoid = ["rain", "daylight", "crowd barriers full of people", "people", "crowds", "text", "logos"]
+
+# More views (2026-11-12): Rin's and Saeko's train shorts shared the same platform and carriage.
+[[plate]]
+name = "carriage-doors"
+view = "inside the carriage at the doors: a standing pole, the door window with tunnel lights streaking past, a strip of bench at the edge of frame"
+tags = "commuter train interior, train doors, door window, standing pole, handrail, motion blur lights outside, fluorescent light, night, indoors"
+avoid = ["rain", "daylight", "people", "crowds", "text", "logos"]
+
+[[plate]]
+name = "platform-bench"
+view = "a single bench against the tiled platform wall under one fluorescent tube, a vending machine glowing beside it, the yellow safety line at the bottom of frame"
+tags = "train station platform, single bench, tiled wall, fluorescent light, vending machine glow, yellow safety line, empty, night, indoors"
+avoid = ["rain", "daylight", "train", "people", "crowds", "text", "logos"]
+
+[[plate]]
+name = "escalator"
+view = "from the bottom of a long empty escalator looking up toward the exit, light strips along the handrails, the ceiling falling away overhead"
+tags = "station escalator, looking up, long escalator, handrail lights, low angle, empty, cold light, night, indoors"
+avoid = ["rain", "daylight", "people", "crowds", "text", "logos"]

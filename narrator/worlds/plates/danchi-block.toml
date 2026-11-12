@@ -17,3 +17,9 @@ name = "flat-room"
 view = "inside a small flat: a futon bed on tatami, a coat hook on the wall, a low table, a balcony door with a pale glow beyond, the room dark"
 tags = "small apartment interior, futon, tatami, coat hook, low table, balcony door, dark room, night, indoors"
 avoid = ["rain", "daylight", "windows with a city view", "people", "crowds", "text", "logos"]
+
+[[plate]]
+name = "flat-entry"
+view = "inside the small flat by the front door: a long charcoal coat hanging on a wall hook beside the door, the step down to the shoe area with a pair of black boots, the dark room behind lit by a faint amber glow"
+tags = "small apartment interior, entrance, genkan, front door, coat hanging on wall hook, long coat, boots, step, dark room, faint amber light, night, indoors"
+avoid = ["rain", "daylight", "people", "crowds", "text", "logos", "futon", "window"]
