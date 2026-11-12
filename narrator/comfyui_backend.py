@@ -1,11 +1,28 @@
+import os
+import subprocess
 import time
 import uuid
+from urllib.parse import urlparse
 from collections.abc import Awaitable, Callable
 
 import httpx
 
 from narrator.design_sheets import UPSCALER, _TILED
 from narrator.image_prompt import NEGATIVE
+
+# The GPU box is a laptop (RTX 2080 Max-Q): back-to-back renders held it at 87 C, throttled, with the fans at full noise
+# (2026-11-12). Before each batch job, wait for it to cool when it runs hot. NIGHTWIRE_GPU_COOL=0 turns this off.
+GPU_HOT_C, GPU_COOL_C, GPU_COOL_MAX_S = 80, 68, 600
+
+
+def gpu_temp(host: str) -> int | None:
+    """GPU temperature over ssh (the box's key login); None when it can't be read."""
+    try:
+        r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", host,
+                            "nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader"], capture_output=True, text=True, timeout=15)
+        return int(r.stdout.split()[0]) if r.returncode == 0 else None
+    except Exception:  # noqa: BLE001 - cooling is best effort; never block a render on it
+        return None
 
 _NEGATIVE_PROMPT = "blurry, deformed, extra limbs, bad anatomy, watermark, text, low quality"
 _STEPS = 20
@@ -76,6 +93,9 @@ class ComfyUIBackend:
         self.timeout = timeout
         self.poll_interval = poll_interval
         self._client = client or httpx.AsyncClient(base_url=base_url.rstrip("/"), timeout=30.0)
+        host = urlparse(base_url).hostname or ""
+        self._gpu_host = None if client is not None or host in ("127.0.0.1", "localhost") or os.environ.get("NIGHTWIRE_GPU_COOL") == "0" else host
+        self._gpu_temp = gpu_temp
         if sleep_fn is not None:
             self._sleep = sleep_fn
         else:
@@ -164,6 +184,20 @@ class ComfyUIBackend:
             except Exception:  # noqa: BLE001 - best effort; a failed free must not lose the image
                 pass
 
+    async def _cool_down(self) -> None:
+        """Hot (>= GPU_HOT_C): wait until GPU_COOL_C, at most GPU_COOL_MAX_S. Unreadable temperature: go on."""
+        if not self._gpu_host:
+            return
+        t = self._gpu_temp(self._gpu_host)
+        if t is None or t < GPU_HOT_C:
+            return
+        waited = 0
+        while t is not None and t > GPU_COOL_C and waited < GPU_COOL_MAX_S:
+            await self._sleep(15)
+            waited += 15
+            t = self._gpu_temp(self._gpu_host)
+        print(f"gpu cooled to {t} C after {waited}s", flush=True)
+
     async def upload_image(self, name: str, png: bytes) -> str:
         """Put an image in ComfyUI's input folder; returns the name a LoadImage node should use."""
         r = await self._client.post("/upload/image", files={"image": (name, png, "image/png")}, data={"overwrite": "true"})
@@ -172,6 +206,7 @@ class ComfyUIBackend:
 
     async def run_workflow(self, workflow: dict) -> bytes:
         """Submit any ComfyUI workflow, wait for it, return the first output image's bytes."""
+        await self._cool_down()
         submit = await self._client.post("/prompt", json={"prompt": workflow})
         submit.raise_for_status()
         prompt_id = submit.json()["prompt_id"]

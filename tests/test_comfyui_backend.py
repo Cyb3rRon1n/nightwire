@@ -255,3 +255,26 @@ async def test_scenes_come_out_upscaled():
     await backend.generate_scene("an alley", [])
     graph = next(c[2]["prompt"] for c in client.calls if c[1] == "/prompt")
     assert graph["31"]["class_type"] == "ImageUpscaleWithModel" and graph["9"]["inputs"]["images"] == ["31", 0]
+
+
+async def test_cool_down_waits_while_gpu_is_hot():
+    from narrator.comfyui_backend import ComfyUIBackend
+    slept, temps = [], iter([85, 80, 72, 66])
+    async def sleep(s):
+        slept.append(s)
+    be = ComfyUIBackend(base_url="http://gpu-box:8188", sleep_fn=sleep)
+    be._gpu_temp = lambda host: next(temps)
+    await be._cool_down()
+    assert slept == [15, 15, 15]
+
+
+async def test_cool_down_skips_when_cool_or_unreadable():
+    from narrator.comfyui_backend import ComfyUIBackend
+    slept = []
+    async def sleep(s):
+        slept.append(s)
+    be = ComfyUIBackend(base_url="http://gpu-box:8188", sleep_fn=sleep)
+    for t in (60, None):
+        be._gpu_temp = lambda host, t=t: t
+        await be._cool_down()
+    assert slept == []
