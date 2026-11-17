@@ -9,6 +9,7 @@ from narrator.designs import load_designs
 from tools.imagegen import build
 
 URL = "http://192.168.10.19:8188"
+ANIME_DENOISE = 0.70  # locked 2026-11-16: owner picked #3 (seed 6, d70) in every scene; 0.55 kept too much photo
 D = Path("../../../design-data")
 OUT = Path(__file__).parent / "out"
 OUT.mkdir(exist_ok=True)
@@ -107,7 +108,7 @@ if __name__ == "__main__":
                 asyncio.run(stage1(case, [11, 22, 33]))
         else:
             case, ps = sys.argv[2], int(sys.argv[3])
-            for dn in (0.55, 0.7):
+            for dn in (ANIME_DENOISE,):
                 asyncio.run(stage2(case, ps, [5, 6], dn))
     finally:
         comfy_free()

@@ -2,7 +2,7 @@
 
 The owner's photo-first method: paint a realistic person into the background plate first, then repaint the photo in the anime style.
 
-- `v1_whole_plate.py` - photo by img2img over the whole plate (RealVisXL, denoise 0.75), then a plain NoobAI anime pass with a depth ControlNet at denoise 0.55 or 0.70. **The owner's favourite results came from this version** (2026-11-16); which denoise is being confirmed in the review inbox ("Which one was your favourite?").
+- `v1_whole_plate.py` - photo by img2img over the whole plate (RealVisXL, denoise 0.75), then a plain NoobAI anime pass with a depth ControlNet at denoise 0.55 or 0.70. **The owner's favourite results came from this version** (2026-11-16); **Locked: anime pass at denoise 0.70** (owner picked #3 - the stronger repaint - in desk, bed and bar). Depth ControlNet 0.7 until 70%, NoobAI base recipe, photo img2img 0.75.
 - `v2_house_look.py` - same photo, finished with the locked "medium dark" house recipe (kept).
 - `v3_masked.py` - photo painted only inside a soft mask so the room stays exactly the plate (rejected 2026-11-17: see-through people where bright lights sit under the soft mask edge).
 - `v4_new_shots.py` - 12 new character/location shots on the v3 photo step plus the house anime pass and a hands pass.
