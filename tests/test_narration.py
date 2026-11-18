@@ -1934,3 +1934,39 @@ async def test_child_stays_mama_satos_word_and_asterisks_go(tmp_path):
     assert "Hachi: You've come at the right time. It still wakes." in session.log
     assert "Old Hara: You want a name? Pay first." in session.log
     assert "Mama Sato: Sit, child." in session.log
+
+
+_LIE = {"player_id": "p1", "attribute": "cool", "skill": "persuasion", "stakes": "normal", "reason": "the lie"}
+_LEAKED = "You tell him Arakawa sent you. He buys it and steps aside."
+
+
+async def test_a_set_up_that_shows_the_outcome_is_redone_once(tmp_path):
+    # Playthrough 2026-11-07: the lie was believed in the set-up, before the roll.
+    session = _session_with_character()
+    seen = []
+    client = _scripted_client([_say(_LEAKED, "request_roll", _LIE), _say("You tell him Arakawa sent you, and wait.", "request_roll", _LIE)],
+                              judge_answers=[{"risky_quote": "I lie", "risky": True, "skill": "persuasion"},
+                                             {"evidence": "He buys it", "result": "succeeded"},
+                                             {"evidence": "", "result": "not_shown"}], seen=seen)
+    await _call(session, client, "p1", {"text": "I lie to the guard."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert "You tell him Arakawa sent you, and wait." in session.log and _LEAKED not in session.log
+    assert "He buys it" in seen[1][-1]["content"] and "p1" in session.pending_rolls
+
+
+async def test_a_second_leak_is_cut_at_the_outcome(tmp_path):
+    session = _session_with_character()
+    client = _scripted_client([_say(_LEAKED, "request_roll", _LIE)],
+                              judge_answers=[{"risky_quote": "I lie", "risky": True, "skill": "persuasion"},
+                                             {"evidence": "He buys it", "result": "succeeded"},
+                                             {"evidence": "He buys it", "result": "succeeded"}])
+    await _call(session, client, "p1", {"text": "I lie to the guard."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert "You tell him Arakawa sent you." in session.log and _LEAKED not in session.log
+    assert '[set-up cut: "He buys it"]' in session.log and "p1" in session.pending_rolls
+
+
+async def test_turns_without_a_roll_skip_the_outcome_check(tmp_path):
+    session = _session_with_character()
+    seen = []
+    client = _scripted_client([_say("Mama Sato pours your tea.")], judge_answers=[_SAFE, {"human_moment_quote": "", "human_moment": "none"}], seen=seen)
+    await _call(session, client, "p1", {"text": "I ask for tea."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert "Mama Sato pours your tea." in session.log

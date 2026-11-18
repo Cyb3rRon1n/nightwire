@@ -7,7 +7,7 @@ import ollama
 
 from engine.character import is_tsukumogami
 from narrator.ooc import answer_ooc, is_ooc
-from narrator.risk import INSTRUCTION as RISK_INSTRUCTION, NO_ROLL, assess
+from narrator.risk import INSTRUCTION as RISK_INSTRUCTION, NO_ROLL, assess, cut_at_outcome, leaked_outcome, outcome_redo
 from engine.chrome import change_humanity, usable_overclocks
 from engine.debt import repo_target_name, tick_debt
 from engine.phone import add_contact, find_contact, phone_of, post
@@ -196,6 +196,10 @@ def _drop_repeated_lines(response, session: Session) -> None:
               for line in [l for l in session.log if not l.startswith("[")][-_RECENT_LINES:]}
     kept = [seg for seg in response.narration if _opening_key(seg.text) not in recent]
     response.narration[:] = kept or response.narration[-1:]
+
+
+def _prose(response) -> str:
+    return " ".join(seg.text for seg in response.narration)
 
 
 def _drop_opening(response) -> None:
@@ -575,6 +579,22 @@ async def _run_turn(
         if _opening(response) in _recent_openings(session):
             _drop_opening(response)
 
+    cut = None
+    if allow_roll and refusal is None and response.tool == "request_roll":
+        # The set-up must stop before the dice decide (narrator/risk.py): redo once, then cut at the outcome.
+        action = referee_action or prompt_text
+        quote = await leaked_outcome(narrator_client, action, _prose(response))
+        if quote:
+            session.pending_world_events[:0] = shown_events
+            redo = f"{prompt_text}\n\n{outcome_redo(quote)}"
+            retry = await narrator_client.respond(_build_messages(session, redo, narrator_client.num_ctx))
+            del session.pending_world_events[:len(shown_events)]
+            if retry.tool == "request_roll":   # a redo that drops the roll keeps the first set-up
+                response = retry
+            quote = await leaked_outcome(narrator_client, action, _prose(response))
+            if quote and cut_at_outcome(response, quote):
+                cut = quote
+
     _split_prose_from_speech(response)
     _tidy(response)
     _drop_repeated_lines(response, session)
@@ -583,6 +603,8 @@ async def _run_turn(
         session.log.append(actor_line)
     if refusal is not None:
         session.log.append(f"[redo: {refusal}]")
+    if cut is not None:
+        session.log.append(f'[set-up cut: "{cut}"]')
     narration_text = await _log_narration(session, response, store, tts_backend, player_id)
     _apply_tool(session, response, player_id, allow_roll, roll_skill)  # a refusal on the redo is only logged
 
