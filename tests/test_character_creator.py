@@ -556,7 +556,7 @@ def test_fifty_plus_renders_with_the_safe_rating_everywhere(creator, comfy):
     creator.pick(cid, 1, 1)
     creator.lock(cid)
     render(creator, comfy)
-    assert len(comfy.submitted) == 4 + 8
+    assert len(comfy.submitted) == 4 + 7   # the colour guide is built, not rendered
     for wf in comfy.submitted:
         assert "sensitive" not in text(wf) and "safe" in text(wf) and "seductive" in text(wf, "7")
     draft = creator.create("player", GOOD, by_owner=False)["id"]
@@ -622,20 +622,20 @@ def test_lock_needs_a_pick_then_queues_all_sheets(creator, comfy):
     assert creator.get(cid)["queue"]["label"] == "sheets"
     render(creator, comfy)
     sheets = comfy.submitted[before:]
-    assert len(sheets) == 8
+    assert len(sheets) == 7   # turnaround + 6 expressions; the colour guide is built from the turnaround
     assert "turnaround" in text(sheets[0]) and "UpscaleModelLoader" in classes(sheets[0])
-    assert "color guide" in text(sheets[1])
-    assert "1girl" in text(sheets[2]) and "close-up" in text(sheets[2])
-    for wf in sheets[2:]:
+    assert "1girl" in text(sheets[1]) and "close-up" in text(sheets[1])
+    for wf in sheets[1:]:
         assert (wf["5"]["inputs"]["width"], wf["5"]["inputs"]["height"]) == EXPRESSION_SIZE
         assert "katana" not in text(wf, "7") and "katana" not in text(wf)   # can't float, can't negate
-    assert "katana" in text(sheets[0]) and "katana" in text(sheets[1])
+    assert "katana" in text(sheets[0])
     assert all("katana" not in text(wf, "7") for wf in sheets)
     assert {wf["3"]["inputs"]["seed"] for wf in sheets} == {seed}   # the picked image's seed, as in approve then sheets
     got = creator.get(cid)
-    assert got["sheets"] == {"turnaround": "turnaround.png", "colorguide": "colorguide.png",
+    # the fake's turnaround isn't a real image, so no guide; test_colour_guide_is_built_from_the_turnaround covers it
+    assert got["sheets"] == {"turnaround": "turnaround.png", "colorguide": None,
                              "expressions": [f"expression-{i}.png" for i in range(1, 7)]}
-    for name in ("turnaround.png", "colorguide.png", "expression-6.png"):
+    for name in ("turnaround.png", "expression-6.png"):
         assert creator.image_path(cid, name).exists()
 
 
@@ -650,7 +650,7 @@ def test_the_picked_rounds_note_reaches_every_sheet(creator, comfy):
     creator.lock(cid)
     render(creator, comfy)
     sheets = comfy.submitted[before:]
-    assert len(sheets) == 8
+    assert len(sheets) == 7
     assert all("red scarf" in text(wf) and "blue scarf" not in text(wf) and "1.5" not in text(wf) for wf in sheets)
     creator.redo_sheet(cid, "turnaround")
     render(creator, comfy)
@@ -1137,3 +1137,30 @@ def test_export_command_line(creator, comfy, tmp_path, capsys):
         cc.main(args)
     with pytest.raises(SystemExit, match="no character"):
         cc.main(["export", "x" * 32, *args[2:]])
+
+
+def test_colour_guide_is_built_from_the_turnaround(creator, comfy):
+    # like the cast's: two renders never agreed on hair and outfit, so the guide is cut from the turnaround
+    import io
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGB", (192, 96), (40, 120, 200)).save(buf, "PNG")
+    comfy.image = lambda ref: buf.getvalue()
+    cid = with_round(creator, comfy)
+    creator.pick(cid, 1, 1)
+    creator.lock(cid)
+    render(creator, comfy)
+    assert creator.get(cid)["sheets"]["colorguide"] == "colorguide.png"
+    guide = Image.open(creator.image_path(cid, "colorguide.png"))
+    assert guide.width > 192   # turnaround plus the palette column
+    before = len(comfy.submitted)
+    creator.redo_sheet(cid, "colorguide")
+    assert len(comfy.submitted) == before   # rebuilt on the spot, nothing sent to ComfyUI
+
+
+def test_colour_guide_redo_waits_for_a_turnaround(creator, comfy):
+    cid = with_round(creator, comfy)
+    creator.pick(cid, 1, 1)
+    creator.lock(cid)   # queued, not rendered yet
+    with pytest.raises(BadRequest, match="turnaround"):
+        creator.redo_sheet(cid, "colorguide")

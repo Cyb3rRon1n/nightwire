@@ -82,7 +82,7 @@ def test_the_whole_review_flow_over_http(api):
     assert status == 200 and record["answers"]["outfit"] == "trench coat"
     assert call(f"{base}/lock", "POST", {})[1]["status"] == "locked"
     render(creator, comfy)
-    assert call(f"{base}/sheet", "POST", {"sheet": "colorguide"})[0] == 200
+    assert call(f"{base}/sheet", "POST", {"sheet": "turnaround"})[0] == 200
     render(creator, comfy)
     assert call(f"{base}", "DELETE", {})[0] == 200
     assert call(base) == NOT_FOUND

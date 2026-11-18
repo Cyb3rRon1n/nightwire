@@ -175,7 +175,7 @@ def test_facial_features_are_required_so_they_survive_close_ups():
 def test_signature_item_shows_on_body_views_and_is_left_out_of_close_ups():
     answers = ca.clean_answers(good(signature="katana"))
     d = ca.to_design(answers, "player", 1)
-    assert "katana" in sheet_prompt(d, "turnaround")[0] and "katana" in sheet_prompt(d, "colorguide")[0]
+    assert "katana" in sheet_prompt(d, "turnaround")[0]   # the colour guide is cut from the turnaround
     close = ca.to_design(answers, "player", 1, close_up=True)
     assert all("katana" not in pos and "katana" not in neg for _, pos, neg in expression_prompts(close))
 

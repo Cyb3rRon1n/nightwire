@@ -30,7 +30,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from narrator.design_sheets import (
-    EXPRESSION_SIZE, EXPRESSIONS, candidate_prompt, candidate_workflow, expression_prompts, sheet_prompt, sheet_workflow,
+    EXPRESSION_SIZE, EXPRESSIONS, candidate_prompt, candidate_workflow, colour_guide, expression_prompts, extract_palette,
+    sheet_prompt, sheet_workflow,
 )
 from narrator.designs import save_design, validate
 from tools.character_answers import QUESTIONS, clean_answers, clean_note, rated, to_design
@@ -303,6 +304,8 @@ class Creator:
                 wf = candidate_workflow(positive(pos), neg, seed)
                 wf["5"]["inputs"].update(width=EXPRESSION_SIZE[0], height=EXPRESSION_SIZE[1])
                 items.append((f"expression-{i}.png", wf))
+        elif sheet == "colorguide":
+            items = []   # built from the turnaround when that lands, not rendered (see _build_colour_guide)
         else:
             pos, neg = sheet_prompt(design, sheet)
             items = [(f"{sheet}.png", sheet_workflow(positive(pos), neg, seed))]
@@ -326,6 +329,11 @@ class Creator:
             record = self._load(cid)
             if record["status"] != "locked":
                 raise BadRequest("lock the character in before redoing a sheet")
+            if sheet == "colorguide":
+                if not self._build_colour_guide(record):
+                    raise BadRequest("the colour guide is built from the turnaround: wait for that first")
+                self._save(record)
+                return self.get(cid)
             # A new seed, or ComfyUI would hand back the same picture.
             self._enqueue(record, "sheets", None, self._sheet_items(record, sheet, self.rng.randint(1, MAX_SEED)))
             return self.get(cid)
@@ -383,6 +391,26 @@ class Creator:
             raise KeyError(name)
         return path
 
+    def _build_colour_guide(self, record: dict) -> bool:
+        """The turnaround plus its close-up and palette, like the cast's (narrator.design_sheets.colour_guide). False if no turnaround yet."""
+        turnaround = self._file(record["id"], "turnaround.png")
+        if not turnaround.exists():
+            return False
+        from tools.design_studio import _front_head
+        source = turnaround.read_bytes()
+        try:
+            head = _front_head(source)
+        except Exception:   # head detection is optional: the guide is still made, without the close-up
+            head = None
+        try:
+            png = colour_guide(source, extract_palette(source), head)
+        except OSError as e:   # an unreadable turnaround: no guide, the sheet stays redoable, the batch still lands
+            print(f"colour guide for {record['id']} not built: {e}", flush=True)
+            return False
+        _write_bytes_atomic(self._file(record["id"], "colorguide.png"), png)
+        record["sheets"]["colorguide"] = "colorguide.png"
+        return True
+
     def _finish_batch(self, jobs: list[dict], job: dict) -> None:
         """All its images are saved: put them on the record, or fail the batch if the record can't take them."""
         names = [i["name"] for i in job["items"]]
@@ -393,6 +421,8 @@ class Creator:
                 if expressions:
                     record["sheets"]["expressions"] = expressions
                 record["sheets"].update((n.removesuffix(".png"), n) for n in names if n not in expressions)
+                if "turnaround.png" in names:
+                    self._build_colour_guide(record)
             elif not any(r["n"] == job["round"] for r in record["rounds"]):   # a crash before the queue was saved repeats this step
                 record["rounds"].append({"n": job["round"], "type": "vary" if job["label"] == "variations" else "reroll",
                                          "from": job["from"], "note": job["note"], "answers": job["answers"], "images": names})
@@ -749,6 +779,8 @@ def export_main(argv: list[str]) -> None:
     parser.add_argument("--state", type=Path, required=True)
     parser.add_argument("--designs-dir", type=Path, required=True)
     parser.add_argument("--design-dir", type=Path, required=True)
+    if argv and TOKEN.match(argv[0]):   # an id can start with "-" (token_urlsafe), which argparse would take for an option
+        argv = [*argv[1:], "--", argv[0]]
     args = parser.parse_args(argv)
     try:
         print(export(args.state, args.id, args.designs_dir, args.design_dir))
