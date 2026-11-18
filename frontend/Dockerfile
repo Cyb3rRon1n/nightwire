@@ -1,9 +1,6 @@
 # Nightwire web frontend (Next.js standalone). Build context = frontend/.
 FROM node:22-slim AS deps
 WORKDIR /app
-# better-sqlite3 compiles a native binding at install time.
-RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
-    && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 RUN npm ci
 
@@ -20,7 +17,6 @@ ENV NODE_ENV=production \
     PORT=3000
 
 RUN useradd --create-home --uid 10001 nightwire
-COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nightwire:nightwire /app/.next/standalone ./
 COPY --from=builder --chown=nightwire:nightwire /app/.next/static ./.next/static
 

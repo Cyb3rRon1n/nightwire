@@ -14,7 +14,6 @@ const nextConfig: NextConfig = {
   output: "standalone",
   allowedDevOrigins: ["localhost", "127.0.0.1", ...extraDevOrigins],
   devIndicators: false,
-  serverExternalPackages: ["better-sqlite3"],
   turbopack: {
     root: process.cwd(),
   },

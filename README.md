@@ -161,7 +161,7 @@ re-run — only touches its own "Nightwire" group.
 │   └── worlds/         #   kuroshio.toml + designs/*.toml
 ├── server/             # WebSocket server (FastAPI)
 ├── tools/              # design studio, image tools, taste, palette export
-├── frontend/           # Next.js web client (open-dungeon base, /nightwire route)
+├── frontend/           # Next.js web client (/nightwire); image_server/ = flux_worker backend
 │   └── src/app/nightwire/play/  # the messenger play screen
 ├── tests/              # pytest: ruleset, engine, narrator, server, tools
 └── docs/               # design specs, implementation plans, art direction, images
