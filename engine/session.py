@@ -32,3 +32,5 @@ class Session:
     recent_stakes: list[str] = field(default_factory=list)
     # Phone: per-player contacts, threads and timing (engine/phone.py).
     phone: dict[str, dict] = field(default_factory=dict)
+    # Suggested actions (spec 2026-11-18): player_id -> the chips shown after their last story turn.
+    suggestions: dict[str, list[dict]] = field(default_factory=dict)

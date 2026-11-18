@@ -65,4 +65,5 @@ class JSONFileSessionStore:
             pending_world_events=data.get("pending_world_events", []),
             recent_stakes=data.get("recent_stakes", []),
             phone=data.get("phone", {}),
+            suggestions=data.get("suggestions", {}),
         )
