@@ -24,8 +24,10 @@ _SKILL_QUESTION = ("If risky, the skill it tests: melee (fists, blades, any clos
 SCHEMA = {"type": "object", "properties": {"risky_quote": {"type": "string"}, "risky": {"type": "boolean"},
                                            "skill": {"type": "string", "enum": [*SKILLS, "none"]}},
           "required": ["risky_quote", "risky", "skill"], "additionalProperties": False}
+# Playthrough 2026-11-07: the set-up said the punch caught the enforcer "square in the jaw", then the roll came.
 INSTRUCTION = ("Engine: this action is risky. Narrate only the set-up, up to the moment of risk, and call request_roll. "
-               "Do not say how it turns out.")
+               "Stop on the moment before it lands: the punch is thrown, not landed; the lie is told, not believed; the "
+               "jump begins, not ends. Do not say how it turns out.")
 
 
 NO_ROLL = "Engine: this action is not risky. Narrate it through to what happens, without a roll."

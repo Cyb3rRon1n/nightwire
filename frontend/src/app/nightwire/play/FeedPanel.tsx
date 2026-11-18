@@ -87,6 +87,17 @@ function SceneBackdrop({ src }: { src: string }) {
   );
 }
 
+// The bottom, unless that would push the player's newest own line up under the fade at the top of the feed: then
+// stop with that line just below the fade, so a long reply is read from its start (playthrough 2026-11-07).
+const FADE = 36;
+function newestTarget(el: HTMLDivElement): number {
+  const bottom = el.scrollHeight - el.clientHeight;
+  const own = el.querySelectorAll<HTMLElement>(".nw-line-own");
+  const last = own[own.length - 1];
+  if (!last) return bottom;
+  return Math.min(bottom, Math.max(0, last.offsetTop - FADE));
+}
+
 export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, onOpenGallery, compact = false }: {
   view: StateView;
   playerId: string;
@@ -124,7 +135,7 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, onO
   useEffect(() => {
     const el = listRef.current;
     if (!el) return;
-    if (pinned) el.scrollTop = el.scrollHeight;
+    if (pinned) el.scrollTop = newestTarget(el);
     else setUnseen(true); // eslint-disable-line react-hooks/set-state-in-effect -- reacting to new socket lines
   }, [view.log.length, sending]); // eslint-disable-line react-hooks/exhaustive-deps -- only new lines matter
 
@@ -132,13 +143,14 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, onO
   // view, so a loading image re-pins the feed if the player was at the bottom.
   function stickToBottom() {
     const el = listRef.current;
-    if (el && pinnedRef.current) el.scrollTop = el.scrollHeight;
+    if (el && pinnedRef.current) el.scrollTop = newestTarget(el);
   }
 
   function onScroll() {
     const el = listRef.current;
     if (!el) return;
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+    // At the bottom, or parked at the newest-line stop: both count as following the conversation.
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 48 || Math.abs(el.scrollTop - newestTarget(el)) < 4;
     pinnedRef.current = atBottom;
     setPinned(atBottom);
     if (atBottom) setUnseen(false);
