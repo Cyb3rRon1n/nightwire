@@ -29,4 +29,4 @@ include = ["ruleset", "engine", "server", "narrator", "tools", "tools.*"]
 [tool.setuptools.package-data]
 narrator = ["worlds/*.toml", "worlds/designs/*.toml", "worlds/place_art/*.jpg", "worlds/character_art/*.jpg",
             "worlds/shorts/*/*.toml", "worlds/shorts/*/shots/*.toml"]
-tools = ["design_picker.html", "design_review.html", "image_studio.html", "poses/*.png", "shorts/page.html"]
+tools = ["design_picker.html", "design_review.html", "image_studio.html", "character_creator.html", "poses/*.png", "shorts/page.html"]
