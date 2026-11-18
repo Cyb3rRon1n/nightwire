@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.16",
-    "next": "16.2.6",
+    "next": "16.4.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-resizable-panels": "4.14.8",
@@ -36,12 +36,12 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.6",
+    "eslint-config-next": "16.4.6",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
   "allowScripts": {
-    "sharp@0.34.5": true,
+    "sharp@0.35.5": true,
     "unrs-resolver@1.12.2": true
   }
 }
