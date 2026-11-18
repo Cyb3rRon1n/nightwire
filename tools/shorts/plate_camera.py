@@ -32,7 +32,7 @@ def horizon_from_lines(png: Path) -> tuple[float | None, float]:
     H, W = g.shape
     segs = cv2.createLineSegmentDetector().detect(cv2.createCLAHE(3.0).apply(g))[0]
     lines = []
-    for x1, y1, x2, y2 in ([] if segs is None else segs[:, 0]):
+    for x1, y1, x2, y2 in ([] if segs is None else segs.reshape(-1, 4)):   # (N,1,4) or (N,4) depending on the OpenCV build
         n = np.hypot(x2 - x1, y2 - y1)
         a = abs(np.degrees(np.arctan2(y2 - y1, x2 - x1))) % 180
         if n > 0.04 * W and (8 < a < 80 or 100 < a < 172):  # receding: neither level nor upright
