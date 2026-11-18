@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { CharacterSheet, ClientMessage, RedactedCharacter, RollResult, StateView } from "@/lib/nightwire/protocol";
+import type { CharacterSheet, ClientMessage, RedactedCharacter, RollResult, StateView, Suggestion } from "@/lib/nightwire/protocol";
 import { portraitFor } from "@/lib/nightwire/portrait";
 import { mediaUrl, serverUrl } from "@/lib/nightwire/media";
 import { AUDIO_LINE, IMAGE_LINE, ROLL_LINE, ROLL_PENDING_LINE, classifyLine, groupStarts, isPlayerFacing, pickBackdrop, sceneImages, speakerKey } from "@/lib/nightwire/feed";
+import { chipTag, chipTitle } from "@/lib/nightwire/chips";
 import { npcColour, npcPortrait } from "@/lib/nightwire/npcColour";
 import { PendingRollCard, RollResultCard } from "../RollCard";
 import { ChromeOfferCard } from "../ChromeOfferCard";
@@ -98,13 +99,14 @@ function newestTarget(el: HTMLDivElement): number {
   return Math.min(bottom, Math.max(0, last.offsetTop - FADE));
 }
 
-export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, onOpenGallery, compact = false }: {
+export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, chips = true, onOpenGallery, compact = false }: {
   view: StateView;
   playerId: string;
   send: (msg: ClientMessage) => void;
   error: string | null;
   errorSeq: number;
   sceneArt: boolean;
+  chips: boolean;
   onOpenGallery: (index: number) => void;
   compact?: boolean;
 }) {
@@ -185,6 +187,14 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, onO
     setPinned(true);
     pinnedRef.current = true;
     if (inputRef.current) inputRef.current.style.height = "auto";
+  }
+
+  function sendChip(s: Suggestion) {
+    if (sending) return;
+    send({ type: "action", text: s.text, chip: s.id });
+    setSending(true);
+    setPinned(true);
+    pinnedRef.current = true;
   }
 
   function combat(message: ClientMessage) {
@@ -321,6 +331,19 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, onO
 
       <form onSubmit={handleSendAction} className="nw-composer relative flex shrink-0 flex-col gap-2">
         {error && <p className="text-sm" style={{ color: "#ff8a80" }}>{error}</p>}
+        {chips && !sending && !myRollPending && (view.suggestions?.length ?? 0) > 0 && (
+          <div className="nw-suggestions" role="group" aria-label="Suggested actions">
+            {view.suggestions!.map((s) => {
+              const tag = chipTag(s);
+              return (
+                <button key={s.id} type="button" className="nw-suggestion" title={chipTitle(s)} onClick={() => sendChip(s)}>
+                  <span>{s.text}</span>
+                  {tag && <span className="nw-suggestion-tag" data-difficulty={s.difficulty}>{tag}</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-2">
           {COMPOSER_MODES.map((m) => (
             <button key={m.value} type="button" aria-pressed={composerMode === m.value} onClick={() => setComposerMode(m.value)} className="nw-chip">

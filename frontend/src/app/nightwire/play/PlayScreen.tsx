@@ -16,6 +16,7 @@ import "./play.css";
 
 const RAIL_PX = 28;
 const SCENE_ART_KEY = "nightwire-scene-art";
+const CHIPS_KEY = "nightwire-chips";
 const NARROW = "(max-width: 1023.98px)";
 const TABS = ["feed", "status", "world", "phone"] as const;
 
@@ -51,6 +52,11 @@ export function PlayScreen({ view, playerId, send, readyLabel, error, errorSeq, 
   const unread = totalUnread(view);
   const [tab, setTab] = useState<(typeof TABS)[number]>("feed");
 
+  const [chips, setChips] = useState(() => readFlag(browserStore, CHIPS_KEY, true));
+  function toggleChips() {
+    writeFlag(browserStore, CHIPS_KEY, !chips);
+    setChips(!chips);
+  }
   function toggleSceneArt() {
     writeFlag(browserStore, SCENE_ART_KEY, !sceneArt);
     setSceneArt(!sceneArt);
@@ -97,6 +103,7 @@ export function PlayScreen({ view, playerId, send, readyLabel, error, errorSeq, 
         <span style={{ color: "var(--nw-cyan)", fontWeight: 700, letterSpacing: ".22em" }}>NIGHTWIRE</span>
         <span className="flex-1" />
         <button type="button" className="nw-chip" aria-pressed={sceneArt} onClick={toggleSceneArt}>Scene art {sceneArt ? "on" : "off"}</button>
+        <button type="button" className="nw-chip" aria-pressed={chips} onClick={toggleChips}>Suggestions {chips ? "on" : "off"}</button>
         {!narrow && (
           <button type="button" className="nw-chip" aria-pressed={phoneOpen} aria-label={unread ? `Phone, ${unread} unread` : "Phone"} onClick={() => setPhoneOpen(!phoneOpen)}>
             Phone{unread > 0 && <b className="nw-badge" aria-hidden="true">{unread}</b>}
@@ -115,7 +122,7 @@ export function PlayScreen({ view, playerId, send, readyLabel, error, errorSeq, 
       {narrow ? (
         <>
           <div className="min-h-0 flex-1">
-            {tab === "feed" && <FeedPanel view={view} playerId={playerId} send={send} error={error} errorSeq={errorSeq} sceneArt={sceneArt} onOpenGallery={setGalleryIndex} compact />}
+            {tab === "feed" && <FeedPanel view={view} playerId={playerId} send={send} error={error} errorSeq={errorSeq} sceneArt={sceneArt} chips={chips} onOpenGallery={setGalleryIndex} compact />}
             {tab === "status" && <StatusPanel view={view} playerId={playerId} send={send} />}
             {tab === "world" && <WorldPanel view={view} playerId={playerId} />}
             {tab === "phone" && <PhonePanel view={view} send={send} />}
@@ -137,7 +144,7 @@ export function PlayScreen({ view, playerId, send, readyLabel, error, errorSeq, 
         </Panel>
         <Separator className="nw-separator" aria-label="Resize status panel" />
         <Panel id="feed" defaultSize="58" minSize="40">
-          <FeedPanel view={view} playerId={playerId} send={send} error={error} errorSeq={errorSeq} sceneArt={sceneArt} onOpenGallery={setGalleryIndex} />
+          <FeedPanel view={view} playerId={playerId} send={send} error={error} errorSeq={errorSeq} sceneArt={sceneArt} chips={chips} onOpenGallery={setGalleryIndex} />
         </Panel>
         <Separator className="nw-separator" aria-label="Resize world panel" />
         <Panel id="world" panelRef={worldRef} defaultSize={RAIL_PX} minSize="14" collapsible collapsedSize={RAIL_PX} onResize={watchCollapsed(setWorldCollapsed)}>

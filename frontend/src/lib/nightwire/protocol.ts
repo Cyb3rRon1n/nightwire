@@ -75,6 +75,15 @@ export interface PhoneMessage {
   turn: number
 }
 
+export interface Suggestion {
+  id: string
+  text: string
+  skill: string | null
+  attribute: string | null
+  difficulty: PendingRoll['difficulty'] | null
+  chance: number | null
+}
+
 export interface StateView {
   type: 'state'
   session_id: string
@@ -92,6 +101,7 @@ export interface StateView {
   phone: { contacts: PhoneContact[]; threads: Record<string, PhoneMessage[]>; typing: string[] }
   pending_rolls: Record<string, PendingRoll>
   pending_chrome_offers: Record<string, string>
+  suggestions?: Suggestion[]
 }
 
 export interface ErrorMessage {
@@ -127,6 +137,7 @@ export interface JoinMessage {
 export interface ActionMessage {
   type: 'action'
   text: string
+  chip?: string
 }
 
 export interface RollInitiativeMessage {

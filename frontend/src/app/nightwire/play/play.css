@@ -116,3 +116,12 @@
 .nw-voice button { width: 30px; height: 30px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--nw-cyan) 55%, transparent);
   background: color-mix(in srgb, var(--nw-ink) 70%, transparent); color: var(--nw-cyan); font-size: 11px; cursor: pointer; }
 .nw-voice button:focus-visible { outline: 2px solid var(--nw-cyan); outline-offset: 2px; }
+
+.nw-suggestions { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.nw-suggestion { flex-shrink: 0; max-width: min(320px, 80vw); display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 6px 10px; border: 1px solid var(--nw-frame-cool); background: rgba(11, 13, 17, .85); color: #e6e8eb; font: 500 14px var(--font-rajdhani), "Rajdhani", sans-serif; text-align: left; cursor: pointer; }
+.nw-suggestion:hover, .nw-suggestion:focus-visible { border-color: var(--nw-cyan); }
+.nw-suggestion-tag { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: #9aa3ad; }
+.nw-suggestion-tag[data-difficulty="easy"] { color: var(--nw-cyan); }
+.nw-suggestion-tag[data-difficulty="moderate"] { color: var(--nw-gold); }
+.nw-suggestion-tag[data-difficulty="hard"] { color: var(--nw-red); }
+.nw-suggestion-tag[data-difficulty="extreme"] { color: #ff8a80; }
