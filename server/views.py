@@ -68,4 +68,6 @@ def build_view(session: Session, viewer_id: str) -> dict:
         },
         "characters": characters,
         "phone": _phone_view(session, viewer_id),
+        "suggestions": [{k: chip.get(k) for k in ("id", "text", "skill", "attribute", "difficulty", "chance")}
+                        for chip in session.suggestions.get(viewer_id, [])],
     }

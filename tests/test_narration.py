@@ -10,7 +10,7 @@ from narrator.anthropic_backend import AnthropicNarratorBackend
 from narrator.client import NarratorClient
 from narrator.openai_compat_backend import OpenAICompatNarratorBackend
 from narrator.tts_backend import VoiceOption
-from server.narration import handle_action
+from server.narration import handle_action, refresh_suggestions
 
 
 def _fake_client(narration: str, tool: str | None = None, tool_args: dict | None = None, image_prompt: str | None = None, num_ctx: int = 8192, summarize_fn=None) -> NarratorClient:
@@ -2040,3 +2040,35 @@ async def test_a_typed_action_clears_chips_and_is_logged_as_typed(tmp_path):
     await _call(session, client, "p1", {"text": "I wait."}, tmp_path, tts_backend=FakeTTSBackend())
     assert session.suggestions == {}
     assert "[action source: typed]" in session.log
+
+
+async def test_refresh_makes_checked_chips_from_the_story():
+    session = _session_with_character()
+    session.log = ["p1: I sit down.", "[audio: x.wav]", "Mama Sato pours tea."]
+    seen = []
+    client = _scripted_client([_say("unused")], judge_answers=[{"chips": [
+        {"text": "I ask about the collector.", "skill": "none", "attribute": "none", "stakes": "none"},
+        {"text": "I talk her into a discount.", "skill": "persuasion", "attribute": "presence", "stakes": "low"},
+    ]}])
+    await refresh_suggestions(session, client, "p1")
+    chips = session.suggestions["p1"]
+    assert [c["text"] for c in chips] == ["I ask about the collector.", "I talk her into a discount."]
+    assert chips[1]["difficulty"] == "easy"
+
+
+async def test_refresh_makes_no_chips_while_a_roll_waits():
+    session = _session_with_character()
+    session.log = ["Mama Sato pours tea."]
+    session.pending_rolls["p1"] = {"skill": "persuasion"}
+    session.suggestions["p1"] = [{"id": "old", "text": "I wait."}]
+    await refresh_suggestions(session, _scripted_client([_say("unused")], judge_answers=[]), "p1")
+    assert "p1" not in session.suggestions
+
+
+async def test_a_failed_suggest_logs_and_shows_no_chips():
+    session = _session_with_character()
+    session.log = ["Mama Sato pours tea."]
+    client = _scripted_client([_say("unused")], judge_answers=[])  # IndexError inside the judge
+    await refresh_suggestions(session, client, "p1")
+    assert "p1" not in session.suggestions
+    assert any(line.startswith("[chips error:") for line in session.log)

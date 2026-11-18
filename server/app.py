@@ -11,7 +11,7 @@ from narrator.place_art import ART_DIR
 from narrator.tts_backend import TTSBackend
 from server.connection_manager import ConnectionManager
 from server.dispatch import handle_message
-from server.narration import handle_action, narrate_roll, open_scene, resolve_roll
+from server.narration import handle_action, narrate_roll, open_scene, refresh_suggestions, resolve_roll
 from server.phone_turns import deliver_due, handle_text
 from server.portrait import handle_approve_character
 from server.views import build_view
@@ -112,6 +112,12 @@ def create_app(
                         continue
                     store.save(session)
                     await manager.broadcast(session_id, session)
+                    if message.get("type") in ("action", "roll", "join"):
+                        # After the story went out, so chips never delay it.
+                        await refresh_suggestions(session, narrator_client, player_id)
+                        if player_id in session.suggestions:
+                            store.save(session)
+                            await manager.broadcast(session_id, session)
         except WebSocketDisconnect:
             pass
         finally:

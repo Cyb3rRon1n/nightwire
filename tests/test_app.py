@@ -434,3 +434,17 @@ def test_a_new_player_sees_their_sheet_then_the_opening_scene(tmp_path):
         then = ws.receive_json()
     assert "Rain on the noodle stall." in then["log"] and then["location"] == "Ikebe Low"
     assert then["active_objectives"] == ["Pick up Jun's case from Hachi at Kuroshio Docks"]
+
+
+def test_each_player_sees_only_their_own_chips(tmp_path):
+    from server.views import build_view
+    from engine.session import Session
+    from engine.character import CharacterSheet
+    session = Session(session_id="s1", suggestions={"p1": [
+        {"id": "a", "text": "I wait.", "skill": None, "attribute": None, "stakes": None, "difficulty": None,
+         "chance": None}]})
+    for pid in ("p1", "p2"):
+        session.characters[pid] = CharacterSheet(player_id=pid, name=pid, role="solo", lifepath="streetkid")
+    assert build_view(session, "p1")["suggestions"] == [
+        {"id": "a", "text": "I wait.", "skill": None, "attribute": None, "difficulty": None, "chance": None}]
+    assert build_view(session, "p2")["suggestions"] == []

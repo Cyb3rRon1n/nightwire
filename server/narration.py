@@ -19,6 +19,7 @@ from narrator.image_prompt import resolve
 from narrator.movement import destination
 from narrator.place_art import district_art, location_art
 from narrator.referee import run_referee
+from narrator.suggestions import check_chips, suggest
 from narrator.tools import RequestRoll, execute_tool, roll_check
 from narrator.tts_backend import TTSBackend
 from narrator.voice_assignment import assign_voice
@@ -817,3 +818,23 @@ async def handle_roll(
 ) -> None:
     rolled = resolve_roll(session, player_id, overclock)
     await narrate_roll(session, narrator_client, store, image_backend, tts_backend, player_id, rolled)
+
+
+_CHIP_STORY_LINES = 6
+
+
+async def refresh_suggestions(session: Session, narrator_client: NarratorClient, player_id: str) -> None:
+    """The chips for a player's next move (spec 2026-11-18). Never costs a turn: any failure means no chips."""
+    session.suggestions.pop(player_id, None)
+    character = session.characters.get(player_id)
+    story = [line for line in session.log if not line.startswith("[")][-_CHIP_STORY_LINES:]
+    if character is None or player_id in session.pending_rolls or not story:
+        return
+    try:
+        raw = await suggest(narrator_client, story, session.location, character)
+        chips = check_chips(raw, character, session.recent_stakes)
+    except Exception as e:  # timeout, bad JSON, a backend down: the story already went out
+        session.log.append(f"[chips error: {e}]")
+        return
+    if chips:
+        session.suggestions[player_id] = chips
