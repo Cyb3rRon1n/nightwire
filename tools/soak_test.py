@@ -25,7 +25,7 @@ from narrator.image_backend import create_image_backend
 from narrator.place_art import location_art
 from narrator.tts_backend import KokoroBackend
 from server.__main__ import build_system_prompt
-from server.narration import handle_action, narrate_roll, resolve_roll
+from server.narration import handle_action, narrate_roll, refresh_suggestions, resolve_roll
 from server.phone_turns import deliver_due, handle_text
 
 ACTIONS = [
@@ -76,7 +76,7 @@ def _new_lines(log: list[str], start: int) -> list[str]:
     return [line for line in log[start:] if not line.startswith(("[audio", "[image error", "[image prompt"))]
 
 
-async def main(turns: int) -> Path:
+async def main(turns: int, chips: bool = False) -> Path:
     client = create_narrator_backend()
     client.system_prompt = build_system_prompt()
     os.environ.setdefault("FLUX_WORKER_URL", "http://127.0.0.1:9")  # images off
@@ -98,12 +98,20 @@ async def main(turns: int) -> Path:
             start, before, t = len(session.log), session.location, time.time()
             texting = isinstance(action, tuple)
             row = {"turn": n, "action": action[2] if texting else action, "location_before": before}
+            pick = None  # set only on a chip turn; never read otherwise
+            offered = session.suggestions.get("rin", []) if chips else []
+            if offered and not texting and n % 3 == 0:
+                pick = offered[(n // 3) % len(offered)]
+                action, row["chip"] = pick["text"], {k: pick[k] for k in ("text", "skill", "difficulty", "chance")}
+                row["action"] = action
             try:
                 if texting:
                     row["text_to"] = action[1]
                     await handle_text(session, client, "rin", {"type": "text", "to": action[1], "text": action[2]})
                 else:
-                    await handle_action(session, client, store, images, tts, "rin", {"type": "action", "text": action})
+                    await handle_action(session, client, store, images, tts, "rin",
+                                        {"type": "action", "text": action,
+                                         **({"chip": pick["id"]} if pick else {})})
                     await deliver_due(session, client, "rin")
                 pending = None if texting else session.pending_rolls.get("rin")
                 if pending:
@@ -112,8 +120,11 @@ async def main(turns: int) -> Path:
                     row["outcome"] = rolled["outcome"]
                     await narrate_roll(session, client, store, images, tts, "rin", rolled)
                     await deliver_due(session, client, "rin")
+                if chips:
+                    await refresh_suggestions(session, client, "rin")
             except Exception as e:  # record and carry on: the point is to see everything that breaks
                 row["error"] = f"{type(e).__name__}: {e}"
+            row["offered"] = [c["text"] for c in session.suggestions.get("rin", [])]
             replies = _phone_messages(session, "rin")[seen_replies:]
             seen_replies += len(replies)
             lines = _new_lines(session.log, start)
@@ -124,7 +135,7 @@ async def main(turns: int) -> Path:
                        repeated_opening=bool(opening) and opening in openings,
                        voice_filtered=sum(line.startswith("[voice filtered") for line in lines),
                        unread=unread(session, "rin"), replies=[{"from": a, "text": b} for a, b in replies],
-                       notes=[line[:120] for line in lines if line.startswith(("[tool error", "[referee", "[redo", "[ooc"))])
+                       notes=[line[:120] for line in lines if line.startswith(("[tool error", "[referee", "[redo", "[ooc", "[chips error"))])
             openings.append(opening)
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
             f.flush()
@@ -140,7 +151,8 @@ async def main(turns: int) -> Path:
                    "voice_filtered": sum(r["voice_filtered"] for r in rows),
                    "turns_without_art": sum(not r["art"] for r in rows),
                    "texts_sent": len(texts), "replies_delivered": len(replies),
-                   "texts_in_session_log": sum(w in line for w in words for line in session.log)}  # must be 0
+                   "texts_in_session_log": sum(w in line for w in words for line in session.log),  # must be 0
+                   "chip_turns": sum("chip" in r for r in rows)}
         f.write(json.dumps({"summary": summary}) + "\n")
     print(json.dumps(summary))
     return out
@@ -149,4 +161,6 @@ async def main(turns: int) -> Path:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--turns", type=int, default=len(ACTIONS))
-    print(asyncio.run(main(parser.parse_args().turns)))
+    parser.add_argument("--chips", action="store_true", help="click a suggested chip every third turn and make chips after each turn")
+    args = parser.parse_args()
+    print(asyncio.run(main(args.turns, args.chips)))
