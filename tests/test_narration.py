@@ -132,9 +132,9 @@ async def test_handle_action_appends_the_players_action_and_the_narration_to_the
 
     await _call(session, client, "p1", {"text": "I look around."}, tmp_path, tts_backend=tts_backend)
 
-    assert session.log[0] == "p1: I look around."
-    assert session.log[1] == "The alley is quiet."
-    assert session.log[2].startswith("[audio: ")
+    assert session.log[1] == "p1: I look around."
+    assert session.log[2] == "The alley is quiet."
+    assert session.log[3].startswith("[audio: ")
 
 
 @pytest.mark.asyncio
@@ -235,9 +235,9 @@ async def test_handle_action_with_no_tool_call_only_logs_narration(tmp_path):
 
     await _call(session, client, "p1", {"text": "I look around."}, tmp_path, tts_backend=tts_backend)
 
-    assert session.log[0] == "p1: I look around."
-    assert session.log[1] == "The street is empty."
-    assert session.log[2].startswith("[audio: ")
+    assert session.log[1] == "p1: I look around."
+    assert session.log[2] == "The street is empty."
+    assert session.log[3].startswith("[audio: ")
 
 
 @pytest.mark.asyncio
@@ -442,11 +442,11 @@ async def test_handle_action_logs_one_line_per_narration_segment(tmp_path):
 
     await _call(session, client, "p1", {"text": "I check the alley."}, tmp_path, tts_backend=FakeTTSBackend())
 
-    assert session.log[0] == "p1: I check the alley."
-    assert session.log[1] == "The alley reeks of ozone."
-    assert session.log[2].startswith("[audio: ")
-    assert session.log[3] == "Jax: You're late, choom."
-    assert session.log[4].startswith("[audio: ")
+    assert session.log[1] == "p1: I check the alley."
+    assert session.log[2] == "The alley reeks of ozone."
+    assert session.log[3].startswith("[audio: ")
+    assert session.log[4] == "Jax: You're late, choom."
+    assert session.log[5].startswith("[audio: ")
 
 
 @pytest.mark.asyncio
@@ -763,8 +763,8 @@ async def test_handle_action_works_with_the_anthropic_backend(tmp_path):
 
     store = await _call(session, backend, "p1", {"text": "I look around."}, tmp_path, tts_backend=FakeTTSBackend())
 
-    assert session.log[0] == "p1: I look around."
-    assert session.log[1] == "The alley is quiet."
+    assert session.log[1] == "p1: I look around."
+    assert session.log[2] == "The alley is quiet."
     assert store is not None
 
 
@@ -780,8 +780,8 @@ async def test_handle_action_works_with_the_openai_compat_backend(tmp_path):
 
     await _call(session, backend, "p1", {"text": "I look around."}, tmp_path, tts_backend=FakeTTSBackend())
 
-    assert session.log[0] == "p1: I look around."
-    assert session.log[1] == "The alley is quiet."
+    assert session.log[1] == "p1: I look around."
+    assert session.log[2] == "The alley is quiet."
 
 
 def test_select_npc_memory_for_context_keeps_everything_under_budget():
@@ -1469,7 +1469,7 @@ async def test_redo_log_order_is_actor_then_redo_then_narration(tmp_path):
     climb = {"player_id": "p1", "attribute": "body", "skill": "athletics", "stakes": "normal", "reason": "climb"}
     client = _scripted_client([_say("You climb.", "request_roll", climb), _say("You can't.")])
     await _call(session, client, "p1", {"text": "I climb."}, tmp_path, tts_backend=FakeTTSBackend())
-    assert session.log[:3] == ["p1: I climb.", "[redo: Rook has no body]", "You can't."]
+    assert session.log[1:4] == ["p1: I climb.", "[redo: Rook has no body]", "You can't."]
 
 
 async def test_unknown_player_id_tool_error_does_not_redo(tmp_path):
@@ -1970,3 +1970,73 @@ async def test_turns_without_a_roll_skip_the_outcome_check(tmp_path):
     client = _scripted_client([_say("Mama Sato pours your tea.")], judge_answers=[_SAFE, {"human_moment_quote": "", "human_moment": "none"}], seen=seen)
     await _call(session, client, "p1", {"text": "I ask for tea."}, tmp_path, tts_backend=FakeTTSBackend())
     assert "Mama Sato pours your tea." in session.log
+
+
+async def _no_assess(*args, **kwargs):
+    raise AssertionError("a chip turn must not run the risk check")
+
+
+def _chip(**kw):
+    base = {"id": "c1", "text": "I talk the doorman down.", "skill": "persuasion", "attribute": "presence",
+            "stakes": "high", "difficulty": "hard", "chance": 10}
+    return base | kw
+
+
+async def test_a_tagged_chip_holds_exactly_its_roll(tmp_path, monkeypatch):
+    monkeypatch.setattr("server.narration.assess", _no_assess)  # assess swallows errors itself, so patch it out
+    session = _session_with_character()
+    session.suggestions["p1"] = [_chip()]
+    other = {"player_id": "p1", "attribute": "body", "skill": "athletics", "stakes": "low", "reason": "shove"}
+    # No judge list: the outcome check gets the default "none" answer, so nothing is cut.
+    client = _scripted_client([_say("The doorman folds his arms.", "request_roll", other)])
+    await _call(session, client, "p1", {"text": "anything", "chip": "c1"}, tmp_path, tts_backend=FakeTTSBackend())
+    pending = session.pending_rolls["p1"]
+    assert (pending["skill"], pending["attribute"], pending["difficulty"]) == ("persuasion", "presence", "hard")
+    assert pending["reason"] == "I talk the doorman down."
+    assert "p1: I talk the doorman down." in session.log
+    assert "[action source: chip]" in session.log
+    assert session.suggestions == {}
+
+
+async def test_a_tagged_chip_rolls_even_when_the_narrator_asks_none(tmp_path):
+    session = _session_with_character()
+    session.suggestions["p1"] = [_chip()]
+    client = _scripted_client([_say("The doorman looks you over.")])
+    await _call(session, client, "p1", {"text": "x", "chip": "c1"}, tmp_path, tts_backend=FakeTTSBackend())
+    assert session.pending_rolls["p1"]["skill"] == "persuasion"
+
+
+async def test_a_tagged_chip_keeps_its_capped_difficulty(tmp_path):
+    session = _session_with_character()
+    session.recent_stakes = ["high", "high"]  # difficulty_for would cap a fresh "high" to normal
+    session.suggestions["p1"] = [_chip()]
+    client = _scripted_client([_say("The doorman looks you over.")])
+    await _call(session, client, "p1", {"text": "x", "chip": "c1"}, tmp_path, tts_backend=FakeTTSBackend())
+    assert session.pending_rolls["p1"]["difficulty"] == "hard"
+
+
+async def test_a_plain_chip_never_rolls(tmp_path, monkeypatch):
+    monkeypatch.setattr("server.narration.assess", _no_assess)
+    session = _session_with_character()
+    session.suggestions["p1"] = [_chip(id="c2", text="I look around.", skill=None, attribute=None, stakes=None,
+                                       difficulty=None, chance=None)]
+    roll = {"player_id": "p1", "attribute": "cool", "skill": "perception", "stakes": "normal", "reason": "look"}
+    client = _scripted_client([_say("Neon hums.", "request_roll", roll)])
+    await _call(session, client, "p1", {"text": "x", "chip": "c2"}, tmp_path, tts_backend=FakeTTSBackend())
+    assert "p1" not in session.pending_rolls
+
+
+async def test_a_stale_chip_is_refused(tmp_path):
+    session = _session_with_character()
+    client = _scripted_client([_say("unused")])
+    with pytest.raises(ValueError, match="those options have expired"):
+        await _call(session, client, "p1", {"text": "x", "chip": "gone"}, tmp_path, tts_backend=FakeTTSBackend())
+
+
+async def test_a_typed_action_clears_chips_and_is_logged_as_typed(tmp_path):
+    session = _session_with_character()
+    session.suggestions["p1"] = [_chip()]
+    client = _scripted_client([_say("The alley is quiet.")])
+    await _call(session, client, "p1", {"text": "I wait."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert session.suggestions == {}
+    assert "[action source: typed]" in session.log

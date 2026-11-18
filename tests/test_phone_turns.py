@@ -126,3 +126,10 @@ async def test_small_talk_with_a_fixer_keeps_the_usual_delay():
     s = _session("fixer", 0)
     await handle_text(s, Judge(), "p1", {"to": "Mika", "text": "how are you"})
     assert _texts(s)[-1]["deliver_at"] > s.phone["p1"]["turn"] + 1
+
+
+async def test_a_text_clears_the_players_chips():
+    s = _session("partner", 5)
+    s.suggestions["p1"] = [{"id": "c1", "text": "I wait."}]
+    await handle_text(s, Judge(), "p1", {"to": "Mika", "text": "hi"})
+    assert "p1" not in s.suggestions

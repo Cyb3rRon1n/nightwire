@@ -45,6 +45,7 @@ async def handle_text(session, client, player_id, message) -> None:
     if not text or len(text) > MAX_TEXT:
         raise ValueError(f"text must be 1-{MAX_TEXT} characters")
     name = contact["name"]
+    session.suggestions.pop(player_id, None)
     phone.post(session, player_id, name, "me", text, p["turn"])
     contact["knows"] = (contact["knows"] + [text])[-20:]
     session.pending_world_events.append(f"{session.characters[player_id].name} quietly texts someone on their phone.")

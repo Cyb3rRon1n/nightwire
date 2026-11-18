@@ -25,7 +25,7 @@ from narrator.voice_assignment import assign_voice
 from narrator.world import kuroshio, locals_line, select_cards
 from ruleset.attributes import Attribute
 from ruleset.cyberware import CHROME, humanity_tier, selfhood_tier
-from ruleset.difficulty import difficulty_for
+from ruleset.difficulty import STAKES, difficulty_for
 from ruleset.skills import SKILLS, roll_attribute
 
 
@@ -350,7 +350,7 @@ async def _maybe_compact(session: Session, narrator_client: NarratorClient) -> N
         session.log.append(f"[summary error: {e}]")
 
 
-def _hold_roll(session: Session, player_id: str, tool_args: dict) -> str | None:
+def _hold_roll(session: Session, player_id: str, tool_args: dict, capped: bool = False) -> str | None:
     # Two-step rolls (Phase 16): don't roll yet - the player rolls next, then
     # the narrator resolves knowing the result. Server-authoritative actor,
     # same as before: never the model's own player_id.
@@ -370,7 +370,9 @@ def _hold_roll(session: Session, player_id: str, tool_args: dict) -> str | None:
         return message
     pending = request.model_dump()
     pending["attribute"] = roll_attribute(request.skill, request.attribute).value  # no Stealth (Presence)
-    effective, difficulty = difficulty_for(request.stakes, session.recent_stakes)
+    # A chip's stakes were capped when the chip was made (narrator/suggestions.py): its promise stands.
+    effective, difficulty = (request.stakes, STAKES[request.stakes]) if capped else difficulty_for(
+        request.stakes, session.recent_stakes)
     session.recent_stakes = (session.recent_stakes + [effective])[-6:]
     pending["difficulty"] = difficulty.name.lower()
     pending["dc"] = difficulty.value
@@ -389,6 +391,12 @@ async def handle_action(
     player_id: str,
     message: dict,
 ) -> None:
+    chip = None
+    if message.get("chip") is not None:
+        chip = next((c for c in session.suggestions.get(player_id, []) if c["id"] == message["chip"]), None)
+        if chip is None:
+            raise ValueError("those options have expired")
+        message = {**message, "text": chip["text"]}
     action_text = message.get("text")
     if not isinstance(action_text, str) or not action_text.strip():
         raise ValueError("missing 'text' in action message")
@@ -403,6 +411,8 @@ async def handle_action(
         return
     if player_id in session.pending_rolls:
         raise ValueError("roll first")
+    session.suggestions.pop(player_id, None)
+    session.log.append(f"[action source: {'chip' if chip else 'typed'}]")
     if character is not None:
         for event in tick_debt(character):
             session.pending_world_events.append(event)
@@ -412,13 +422,18 @@ async def handle_action(
     moved_to = destination(action_text)
     if moved_to:
         session.location = moved_to
-    risky, roll_skill = await assess(narrator_client, action_text) if character is not None else (None, None)
-    must_roll = risky is True
+    if chip is not None and chip["skill"]:
+        must_roll, no_roll, roll_skill = True, False, None
+    elif chip is not None:
+        must_roll, no_roll, roll_skill = False, True, None
+    else:
+        risky, roll_skill = await assess(narrator_client, action_text) if character is not None else (None, None)
+        must_roll, no_roll = risky is True, risky is False
     await _run_turn(
         session, narrator_client, store, image_backend, tts_backend, player_id,
         prompt_text=f"{action_text}\n\n{RISK_INSTRUCTION}" if must_roll else action_text,
         actor_line=f"{player_id}: {action_text}", allow_roll=True, referee_action=action_text, must_roll=must_roll,
-        no_roll=risky is False, roll_skill=roll_skill,
+        no_roll=no_roll, roll_skill=roll_skill, chip_roll=chip if chip is not None and chip["skill"] else None,
     )
 
 
@@ -535,6 +550,7 @@ async def _run_turn(
     must_roll: bool = False,
     no_roll: bool = False,
     roll_skill: str | None = None,
+    chip_roll: dict | None = None,
 ) -> None:
     # Events are shown once, but only dropped after the narrator actually
     # responded; events queued during the turn survive to the next one.
@@ -543,7 +559,8 @@ async def _run_turn(
     response = await narrator_client.respond(messages)
     del session.pending_world_events[:len(shown_events)]
 
-    refusal = _in_fiction_refusal(session, response, player_id, allow_roll)
+    # The narrator's roll doesn't matter on a chip turn, so neither does its refusal.
+    refusal = None if chip_roll else _in_fiction_refusal(session, response, player_id, allow_roll)
     if refusal is None and must_roll and response.tool != "request_roll":
         # Risky (narrator/risk.py) but resolved without a roll: redo once, nothing logged yet. A second miss stands.
         session.pending_world_events[:0] = shown_events
@@ -580,7 +597,8 @@ async def _run_turn(
             _drop_opening(response)
 
     cut = None
-    if allow_roll and refusal is None and response.tool == "request_roll":
+    rolling = chip_roll is not None  # the outcome check guards a chip's set-up even when the narrator asked no roll
+    if allow_roll and refusal is None and (response.tool == "request_roll" or rolling):
         # The set-up must stop before the dice decide (narrator/risk.py): redo once, then cut at the outcome.
         action = referee_action or prompt_text
         quote = await leaked_outcome(narrator_client, action, _prose(response))
@@ -589,7 +607,7 @@ async def _run_turn(
             redo = f"{prompt_text}\n\n{outcome_redo(quote)}"
             retry = await narrator_client.respond(_build_messages(session, redo, narrator_client.num_ctx))
             del session.pending_world_events[:len(shown_events)]
-            if retry.tool == "request_roll":   # a redo that drops the roll keeps the first set-up
+            if retry.tool == "request_roll" or rolling:   # a redo that drops the roll keeps the first set-up
                 response = retry
             quote = await leaked_outcome(narrator_client, action, _prose(response))
             if quote and cut_at_outcome(response, quote):
@@ -606,7 +624,14 @@ async def _run_turn(
     if cut is not None:
         session.log.append(f'[set-up cut: "{cut}"]')
     narration_text = await _log_narration(session, response, store, tts_backend, player_id)
-    _apply_tool(session, response, player_id, allow_roll, roll_skill)  # a refusal on the redo is only logged
+    if chip_roll is not None:
+        if response.tool == "request_roll":
+            response.tool_call = _NoTool()
+        _apply_tool(session, response, player_id, allow_roll)
+        _hold_roll(session, player_id, {"skill": chip_roll["skill"], "attribute": chip_roll["attribute"],
+                                        "stakes": chip_roll["stakes"], "reason": chip_roll["text"]}, capped=True)
+    else:
+        _apply_tool(session, response, player_id, allow_roll, roll_skill)  # a refusal on the redo is only logged
 
     # Referee (Phase 18): not on the setup turn that opened a roll - the outcome
     # isn't known yet - nor when every segment was voice-filtered.
