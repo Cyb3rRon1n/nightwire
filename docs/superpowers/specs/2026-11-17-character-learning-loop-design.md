@@ -80,11 +80,28 @@ Prerequisite tests from the Game Box Build page come first: the ProMax pose test
 
 ## Open questions (verify before planning)
 
-- **NoobAI-XL licence:** does it allow commercial use of outputs and running it in a hosted game?
-- **Qwen-Image-Edit-2511 memory:** real VRAM and speed on the 12 GB 4070 (GGUF Q4 vs Nunchaku INT4). The research has no benchmark yet.
-- **Trainer:** OneTrainer vs ai-toolkit for NoobAI v-pred LoRAs, and the time per retrain on the 4070. One source claims about 30 minutes, but it's weak.
-- **Multi-angle LoRA:** the licence of the specific LoRA.
-- **Identity embedder:** which model best separates anime characters. Settle this by test.
+Research pass 2026-11-18 (primary pages opened unless noted; not legal advice):
+
+- **NoobAI-XL licence: a blocker for anything public or paid.**
+  - The licence is `fair-ai-public-license-1.0-sd` (FAIPL-1.0-SD), inherited from Illustrious-XL v0 (https://huggingface.co/Laxhar/noobai-XL-Vpred-1.0).
+  - The licence text (https://freedevproject.org/faipl-1.0-sd/) says outputs aren't covered. Training or merging counts as modifying the model, and serving a modified model over a network means offering its weights under the same licence.
+  - The model card goes further: it bans "any form of commercialization", including "model-generated products", and requires derivative LoRAs to be open-sourced.
+  - **Working rule:** free hobby play with published character LoRAs is OK. Treat any paid or monetised use as not allowed unless the Laxhar team confirms otherwise.
+  - Players' character LoRAs (loop 2) would have to be published, and that conflicts with the photo-likeness rules for `from_photo` characters. Owner decision needed before loop 2.
+  - Not checked: SDXL's CreativeML Open RAIL++-M use restrictions, and the Civitai page.
+- **Qwen-Image-Edit-2511 memory:** real VRAM and speed on the 12 GB 4070 (GGUF Q4 vs Nunchaku INT4). Still open; measure it on the 4U box.
+- **Trainer:**
+  - Use kohya sd-scripts (Apache-2.0; flags `--v_parameterization`, plus maybe `--zero_terminal_snr`; v-pred LoRA reportedly only on its dev branch, unverified) or OneTrainer (AGPL-3.0, has zero-terminal-SNR rescaling).
+  - Skip ai-toolkit (MIT) until its v-pred support is confirmed.
+  - Community advice conflicts on zero terminal SNR for LoRAs: test with and without it.
+  - Time per retrain: one unopened guide claims 20–30 min on a 4070 SUPER. That's weak evidence; measure it.
+- **Multi-angle LoRA:** use the 2511-native https://huggingface.co/fal/Qwen-Image-Edit-2511-Multiple-Angles-LoRA (Apache-2.0, 96 camera positions, prompt `<sks> front view eye-level shot medium shot`). dx8152's LoRA only claims 2509.
+  - Qwen-Image-Edit-2511 and unsloth's GGUF are both Apache-2.0.
+  - Nunchaku code is Apache-2.0; the licence of its INT4 2511 weights is unverified.
+- **Identity embedder:** start with CCIP (deepghs, https://huggingface.co/deepghs/ccip; `ccip-caformer_b36-24` has F1 0.941 at a same-character threshold of 0.213).
+  - It only scores single-character images, so group shots need per-character crops.
+  - The weights are OpenRAIL (use-restricted); the `imgutils` code is MIT.
+  - CLIP and DINOv2 stay as fallback baselines. No published anime comparison was found, so settle it by test on our own keep/reject data.
 
 ## Research basis
 
