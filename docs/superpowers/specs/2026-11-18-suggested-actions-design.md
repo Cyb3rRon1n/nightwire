@@ -33,7 +33,7 @@ Rejected: chips inside the narrator reply (bigger schema for an 8B model, risks 
 5. **Click.** The browser sends `{type: "action", text, chip: id}`. The server looks the id up; the browser never sends tag fields.
    - **Tagged chip:** the risk check (`assess`) is skipped. The turn runs as a must-roll turn, but the engine sets the pending roll from the chip's skill, attribute and difficulty, whatever the narrator's `request_roll` said, or if it asked none. The outcome check (`narrator/risk.py`) still guards the set-up.
    - **Plain chip:** a no-roll turn (the plain tag is a promise too); a narrator `request_roll` is dropped, as a `no_roll` turn already does.
-6. **Clearing.** Chips are cleared on any action, text, roll or reconnect. A stale or unknown id is refused with "those options have expired" and the row disappears.
+6. **Clearing.** Chips are cleared on any action or text, and never made while a roll is pending. They are saved with the session, so a reload shows the same chips (changed while planning: less code, and a refresh shouldn't lose them). A stale or unknown id is refused with "those options have expired" and the row disappears.
 
 ## The suggest prompt
 
@@ -64,7 +64,7 @@ Log each action's source as `[action source: chip|typed]`. The soak summary repo
 - `roll_chance`: against hand-counted d10 faces, with and without chrome bonus and social penalty.
 - Chip checks: fake skill turns plain, empty chip dropped, "I look around." added when no plain chip came back, at most 3, the difficulty cap applied.
 - Chip turns with a scripted narrator: a tagged chip leaves exactly its roll pending even when the narrator asks for another skill or none; a plain chip gives no roll even when the narrator asks for one; `assess` is not called; a stale id is refused.
-- Clearing on roll, text and action; never sent while a roll is pending.
+- Clearing on text and action; never made while a roll is pending.
 - `tools/soak_test.py --chips`: click a chip every few turns.
 - Frontend: CI lint and build, plus one live browser check on the dev server.
 
