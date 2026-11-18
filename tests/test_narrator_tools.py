@@ -1,10 +1,11 @@
+import random
 from typing import get_args
 
 import pytest
 
 from engine.character import CharacterSheet
 from engine.session import Session
-from narrator.tools import RequestRoll, execute_tool
+from narrator.tools import RequestRoll, execute_tool, roll_chance, roll_check
 from ruleset.skills import SKILLS
 
 
@@ -370,3 +371,34 @@ def test_narrator_can_no_longer_set_referee_fields(field):
     value = True if field in ("repossess", "new_shell", "unthrottle") else 1
     with pytest.raises(ValidationError):
         ApplyCharacterUpdate(player_id="p1", **{field: value})
+
+
+def _rin(**kw):
+    return CharacterSheet(player_id="p1", name="Rin", role="netrunner", lifepath="streetkid", **kw)
+
+
+def test_roll_chance_counts_the_d10_faces():
+    # Mods 0 vs Moderate 9: only a 9 (complication) and a natural 10 pass.
+    assert roll_chance(_rin(), "presence", "persuasion", "moderate") == 20
+    # Easy 6 with mods 0: faces 6-10.
+    assert roll_chance(_rin(), "presence", "persuasion", "easy") == 50
+    # +2 vs Moderate: faces 7-10 (ruleset/difficulty.py's "Moderate 40%" at +2).
+    assert roll_chance(_rin(skills={"persuasion": 2}), "presence", "persuasion", "moderate") == 40
+    # Untrained Hard: natural 10 only.
+    assert roll_chance(_rin(), "body", "athletics", "hard") == 10
+
+
+def test_roll_chance_includes_the_social_penalty():
+    low = _rin(skills={"persuasion": 2})
+    low.humanity = 30  # -1 on social skills
+    assert roll_chance(low, "presence", "persuasion", "moderate") == 30
+
+
+def test_roll_chance_matches_roll_check_with_chrome(monkeypatch):
+    c = _rin(skills={"persuasion": 1}, chrome=["silk_tongue"], attributes={"presence": 13})
+    for difficulty in ("easy", "moderate", "hard", "extreme"):
+        passes = 0
+        for face in range(1, 11):
+            monkeypatch.setattr(random, "randint", lambda a, b, f=face: f)
+            passes += roll_check(c, "presence", "persuasion", difficulty)["outcome"] != "failure"
+        assert roll_chance(c, "presence", "persuasion", difficulty) == passes * 10

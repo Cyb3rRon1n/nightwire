@@ -10,7 +10,7 @@ from narrator.movement import known_place
 from ruleset.attributes import modifier
 from ruleset.cyberware import CHROME, SOCIAL_SKILLS, chrome_roll_bonus, overclock_tier_bonus, slot_capacity, social_penalty
 from ruleset.difficulty import STAKES, Difficulty
-from ruleset.resolution import resolve_roll
+from ruleset.resolution import Outcome, resolve_roll
 
 # Write-time sanity caps, not the primary context-budget mechanism (that's
 # server/narration.py's _select_npc_memory_for_context, a separate,
@@ -84,11 +84,17 @@ class RememberNPC(BaseModel):
     fact: str = Field(..., max_length=200)
 
 
-def roll_check(character, attribute: str, skill: str, difficulty: str, overclock_id: str | None = None) -> dict:
+def _roll_mods(character, attribute: str, skill: str) -> tuple[int, int]:
+    """Attribute and skill modifiers exactly as a roll uses them: chrome bonus and the social penalty included."""
     attribute_mod = modifier(character.attributes.get(attribute, 10))
     skill_mod = character.skills.get(skill, 0) + chrome_roll_bonus(active_chrome(character), skill)
     if skill in SOCIAL_SKILLS:
         skill_mod += social_penalty(character.humanity)
+    return attribute_mod, skill_mod
+
+
+def roll_check(character, attribute: str, skill: str, difficulty: str, overclock_id: str | None = None) -> dict:
+    attribute_mod, skill_mod = _roll_mods(character, attribute, skill)
     dc = Difficulty[difficulty.upper()].value
     die = random.randint(1, 10)
     result = {"attribute_mod": attribute_mod, "skill_mod": skill_mod, "dc": dc}
@@ -104,6 +110,13 @@ def roll_check(character, attribute: str, skill: str, difficulty: str, overclock
     result["die_result"] = die
     result["outcome"] = resolve_roll(die, attribute_mod, skill_mod + bonus, dc).value
     return result
+
+
+def roll_chance(character, attribute: str, skill: str, difficulty: str) -> int:
+    """Percent chance of not failing (a complication counts), from the same maths as roll_check, no overclock."""
+    attribute_mod, skill_mod = _roll_mods(character, attribute, skill)
+    dc = Difficulty[difficulty.upper()].value
+    return 10 * sum(resolve_roll(face, attribute_mod, skill_mod, dc) != Outcome.FAILURE for face in range(1, 11))
 
 
 def _execute_request_roll(session: Session, tool: RequestRoll) -> dict:
