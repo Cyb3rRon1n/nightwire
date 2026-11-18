@@ -28,7 +28,7 @@ Rejected: chips inside the narrator reply (bigger schema for an 8B model, risks 
    - `skill` and `attribute` must be real (`RequestRoll`'s literals). A bad tag turns the chip plain; an empty chip is dropped.
    - At most 3 chips; at least one plain. If none came back plain, keep the first 2 tagged chips and add the plain chip "I look around."
    - Stakes go through `ruleset.difficulty.difficulty_for` now, so the promised difficulty is final.
-   - Chance from new `ruleset` function `roll_chance(character, attribute, skill, difficulty) -> int` (percent). It shares the modifier code with `roll_check` (attribute modifier, skill, chrome bonus, social penalty), so the shown chance is the real one. Counted over the ten d10 faces: 10 always succeeds, 1 always fails, success includes a complication.
+   - Chance from new `ruleset` function `roll_chance(character, attribute, skill, difficulty) -> int` (percent), computed when the view is built so it always matches the current sheet. It shares the modifier code with `roll_check` (attribute modifier, skill, chrome bonus, social penalty), so the shown chance is the real one. Counted over the ten d10 faces: 10 always succeeds, 1 always fails, success includes a complication.
 4. **Storage.** `session.suggestions[player_id]` holds the checked chips. The player gets `{id, text, skill, attribute, difficulty, chance}` (no tag fields for a plain chip). Only that player sees their chips.
 5. **Click.** The browser sends `{type: "action", text, chip: id}`. The server looks the id up; the browser never sends tag fields.
    - **Tagged chip:** the risk check (`assess`) is skipped. The turn runs as a must-roll turn, but the engine sets the pending roll from the chip's skill, attribute and difficulty, whatever the narrator's `request_roll` said, or if it asked none. The outcome check (`narrator/risk.py`) still guards the set-up.
@@ -53,6 +53,7 @@ Rejected: chips inside the narrator reply (bigger schema for an 8B model, risks 
 ## Errors and cost
 
 - Any `suggest()` failure (timeout, bad JSON, every chip rejected) means no chips that turn, logged as `[chips error: ...]` (bracket lines are hidden from the feed). The turn itself is never affected.
+- The chip call runs inside the session lock, so the next action (anyone's) waits for it (about 3 s on GPU); it stays there because moving it out would race on session state.
 - About 60–80 output tokens per turn: roughly 3 s on the 4070, about 20 s on this box's CPU. Hosted backends already implement `judge()`.
 
 ## Measure

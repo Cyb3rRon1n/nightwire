@@ -7,6 +7,7 @@ from engine.phone import unread
 from engine.session import Session
 from engine.turns import current_turn, is_players_turn
 from narrator.place_art import location_art
+from narrator.tools import roll_chance
 
 CHARACTER_ART = Path(__file__).parent.parent / "narrator" / "worlds" / "character_art"
 _REDACTED_FIELDS = ("name", "role", "health", "max_health", "armor", "conditions")
@@ -68,6 +69,15 @@ def build_view(session: Session, viewer_id: str) -> dict:
         },
         "characters": characters,
         "phone": _phone_view(session, viewer_id),
-        "suggestions": [{k: chip.get(k) for k in ("id", "text", "skill", "attribute", "difficulty", "chance")}
-                        for chip in session.suggestions.get(viewer_id, [])],
+        "suggestions": _suggestions_view(session, viewer_id),
     }
+
+
+def _suggestions_view(session: Session, viewer_id: str) -> list[dict]:
+    character = session.characters.get(viewer_id)
+    if character is None:
+        return []
+    return [{**{k: chip.get(k) for k in ("id", "text", "skill", "attribute", "difficulty")},
+             # computed here so it always matches the current sheet
+             "chance": roll_chance(character, chip["attribute"], chip["skill"], chip["difficulty"]) if chip.get("skill") else None}
+            for chip in session.suggestions.get(viewer_id, [])]

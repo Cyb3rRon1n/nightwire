@@ -7,10 +7,12 @@ from engine.persistence import JSONFileSessionStore
 from engine.session import Session
 from narrator.client import NarratorClient
 from narrator.image_backend import ImageBackend
+from narrator.ooc import is_ooc
 from narrator.place_art import ART_DIR
 from narrator.tts_backend import TTSBackend
 from server.connection_manager import ConnectionManager
 from server.dispatch import handle_message
+from narrator.ooc import is_ooc
 from server.narration import handle_action, narrate_roll, open_scene, refresh_suggestions, resolve_roll
 from server.phone_turns import deliver_due, handle_text
 from server.portrait import handle_approve_character
@@ -112,7 +114,8 @@ def create_app(
                         continue
                     store.save(session)
                     await manager.broadcast(session_id, session)
-                    if message.get("type") in ("action", "roll", "join"):
+                    if message.get("type") in ("action", "roll", "join") and not (
+                            message.get("type") == "action" and "chip" not in message and is_ooc(str(message.get("text", "")))):
                         # After the story went out, so chips never delay it.
                         await refresh_suggestions(session, narrator_client, player_id)
                         if player_id in session.suggestions:

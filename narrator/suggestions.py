@@ -4,7 +4,7 @@ the others tagged with the roll they would cause. The model writes them; the eng
 import uuid
 from typing import get_args
 
-from narrator.tools import RequestRoll, roll_chance
+from narrator.tools import RequestRoll
 from ruleset.attributes import Attribute
 from ruleset.difficulty import STAKES, difficulty_for
 from ruleset.skills import SKILLS, roll_attribute
@@ -50,7 +50,7 @@ async def suggest(client, story: list[str], place: str | None, character) -> lis
 
 
 def _plain(text: str) -> dict:
-    return {"text": text, "skill": None, "attribute": None, "stakes": None, "difficulty": None, "chance": None}
+    return {"text": text, "skill": None, "attribute": None, "stakes": None, "difficulty": None}
 
 
 def check_chips(raw, character, recent_stakes: list[str]) -> list[dict]:
@@ -73,7 +73,7 @@ def check_chips(raw, character, recent_stakes: list[str]) -> list[dict]:
         effective, difficulty = difficulty_for(stakes, recent_stakes)
         level = difficulty.name.lower()
         tagged.append({"text": text, "skill": skill, "attribute": attribute, "stakes": effective,
-                       "difficulty": level, "chance": roll_chance(character, attribute, skill, level)})
+                       "difficulty": level})
     if not plain and not tagged:
         return []
     chips = [plain[0] if plain else _plain(LOOK_AROUND), *tagged[:2]]

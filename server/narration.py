@@ -632,6 +632,8 @@ async def _run_turn(
         _hold_roll(session, player_id, {"skill": chip_roll["skill"], "attribute": chip_roll["attribute"],
                                         "stakes": chip_roll["stakes"], "reason": chip_roll["text"]}, capped=True)
     else:
+        if no_roll and response.tool == "request_roll":  # a redo (opening, refusal) may bring the roll back
+            response.tool_call = _NoTool()
         _apply_tool(session, response, player_id, allow_roll, roll_skill)  # a refusal on the redo is only logged
 
     # Referee (Phase 18): not on the setup turn that opened a roll - the outcome

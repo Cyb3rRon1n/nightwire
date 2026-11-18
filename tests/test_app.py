@@ -448,3 +448,17 @@ def test_each_player_sees_only_their_own_chips(tmp_path):
     assert build_view(session, "p1")["suggestions"] == [
         {"id": "a", "text": "I wait.", "skill": None, "attribute": None, "difficulty": None, "chance": None}]
     assert build_view(session, "p2")["suggestions"] == []
+
+
+def test_a_chips_chance_follows_the_current_sheet(tmp_path):
+    from server.views import build_view
+    from engine.session import Session
+    from engine.character import CharacterSheet
+    chip = {"id": "a", "text": "I talk the doorman down.", "skill": "persuasion", "attribute": "presence",
+            "stakes": "normal", "difficulty": "moderate"}
+    session = Session(session_id="s1", suggestions={"p1": [chip]})
+    session.characters["p1"] = CharacterSheet(player_id="p1", name="p1", role="solo", lifepath="streetkid")
+    before = build_view(session, "p1")["suggestions"][0]["chance"]
+    session.characters["p1"].skills["persuasion"] = session.characters["p1"].skills.get("persuasion", 0) + 2
+    assert build_view(session, "p1")["suggestions"][0]["chance"] > before
+    assert build_view(session, "p2")["suggestions"] == []

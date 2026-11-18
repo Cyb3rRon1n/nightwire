@@ -25,10 +25,9 @@ def test_a_good_set_keeps_one_plain_and_two_tagged_with_real_chances():
                          _tagged("I slice the door lock.", "hacking", "tech", "high")], _rin(), [])
     assert [c["text"] for c in chips] == ["I ask Mama Sato about the collector.", "I talk the doorman down.",
                                          "I slice the door lock."]
-    assert chips[0]["skill"] is None and chips[0]["chance"] is None
+    assert chips[0]["skill"] is None
     assert chips[1] | {"id": "x"} == {"id": "x", "text": "I talk the doorman down.", "skill": "persuasion",
-                                      "attribute": "presence", "stakes": "normal", "difficulty": "moderate",
-                                      "chance": 30}
+                                      "attribute": "presence", "stakes": "normal", "difficulty": "moderate"}
     assert chips[2]["difficulty"] == "hard" and chips[2]["attribute"] == "tech"
     assert len({c["id"] for c in chips}) == 3
 

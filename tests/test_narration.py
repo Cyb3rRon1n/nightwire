@@ -2072,3 +2072,15 @@ async def test_a_failed_suggest_logs_and_shows_no_chips():
     await refresh_suggestions(session, client, "p1")
     assert "p1" not in session.suggestions
     assert any(line.startswith("[chips error:") for line in session.log)
+
+
+async def test_a_plain_chip_cannot_roll_even_on_the_opening_redo(tmp_path, monkeypatch):
+    monkeypatch.setattr("server.narration.assess", _no_assess)
+    session = _session_with_character()
+    session.log += ["p1: I wait.", "Neon hums over the stalls."]
+    session.suggestions["p1"] = [_chip(id="c2", text="I look around.", skill=None, attribute=None, stakes=None,
+                                       difficulty=None, chance=None)]
+    roll = {"player_id": "p1", "attribute": "cool", "skill": "perception", "stakes": "normal", "reason": "look"}
+    client = _scripted_client([_say("Neon hums over the stalls."), _say("Rain needles the tarp.", "request_roll", roll)])
+    await _call(session, client, "p1", {"text": "x", "chip": "c2"}, tmp_path, tts_backend=FakeTTSBackend())
+    assert "p1" not in session.pending_rolls

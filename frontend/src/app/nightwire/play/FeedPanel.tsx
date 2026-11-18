@@ -195,6 +195,7 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, chi
     setSending(true);
     setPinned(true);
     pinnedRef.current = true;
+    inputRef.current?.focus();
   }
 
   function combat(message: ClientMessage) {

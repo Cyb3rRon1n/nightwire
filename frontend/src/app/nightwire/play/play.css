@@ -118,7 +118,7 @@
 .nw-voice button:focus-visible { outline: 2px solid var(--nw-cyan); outline-offset: 2px; }
 
 .nw-suggestions { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
-.nw-suggestion { flex-shrink: 0; max-width: min(320px, 80vw); display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 6px 10px; border: 1px solid var(--nw-frame-cool); background: rgba(11, 13, 17, .85); color: #e6e8eb; font: 500 14px var(--font-rajdhani), "Rajdhani", sans-serif; text-align: left; cursor: pointer; }
+.nw-suggestion { flex-shrink: 0; max-width: min(320px, 80vw); display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 44px; padding: 6px 10px; border: 1px solid var(--nw-frame-cool); background: rgba(11, 13, 17, .85); color: #e6e8eb; font: 500 14px var(--font-rajdhani), "Rajdhani", sans-serif; text-align: left; cursor: pointer; }
 .nw-suggestion:hover, .nw-suggestion:focus-visible { border-color: var(--nw-cyan); }
 .nw-suggestion-tag { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: #9aa3ad; }
 .nw-suggestion-tag[data-difficulty="easy"] { color: var(--nw-cyan); }
