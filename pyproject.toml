@@ -21,6 +21,7 @@ qa = ["dghs-imgutils", "onnxruntime"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]   # tests import shared helpers as tests.<module>; plain `pytest` (CI) needs the root on sys.path
 asyncio_mode = "auto"
 
 [tool.setuptools.packages.find]
