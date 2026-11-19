@@ -1,6 +1,7 @@
 """Suggested actions (spec 2026-11-18-suggested-actions-design.md): up to 3 chips after each story turn, one plain,
 the others tagged with the roll they would cause. The model writes them; the engine checks every tag."""
 
+import re
 import uuid
 from typing import get_args
 
@@ -83,7 +84,8 @@ def check_chips(raw, character, recent_stakes: list[str], scene: str = "") -> li
     for item in raw:
         if not isinstance(item, dict):
             continue
-        text = str(item.get("text") or "").strip()
+        # First sentence only: later ones ran wide on a phone and told the outcome (phone check 2026-11-19).
+        text = re.split(r"(?<=[.!?])\s+", str(item.get("text") or "").strip(), maxsplit=1)[0]
         if not text or len(text.split()) > _MAX_WORDS or (scene and _invents(text, scene)):
             continue
         skill, stakes = item.get("skill"), item.get("stakes")

@@ -149,3 +149,12 @@ async def test_suggest_leaves_out_best_skills_for_an_empty_sheet_and_has_no_exam
 
     assert await suggest(Judge(), ["Rain falls."], "Ikebe Low", _rin(skills={})) is None
     assert "best skills" not in seen["prompt"] and "ledger" not in seen["prompt"]
+
+
+def test_a_chip_keeps_only_its_first_sentence():
+    # Phone check 2026-11-19: "I hack the shrine's panel again. I bypass the security with Tech. If I fail, the
+    # shrine's alarm triggers." - too wide for a phone and it tells the outcome.
+    chips = check_chips([_plain("I step back. I leave through the side gate."),
+                         _tagged("I hack the shrine's panel again. If I fail, the alarm triggers.", "hacking", "tech")],
+                        _rin(), [])
+    assert [c["text"] for c in chips] == ["I step back.", "I hack the shrine's panel again."]
