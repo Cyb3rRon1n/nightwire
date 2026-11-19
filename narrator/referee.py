@@ -130,9 +130,21 @@ def _squash(text: str) -> str:
     return " ".join(re.sub(r"[^\w\s']", " ", text.lower()).split())
 
 
+_SMALL_WORDS = {"about", "from", "into", "with", "that", "this", "there", "their", "your", "what", "where", "when"}
+
+
+def _quotes_the_scene(lead: str, scene: str) -> bool:
+    """Two lead words in a row, both real words (4+ letters, not filler), that the scene has in a row too:
+    "Find the collector's ledger" quotes "The collector's ledger never leaves his table"."""
+    words, said = _squash(lead).split(), f" {_squash(scene)} "
+    return any(len(a) >= 4 and len(b) >= 4 and not {a, b} & _SMALL_WORDS and f" {a} {b} " in said
+               for a, b in zip(words, words[1:]))
+
+
 def _names_something_in(lead: str, scene: str, session: Session) -> bool:
-    """The lead names a known place or a named person, and the scene names it too (no invented leads)."""
-    if places_in(lead) & places_in(scene):
+    """The lead names a known place or a named person, and the scene names it too, or it quotes the scene
+    (spec 2026-11-07 section 1; no invented leads)."""
+    if places_in(lead) & places_in(scene) or _quotes_the_scene(lead, scene):
         return True
     world = kuroshio()
     lead_n, scene_n = _normalize(lead), _normalize(scene)
@@ -172,7 +184,7 @@ def ground(session: Session, verdict: dict, action: str, narration: str) -> dict
     grounded["moved_to"] = known_place(moved) or ""
     lead = " ".join(str(grounded.get("new_lead", "")).split())[:_LOCATION_MAX]
     if lead and not _names_something_in(lead, f"{action}\n{narration}", session):
-        session.log.append("[referee: new_lead names nothing in the scene, ignored]")
+        session.log.append(f'[referee: new_lead "{lead}" names nothing in the scene, ignored]')
         lead = ""
     if "new_lead" in grounded or lead:
         grounded["new_lead"] = lead

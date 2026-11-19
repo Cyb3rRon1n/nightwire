@@ -396,7 +396,23 @@ async def test_an_invented_lead_is_ignored():
     s = _session()
     await run_referee(s, _Client({"moved_to": "", "new_lead": "Find the safehouse", "human_moment_quote": "",
                                   "human_moment": "none"}), "p1", "I wait.", "Rain falls.")
-    assert s.active_objectives == [] and "[referee: new_lead names nothing in the scene, ignored]" in s.log
+    assert s.active_objectives == [] and '[referee: new_lead "Find the safehouse" names nothing in the scene, ignored]' in s.log
+
+
+async def test_a_thing_to_find_quoted_from_the_scene_becomes_an_objective():
+    # Spec 2026-11-07 section 1: a lead also counts when it is quoted from the scene (soak 2026-11-18: most leads dropped).
+    s = _session()
+    await run_referee(s, _Client({"moved_to": "", "new_lead": "Find the collector's ledger", "human_moment_quote": "",
+                                  "human_moment": "none"}),
+                      "p1", "I look around.", "Mama Sato: The collector's ledger never leaves his table.")
+    assert s.active_objectives == ["Find the collector's ledger"]
+
+
+async def test_a_lead_sharing_only_small_words_with_the_scene_is_ignored():
+    s = _session()
+    await run_referee(s, _Client({"moved_to": "", "new_lead": "Look around the room", "human_moment_quote": "",
+                                  "human_moment": "none"}), "p1", "I wait.", "The room is dark and around the corner rain falls.")
+    assert s.active_objectives == []
 
 
 async def test_a_finished_objective_is_removed():
