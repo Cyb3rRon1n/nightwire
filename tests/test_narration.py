@@ -2128,3 +2128,15 @@ def test_a_sentence_reusing_a_recent_sensory_phrase_is_cut():
     R.narration = [NarrationSegment(speaker="narrator", text="The scent of soy sauce again.")]
     _drop_repeated_senses(R, session)
     assert R.narration[0].text == "The scent of soy sauce again."  # never an empty turn
+
+
+def test_cutting_a_repeated_opening_never_empties_the_turn():
+    # Soak 2026-11-19 turn 2 came back with no story at all.
+    from narrator.client import NarrationSegment
+    from server.narration import _drop_opening
+
+    class R:
+        narration = [NarrationSegment(speaker="narrator", text="You step into the izakaya.")]
+
+    _drop_opening(R)
+    assert [s.text for s in R.narration] == ["You step into the izakaya."]

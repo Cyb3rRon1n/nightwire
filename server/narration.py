@@ -244,9 +244,12 @@ def _prose(response) -> str:
 
 def _drop_opening(response) -> None:
     first = response.narration[0]
-    first.text = _FIRST_SENTENCE.sub("", first.text, count=1)
-    if not first.text.strip():
+    rest = _FIRST_SENTENCE.sub("", first.text, count=1)
+    if rest.strip():
+        first.text = rest
+    elif len(response.narration) > 1:
         response.narration.pop(0)
+    # else: the opening is the whole story; a repeat beats an empty turn
 
 
 def _npc_entry(name: str, facts: list[str]) -> str:
@@ -671,6 +674,8 @@ async def _run_turn(
     _tidy(response)
     _drop_repeated_lines(response, session)
     _drop_repeated_senses(response, session)
+    if not any(seg.text.strip() for seg in response.narration):
+        session.log.append(f"[empty reply: tool {response.tool}]")  # soak 2026-11-19 turn 2: cause not yet seen
 
     if actor_line is not None:
         session.log.append(actor_line)

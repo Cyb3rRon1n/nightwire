@@ -137,7 +137,7 @@ async def main(turns: int, chips: bool = False) -> Path:
                        repeated_opening=bool(opening) and opening in openings,
                        voice_filtered=sum(line.startswith("[voice filtered") for line in lines),
                        unread=unread(session, "rin"), replies=[{"from": a, "text": b} for a, b in replies],
-                       notes=[line[:120] for line in lines if line.startswith(("[tool error", "[referee", "[redo", "[ooc", "[chips error", "[set-up cut", "[moved", "[update_world"))])
+                       notes=[line[:120] for line in lines if line.startswith(("[tool error", "[referee", "[redo", "[ooc", "[chips error", "[set-up cut", "[moved", "[update_world", "[empty reply"))])
             openings.append(opening)
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
             f.flush()
