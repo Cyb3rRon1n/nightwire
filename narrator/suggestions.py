@@ -36,16 +36,19 @@ _SYSTEM = "You suggest what a player could do next in a cyberpunk tabletop game.
 
 async def suggest(client, story: list[str], place: str | None, character) -> list:
     best = sorted(character.skills, key=character.skills.get, reverse=True)[:3]
+    told = _normalize("\n".join(story))
+    present = [npc.name for npc in kuroshio().npcs if _mentions(npc, told)]
     prompt = (
         "Scene (latest last):\n" + "\n".join(story) + "\n\n"
-        f"Place: {place or 'unknown'}. Player character: {character.name}, a {character.role}; "
-        f"best skills: {', '.join(best) or 'none'}.\n\n"
+        f"Place: {place or 'unknown'}. People here: {', '.join(present) or 'nobody named'}. "
+        f"Player character: {character.name}, a {character.role}; best skills: {', '.join(best) or 'none'}.\n\n"
         "Suggest 3 moves this character could make now:\n"
         '- one plain move that needs no roll (talk, look, leave): skill, attribute and stakes "none";\n'
-        "- two risky moves with different approaches (social, tech, stealth, force), each with the skill and "
-        "attribute it tests and its stakes; use the character's best skills where the scene allows.\n"
-        'Each move: first person, like "I talk the doorman down", at most 12 words, only people and things the '
-        "scene has shown, and never say how it turns out."
+        "- two risky moves with different approaches (social, tech, stealth, force) that test two different "
+        "skills, each with the skill and attribute it tests and its stakes; use the character's best skills where "
+        "the scene allows.\n"
+        'Each move: first person, like "I ask her about the ledger", at most 12 words, only the people listed and '
+        "things the scene describes, and never say how it turns out."
     )
     answer = await client.judge([{"role": "system", "content": _SYSTEM}, {"role": "user", "content": prompt}], SCHEMA)
     return answer.get("chips")
@@ -80,6 +83,12 @@ def check_chips(raw, character, recent_stakes: list[str], scene: str = "") -> li
             continue
         if character.bodiless and SKILLS[skill].governing_attribute in (Attribute.BODY, Attribute.REFLEXES):
             continue  # no body to climb, fight or dodge with: no physical chips for a bodiless character
+        if any(t["skill"] == skill for t in tagged):
+            continue  # two risky chips, two different skills (chips soak 2026-11-18: hacking and stealth every turn)
+        # Chips are fair bets the player picks (chips soak 2026-11-18: 4 of 9 were Extreme): no Extreme, one Hard.
+        stakes = "high" if stakes == "extreme" else stakes
+        if stakes == "high" and any(t["stakes"] == "high" for t in tagged):
+            stakes = "normal"
         attribute = roll_attribute(skill, str(item.get("attribute"))).value
         effective, difficulty = difficulty_for(stakes, recent_stakes)
         level = difficulty.name.lower()

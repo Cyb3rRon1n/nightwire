@@ -28,6 +28,7 @@ Rejected: chips inside the narrator reply (bigger schema for an 8B model, risks 
    - `skill` and `attribute` must be real (`RequestRoll`'s literals). A bad tag turns the chip plain; an empty chip is dropped.
    - At most 3 chips; at least one plain. If none came back plain, keep the first 2 tagged chips and add the plain chip "I look around."
    - Stakes go through `ruleset.difficulty.difficulty_for` now, so the promised difficulty is final.
+   - Chips are fair bets (chips soak 2026-11-18: 4 of 9 tagged chips were Extreme): Extreme becomes Hard, and only one chip per set may be Hard. Two tagged chips never test the same skill. A chip naming a known place or person the recent story never showed is dropped.
    - Chance from new `ruleset` function `roll_chance(character, attribute, skill, difficulty) -> int` (percent), computed when the view is built so it always matches the current sheet. It shares the modifier code with `roll_check` (attribute modifier, skill, chrome bonus, social penalty), so the shown chance is the real one. Counted over the ten d10 faces: 10 always succeeds, 1 always fails, success includes a complication.
 4. **Storage.** `session.suggestions[player_id]` holds the checked chips. The player gets `{id, text, skill, attribute, difficulty, chance}` (no tag fields for a plain chip). Only that player sees their chips.
 5. **Click.** The browser sends `{type: "action", text, chip: id}`. The server looks the id up; the browser never sends tag fields.

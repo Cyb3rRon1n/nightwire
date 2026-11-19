@@ -103,3 +103,31 @@ def test_a_chip_naming_a_place_or_person_the_scene_never_showed_is_dropped():
 def test_without_a_scene_nothing_is_dropped_for_names():
     chips = check_chips([_plain("I talk to Old Hara.")], _rin(), [])
     assert [c["text"] for c in chips] == ["I talk to Old Hara."]
+
+
+def test_chips_are_fair_bets_no_extreme_and_one_hard_at_most():
+    # Chips soak 2026-11-18: 4 of 9 tagged chips were Extreme, 4 Hard.
+    chips = check_chips([_plain("I wait."), _tagged("I hack the panel.", "hacking", "tech", "extreme"),
+                         _tagged("I talk my way in.", "persuasion", "presence", "high")], _rin(), [])
+    assert [c["difficulty"] for c in chips[1:]] == ["hard", "moderate"]
+
+
+def test_two_risky_chips_never_test_the_same_skill():
+    chips = check_chips([_plain("I wait."), _tagged("I hack the panel.", "hacking", "tech"),
+                         _tagged("I hack the camera.", "hacking", "tech"),
+                         _tagged("I talk my way in.", "persuasion")], _rin(), [])
+    assert [c["skill"] for c in chips[1:]] == ["hacking", "persuasion"]
+
+
+async def test_suggest_names_who_is_present():
+    seen = {}
+
+    class Judge:
+        async def judge(self, messages, schema):
+            seen["prompt"] = messages[-1]["content"]
+            return {"chips": []}
+
+    await suggest(Judge(), ["Mama Sato wipes the counter.", "Rain falls."], "Mama Sato's izakaya", _rin())
+    assert "People here: Mama Sato." in seen["prompt"]
+    await suggest(Judge(), ["Rain falls."], "Ikebe Low", _rin())
+    assert "People here: nobody named." in seen["prompt"]
