@@ -861,6 +861,7 @@ def test_build_messages_puts_scene_and_world_notes_right_before_the_action():
         "Recent events:\np1: I look around.\n\n"
         "Scene: Ikebe Low - Mama Sato's izakaya · mood: tense · objectives: find the chrome-ya; pay off the torite\n\n"
         "Crew: Rook: no chrome, owes nothing\n\n"
+        'Narrate in second person: call Rook "you", never by name.\n\n'
         f"World notes:\n{ikebe}\n{sato}\n{locals_line(kuroshio(), session)}\n\n"
         "Player action: I order a drink."
     )
@@ -2096,3 +2097,15 @@ async def test_a_tool_call_spoken_as_a_line_never_reaches_the_story(tmp_path):
     await _call(session, client, "p1", {"text": "I wait."}, tmp_path, tts_backend=FakeTTSBackend())
     assert "The man bumps into you." in session.log
     assert not any("request_roll" in line or "update_world" in line for line in session.log if not line.startswith("["))
+
+
+def test_one_player_is_you_and_a_crew_is_named():
+    # CPU soak 2026-11-18: the narration switched between "Rin" and "you" with no rule either way.
+    from server.narration import _build_messages
+    session = Session(session_id="s")
+    session.characters["p1"] = CharacterSheet(player_id="p1", name="Rin", role="netrunner", lifepath="streetkid")
+    solo = _build_messages(session, "I wait.", num_ctx=8192)[0]["content"]
+    assert 'call Rin "you"' in solo
+    session.characters["p2"] = CharacterSheet(player_id="p2", name="Kai", role="solo", lifepath="nomad")
+    crew = _build_messages(session, "I wait.", num_ctx=8192)[0]["content"]
+    assert "by name (Rin, Kai)" in crew and 'call Rin "you"' not in crew

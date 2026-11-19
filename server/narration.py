@@ -299,6 +299,15 @@ def _scene_line(session: Session) -> str:
     return "Scene: " + " · ".join(parts) if parts else ""
 
 
+def _voice_line(session: Session) -> str:
+    """Who "you" is (CPU soak 2026-11-18 mixed "Rin" and "you"): one player is "you", as single-player CRPG narrators
+    (Baldur's Gate 3) and text games do; a shared crew feed names everyone, as a table GM does."""
+    names = [c.name for c in session.characters.values()]
+    if len(names) == 1:
+        return f'Narrate in second person: call {names[0]} "you", never by name.'
+    return f'Narrate in third person: call each player character by name ({", ".join(names)}), never "you".' if names else ""
+
+
 def _build_messages(session: Session, action_text: str, num_ctx: int) -> list[dict]:
     # apply_character_update's player_id is trusted as-is (it legitimately
     # targets a different character than the actor, e.g. damage to a
@@ -334,6 +343,9 @@ def _build_messages(session: Session, action_text: str, num_ctx: int) -> list[di
     crew = _crew_line(session)
     if crew:
         parts.append(crew)
+    voice = _voice_line(session)
+    if voice:
+        parts.append(voice)
     if session.pending_world_events:
         parts.append("World event: " + " ".join(session.pending_world_events))
     world_budget = int(num_ctx * _WORLD_BUDGET_FRACTION * _CHARS_PER_TOKEN_ESTIMATE)
