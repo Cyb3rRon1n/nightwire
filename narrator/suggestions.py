@@ -4,7 +4,9 @@ the others tagged with the roll they would cause. The model writes them; the eng
 import uuid
 from typing import get_args
 
+from narrator.movement import places_in
 from narrator.tools import RequestRoll
+from narrator.world import _mentions, _normalize, kuroshio
 from ruleset.attributes import Attribute
 from ruleset.difficulty import STAKES, difficulty_for
 from ruleset.skills import SKILLS, roll_attribute
@@ -53,7 +55,16 @@ def _plain(text: str) -> dict:
     return {"text": text, "skill": None, "attribute": None, "stakes": None, "difficulty": None}
 
 
-def check_chips(raw, character, recent_stakes: list[str]) -> list[dict]:
+def _invents(text: str, scene: str) -> bool:
+    """Names a known place or person the scene never showed (chips soak 2026-11-18: "the clinic's back alley" from
+    inside the izakaya). The prompt rule alone didn't hold, so the engine checks, as the referee does for leads."""
+    if places_in(text) - places_in(scene):
+        return True
+    t, s = _normalize(text), _normalize(scene)
+    return any(_mentions(npc, t) and not _mentions(npc, s) for npc in kuroshio().npcs)
+
+
+def check_chips(raw, character, recent_stakes: list[str], scene: str = "") -> list[dict]:
     if not isinstance(raw, list):
         return []
     plain, tagged = [], []
@@ -61,7 +72,7 @@ def check_chips(raw, character, recent_stakes: list[str]) -> list[dict]:
         if not isinstance(item, dict):
             continue
         text = str(item.get("text") or "").strip()
-        if not text or len(text.split()) > _MAX_WORDS:
+        if not text or len(text.split()) > _MAX_WORDS or (scene and _invents(text, scene)):
             continue
         skill, stakes = item.get("skill"), item.get("stakes")
         if skill not in SKILLS or stakes not in STAKES:

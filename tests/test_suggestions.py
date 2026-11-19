@@ -89,3 +89,17 @@ def test_suggestions_are_saved_and_loaded(tmp_path):
     store.save(session)
     assert store.load("s1").suggestions == {"p1": [{"id": "a", "text": "I wait."}]}
     json.dumps(SCHEMA)  # the schema must be plain JSON for Ollama
+
+
+def test_a_chip_naming_a_place_or_person_the_scene_never_showed_is_dropped():
+    # Chips soak 2026-11-18: "I slip into the clinic's back alley" from inside the izakaya.
+    scene = "Mama Sato pours tea behind the izakaya counter."
+    chips = check_chips([_plain("I ask Mama Sato about the collector."),
+                         _tagged("I slip into the clinic's back alley.", "stealth", "reflexes"),
+                         _tagged("I ask Old Hara for a discount.", "persuasion")], _rin(), [], scene)
+    assert [c["text"] for c in chips] == ["I ask Mama Sato about the collector."]
+
+
+def test_without_a_scene_nothing_is_dropped_for_names():
+    chips = check_chips([_plain("I talk to Old Hara.")], _rin(), [])
+    assert [c["text"] for c in chips] == ["I talk to Old Hara."]

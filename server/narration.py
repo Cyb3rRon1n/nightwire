@@ -844,7 +844,8 @@ async def refresh_suggestions(session: Session, narrator_client: NarratorClient,
         return
     try:
         raw = await suggest(narrator_client, story, session.location, character)
-        chips = check_chips(raw, character, session.recent_stakes)
+        scene = "\n".join([*story, session.location or ""])  # where the player stands counts as shown
+        chips = check_chips(raw, character, session.recent_stakes, scene)
     except Exception as e:  # timeout, bad JSON, a backend down: the story already went out
         session.log.append(f"[chips error: {e}]")
         return
