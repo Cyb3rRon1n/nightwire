@@ -103,7 +103,7 @@ async def main(turns: int, chips: bool = False) -> Path:
             offered = session.suggestions.get("rin", []) if chips else []
             if offered and not texting and n % 3 == 0:
                 pick = offered[(n // 3) % len(offered)]
-                action, row["chip"] = pick["text"], {k: pick[k] for k in ("text", "skill", "difficulty", "chance")}
+                action, row["chip"] = pick["text"], {k: pick[k] for k in ("text", "skill", "attribute", "difficulty")}
                 row["action"] = action
             try:
                 if texting:
@@ -125,7 +125,8 @@ async def main(turns: int, chips: bool = False) -> Path:
                     await refresh_suggestions(session, client, "rin")
             except Exception as e:  # record and carry on: the point is to see everything that breaks
                 row["error"] = f"{type(e).__name__}: {e}"
-            row["offered"] = [c["text"] for c in session.suggestions.get("rin", [])]
+            row["offered"] = [" · ".join(str(c[k]) for k in ("text", "skill", "difficulty") if c[k])
+                            for c in session.suggestions.get("rin", [])]
             replies = _phone_messages(session, "rin")[seen_replies:]
             seen_replies += len(replies)
             lines = _new_lines(session.log, start)
