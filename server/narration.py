@@ -20,7 +20,7 @@ from narrator.movement import destination
 from narrator.place_art import district_art, location_art
 from narrator.referee import run_referee
 from narrator.suggestions import check_chips, suggest
-from narrator.tools import RequestRoll, execute_tool, roll_check
+from narrator.tools import TOOL_REGISTRY, RequestRoll, execute_tool, roll_check
 from narrator.tts_backend import TTSBackend
 from narrator.voice_assignment import assign_voice
 from narrator.world import kuroshio, locals_line, select_cards
@@ -173,6 +173,15 @@ def _split_prose_from_speech(response) -> None:
 _EMPHASIS = re.compile(r"\*([^*\n]+)\*")
 _CHILD_FIRST = re.compile(r"^(?:Ah[.…,]*\s*)?Child,\s*")
 _CHILD_AFTER = re.compile(r",\s*child(?=[.?!,…])")
+
+
+_TOOL_LINE = re.compile(r"^\s*(?:" + "|".join(TOOL_REGISTRY) + r")\b\s*[:(]")
+
+
+def _drop_tool_lines(response) -> None:
+    """Soak 2026-11-18: the narrator "said" its own tool call ("request_roll: request_roll (melee, normal stakes)")."""
+    response.narration[:] = [seg for seg in response.narration
+                             if seg.speaker.strip().lower() not in TOOL_REGISTRY and not _TOOL_LINE.match(seg.text)]
 
 
 def _tidy(response) -> None:
@@ -615,6 +624,7 @@ async def _run_turn(
                 cut = quote
 
     _split_prose_from_speech(response)
+    _drop_tool_lines(response)
     _tidy(response)
     _drop_repeated_lines(response, session)
 

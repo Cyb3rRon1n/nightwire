@@ -2084,3 +2084,16 @@ async def test_a_plain_chip_cannot_roll_even_on_the_opening_redo(tmp_path, monke
     client = _scripted_client([_say("Neon hums over the stalls."), _say("Rain needles the tarp.", "request_roll", roll)])
     await _call(session, client, "p1", {"text": "x", "chip": "c2"}, tmp_path, tts_backend=FakeTTSBackend())
     assert "p1" not in session.pending_rolls
+
+
+async def test_a_tool_call_spoken_as_a_line_never_reaches_the_story(tmp_path):
+    # Soak 2026-11-18 turn 25: the narrator "said" its own tool call: "request_roll: request_roll (melee, normal stakes)".
+    session = _session_with_character()
+    client = _scripted_client([{"narration": [
+        {"speaker": "narrator", "text": "The man bumps into you."},
+        {"speaker": "request_roll", "text": "request_roll (melee, normal stakes)"},
+        {"speaker": "narrator", "text": "update_world: location Ikebe Low"},
+    ], "tool_call": {"tool": None}}])
+    await _call(session, client, "p1", {"text": "I wait."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert "The man bumps into you." in session.log
+    assert not any("request_roll" in line or "update_world" in line for line in session.log if not line.startswith("["))
