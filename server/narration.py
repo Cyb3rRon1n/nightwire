@@ -430,8 +430,9 @@ async def handle_action(
             _saeko_text(session, player_id, character, event)
     # The engine moves the player before the narrator runs, so a narrator timeout can't lose the move (soak run 5).
     moved_to = destination(action_text)
-    if moved_to:
+    if moved_to and moved_to != session.location:
         session.location = moved_to
+        session.log.append(f"[moved: {moved_to} (action)]")
     if chip is not None and chip["skill"]:
         must_roll, no_roll, roll_skill = True, False, None
     elif chip is not None:

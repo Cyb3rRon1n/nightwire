@@ -225,8 +225,9 @@ def apply_verdict(session: Session, player_id: str, verdict: dict) -> None:
     lead = verdict.get("new_lead")
     if lead and lead not in session.active_objectives:
         session.active_objectives = [*session.active_objectives, lead][-_MAX_OBJECTIVES:]
-    if verdict.get("moved_to"):
+    if verdict.get("moved_to") and verdict["moved_to"] != session.location:
         session.location = verdict["moved_to"]
+        session.log.append(f"[moved: {session.location} (referee)]")
     delta = _AMOUNT[verdict.get("human_moment", "none")] - _AMOUNT[verdict.get("acted_as_machine", "none")]
     if delta:
         before = c.humanity

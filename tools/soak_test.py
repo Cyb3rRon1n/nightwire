@@ -133,11 +133,11 @@ async def main(turns: int, chips: bool = False) -> Path:
             prose = [line for line in lines if not line.startswith("[") and not line.startswith("rin:")]
             opening = prose[0][:40] if prose else ""
             row.update(seconds=round(time.time() - t), location=session.location, art=location_art(session.location),
-                       humanity=session.characters["rin"].humanity, narration=" / ".join(prose)[:300],
+                       humanity=session.characters["rin"].humanity, narration=" / ".join(prose),
                        repeated_opening=bool(opening) and opening in openings,
                        voice_filtered=sum(line.startswith("[voice filtered") for line in lines),
                        unread=unread(session, "rin"), replies=[{"from": a, "text": b} for a, b in replies],
-                       notes=[line[:120] for line in lines if line.startswith(("[tool error", "[referee", "[redo", "[ooc", "[chips error", "[set-up cut"))])
+                       notes=[line[:120] for line in lines if line.startswith(("[tool error", "[referee", "[redo", "[ooc", "[chips error", "[set-up cut", "[moved", "[update_world"))])
             openings.append(opening)
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
             f.flush()
