@@ -1,6 +1,7 @@
 """Soak test: a scripted 30-turn game through the real turn pipeline and narrator, to surface problems nobody typed yet.
 
     OLLAMA_HOST=http://192.168.10.19:11434 NIGHTWIRE_THINK=off python -m tools.soak_test [--turns 30]
+    CPU only (slow, about 2-5 min a turn): NIGHTWIRE_OLLAMA_TIMEOUT=600 NIGHTWIRE_THINK=off python -m tools.soak_test
 
 Plays one character through walking, talking, risky moves, out-of-character questions, typos and an emoji, rolling
 the dice automatically whenever the narrator asks. A few turns text a contact instead of acting (the phone). Images and voices are off (their backends are pointed at nothing),
@@ -135,7 +136,7 @@ async def main(turns: int, chips: bool = False) -> Path:
                        repeated_opening=bool(opening) and opening in openings,
                        voice_filtered=sum(line.startswith("[voice filtered") for line in lines),
                        unread=unread(session, "rin"), replies=[{"from": a, "text": b} for a, b in replies],
-                       notes=[line[:120] for line in lines if line.startswith(("[tool error", "[referee", "[redo", "[ooc", "[chips error"))])
+                       notes=[line[:120] for line in lines if line.startswith(("[tool error", "[referee", "[redo", "[ooc", "[chips error", "[set-up cut"))])
             openings.append(opening)
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
             f.flush()

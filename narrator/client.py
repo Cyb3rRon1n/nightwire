@@ -147,7 +147,8 @@ class NarratorClient:
         self.system_prompt = system_prompt
         self.num_ctx = num_ctx
         self.think = think
-        self._client = ollama.AsyncClient(timeout=60)
+        # 60 s suits a GPU; a CPU-only run (about 4 tok/s) needs NIGHTWIRE_OLLAMA_TIMEOUT=600.
+        self._client = ollama.AsyncClient(timeout=float(os.environ.get("NIGHTWIRE_OLLAMA_TIMEOUT", 60)))
         self._chat_fn = chat_fn or self._default_chat
         self._generate_fn = generate_fn or self._client.generate
         self._summarize_fn = summarize_fn or self._default_summarize
