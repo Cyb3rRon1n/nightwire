@@ -208,6 +208,36 @@ def _drop_repeated_lines(response, session: Session) -> None:
     response.narration[:] = kept or response.narration[-1:]
 
 
+# Small models reuse one sensory detail turn after turn (8-turn replay 2026-11-19: "scent of soy sauce", "hum of the
+# city"); listing them in the prompt made it worse (3/8 vs 1/8), so the engine cuts the sentence instead.
+_SENSE = re.compile(r"\b(scent|smell|stench|aroma|odou?r|reek|tang|hum|buzz|drone|thrum|whir+|hiss|glow|flicker|"
+                    r"drip|patter|rumble|haze|neon) of (?:the |a |an )?([a-z]+)", re.I)
+_SENTENCE = re.compile(r"(?<=[.!?…])\s+")
+
+
+def _senses(text: str) -> set[str]:
+    return {f"{a.lower()} of {b.lower()}" for a, b in _SENSE.findall(text)}
+
+
+def _drop_repeated_senses(response, session: Session) -> None:
+    """Cuts a narrator sentence whose sensory phrase the narrator already used in the last few turns. Keeps at
+    least one line."""
+    actors = tuple(f"{pid}: " for pid in session.characters)
+    lines = [l for l in session.log if not l.startswith("[")]
+    starts = [i for i, l in enumerate(lines) if actors and l.startswith(actors)]
+    recent = lines[starts[-_PROSE_TURNS]:] if len(starts) >= _PROSE_TURNS else lines
+    used = set().union(*(_senses(l) for l in recent if not l.startswith(actors) and not _SPEECH.match(l)))
+    if not used:
+        return
+    texts = [" ".join(s for s in _SENTENCE.split(seg.text) if not _senses(s) & used) if seg.speaker == "narrator"
+             else seg.text for seg in response.narration]
+    if not any(t.strip() for t in texts):
+        return  # everything repeated: a stale line beats an empty turn
+    for seg, text in zip(response.narration, texts):
+        seg.text = text
+    response.narration[:] = [seg for seg in response.narration if seg.text.strip()]
+
+
 def _prose(response) -> str:
     return " ".join(seg.text for seg in response.narration)
 
@@ -640,6 +670,7 @@ async def _run_turn(
     _drop_tool_lines(response)
     _tidy(response)
     _drop_repeated_lines(response, session)
+    _drop_repeated_senses(response, session)
 
     if actor_line is not None:
         session.log.append(actor_line)

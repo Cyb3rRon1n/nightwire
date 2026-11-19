@@ -2109,3 +2109,22 @@ def test_one_player_is_you_and_a_crew_is_named():
     session.characters["p2"] = CharacterSheet(player_id="p2", name="Kai", role="solo", lifepath="nomad")
     crew = _build_messages(session, "I wait.", num_ctx=8192)[0]["content"]
     assert "by name (Rin, Kai)" in crew and 'call Rin "you"' not in crew
+
+
+def test_a_sentence_reusing_a_recent_sensory_phrase_is_cut():
+    # 8-turn replay 2026-11-19: "the scent of soy sauce" and "the hum of the city" turn after turn.
+    from narrator.client import NarrationSegment
+    from server.narration import _drop_repeated_senses
+    session = Session(session_id="s")
+    session.characters["rin"] = CharacterSheet(player_id="rin", name="Rin", role="netrunner", lifepath="streetkid")
+    session.log += ["rin: I sit down.", "The scent of soy sauce hangs over the counter.", "Mama Sato: Eat."]
+
+    class R:
+        narration = [NarrationSegment(speaker="narrator", text="Rain taps the glass. The scent of soy sauce drifts by."),
+                     NarrationSegment(speaker="Mama Sato", text="The smell of soy is my secret.")]
+
+    _drop_repeated_senses(R, session)
+    assert [s.text for s in R.narration] == ["Rain taps the glass.", "The smell of soy is my secret."]
+    R.narration = [NarrationSegment(speaker="narrator", text="The scent of soy sauce again.")]
+    _drop_repeated_senses(R, session)
+    assert R.narration[0].text == "The scent of soy sauce again."  # never an empty turn
