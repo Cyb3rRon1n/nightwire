@@ -33,3 +33,12 @@ def test_known_place_picks_the_longest_name():
     assert known_place("the alleyway behind Mama Sato's izakaya") == "Mama Sato's izakaya"
     assert known_place("tenjo") == "Tenjō Heights"
     assert known_place("a cramped bathroom") is None
+
+
+def test_an_everyday_loop_in_the_prose_is_not_the_loop():
+    # Soak 2026-11-18: a train scene drifted to The Loop; the Ring Line's card calls it "the commuter loop".
+    from narrator.movement import places_in
+    assert places_in("The train rounds the commuter loop.") == set()
+    assert known_place("a loop of cable") is None
+    assert known_place("Kaminari Run bikes race the Loop.") == "The Loop"
+    assert destination("i ride out to the loop") == "The Loop"  # a typed move means the place in any case

@@ -35,16 +35,31 @@ def _keys() -> list[tuple[str, str]]:
     return sorted(set(keys), key=lambda k: -len(k[0]))
 
 
-def known_place(text: str | None) -> str | None:
-    """The known place named in the text, longest name first ("Ikebe Low - Old Hara's clinic" -> the clinic)."""
-    t = _norm(text or "")
-    return next((name for key, name in _keys() if re.search(rf"(?<!\w){re.escape(key)}(?!\w)", t)), None)
+# Place names that are also everyday words: in the model's prose they count only capitalised. The Ring Line's own
+# card calls it "the commuter loop", and soak run 2026-11-18 drifted to The Loop from a train scene.
+_EVERYDAY = {"loop": "Loop"}
+
+
+def _named(key: str, t: str, raw: str, cased: bool) -> bool:
+    if not re.search(rf"(?<!\w){re.escape(key)}(?!\w)", t):
+        return False
+    word = _EVERYDAY.get(key.removeprefix("the "))
+    return not (cased and word) or re.search(rf"(?<!\w){word}(?!\w)", raw) is not None
+
+
+def known_place(text: str | None, cased: bool = True) -> str | None:
+    """The known place named in the text, longest name first ("Ikebe Low - Old Hara's clinic" -> the clinic).
+    cased=False for a player's typed move, where "the loop" means the place."""
+    raw = text or ""
+    t = _norm(raw)
+    return next((name for key, name in _keys() if _named(key, t, raw, cased)), None)
 
 
 def places_in(text: str | None) -> set[str]:
     """Every known place the text names, by any of its names ("the izakaya" -> Mama Sato's izakaya)."""
-    t = _norm(text or "")
-    return {name for key, name in _keys() if re.search(rf"(?<!\w){re.escape(key)}(?!\w)", t)}
+    raw = text or ""
+    t = _norm(raw)
+    return {name for key, name in _keys() if _named(key, t, raw, True)}
 
 
 def destination(action: str) -> str | None:
@@ -55,4 +70,4 @@ def destination(action: str) -> str | None:
         return None
     tail = t[move.end():]
     toward = _TOWARD.search(tail)
-    return known_place(tail[toward.end():] if toward else tail)
+    return known_place(tail[toward.end():] if toward else tail, cased=False)
