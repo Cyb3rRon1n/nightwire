@@ -2046,8 +2046,7 @@ async def test_refresh_makes_checked_chips_from_the_story():
     session = _session_with_character()
     session.log = ["p1: I sit down.", "[audio: x.wav]", "Mama Sato pours tea."]
     seen = []
-    client = _scripted_client([_say("unused")], judge_answers=[{"chips": [
-        {"text": "I ask about the collector.", "skill": "none", "attribute": "none", "stakes": "none"},
+    client = _scripted_client([_say("unused")], judge_answers=[{"plain": "I ask about the collector.", "risky": [
         {"text": "I talk her into a discount.", "skill": "persuasion", "attribute": "presence", "stakes": "low"},
     ]}])
     await refresh_suggestions(session, client, "p1")

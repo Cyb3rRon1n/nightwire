@@ -7,8 +7,8 @@ from narrator.suggestions import LOOK_AROUND, SCHEMA, check_chips, suggest
 
 
 def _rin(**kw):
-    return CharacterSheet(player_id="p1", name="Rin", role="netrunner", lifepath="streetkid",
-                          skills={"hacking": 2, "persuasion": 1}, **kw)
+    kw.setdefault("skills", {"hacking": 2, "persuasion": 1})
+    return CharacterSheet(player_id="p1", name="Rin", role="netrunner", lifepath="streetkid", **kw)
 
 
 def _tagged(text, skill, attribute="presence", stakes="normal"):
@@ -74,10 +74,10 @@ async def test_suggest_asks_the_judge_with_the_scene_and_returns_the_chips():
     class Judge:
         async def judge(self, messages, schema):
             seen.update(messages=messages, schema=schema)
-            return {"chips": [_plain("I look at the menu.")]}
+            return {"plain": "I look at the menu.", "risky": [_tagged("I hack the till.", "hacking", "tech")]}
 
     raw = await suggest(Judge(), ["Mama Sato wipes the counter."], "Ikebe Low", _rin())
-    assert raw == [_plain("I look at the menu.")]
+    assert raw == [_plain("I look at the menu."), _tagged("I hack the till.", "hacking", "tech")]
     assert seen["schema"] is SCHEMA
     prompt = seen["messages"][-1]["content"]
     assert "Mama Sato wipes the counter." in prompt and "Ikebe Low" in prompt and "hacking" in prompt
@@ -125,9 +125,27 @@ async def test_suggest_names_who_is_present():
     class Judge:
         async def judge(self, messages, schema):
             seen["prompt"] = messages[-1]["content"]
-            return {"chips": []}
+            return {"plain": "I wait.", "risky": []}
 
     await suggest(Judge(), ["Mama Sato wipes the counter.", "Rain falls."], "Mama Sato's izakaya", _rin())
     assert "People here: Mama Sato." in seen["prompt"]
     await suggest(Judge(), ["Rain falls."], "Ikebe Low", _rin())
     assert "People here: nobody named." in seen["prompt"]
+
+
+def test_the_schema_makes_risky_chips_name_a_real_skill():
+    # Browser check 2026-11-19: a sheet with no skills got three chips all tagged "none".
+    risky = SCHEMA["properties"]["risky"]
+    assert risky["minItems"] == 2 and "none" not in risky["items"]["properties"]["skill"]["enum"]
+
+
+async def test_suggest_leaves_out_best_skills_for_an_empty_sheet_and_has_no_example_to_copy():
+    seen = {}
+
+    class Judge:
+        async def judge(self, messages, schema):
+            seen["prompt"] = messages[-1]["content"]
+            return {"chips": "old shape"}
+
+    assert await suggest(Judge(), ["Rain falls."], "Ikebe Low", _rin(skills={})) is None
+    assert "best skills" not in seen["prompt"] and "ledger" not in seen["prompt"]

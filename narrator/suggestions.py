@@ -16,19 +16,24 @@ _SKILL_NAMES = get_args(RequestRoll.model_fields["skill"].annotation)
 _ATTRIBUTES = get_args(RequestRoll.model_fields["attribute"].annotation)
 _MAX_WORDS = 20  # the prompt asks for 12; this only drops runaways
 
+# One plain move and two risky ones, split in the schema itself: when every chip could answer "none", a sheet with
+# no skills yet got three plain chips (browser check 2026-11-19), so a risky move must name a real skill.
 SCHEMA = {
     "type": "object",
-    "properties": {"chips": {"type": "array", "maxItems": 3, "items": {
-        "type": "object",
-        "properties": {
-            "text": {"type": "string"},
-            "skill": {"type": "string", "enum": ["none", *_SKILL_NAMES]},
-            "attribute": {"type": "string", "enum": ["none", *_ATTRIBUTES]},
-            "stakes": {"type": "string", "enum": ["none", *STAKES]},
-        },
-        "required": ["text", "skill", "attribute", "stakes"],
-    }}},
-    "required": ["chips"],
+    "properties": {
+        "plain": {"type": "string"},
+        "risky": {"type": "array", "minItems": 2, "maxItems": 2, "items": {
+            "type": "object",
+            "properties": {
+                "text": {"type": "string"},
+                "skill": {"type": "string", "enum": list(_SKILL_NAMES)},
+                "attribute": {"type": "string", "enum": list(_ATTRIBUTES)},
+                "stakes": {"type": "string", "enum": list(STAKES)},
+            },
+            "required": ["text", "skill", "attribute", "stakes"],
+        }},
+    },
+    "required": ["plain", "risky"],
 }
 
 _SYSTEM = "You suggest what a player could do next in a cyberpunk tabletop game. Answer only from the scene."
@@ -38,20 +43,24 @@ async def suggest(client, story: list[str], place: str | None, character) -> lis
     best = sorted(character.skills, key=character.skills.get, reverse=True)[:3]
     told = _normalize("\n".join(story))
     present = [npc.name for npc in kuroshio().npcs if _mentions(npc, told)]
+    skills = f"; best skills: {', '.join(best)}" if best else ""
     prompt = (
         "Scene (latest last):\n" + "\n".join(story) + "\n\n"
         f"Place: {place or 'unknown'}. People here: {', '.join(present) or 'nobody named'}. "
-        f"Player character: {character.name}, a {character.role}; best skills: {', '.join(best) or 'none'}.\n\n"
-        "Suggest 3 moves this character could make now:\n"
-        '- one plain move that needs no roll (talk, look, leave): skill, attribute and stakes "none";\n'
-        "- two risky moves with different approaches (social, tech, stealth, force) that test two different "
-        "skills, each with the skill and attribute it tests and its stakes; use the character's best skills where "
-        "the scene allows.\n"
-        'Each move: first person, like "I ask her about the ledger", at most 12 words, only the people listed and '
-        "things the scene describes, and never say how it turns out."
+        f"Player character: {character.name}, a {character.role}{skills}.\n\n"
+        "Suggest what this character could do next:\n"
+        "- plain: one move that needs no roll (talk, look, leave);\n"
+        "- risky: two moves with different approaches (social, tech, stealth, force), each testing a different "
+        "skill, with the attribute it tests and its stakes"
+        + ("; use the character's best skills where the scene allows" if best else "") + ".\n"
+        "Each move: starts with \"I\", at most 12 words, only the people listed and things the scene describes, "
+        "and never say how it turns out."
     )
     answer = await client.judge([{"role": "system", "content": _SYSTEM}, {"role": "user", "content": prompt}], SCHEMA)
-    return answer.get("chips")
+    if not isinstance(answer, dict) or not isinstance(answer.get("risky"), list):
+        return None
+    plain = {"text": answer.get("plain"), "skill": "none", "attribute": "none", "stakes": "none"}
+    return [plain, *answer["risky"]]
 
 
 def _plain(text: str) -> dict:
