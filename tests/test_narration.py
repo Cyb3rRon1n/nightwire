@@ -2140,3 +2140,20 @@ def test_cutting_a_repeated_opening_never_empties_the_turn():
 
     _drop_opening(R)
     assert [s.text for s in R.narration] == ["You step into the izakaya."]
+
+
+async def test_a_dropped_chip_is_logged():
+    from server.narration import refresh_suggestions
+    session = Session(session_id="s", log=["rin: I wait.", "Mama Sato wipes the counter."])
+    session.characters["rin"] = CharacterSheet(player_id="rin", name="Rin", role="netrunner", lifepath="streetkid",
+                                               skills={"hacking": 2})
+
+    class Judge:
+        async def judge(self, messages, schema):
+            return {"plain": "I wait.", "risky": [
+                {"text": "I hack the till.", "skill": "hacking", "attribute": "tech", "stakes": "normal"},
+                {"text": "I ask Old Hara for help.", "skill": "persuasion", "attribute": "cool", "stakes": "normal"}]}
+
+    await refresh_suggestions(session, Judge(), "rin")
+    assert [c["text"] for c in session.suggestions["rin"]] == ["I wait.", "I hack the till."]
+    assert session.log[-1] == "[chips dropped: I ask Old Hara for help. (persuasion)]"

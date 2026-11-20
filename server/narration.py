@@ -898,5 +898,10 @@ async def refresh_suggestions(session: Session, narrator_client: NarratorClient,
     except Exception as e:  # timeout, bad JSON, a backend down: the story already went out
         session.log.append(f"[chips error: {e}]")
         return
+    kept = [c["text"] for c in chips]
+    for item in raw if isinstance(raw, list) else []:
+        text = str(item.get("text") or "") if isinstance(item, dict) else str(item)
+        if not any(text.startswith(k) for k in kept):  # a turn offered 2 chips, not 3 (phone check 2026-11-19)
+            session.log.append(f"[chips dropped: {text[:80]} ({item.get('skill') if isinstance(item, dict) else '?'})]")
     if chips:
         session.suggestions[player_id] = chips
