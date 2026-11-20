@@ -132,6 +132,17 @@ def _where(world: World, location: str | None) -> tuple[WorldEntry | None, World
     return None, district or (next((d for d in world.districts if d.name == owner.home), None) if owner else None)
 
 
+@functools.cache
+def _design_places() -> tuple[str, ...]:
+    from narrator.place_art import _slugs, design_name  # place_art imports this module
+    return tuple(_normalize(n) for n in map(design_name, _slugs()) if n)
+
+
+def _venues(world: World) -> dict[str, str]:
+    """Each NPC who keeps a venue named after them, with the venue's last word: Mama Sato -> "izakaya"."""
+    return {npc.name: name.split()[-1] for npc in world.npcs for name in _design_places() if _mentions(npc, name)}
+
+
 def select_cards(world: World, session: Session, action_text: str, budget_chars: int) -> list[str]:
     """Cards for this turn, in priority order: the current location's place, if any;
     the current location's district;
@@ -156,8 +167,12 @@ def select_cards(world: World, session: Session, action_text: str, budget_chars:
     resident = None
     if district and not any(e.home == district.name for e in mentions):
         loc = _normalize(session.location or "")  # the place's owner first: Old Hara in Old Hara's clinic
+        venues = _venues(world)
+        # Someone who keeps a venue stays in it (live runs 2026-11-19: Mama Sato met the player on the Ring Line
+        # platform in 3 of 4 runs, as the district's first resident): out on the street, another local.
         resident = next((n for n in world.npcs if loc and _mentions(n, loc)), None) or \
-            next((n for n in world.npcs if n.home == district.name), None)
+            next((n for n in world.npcs if n.home == district.name
+                  and not (n.name in venues and venues[n.name] not in loc)), None)
     ordered = [e for e in (place, district, resident) if e] + mentions
     cards: list[str] = []
     total = 0

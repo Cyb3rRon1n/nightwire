@@ -241,7 +241,16 @@ def test_resident_outranks_other_mentions_when_cap_is_full():
 
     cards = select_cards(world, session, "The Loop, the Docks and Hanabira.", budget_chars=10_000)
 
-    assert cards == [_card(world, n) for n in ("Ikebe Low", "Mama Sato", "Hanabira-chō", "Kuroshio Docks")]
+    assert cards == [_card(world, n) for n in ("Ikebe Low", "Wataru Ono", "Hanabira-chō", "Kuroshio Docks")]
+
+
+def test_a_local_who_keeps_a_venue_is_not_put_on_the_street():
+    # Live runs 2026-11-19: Mama Sato met the player on the Ring Line platform in 3 of 4 runs.
+    world = kuroshio()
+    street = select_cards(world, Session(session_id="s", location="Ikebe Low"), "I look around.", 10_000)
+    inside = select_cards(world, Session(session_id="s", location="Mama Sato's izakaya"), "I sit.", 10_000)
+    assert _card(world, "Mama Sato") not in street and _card(world, "Old Hara") not in street
+    assert _card(world, "Mama Sato") in inside
 
 
 def test_resident_comes_before_stale_faction_mentions():
@@ -286,7 +295,7 @@ def test_npc_without_home_is_never_a_resident():
 
 def _place_world():
     raw = _raw(place=[{"name": "Lantern Alley", "aliases": ["the alley"], "home": "Ikebe Low", "card": "Lantern Alley is narrow."}],
-               npc=[{"name": "Mama Sato", "aliases": [], "home": "Ikebe Low", "card": "Mama Sato runs an izakaya."}])
+               npc=[{"name": "Wataru Ono", "aliases": [], "home": "Ikebe Low", "card": "Wataru Ono keeps the shrine."}])
     return parse_world(raw)
 
 
@@ -308,7 +317,7 @@ def test_place_location_puts_place_then_its_district_then_a_resident():
 
     cards = select_cards(world, session, "I look around.", budget_chars=10_000)
 
-    assert cards == ["Lantern Alley is narrow.", "Ikebe Low is old alleys.", "Mama Sato runs an izakaya."]
+    assert cards == ["Lantern Alley is narrow.", "Ikebe Low is old alleys.", "Wataru Ono keeps the shrine."]
 
 
 def test_mentioned_place_loads_its_card():
