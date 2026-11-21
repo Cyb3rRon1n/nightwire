@@ -66,4 +66,6 @@ class JSONFileSessionStore:
             recent_stakes=data.get("recent_stakes", []),
             phone=data.get("phone", {}),
             suggestions=data.get("suggestions", {}),
+            present=data.get("present", []),
+            cast_location=data.get("cast_location"),
         )

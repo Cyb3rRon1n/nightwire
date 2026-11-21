@@ -862,6 +862,7 @@ def test_build_messages_puts_scene_and_world_notes_right_before_the_action():
         "Scene: Ikebe Low - Mama Sato's izakaya · mood: tense · objectives: find the chrome-ya; pay off the torite\n\n"
         "Crew: Rook: no chrome, owes nothing\n\n"
         'Narrate in second person: call Rook "you", never by name.\n\n'
+        'Present: no named characters. Anyone else must arrive on screen first.\n\n'
         f"World notes:\n{ikebe}\n{sato}\n{locals_line(kuroshio(), session)}\n\n"
         "Player action: I order a drink."
     )

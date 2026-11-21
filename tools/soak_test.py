@@ -132,7 +132,7 @@ async def main(turns: int, chips: bool = False) -> Path:
             lines = _new_lines(session.log, start)
             prose = [line for line in lines if not line.startswith("[") and not line.startswith("rin:")]
             opening = prose[0][:40] if prose else ""
-            row.update(seconds=round(time.time() - t), location=session.location, art=location_art(session.location),
+            row.update(seconds=round(time.time() - t), location=session.location, present=list(session.present), art=location_art(session.location),
                        humanity=session.characters["rin"].humanity, narration=" / ".join(prose),
                        repeated_opening=bool(opening) and opening in openings,
                        voice_filtered=sum(line.startswith("[voice filtered") for line in lines),

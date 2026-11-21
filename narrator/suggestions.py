@@ -40,10 +40,11 @@ SCHEMA = {
 _SYSTEM = "You suggest what a player could do next in a cyberpunk tabletop game. Answer only from the scene."
 
 
-async def suggest(client, story: list[str], place: str | None, character) -> list:
+async def suggest(client, story: list[str], place: str | None, character, present: list[str] | None = None) -> list:
     best = sorted(character.skills, key=character.skills.get, reverse=True)[:3]
-    told = _normalize("\n".join(story))
-    present = [npc.name for npc in kuroshio().npcs if _mentions(npc, told)]
+    if present is None:  # no tracked cast: whoever the story names
+        told = _normalize("\n".join(story))
+        present = [npc.name for npc in kuroshio().npcs if _mentions(npc, told)]
     skills = f"; best skills: {', '.join(best)}" if best else ""
     prompt = (
         "Scene (latest last):\n" + "\n".join(story) + "\n\n"

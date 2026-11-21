@@ -158,3 +158,15 @@ def test_a_chip_keeps_only_its_first_sentence():
                          _tagged("I hack the shrine's panel again. If I fail, the alarm triggers.", "hacking", "tech")],
                         _rin(), [])
     assert [c["text"] for c in chips] == ["I step back.", "I hack the shrine's panel again."]
+
+
+async def test_suggest_names_the_tracked_cast_over_the_story():
+    seen = {}
+
+    class Judge:
+        async def judge(self, messages, schema):
+            seen["prompt"] = messages[-1]["content"]
+            return {"plain": "I wait.", "risky": []}
+
+    await suggest(Judge(), ["Mama Sato wipes the counter."], "Kuroshio Docks", _rin(), ["Hachi"])
+    assert "People here: Hachi." in seen["prompt"]

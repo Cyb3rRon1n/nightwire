@@ -348,3 +348,13 @@ def test_a_place_named_after_its_owner_gets_its_district_and_its_owner():
     s = Session(session_id="x"); s.location = "Old Hara's clinic"
     cards = select_cards(kuroshio(), s, "", 4000)
     assert cards[0].startswith("Ikebe Low") and cards[1].startswith("Old Hara")
+
+
+def test_someone_from_earlier_story_gets_a_card_only_while_present():
+    # Soak 2026-11-19 turn 28: Mama Sato, all over the recent story, spoke to Rin as she woke up.
+    world = kuroshio()
+    s = Session(session_id="s", location="Kuroshio Docks", log=["Mama Sato pours tea."])
+    assert _card(world, "Mama Sato") not in select_cards(world, s, "I look around.", 10_000)
+    assert _card(world, "Mama Sato") in select_cards(world, s, "I call Mama Sato.", 10_000)
+    s.present = ["Mama Sato"]
+    assert _card(world, "Mama Sato") in select_cards(world, s, "I look around.", 10_000)

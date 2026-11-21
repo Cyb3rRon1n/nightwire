@@ -23,6 +23,7 @@ from narrator.suggestions import check_chips, suggest
 from narrator.tools import TOOL_REGISTRY, RequestRoll, execute_tool, roll_check
 from narrator.tts_backend import TTSBackend
 from narrator.voice_assignment import assign_voice
+from narrator.cast import note as note_cast, present_line, refresh as refresh_cast
 from narrator.world import kuroshio, locals_line, select_cards
 from ruleset.attributes import Attribute
 from ruleset.cyberware import CHROME, humanity_tier, selfhood_tier
@@ -379,6 +380,7 @@ def _build_messages(session: Session, action_text: str, num_ctx: int) -> list[di
     voice = _voice_line(session)
     if voice:
         parts.append(voice)
+    parts.append(present_line(session))
     if session.pending_world_events:
         parts.append("World event: " + " ".join(session.pending_world_events))
     world_budget = int(num_ctx * _WORLD_BUDGET_FRACTION * _CHARS_PER_TOKEN_ESTIMATE)
@@ -611,6 +613,7 @@ async def _run_turn(
     # Events are shown once, but only dropped after the narrator actually
     # responded; events queued during the turn survive to the next one.
     shown_events = list(session.pending_world_events)
+    refresh_cast(session, referee_action or prompt_text)  # the action may already have moved the player
     messages = _build_messages(session, prompt_text, narrator_client.num_ctx)
     response = await narrator_client.respond(messages)
     del session.pending_world_events[:len(shown_events)]
@@ -699,6 +702,8 @@ async def _run_turn(
     # isn't known yet - nor when every segment was voice-filtered.
     if player_id not in session.pending_rolls and narration_text:
         await run_referee(session, narrator_client, player_id, referee_action or prompt_text, narration_text)
+    refresh_cast(session, referee_action or prompt_text)  # update_world or the referee may have moved them
+    note_cast(session, [(seg.speaker, seg.text) for seg in response.narration])
 
     generated_image = False
     # The model is told "never two turns in a row" but has no way to enforce
@@ -892,7 +897,7 @@ async def refresh_suggestions(session: Session, narrator_client: NarratorClient,
     if character is None or player_id in session.pending_rolls or not story:
         return
     try:
-        raw = await suggest(narrator_client, story, session.location, character)
+        raw = await suggest(narrator_client, story, session.location, character, session.present)
         scene = "\n".join([*story, session.location or ""])  # where the player stands counts as shown
         chips = check_chips(raw, character, session.recent_stakes, scene)
     except Exception as e:  # timeout, bad JSON, a backend down: the story already went out

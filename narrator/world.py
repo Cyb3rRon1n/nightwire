@@ -154,9 +154,11 @@ def select_cards(world: World, session: Session, action_text: str, budget_chars:
     # server/narration.py applies).
     narrative = [line for line in session.log if not line.startswith("[")][-_SCAN_LINES:]
     mentions: list[WorldEntry] = []
-    for text in (action_text, *reversed(narrative)):
+    for i, text in enumerate((action_text, *reversed(narrative))):
         normalized = _normalize(text)
         for entry in world.districts + world.places + world.factions + world.npcs:
+            if i and entry in world.npcs and entry.name not in session.present:
+                continue  # someone from earlier story who isn't here (narrator/cast.py)
             if entry not in (district, place) and entry not in mentions and _mentions(entry, normalized):
                 mentions.append(entry)
     # Put someone on stage even when nobody was named, ahead of older mentions

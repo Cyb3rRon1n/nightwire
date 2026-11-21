@@ -34,3 +34,6 @@ class Session:
     phone: dict[str, dict] = field(default_factory=dict)
     # Suggested actions (spec 2026-11-18): player_id -> the chips shown after their last story turn.
     suggestions: dict[str, list[dict]] = field(default_factory=dict)
+    # Who is in the scene (narrator/cast.py): named NPCs, and the location they belong to.
+    present: list[str] = field(default_factory=list)
+    cast_location: str | None = None
