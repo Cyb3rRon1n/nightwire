@@ -71,3 +71,27 @@ def destination(action: str) -> str | None:
     tail = t[move.end():]
     toward = _TOWARD.search(tail)
     return known_place(tail[toward.end():] if toward else tail, cased=False)
+
+
+# "I ask Old Hara", "I talk to Mama Sato": addressing someone who runs a place, from somewhere else.
+_ADDRESS = re.compile(r"\b(?:ask|asks|tell|tells|talk(?:s)? (?:to|with)|speak(?:s)? (?:to|with)|greet|greets|visit|"
+                      r"visits|show|shows|pay|pays|thank|thanks)\s+((?:\S+\s+){0,2}\S+)")
+
+
+def visit(action: str, location: str | None) -> str | None:
+    """The place of the keeper the action addresses, when the player is elsewhere: a tabletop GM's "you head over
+    to the clinic". Soaks 2026-11-21 turn 13 (twice): "I ask Old Hara about my optics" from the izakaya had the
+    narrator walk Rin into the clinic, but the game never moved her."""
+    from narrator.world import _mentions, _venues  # world -> place_art -> movement would loop at import time
+
+    if not location:
+        return None
+    address = _ADDRESS.search(_norm(action))
+    if not address:
+        return None
+    world = kuroshio()
+    keeper = next((n for n in world.npcs if _mentions(n, address.group(1))), None)
+    venue = _venues(world).get(keeper.name) if keeper else None
+    if not venue or venue.lower() in location.lower():
+        return None
+    return known_place(venue, cased=False)

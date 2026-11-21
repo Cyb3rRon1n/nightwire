@@ -42,3 +42,14 @@ def test_an_everyday_loop_in_the_prose_is_not_the_loop():
     assert known_place("a loop of cable") is None
     assert known_place("Kaminari Run bikes race the Loop.") == "The Loop"
     assert destination("i ride out to the loop") == "The Loop"  # a typed move means the place in any case
+
+
+def test_addressing_a_keeper_from_elsewhere_goes_to_their_place():
+    # Soaks 2026-11-21 turn 13: "I ask Old Hara" from the izakaya walked Rin into the clinic, but she never moved.
+    from narrator.movement import visit
+    assert visit("I ask Old Hara if he can look at my optics.", "Mama Sato's izakaya") == "Old Hara's clinic"
+    assert visit("I talk to Mama Sato.", "Ikebe Low") == "Mama Sato's izakaya"
+    assert visit("I ask Mama Sato about Old Hara.", "Mama Sato's izakaya") is None  # she's here; he's only a topic
+    assert visit("I ask Old Hara about his tea.", "Old Hara's clinic") is None
+    assert visit("I ask the vendor about noodles.", "Ikebe Low") is None
+    assert visit("I ask Old Hara.", None) is None  # nowhere known yet

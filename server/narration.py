@@ -16,7 +16,7 @@ from engine.session import Session
 from narrator.client import NarrationSegment, NarratorClient, _NoTool
 from narrator.image_backend import ImageBackend
 from narrator.image_prompt import resolve
-from narrator.movement import destination, known_place, places_in
+from narrator.movement import destination, known_place, places_in, visit
 from narrator.place_art import district_art, location_art
 from narrator.referee import run_referee
 from narrator.suggestions import check_chips, suggest
@@ -522,7 +522,7 @@ async def handle_action(
             session.log.append(f"[torite: {event}]")
             _saeko_text(session, player_id, character, event)
     # The engine moves the player before the narrator runs, so a narrator timeout can't lose the move (soak run 5).
-    moved_to = destination(action_text)
+    moved_to = destination(action_text) or visit(action_text, session.location)
     if moved_to and moved_to != session.location:
         session.location = moved_to
         session.log.append(f"[moved: {moved_to} (action)]")
