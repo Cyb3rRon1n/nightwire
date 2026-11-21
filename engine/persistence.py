@@ -68,4 +68,5 @@ class JSONFileSessionStore:
             suggestions=data.get("suggestions", {}),
             present=data.get("present", []),
             cast_location=data.get("cast_location"),
+            drop_in_turn=data.get("drop_in_turn"),
         )

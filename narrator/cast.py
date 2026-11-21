@@ -4,7 +4,11 @@ let only active members speak. On a move everyone stays behind except the place'
 names; an NPC joins when the story has them speak or names them."""
 
 from engine.session import Session
-from narrator.world import _mentions, _normalize, kuroshio
+from narrator.world import _mentions, _normalize, _venues, kuroshio
+
+# Someone who runs a place stays in it, but steps out now and then (owner 2026-11-21: "eventually or special events
+# where person leaves their place. keeps it immersive"): one drop-in elsewhere per this many player turns.
+_DROP_IN_EVERY = 12
 
 
 def _named(text: str) -> list[str]:
@@ -12,13 +16,46 @@ def _named(text: str) -> list[str]:
     return [n.name for n in kuroshio().npcs if _mentions(n, t)]
 
 
+def _away_keepers(session: Session) -> set[str]:
+    """Who runs a place that isn't where the player is: Mama Sato anywhere but her izakaya."""
+    if not session.location:
+        return set()  # nowhere known yet (the first turn): nobody is away
+    here = session.location.lower()
+    return {name for name, venue in _venues(kuroshio()).items() if venue.lower() not in here}
+
+
+def _player_turns(session: Session) -> int:
+    actors = tuple(f"{pid}: " for pid in session.characters)
+    return sum(line.startswith(actors) for line in session.log) if actors else 0
+
+
 def refresh(session: Session, action_text: str) -> None:
-    """Resets the cast when the player is somewhere new."""
-    if session.location == session.cast_location:
-        return
-    keeper = _named(session.location or "")  # Mama Sato in Mama Sato's izakaya
-    session.present = list(dict.fromkeys([*keeper, *_named(action_text)]))
-    session.cast_location = session.location
+    """Resets the cast when the player is somewhere new. A keeper away from their place goes back to it unless the
+    action names them (soak 2026-11-21: Mama Sato walked out with Rin and stayed by her side for 20 turns)."""
+    named = _named(action_text)
+    if session.location != session.cast_location:
+        keeper = _named(session.location or "")  # Mama Sato in Mama Sato's izakaya
+        session.present = list(dict.fromkeys([*keeper, *named]))
+        session.cast_location = session.location
+    away = _away_keepers(session) - set(named)
+    session.present = [name for name in session.present if name not in away]
+
+
+def keep_away_keepers(session: Session, lines: list[tuple]) -> list[tuple]:
+    """(speaker, anything) pairs minus lines by a keeper away from their place, unless the cast already has them or
+    it is time for a rare drop-in. Never empties the turn."""
+    away = _away_keepers(session) - set(session.present)
+    def is_away(speaker: str) -> bool:
+        return bool(away.intersection(_named(speaker)))
+
+    if not any(is_away(speaker) for speaker, _ in lines):
+        return lines
+    turn = _player_turns(session)
+    if turn - (session.drop_in_turn or 0) >= _DROP_IN_EVERY:  # the first one waits too
+        session.drop_in_turn = turn
+        return lines
+    kept = [line for line in lines if not is_away(line[0])]
+    return kept or lines
 
 
 def note(session: Session, lines: list[tuple[str, str]]) -> None:

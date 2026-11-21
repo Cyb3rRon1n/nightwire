@@ -37,3 +37,4 @@ class Session:
     # Who is in the scene (narrator/cast.py): named NPCs, and the location they belong to.
     present: list[str] = field(default_factory=list)
     cast_location: str | None = None
+    drop_in_turn: int | None = None  # player turn of a keeper's last drop-in away from their place (narrator/cast.py)

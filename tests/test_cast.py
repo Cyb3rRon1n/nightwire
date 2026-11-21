@@ -38,3 +38,41 @@ def test_the_cast_is_saved(tmp_path):
     store.save(Session(session_id="s", present=["Hachi"], cast_location="Kuroshio Docks"))
     loaded = store.load("s")
     assert loaded.present == ["Hachi"] and loaded.cast_location == "Kuroshio Docks"
+
+
+def _away_session(turns: int, **kw) -> Session:
+    from engine.character import CharacterSheet
+    s = Session(session_id="s", location="Ikebe Low", cast_location="Ikebe Low", **kw)
+    s.characters["rin"] = CharacterSheet(player_id="rin", name="Rin", role="netrunner", lifepath="streetkid")
+    s.log += [f"rin: I walk on {n}." for n in range(turns)]
+    return s
+
+
+def test_a_keeper_away_from_their_place_leaves_unless_the_action_names_them():
+    # Soak 2026-11-21: Mama Sato walked out of the izakaya with Rin and stayed by her side for 20 turns.
+    s = _away_session(3, present=["Mama Sato", "Wataru Ono"])
+    refresh(s, "I ask Mama Sato for directions.")
+    assert s.present == ["Mama Sato", "Wataru Ono"]
+    refresh(s, "I look around.")
+    assert s.present == ["Wataru Ono"]
+    s.location = "Mama Sato's izakaya"
+    refresh(s, "I go in.")
+    assert s.present == ["Mama Sato"]
+
+
+def test_a_keeper_away_speaks_only_as_a_rare_drop_in():
+    from narrator.cast import keep_away_keepers
+    s = _away_session(3)
+    lines = [("narrator", "Rain."), ("Mama Sato", "Child, you're back.")]
+    assert keep_away_keepers(s, lines) == [("narrator", "Rain.")]  # not in the first turns of a game
+    s.log += [f"rin: I walk on {n}." for n in range(17)]
+    assert keep_away_keepers(s, lines) == lines  # a first drop-in is fine: she stepped out
+    s.log.append("rin: I walk on.")
+    assert keep_away_keepers(s, lines) == [("narrator", "Rain.")]  # but not again so soon
+    s.log += [f"rin: I walk on {n}." for n in range(12)]
+    assert keep_away_keepers(s, lines) == lines
+    s.present = ["Mama Sato"]
+    s.log.append("rin: I ask Mama Sato.")
+    assert keep_away_keepers(s, lines) == lines  # named by the player: always welcome
+    s.present = []
+    assert keep_away_keepers(s, [("Mama Sato", "Child.")]) == [("Mama Sato", "Child.")]  # never an empty turn

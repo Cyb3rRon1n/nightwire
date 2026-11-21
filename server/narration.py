@@ -23,7 +23,7 @@ from narrator.suggestions import check_chips, suggest
 from narrator.tools import TOOL_REGISTRY, RequestRoll, execute_tool, roll_check
 from narrator.tts_backend import TTSBackend
 from narrator.voice_assignment import assign_voice
-from narrator.cast import note as note_cast, present_line, refresh as refresh_cast
+from narrator.cast import keep_away_keepers, note as note_cast, present_line, refresh as refresh_cast
 from narrator.world import kuroshio, locals_line, select_cards
 from ruleset.attributes import Attribute
 from ruleset.cyberware import CHROME, humanity_tier, selfhood_tier
@@ -209,10 +209,11 @@ def _drop_repeated_lines(response, session: Session) -> None:
     response.narration[:] = kept or response.narration[-1:]
     # Cast probe 2026-11-20: the wake-up turn opened with three sentences lifted from the middle of the sleep turn,
     # which no whole-line check sees. Short sentences ("Nothing happens.") may honestly recur, so 5+ words only.
+    # Soak 2026-11-21: speech too ("You're not supposed to be here." three times in four turns).
     told = {_sentence_key(s) for line in session.log[-_RECENT_LINES:] if not line.startswith("[")
-            for s in _SENTENCE.split(line) if len(s.split()) >= 5}
+            for s in _SENTENCE.split(_SPEECH.sub("", line, count=1)) if len(s.split()) >= 5}
     texts = [" ".join(s for s in _SENTENCE.split(seg.text) if _sentence_key(s) not in told)
-             if seg.speaker == "narrator" else seg.text for seg in response.narration]
+             for seg in response.narration]
     if not any(t.strip() for t in texts):
         return  # everything repeated: a stale line beats an empty turn
     for seg, text in zip(response.narration, texts):
@@ -221,7 +222,7 @@ def _drop_repeated_lines(response, session: Session) -> None:
 
 
 def _sentence_key(sentence: str) -> str:
-    return " ".join(sentence.lower().split())
+    return " ".join(sentence.lower().replace("\u2019", "'").split())  # curly and straight apostrophes match
 
 
 # Small models reuse one sensory detail turn after turn (8-turn replay 2026-11-19: "scent of soy sauce", "hum of the
@@ -692,6 +693,7 @@ async def _run_turn(
     _tidy(response)
     _drop_repeated_lines(response, session)
     _drop_repeated_senses(response, session)
+    response.narration[:] = [seg for _, seg in keep_away_keepers(session, [(s.speaker, s) for s in response.narration])]
     if not any(seg.text.strip() for seg in response.narration):
         session.log.append(f"[empty reply: tool {response.tool}]")  # soak 2026-11-19 turn 2: cause not yet seen
 

@@ -2179,3 +2179,18 @@ def test_narrator_sentences_copied_from_a_recent_line_are_cut():
     R.narration = [NarrationSegment(speaker="narrator", text="The city hums outside, distant and muffled.")]
     _drop_repeated_lines(R, session)
     assert R.narration[0].text == "The city hums outside, distant and muffled."  # never an empty turn
+
+
+def test_a_character_repeating_a_sentence_has_it_cut_whatever_the_apostrophe():
+    # Soak 2026-11-21: Hoshikawa Rei said "You're not supposed to be here." three times in four turns.
+    from narrator.client import NarrationSegment
+    from server.narration import _drop_repeated_lines
+    session = Session(session_id="s")
+    session.log += ["rin: I step closer.", "Hoshikawa Rei: You're not supposed to be here at all. Leave now."]
+
+    class R:
+        narration = [NarrationSegment(speaker="Hoshikawa Rei",
+                                      text="You’re not supposed to be here at all. But I like that you try.")]
+
+    _drop_repeated_lines(R, session)
+    assert [s.text for s in R.narration] == ["But I like that you try."]
