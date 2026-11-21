@@ -209,11 +209,34 @@ def _drop_repeated_lines(response, session: Session) -> None:
     response.narration[:] = kept or response.narration[-1:]
     # Cast probe 2026-11-20: the wake-up turn opened with three sentences lifted from the middle of the sleep turn,
     # which no whole-line check sees. Short sentences ("Nothing happens.") may honestly recur, so 5+ words only.
-    # Soak 2026-11-21: speech too ("You're not supposed to be here." three times in four turns).
-    told = {_sentence_key(s) for line in session.log[-_RECENT_LINES:] if not line.startswith("[")
-            for s in _SENTENCE.split(_SPEECH.sub("", line, count=1)) if len(s.split()) >= 5}
-    texts = [" ".join(s for s in _SENTENCE.split(seg.text) if _sentence_key(s) not in told)
-             for seg in response.narration]
+    # Soak 2026-11-21: speech too, and near copies: a quote mark, a new start ("The screen flickers, and for a moment,
+    # you see a face—half-formed, shifting like smoke"), or twice in one reply. So a sentence also goes when it shares
+    # an 8-word run (w-shingling, Broder 1997) with recent story or with what this reply already said. The player's
+    # own lines are left out: restating the action is fine.
+    actors = tuple(f"{pid}: " for pid in session.characters) or ("\0",)
+    keys: set[str] = set()
+    runs: set[tuple[str, ...]] = set()
+
+    def remember(sentence: str) -> None:
+        words = _words(sentence)
+        if len(words) >= 5:
+            keys.add(" ".join(words))
+        runs.update(_runs(words))
+
+    for line in session.log[-_RECENT_LINES:]:
+        if not line.startswith(("[", *actors)):
+            for sentence in _SENTENCE.split(_SPEECH.sub("", line, count=1)):
+                remember(sentence)
+    texts = []
+    for seg in response.narration:
+        kept = []
+        for sentence in _SENTENCE.split(seg.text):
+            words = _words(sentence)
+            if " ".join(words) in keys or _runs(words) & runs:
+                continue
+            kept.append(sentence)
+            remember(sentence)
+        texts.append(" ".join(kept))
     if not any(t.strip() for t in texts):
         return  # everything repeated: a stale line beats an empty turn
     for seg, text in zip(response.narration, texts):
@@ -221,8 +244,15 @@ def _drop_repeated_lines(response, session: Session) -> None:
     response.narration[:] = [seg for seg in response.narration if seg.text.strip()]
 
 
-def _sentence_key(sentence: str) -> str:
-    return " ".join(sentence.lower().replace("\u2019", "'").split())  # curly and straight apostrophes match
+_RUN = 8
+
+
+def _words(text: str) -> list[str]:
+    return re.findall(r"[a-z0-9']+", text.lower().replace("\u2019", "'"))  # curly and straight apostrophes match
+
+
+def _runs(words: list[str]) -> set[tuple[str, ...]]:
+    return {tuple(words[i:i + _RUN]) for i in range(len(words) - _RUN + 1)}
 
 
 # Small models reuse one sensory detail turn after turn (8-turn replay 2026-11-19: "scent of soy sauce", "hum of the

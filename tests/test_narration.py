@@ -2212,3 +2212,28 @@ async def test_update_world_moves_the_player_only_to_a_place_the_scene_names(tmp
     await handle_action(session, client, JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(),
                         "p1", {"type": "action", "text": "I leave."})
     assert session.location == "Ikebe Low"
+
+
+def test_near_copies_are_cut_through_quotes_new_starts_and_within_one_reply():
+    # Soak 2026-11-21 turns 27-33.
+    from narrator.client import NarrationSegment
+    from server.narration import _drop_repeated_lines
+    session = Session(session_id="s")
+    session.characters["rin"] = CharacterSheet(player_id="rin", name="Rin", role="netrunner", lifepath="streetkid")
+    session.log += ["rin: I step back from the curtain and look for the light behind the noren curtain.",
+                    "The curtain shimmers, and for a moment, you see a face—half-formed, shifting like smoke.",
+                    "An auditor smiles. 'If you’re looking for answers, you’ll have to pay for them.'"]
+
+    class R:
+        narration = [NarrationSegment(speaker="narrator", text="The screen flickers, and for a moment, you see a "
+                                      "face—half-formed, shifting like smoke. You look for the light behind the "
+                                      "noren curtain again."),
+                     NarrationSegment(speaker="Hoshikawa auditor", text="If you're looking for answers, you'll have "
+                                      "to pay for them. The ledgers are never empty, and the city always collects."),
+                     NarrationSegment(speaker="narrator", text="The ledgers are never empty, and the city always "
+                                      "collects. Rain falls.")]
+
+    _drop_repeated_lines(R, session)
+    assert [s.text for s in R.narration] == [
+        "You look for the light behind the noren curtain again.",  # the player's own words may come back
+        "The ledgers are never empty, and the city always collects.", "Rain falls."]
