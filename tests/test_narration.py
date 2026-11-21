@@ -2158,3 +2158,24 @@ async def test_a_dropped_chip_is_logged():
     await refresh_suggestions(session, Judge(), "rin")
     assert [c["text"] for c in session.suggestions["rin"]] == ["I wait.", "I hack the till."]
     assert session.log[-1] == "[chips dropped: I ask Old Hara for help. (persuasion)]"
+
+
+def test_narrator_sentences_copied_from_a_recent_line_are_cut():
+    # Cast probe 2026-11-20: "I wake up" opened with three sentences lifted from the middle of the sleep turn.
+    from narrator.client import NarrationSegment
+    from server.narration import _drop_repeated_lines
+    session = Session(session_id="s")
+    session.log += ["rin: I go home and sleep.",
+                    "You slip into your room. The city hums outside, distant and muffled. You fall into your bed, "
+                    "the sheets cool against your skin."]
+
+    class R:
+        narration = [NarrationSegment(speaker="narrator", text="The city hums outside, distant and muffled. You fall "
+                                      "into your bed, the sheets cool against your skin. You sit up, rubbing your eyes."),
+                     NarrationSegment(speaker="narrator", text="The news ticker flickers to life.")]
+
+    _drop_repeated_lines(R, session)
+    assert [s.text for s in R.narration] == ["You sit up, rubbing your eyes.", "The news ticker flickers to life."]
+    R.narration = [NarrationSegment(speaker="narrator", text="The city hums outside, distant and muffled.")]
+    _drop_repeated_lines(R, session)
+    assert R.narration[0].text == "The city hums outside, distant and muffled."  # never an empty turn

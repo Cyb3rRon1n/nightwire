@@ -207,6 +207,21 @@ def _drop_repeated_lines(response, session: Session) -> None:
               for line in [l for l in session.log if not l.startswith("[")][-_RECENT_LINES:]}
     kept = [seg for seg in response.narration if _opening_key(seg.text) not in recent]
     response.narration[:] = kept or response.narration[-1:]
+    # Cast probe 2026-11-20: the wake-up turn opened with three sentences lifted from the middle of the sleep turn,
+    # which no whole-line check sees. Short sentences ("Nothing happens.") may honestly recur, so 5+ words only.
+    told = {_sentence_key(s) for line in session.log[-_RECENT_LINES:] if not line.startswith("[")
+            for s in _SENTENCE.split(line) if len(s.split()) >= 5}
+    texts = [" ".join(s for s in _SENTENCE.split(seg.text) if _sentence_key(s) not in told)
+             if seg.speaker == "narrator" else seg.text for seg in response.narration]
+    if not any(t.strip() for t in texts):
+        return  # everything repeated: a stale line beats an empty turn
+    for seg, text in zip(response.narration, texts):
+        seg.text = text
+    response.narration[:] = [seg for seg in response.narration if seg.text.strip()]
+
+
+def _sentence_key(sentence: str) -> str:
+    return " ".join(sentence.lower().split())
 
 
 # Small models reuse one sensory detail turn after turn (8-turn replay 2026-11-19: "scent of soy sauce", "hum of the
