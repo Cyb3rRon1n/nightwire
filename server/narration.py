@@ -16,7 +16,7 @@ from engine.session import Session
 from narrator.client import NarrationSegment, NarratorClient, _NoTool
 from narrator.image_backend import ImageBackend
 from narrator.image_prompt import resolve
-from narrator.movement import destination
+from narrator.movement import destination, known_place, places_in
 from narrator.place_art import district_art, location_art
 from narrator.referee import run_referee
 from narrator.suggestions import check_chips, suggest
@@ -590,11 +590,18 @@ def _in_fiction_refusal(session, response, player_id, allow_roll) -> str | None:
     return None
 
 
-def _apply_tool(session, response, player_id, allow_roll, roll_skill: str | None = None) -> None:
+def _apply_tool(session, response, player_id, allow_roll, roll_skill: str | None = None, scene: str = "") -> None:
     """Runs the narrator's tool call; an engine refusal is logged as a tool error."""
     if response.tool is None:
         return
     tool_args = dict(response.tool_args)
+    # A move needs the place named in the action or the narrator's own prose, as for the referee (soak 2026-11-21
+    # turn 8: update_world took Rin out of the izakaya to Ikebe Low while she was talking to Mama Sato).
+    where = tool_args.get("location") if response.tool == "update_world" else None
+    if where and known_place(where) not in (session.location, *places_in(
+            "\n".join(line for line in scene.splitlines() if not _SPEECH.match(line)))):
+        session.log.append(f"[update_world: location {where} not in the scene, ignored]")
+        tool_args["location"] = None
     if response.tool == "request_roll":
         if allow_roll:
             if roll_skill:
@@ -704,16 +711,17 @@ async def _run_turn(
     if cut is not None:
         session.log.append(f'[set-up cut: "{cut}"]')
     narration_text = await _log_narration(session, response, store, tts_backend, player_id)
+    scene = f"{referee_action or prompt_text}\n{narration_text}"
     if chip_roll is not None:
         if response.tool == "request_roll":
             response.tool_call = _NoTool()
-        _apply_tool(session, response, player_id, allow_roll)
+        _apply_tool(session, response, player_id, allow_roll, scene=scene)
         _hold_roll(session, player_id, {"skill": chip_roll["skill"], "attribute": chip_roll["attribute"],
                                         "stakes": chip_roll["stakes"], "reason": chip_roll["text"]}, capped=True)
     else:
         if no_roll and response.tool == "request_roll":  # a redo (opening, refusal) may bring the roll back
             response.tool_call = _NoTool()
-        _apply_tool(session, response, player_id, allow_roll, roll_skill)  # a refusal on the redo is only logged
+        _apply_tool(session, response, player_id, allow_roll, roll_skill, scene)  # a refusal on the redo is only logged
 
     # Referee (Phase 18): not on the setup turn that opened a roll - the outcome
     # isn't known yet - nor when every segment was voice-filtered.

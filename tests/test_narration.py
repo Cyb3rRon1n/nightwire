@@ -2194,3 +2194,21 @@ def test_a_character_repeating_a_sentence_has_it_cut_whatever_the_apostrophe():
 
     _drop_repeated_lines(R, session)
     assert [s.text for s in R.narration] == ["But I like that you try."]
+
+
+async def test_update_world_moves_the_player_only_to_a_place_the_scene_names(tmp_path):
+    # Soak 2026-11-21 turn 8: "I tell Mama Sato I was just looking for the bathroom" set the location to Ikebe Low,
+    # taking Rin (and Mama Sato) out of the izakaya though nobody left.
+    session = _session_with_character()
+    session.location = "Mama Sato's izakaya"
+    client = _fake_client("You slip past the counter toward the back.", tool="update_world",
+                          tool_args={"location": "Ikebe Low"})
+    await handle_action(session, client, JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(),
+                        "p1", {"type": "action", "text": "I tell Mama Sato I was just looking for the bathroom."})
+    assert session.location == "Mama Sato's izakaya"
+    assert "[update_world: location Ikebe Low not in the scene, ignored]" in session.log
+    client = _fake_client("You step out into the rain of Ikebe Low.", tool="update_world",
+                          tool_args={"location": "Ikebe Low"})
+    await handle_action(session, client, JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(),
+                        "p1", {"type": "action", "text": "I leave."})
+    assert session.location == "Ikebe Low"
