@@ -22,6 +22,7 @@ from engine.phone import add_contact, phone_of, unread
 from engine.persistence import JSONFileSessionStore
 from engine.session import Session
 from narrator.client import create_narrator_backend
+from narrator.movement import _MOVE, _norm
 from narrator.image_backend import create_image_backend
 from narrator.place_art import location_art
 from narrator.tts_backend import KokoroBackend
@@ -101,7 +102,9 @@ async def main(turns: int, chips: bool = False) -> Path:
             row = {"turn": n, "action": action[2] if texting else action, "location_before": before}
             pick = None  # set only on a chip turn; never read otherwise
             offered = session.suggestions.get("rin", []) if chips else []
-            if offered and not texting and n % 3 == 0:
+            # A chip never replaces a scripted move (soak 2026-11-21: a chip took the place of "I go home to my room
+            # and sleep", so Rin woke up in the street), or the next scripted turns make no sense.
+            if offered and not texting and n % 3 == 0 and not _MOVE.search(_norm(action)):
                 pick = offered[(n // 3) % len(offered)]
                 action, row["chip"] = pick["text"], {k: pick[k] for k in ("text", "skill", "attribute", "difficulty")}
                 row["action"] = action
