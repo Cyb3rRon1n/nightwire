@@ -15,8 +15,10 @@ from narrator.world import _where, kuroshio
 
 MAX_PEOPLE, MAX_WEIGHT, RETURN_GAP = 12, 3, 20
 _WHO_MAX, _WHAT_MAX = 40, 80
+# Words that describe half the city: never enough on their own to say two walk-ons are one person.
 _GENERIC = {"with", "that", "this", "from", "into", "their", "them", "person", "people", "someone", "guy", "woman",
-            "young", "old", "man"}
+            "young", "old", "man", "street", "stranger", "hand", "hands", "face", "coat", "jacket", "kid", "girl", "boy",
+            "worker", "vendor", "driver", "local", "tall", "short", "thin", "burned", "scarred", "drunk", "angry"}
 
 
 @cache
@@ -35,9 +37,14 @@ def split(answer: str) -> tuple[str, str] | None:
     return (who, what) if sep and who and what else None
 
 
-def grounded(who: str, scene: str) -> bool:
-    """A real word of "who" is in the scene (the referee can't invent a person)."""
-    return bool(_words(who) & set(re.findall(r"[a-z0-9āēīōū]+", scene.lower())))
+def grounded(session: Session, who: str, scene: str) -> bool:
+    """The walk-on's head word ("dockworker" in "dockworker with a burned hand") is in the scene, and "who" isn't
+    someone who already has a name (review 2026-11-22: "Old Hara" would become a second persona)."""
+    said = set(re.findall(r"[a-z0-9āēīōū]+", scene.lower()))
+    head = re.split(r"\b(?:with|who|from|in|at|on|by)\b", who.lower())[0]
+    known = {w for n in _taken(session) for w in re.findall(r"[a-z0-9āēīōū]+", n.lower()) if len(w) >= 3}
+    words = set(re.findall(r"[a-z0-9āēīōū]+", who.lower()))
+    return bool(set(re.findall(r"[a-z0-9āēīōū]+", head)) & said - _GENERIC - {"a", "an", "the"}) and not words & known
 
 
 def _district(session: Session) -> str | None:
@@ -46,7 +53,9 @@ def _district(session: Session) -> str | None:
 
 
 def _taken(session: Session) -> set[str]:
-    return {*session.people, *session.npc_memory, *(n.name for n in kuroshio().npcs)}
+    contacts = {c["name"] for p in session.phone.values() for c in p.get("contacts", {}).values()}
+    players = {c.name for c in session.characters.values()}
+    return {*session.people, *session.npc_memory, *(n.name for n in kuroshio().npcs), *contacts, *players}
 
 
 def _fresh_name(session: Session, district: str | None) -> str | None:
@@ -58,7 +67,9 @@ def _fresh_name(session: Session, district: str | None) -> str | None:
 def find(session: Session, who: str) -> str | None:
     """Someone on the roster from this district whose description shares a real word with this one."""
     here, words = _district(session), _words(who)
-    return next((n for n, p in session.people.items() if p["district"] == here and words & _words(p["who"])), None)
+    scores = {n: len(words & _words(p["who"])) for n, p in session.people.items() if p["district"] == here}
+    best = max(scores, key=scores.get, default=None)
+    return best if best and scores[best] >= 1 and list(scores.values()).count(scores[best]) == 1 else None
 
 
 def meet(session: Session, who: str, what: str) -> str | None:
@@ -77,8 +88,10 @@ def meet(session: Session, who: str, what: str) -> str | None:
                                 "turn": now, "weight": 1, "returned": None}
         session.log.append(f"[person: {name} = {who}]")
         while len(session.people) > MAX_PEOPLE:
-            gone = min(session.people, key=lambda n: (session.people[n]["weight"], session.people[n]["turn"]))
+            gone = min((n for n in session.people if n != name),
+                       key=lambda n: (session.people[n]["weight"], session.people[n]["turn"]))
             promises.note(session, f"{gone}, the {session.people.pop(gone)['who']}", "lost touch")
+            session.present = [n for n in session.present if n != gone]
     memory.remember(session, name, what, memory.NOTABLE)
     if name not in session.present:
         session.present.append(name)
@@ -91,15 +104,12 @@ def label(session: Session, name: str) -> str:
     return f"{name} ({p['who']})" if p else name
 
 
-def mentioned(session: Session, text: str) -> list[str]:
-    words = set(re.findall(r"[a-z0-9āēīōū]+", text.lower()))
-    return [n for n in session.people if n.lower() in words]
-
-
 def comeback(session: Session) -> str | None:
     """Who returns: this district's people first, then anyone, weighted by how much they matter; not twice in 20."""
     now = _player_turns(session)
-    ready = [n for n, p in session.people.items() if p["returned"] is None or now - p["returned"] >= RETURN_GAP]
+    # Not someone standing right here, and not someone just met (review 2026-11-22).
+    ready = [n for n, p in session.people.items() if n not in session.present and now - p["turn"] >= RETURN_GAP
+             and (p["returned"] is None or now - p["returned"] >= RETURN_GAP)]
     here = [n for n in ready if session.people[n]["district"] == _district(session)]
     pool = here or ready
     if not pool:

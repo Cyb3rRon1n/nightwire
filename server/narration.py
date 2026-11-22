@@ -225,7 +225,9 @@ def _drop_repeated_lines(response, session: Session) -> None:
             keys.add(" ".join(words))
         runs.update(_runs(words))
 
-    for line in session.log[-_RECENT_LINES:]:
+    # Soak 2026-11-22: Wataru's turn-11 line came back word for word on turns 23, 24 and 26, past the recent window.
+    # 8-word runs are cheap, so they look much further back than whole-line openings do.
+    for line in session.log[-_RUN_LINES:]:
         if not line.startswith(("[", *actors)):
             for sentence in _SENTENCE.split(_SPEECH.sub("", line, count=1)):
                 remember(sentence)
@@ -257,6 +259,7 @@ def _drop_repeated_lines(response, session: Session) -> None:
 
 
 _RUN = 8
+_RUN_LINES = 150  # log lines whose 8-word runs a new sentence may not copy
 
 
 def _words(text: str) -> list[str]:

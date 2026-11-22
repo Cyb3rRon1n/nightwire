@@ -214,7 +214,7 @@ def ground(session: Session, verdict: dict, action: str, narration: str) -> dict
     person = " ".join(str(grounded.get("new_person", "")).split())
     if person:
         parts = people.split(person)
-        if not parts or not people.grounded(parts[0], f"{action}\n{narration}"):
+        if not parts or not people.grounded(session, parts[0], f"{action}\n{narration}"):
             session.log.append(f'[referee: new_person "{person}" is not in the scene, ignored]')
             person = ""
     if "new_person" in grounded or person:

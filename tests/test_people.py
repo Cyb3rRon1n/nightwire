@@ -69,7 +69,9 @@ def test_a_comeback_event_brings_someone_back_by_weight_with_a_lead():
     s = _session()
     s.location = "Kuroshio Docks"
     people.meet(s, "dockworker with a burned hand", "Rook punched him")
+    assert people.comeback(s) is None  # standing right here, and only just met
     s.present = []
+    s.log += ["p1: I walk."] * people.RETURN_GAP
     event = director.pick(s, "p1")
     assert event["id"] == "comeback"
     director.fire(s, event)
@@ -91,3 +93,22 @@ def test_people_show_in_the_view_and_old_saves_load(tmp_path):
     data.pop("people")
     path.write_text(json.dumps(data))
     assert store.load("old").people == {}
+
+
+def test_named_people_and_generic_words_do_not_make_or_merge_walk_ons():
+    s = _session()
+    s.location = "Ikebe Low"
+    _met(s, "Old Hara with a wrench: helped Rook", "I ask Old Hara for help.", "Old Hara hands Rook a wrench.")
+    assert s.people == {}
+    people.meet(s, "ticket vendor", "sold Rook a pass")
+    people.meet(s, "noodle vendor with a limp", "fed Rook")
+    assert len(s.people) == 2
+
+
+def test_a_name_that_is_also_a_word_only_counts_capitalised():
+    from narrator.cast import _named
+    s = _session()
+    s.people["Shin"] = {"who": "x", "what": "y", "district": None, "place": None, "turn": 0, "weight": 1,
+                        "returned": None}
+    assert _named("She kicks him in the shin.", s) == []
+    assert _named("Shin waves.", s) == ["Shin"]

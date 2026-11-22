@@ -2147,6 +2147,23 @@ def test_a_character_repeating_a_sentence_has_it_cut_whatever_the_apostrophe():
     assert [s.text for s in R.narration] == ["But I like that you try."]
 
 
+
+def test_a_line_from_long_ago_quoted_again_is_still_cut():
+    # Soak 2026-11-22: Wataru's turn-11 line came back word for word 12-15 turns later, past the 40-line window.
+    from narrator.client import NarrationSegment
+    from server.narration import _drop_repeated_lines
+    session = Session(session_id="s")
+    session.log += ["rin: I tell him I paid.", "Wataru Ono: The ledger says otherwise. You've paid, yes. But the "
+                    "records are not so easily erased."]
+    session.log += [f"The rain keeps falling on street number {i}." for i in range(60)]
+
+    class R:
+        narration = [NarrationSegment(speaker="narrator", text="A message: 'You've paid, yes. But the records are not "
+                                      "so easily erased.' The screen goes dark.")]
+
+    _drop_repeated_lines(R, session)
+    assert "erased" not in R.narration[0].text
+
 async def test_update_world_moves_the_player_only_to_a_place_the_scene_names(tmp_path):
     # Soak 2026-11-21 turn 8: "I tell Mama Sato I was just looking for the bathroom" set the location to Ikebe Low,
     # taking Rin (and Mama Sato) out of the izakaya though nobody left.

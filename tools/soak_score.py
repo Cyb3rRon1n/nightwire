@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 _RUN = 8
+_DICE = re.compile(r"^\S+ rolls ")  # the engine's own dice line, the same words every roll
 _SPEECH = re.compile(r"^([^:/]{1,30}): (.+)$")
 # The narrator speaking or choosing for "you" (heuristic: a verb the player's own action didn't use).
 _AGENCY = re.compile(r"\byou (say|said|tell|told|ask|asked|reply|replied|answer|answered|agree|agreed|decide|decided|"
@@ -34,7 +35,7 @@ def score(path: Path) -> dict:
     repeated_runs = agency = empty = 0
     openings, speech = [], 0
     for r in rows:
-        parts = [p.strip() for p in r.get("narration", "").split(" / ") if p.strip()]
+        parts = [p.strip() for p in r.get("narration", "").split(" / ") if p.strip() and not _DICE.match(p.strip())]
         ooc = any(n.startswith("[ooc") for n in r.get("notes", []))  # "undo that" is answered out of character
         if not parts and "text_to" not in r and not ooc:
             empty += 1

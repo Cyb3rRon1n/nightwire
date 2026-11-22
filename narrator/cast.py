@@ -16,8 +16,8 @@ _DROP_IN_EVERY = 12
 def _named(text: str, session: Session | None = None) -> list[str]:
     """World NPCs, and the player's recurring people (narrator/people.py) by their name, mentioned in the text."""
     t = _normalize(text)
-    words = set(re.findall(r"[a-z0-9āēīōū]+", text.lower()))
-    people = [n for n in (session.people if session else {}) if n.lower() in words]
+    # Capitalised, as names are written: "Shin" is the person, "his shin" is not (review 2026-11-22).
+    people = [n for n in (session.people if session else {}) if re.search(rf"\b{re.escape(n)}\b", text)]
     return [n.name for n in kuroshio().npcs if _mentions(n, t)] + people
 
 
