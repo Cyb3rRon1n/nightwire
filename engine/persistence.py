@@ -74,4 +74,8 @@ class JSONFileSessionStore:
             voice_lines=data.get("voice_lines", []),
             promises=data.get("promises", []),
             journal=data.get("journal", []),
+            last_turn=data.get("last_turn"),
+            last_rating=data.get("last_rating"),
+            checkin_open=data.get("checkin_open", False),
+            checkin_turn=data.get("checkin_turn"),
         )

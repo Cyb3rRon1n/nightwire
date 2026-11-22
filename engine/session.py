@@ -45,3 +45,8 @@ class Session:
     # Unfinished business (narrator/promises.py): open promises, and a journal of what is over.
     promises: list[dict] = field(default_factory=list)
     journal: list[dict] = field(default_factory=list)
+    # Liked turns (narrator/ratings.py): the newest turn as a rating would save it, its rating, and calm check-ins.
+    last_turn: dict | None = None
+    last_rating: dict | None = None
+    checkin_open: bool = False
+    checkin_turn: int | None = None

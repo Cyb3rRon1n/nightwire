@@ -9,6 +9,7 @@ import { chipTag, chipTitle } from "@/lib/nightwire/chips";
 import { npcColour, npcPortrait } from "@/lib/nightwire/npcColour";
 import { PendingRollCard, RollResultCard } from "../RollCard";
 import { ChromeOfferCard } from "../ChromeOfferCard";
+import { RateTurn } from "./RateTurn";
 
 // Client-side text transform only, no protocol-level mode field - same
 // pattern as open-dungeon's own Do/Say/Story composer (frontend/src/app/page.tsx).
@@ -99,7 +100,7 @@ function newestTarget(el: HTMLDivElement): number {
   return Math.min(bottom, Math.max(0, last.offsetTop - FADE));
 }
 
-export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, chips = true, onOpenGallery, compact = false }: {
+export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, chips = true, dev = false, onOpenGallery, compact = false }: {
   view: StateView;
   playerId: string;
   send: (msg: ClientMessage) => void;
@@ -107,6 +108,7 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, chi
   errorSeq: number;
   sceneArt: boolean;
   chips: boolean;
+  dev?: boolean;
   onOpenGallery: (index: number) => void;
   compact?: boolean;
 }) {
@@ -289,6 +291,7 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, chi
           if (entry.kind === "meta") return <p key={i} className="nw-hud text-center text-xs" style={{ color: "#9aa3ad" }}>{entry.text.slice(1, -1)}</p>;
           return <p key={i} className="nw-line-narrator">{entry.text}</p>;
         })}
+        {!sending && <RateTurn view={view} send={send} dev={dev} />}
         {view.pending_chrome_offers?.[playerId] && (
           <ChromeOfferCard
             chromeId={view.pending_chrome_offers[playerId]}

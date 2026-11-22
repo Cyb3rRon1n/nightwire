@@ -25,6 +25,7 @@ from narrator.tts_backend import TTSBackend
 from narrator.voice_assignment import assign_voice
 from narrator.voices import voice_block
 from narrator.promises import business_line, call_in
+from narrator import ratings
 from narrator.cast import keep_away_keepers, note as note_cast, present_line, refresh as refresh_cast
 from narrator.world import kuroshio, locals_line, select_cards
 from ruleset.attributes import Attribute
@@ -442,6 +443,14 @@ def _build_messages(session: Session, action_text: str, num_ctx: int, voices: st
     business = business_line(session)
     if business:
         parts.append(business)
+    liked, liked_lines = ratings.example_block(session)
+    if liked:
+        parts.append(liked)
+        # The repeat cut treats the example as already said, so a copy of it is cut like a copied voice line.
+        session.voice_lines = [*session.voice_lines, *(t for t in liked_lines if t not in session.voice_lines)]
+    avoid = ratings.avoid_line()
+    if avoid:
+        parts.append(avoid)
     if voices is None:  # _run_turn picks once per turn, so a redo keeps the lines the kept reply saw (review 2026-11-22)
         voices = voice_block(session, action_text)
     if voices:
@@ -689,6 +698,7 @@ async def _run_turn(
     refresh_cast(session, referee_action or prompt_text)  # the action may already have moved the player
     voices = voice_block(session, prompt_text)
     messages = _build_messages(session, prompt_text, narrator_client.num_ctx, voices)
+    prompt_used = messages[0]["content"]  # what a rating of this turn is saved with (redos only add an engine note)
     response = await narrator_client.respond(messages)
     del session.pending_world_events[:len(shown_events)]
 
@@ -763,6 +773,8 @@ async def _run_turn(
         session.log.append(f'[set-up cut: "{cut}"]')
     narration_text = await _log_narration(session, response, store, tts_backend, player_id)
     scene = f"{referee_action or prompt_text}\n{narration_text}"
+    if narration_text:
+        ratings.note_turn(session, prompt_used, referee_action or prompt_text, narration_text)
     if chip_roll is not None:
         if response.tool == "request_roll":
             response.tool_call = _NoTool()
@@ -780,6 +792,7 @@ async def _run_turn(
         await run_referee(session, narrator_client, player_id, referee_action or prompt_text, narration_text)
     refresh_cast(session, referee_action or prompt_text)  # update_world or the referee may have moved them
     note_cast(session, [(seg.speaker, seg.text) for seg in response.narration])
+    ratings.maybe_checkin(session)
 
     generated_image = False
     # The model is told "never two turns in a row" but has no way to enforce

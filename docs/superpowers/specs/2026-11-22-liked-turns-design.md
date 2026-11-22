@@ -42,7 +42,7 @@ These are from research pass 2 (`2026-11-22-research-backend-intelligence-2.md`)
 ## Design
 
 **Two ways to rate.**
-- *Developer mode* (off by default). It is turned on with the "Dev" toggle in the Status panel, and the setting is
+- *Developer mode* (off by default). It is turned on with the "Dev" toggle in the play header, beside "Suggestions", and the setting is
   remembered in the browser. With it on, 👍/👎 appear under every newest turn, as described in the rest of this
   design. The owner rates this way while testing.
 - *Check-ins*, for normal play. A small card appears under the newest turn:

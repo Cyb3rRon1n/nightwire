@@ -3,6 +3,7 @@ from engine.chrome import SHELL_INSTALLMENTS, STARTING_SELFHOOD, install_chrome,
 from engine.phone import add_contact
 from engine.session import Session
 from engine.turns import advance_turn, end_combat, join, roll_initiative
+from narrator.ratings import dismiss_checkin, rate
 from ruleset.attributes import Attribute
 from ruleset.cyberware import CHROME
 from ruleset.lifepaths import LIFEPATHS
@@ -218,6 +219,14 @@ def handle_message(session: Session, message: dict, player_id: str) -> None:
         item = message.get("item")
         session.pending_world_events.extend(remove_chrome(character, item))
         session.log.append(f"[chrome removed: {character.name} — {CHROME[item].name}]")
+
+    elif message_type == "rate_turn":
+        if not isinstance(message.get("like"), bool):
+            raise ValueError("rate_turn needs like: true or false")
+        rate(session, message["like"], message.get("reason"))
+
+    elif message_type == "dismiss_checkin":
+        dismiss_checkin(session)
 
     elif message_type == "advance_turn":
         advance_turn(session)

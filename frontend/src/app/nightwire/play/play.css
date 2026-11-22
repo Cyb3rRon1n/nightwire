@@ -125,3 +125,9 @@
 .nw-suggestion-tag[data-difficulty="moderate"] { color: var(--nw-gold); }
 .nw-suggestion-tag[data-difficulty="hard"] { color: var(--nw-red); }
 .nw-suggestion-tag[data-difficulty="extreme"] { color: #ff8a80; }
+
+/* Rating the newest turn: dev mode or a calm check-in (RateTurn.tsx). Quiet, small, never in the way. */
+.nw-rate { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 8px; font-size: 13px; color: #9aa3ad; }
+.nw-rate .nw-chip { min-height: 32px; padding: 2px 10px; font-size: 13px; }
+.nw-rate-ask { color: #c8ced6; }
+.nw-rate-skip { background: none; border: 0; color: #9aa3ad; text-decoration: underline; cursor: pointer; padding: 4px; }
