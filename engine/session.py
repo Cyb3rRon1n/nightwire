@@ -55,3 +55,5 @@ class Session:
     breather: int = 0
     quiet_turns: int = 0
     events_used: dict[str, int] = field(default_factory=dict)
+    # Emerging characters (narrator/people.py): name -> {who, what, district, place, turn, weight, returned}.
+    people: dict[str, dict] = field(default_factory=dict)

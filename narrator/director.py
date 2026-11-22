@@ -8,7 +8,7 @@ from functools import cache
 from pathlib import Path
 
 from engine.session import Session
-from narrator import promises
+from narrator import people, promises
 from narrator.cast import _player_turns
 from narrator.world import _where, kuroshio
 
@@ -17,7 +17,7 @@ BREATHER_TURNS, QUIET_AT, QUIET_TURNS = 2, 1, 4
 NO_REPEAT, MIN_GAP = 40, 6
 PACING = "Pacing: let this moment breathe - no new threats or arrivals this turn."
 _EVENTS = Path(__file__).resolve().parent / "worlds" / "events.toml"
-_NEEDS = {"owes", "promise_open", "throttled"}
+_NEEDS = {"owes", "promise_open", "throttled", "people"}
 
 
 @cache
@@ -52,7 +52,7 @@ def _rolls_this_turn(session: Session) -> list[str]:
 def _met(session: Session, player_id: str, need: str) -> bool:
     c = session.characters[player_id]
     return {"owes": c.installments_owed > 0, "promise_open": bool(session.promises),
-            "throttled": bool(c.throttled)}[need]
+            "throttled": bool(c.throttled), "people": people.comeback(session) is not None}[need]
 
 
 def pick(session: Session, player_id: str) -> dict | None:
@@ -67,19 +67,29 @@ def pick(session: Session, player_id: str) -> dict | None:
           and now - session.events_used.get(e["id"], -NO_REPEAT) >= NO_REPEAT]
     if not ok:
         return None
-    return min(ok, key=lambda e: (not e.get("where"), not e.get("needs"), session.events_used.get(e["id"], -1)))
+    # Someone the player met coming back counts as local: it is about them (emerging characters spec).
+    return min(ok, key=lambda e: (not (e.get("where") or "people" in e.get("needs", [])), not e.get("needs"),
+                                  session.events_used.get(e["id"], -1)))
 
 
 def fire(session: Session, event: dict) -> None:
-    text = event["text"]
-    if session.promises:
+    text, lead = event["text"], event.get("lead", "")
+    if "people" in event.get("needs", []) and (name := people.comeback(session)):
+        p = session.people[name]
+        p["returned"] = _player_turns(session)
+        fill = {"{name}": name, "{who}": p["who"], "{what}": p["what"]}
+        for k, v in fill.items():
+            text, lead = text.replace(k, v), lead.replace(k, v)
+        if name not in session.present:
+            session.present.append(name)
+    elif session.promises:
         oldest = session.promises[0]
         text = text.replace("{who}", oldest["who"]).replace("{what}", oldest["what"])
     session.pending_world_events.append(text)
     session.events_used[event["id"]] = _player_turns(session)
     session.log.append(f"[director: {event['id']}]")
-    if event.get("lead"):
-        promises.add_lead(session, event["lead"])
+    if lead:
+        promises.add_lead(session, lead)
 
 
 def tick(session: Session, player_id: str, health_before: int) -> None:

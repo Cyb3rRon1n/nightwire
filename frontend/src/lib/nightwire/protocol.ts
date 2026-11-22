@@ -98,6 +98,8 @@ export interface StateView {
   scene_mood: string | null
   active_objectives: string[]
   promises: { who: string; what: string; ago: number }[]
+  // Recurring people met in play (narrator/people.py), newest first.
+  people: { name: string; who: string; what: string; place: string | null; ago: number }[]
   can_rate: boolean
   last_rating: { like: boolean; reason: RatingReason | null } | null
   checkin: boolean

@@ -3,6 +3,8 @@ Mama Sato spoke to Rin as she woke up). A tabletop GM keeps the scene's cast the
 let only active members speak. On a move everyone stays behind except the place's keeper and whoever the action
 names; an NPC joins when the story has them speak or names them."""
 
+import re
+
 from engine.session import Session
 from narrator.world import _mentions, _normalize, _venues, kuroshio
 
@@ -11,9 +13,12 @@ from narrator.world import _mentions, _normalize, _venues, kuroshio
 _DROP_IN_EVERY = 12
 
 
-def _named(text: str) -> list[str]:
+def _named(text: str, session: Session | None = None) -> list[str]:
+    """World NPCs, and the player's recurring people (narrator/people.py) by their name, mentioned in the text."""
     t = _normalize(text)
-    return [n.name for n in kuroshio().npcs if _mentions(n, t)]
+    words = set(re.findall(r"[a-z0-9āēīōū]+", text.lower()))
+    people = [n for n in (session.people if session else {}) if n.lower() in words]
+    return [n.name for n in kuroshio().npcs if _mentions(n, t)] + people
 
 
 def _away_keepers(session: Session) -> set[str]:
@@ -32,7 +37,7 @@ def _player_turns(session: Session) -> int:
 def refresh(session: Session, action_text: str) -> None:
     """Resets the cast when the player is somewhere new. A keeper away from their place goes back to it unless the
     action names them (soak 2026-11-21: Mama Sato walked out with Rin and stayed by her side for 20 turns)."""
-    named = _named(action_text)
+    named = _named(action_text, session)
     if session.location != session.cast_location:
         keeper = _named(session.location or "")  # Mama Sato in Mama Sato's izakaya
         session.present = list(dict.fromkeys([*keeper, *named]))
@@ -63,11 +68,12 @@ def note(session: Session, lines: list[tuple[str, str]]) -> None:
     # ponytail: a name in the prose counts as on stage, so "nobody has seen Hara in weeks" adds him; a judge call
     # could tell talk-about from presence if that shows up in soaks.
     for speaker, text in lines:
-        for name in _named(text if speaker == "narrator" else speaker):
+        for name in _named(text if speaker == "narrator" else speaker, session):
             if name not in session.present:
                 session.present.append(name)
 
 
 def present_line(session: Session) -> str:
-    who = ", ".join(session.present) or "no named characters"
+    labels = [f"{n} ({session.people[n]['who']})" if n in session.people else n for n in session.present]
+    who = ", ".join(labels) or "no named characters"
     return f"Present: {who}. Anyone else must arrive on screen first."

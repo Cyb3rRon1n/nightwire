@@ -90,6 +90,15 @@ def voice_block(session: Session, action_text: str) -> str:
         session.last_moves[name] = line.move
         entries.append(f'- {name} will {line.move}, like: "{line.text}"')
         shown.append(line.text)
+    for name in [n for n in session.present if n in session.people][:_MAX_CHARACTERS]:
+        who = _normalize(session.people[name]["who"])
+        sheet = next((t for t in voices().types if any(re.search(rf"\b{re.escape(m)}\b", who) for m in t.match)), None)
+        if sheet:
+            n = session.type_turns.get(sheet.name, 0)
+            session.type_turns[sheet.name] = n + 1
+            text = sheet.lines[n % len(sheet.lines)]
+            entries.append(f'- {name}, a {sheet.name.lower()} ({sheet.voice}), sounds like: "{text}"')
+            shown.append(text)
     for sheet in _mentioned_types(session, action_text):
         n = session.type_turns.get(sheet.name, 0)
         session.type_turns[sheet.name] = n + 1

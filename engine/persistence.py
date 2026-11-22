@@ -82,4 +82,5 @@ class JSONFileSessionStore:
             breather=data.get("breather", 0),
             quiet_turns=data.get("quiet_turns", 0),
             events_used=data.get("events_used", {}),
+            people=data.get("people", {}),
         )

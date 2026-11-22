@@ -1,6 +1,6 @@
 # Emerging characters: walk-ons who matter come back
 
-Status: draft for owner review (Nightwire Reviews, batch "Emerging characters"). Roadmap item 5, part 1 (2026-11-22).
+Status: approved 2026-11-22 (all three cards kept). Roadmap item 5, part 1.
 
 ## Why
 

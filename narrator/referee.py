@@ -9,7 +9,7 @@ from engine.character import is_tsukumogami
 from engine.chrome import change_humanity
 from engine.debt import SHELL, new_shell, pay_installment, repo_target_name, repossess, unthrottle
 from engine.session import Session
-from narrator import memory, promises
+from narrator import memory, people, promises
 from narrator.movement import known_place, places_in
 from narrator.world import _mentions, _normalize, kuroshio
 from ruleset.cyberware import CHROME
@@ -20,7 +20,7 @@ _LEVEL_FIELDS = ("human_moment", "acted_as_machine")
 _HARA_OBJECTIVE = "Owe Old Hara a favor"
 _LOCATION_MAX = 60
 _PROMISE_MAX = 120
-_TEXT_FIELDS = ("moved_to", "new_lead", "objective_done", "promise_made")
+_TEXT_FIELDS = ("moved_to", "new_lead", "objective_done", "promise_made", "new_person")
 _TRUST_FIELDS = {"kept_promise_to": 1, "helped_at_a_cost": 1, "broke_promise_to": -1, "lie_discovered_by": 0}
 _SPEECH = re.compile(r"^[^:\n]{1,30}: ")  # "Mama Sato: ..." lines in the narration text
 _SYSTEM = (
@@ -53,6 +53,12 @@ def build_questions(session: Session, player_id: str) -> dict[str, str]:
     questions["promise_made"] = (f"text: a new promise, debt or favour agreed this turn between {name} and one named "
                                  'person, written as "Who: what" in under 12 words (for example: Mama Sato: bring '
                                  "back her nephew Kenta); otherwise empty.")
+    # Emerging characters (spec 2026-11-22): promote on consequence, not mention (Nemesis; Starforged connections).
+    questions["new_person"] = (f"text: someone WITHOUT a name that {name} dealt with directly this turn (talked to, "
+                               f"fought, helped, traded with, or was helped or hurt by), written as \"who: what "
+                               f"happened\" in under 14 words (for example: dockworker with a burned hand: {name} "
+                               "helped him lift a crate); otherwise empty. Named people and people only seen or "
+                               "mentioned don't count.")
     if ((p := session.phone.get(player_id)) and p["contacts"]) or session.promises:
         who = "the person's name exactly as written, or empty"
         questions["kept_promise_to"] = f"text: {name} kept a promise this turn to whom? {who}."
@@ -85,7 +91,7 @@ def build_schema(questions: dict[str, str]) -> dict:
             properties[f"{k}_quote"] = {"type": "string"}
             properties[k] = {"type": "string", "enum": _LEVELS}
         elif k in _TEXT_FIELDS or k in _TRUST_FIELDS:
-            properties[k] = {"type": "string", "maxLength": _PROMISE_MAX if k == "promise_made" else _LOCATION_MAX}
+            properties[k] = {"type": "string", "maxLength": _PROMISE_MAX if k in ("promise_made", "new_person") else _LOCATION_MAX}
         else:
             properties[k] = {"type": "boolean"}
     return {"type": "object", "properties": properties, "required": list(properties), "additionalProperties": False}
@@ -205,6 +211,14 @@ def ground(session: Session, verdict: dict, action: str, narration: str) -> dict
             promise = ""
     if "promise_made" in grounded or promise:
         grounded["promise_made"] = promise
+    person = " ".join(str(grounded.get("new_person", "")).split())
+    if person:
+        parts = people.split(person)
+        if not parts or not people.grounded(parts[0], f"{action}\n{narration}"):
+            session.log.append(f'[referee: new_person "{person}" is not in the scene, ignored]')
+            person = ""
+    if "new_person" in grounded or person:
+        grounded["new_person"] = person
     # A contact confronting you in dialogue is the evidence, so these use the full narration, speech included.
     scene = _squash(f"{action}\n{narration}")
     for k in _TRUST_FIELDS:
@@ -253,6 +267,8 @@ def apply_verdict(session: Session, player_id: str, verdict: dict) -> None:
     if done in session.active_objectives:
         session.active_objectives = [o for o in session.active_objectives if o != done]
         promises.note(session, done, "done")
+    if verdict.get("new_person") and (parts := people.split(verdict["new_person"])):
+        people.meet(session, *parts)
     if verdict.get("new_lead"):
         promises.add_lead(session, verdict["new_lead"])
     if verdict.get("moved_to") and verdict["moved_to"] != session.location:

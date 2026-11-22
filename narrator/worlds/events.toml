@@ -94,3 +94,9 @@ id = "billing-ping"
 text = "Your throttled chrome twitches on its own: a reminder ping from Hoshikawa billing."
 lead = "Get the throttle off your chrome before Hoshikawa billing escalates"
 needs = ["throttled"]
+
+[[event]]
+id = "comeback"
+text = "{name}, the {who}, turns up again - they haven't forgotten: {what}."
+lead = "See what {name} wants"
+needs = ["people"]

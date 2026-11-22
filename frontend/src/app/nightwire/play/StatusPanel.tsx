@@ -37,6 +37,17 @@ export function StatusPanel({ view, playerId, send }: { view: StateView; playerI
               <li key={p.who + p.what}>◇ <strong>{p.who}</strong>: {p.what} <span style={{ color: "#9aa3ad" }}>· {ago(p.ago)}</span></li>
             ))}</ul>}
       </section>
+      {(view.people ?? []).length > 0 && (
+        <section aria-label="People">
+          <h2 className="nw-panel-heading">People</h2>
+          <ul className="flex flex-col gap-1 text-sm">{view.people.map((p) => (
+            <li key={p.name}>
+              <strong>{p.name}</strong>, {p.who} <span style={{ color: "#9aa3ad" }}>· {p.place ? `${p.place} · ` : ""}{ago(p.ago)}</span>
+              <div style={{ color: "#9aa3ad" }}>{p.what}</div>
+            </li>
+          ))}</ul>
+        </section>
+      )}
       {(view.journal ?? []).length > 0 && (
         <details>
           <summary className="nw-panel-heading cursor-pointer">Journal ({view.journal.length})</summary>

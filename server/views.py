@@ -64,6 +64,8 @@ def build_view(session: Session, viewer_id: str) -> dict:
         "can_rate": session.last_turn is not None,
         "last_rating": session.last_rating,
         "checkin": session.checkin_open,
+        "people": [{"name": n, "who": p["who"], "what": p["what"], "place": p.get("place") or p.get("district"),
+                    "ago": _turns_ago(session, p["turn"])} for n, p in reversed(session.people.items())],
         "journal": [{**j, "ago": _turns_ago(session, j["turn"])} for j in reversed(session.journal)],
         "pending_chrome_offers": (
             {viewer_id: session.pending_chrome_offers[viewer_id]} if viewer_id in session.pending_chrome_offers else {}
