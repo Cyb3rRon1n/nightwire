@@ -2237,3 +2237,30 @@ def test_near_copies_are_cut_through_quotes_new_starts_and_within_one_reply():
     assert [s.text for s in R.narration] == [
         "You look for the light behind the noren curtain again.",  # the player's own words may come back
         "The ledgers are never empty, and the city always collects.", "Rain falls."]
+
+
+def test_the_prompt_carries_this_turns_voices():
+    from server.narration import _build_messages
+    session = _session_with_character()
+    session.location, session.cast_location, session.present = "Mama Sato's izakaya", "Mama Sato's izakaya", ["Mama Sato"]
+    prompt = _build_messages(session, "I sit down.", num_ctx=8192)[0]["content"]
+    present = prompt.index("Present: Mama Sato.")
+    voices_at = prompt.index("Voices this turn (how they sound; never repeat these lines word for word):\n- Mama Sato will ")
+    assert present < voices_at
+
+
+def test_a_copied_sample_line_is_cut_and_logged():
+    from narrator.client import NarrationSegment
+    from server.narration import _drop_repeated_lines
+    session = Session(session_id="s", voice_lines=["I don't take payment plans. I've seen where payment plans go."])
+
+    class R:
+        narration = [NarrationSegment(speaker="Old Hara",
+                                      text="I don't take payment plans. I've seen where payment plans go. Sit down.")]
+
+    _drop_repeated_lines(R, session)
+    assert [s.text for s in R.narration] == ["Sit down."]
+    assert any(line.startswith("[sample line cut: ") for line in session.log)
+    R.narration = [NarrationSegment(speaker="Old Hara", text="I don't take payment plans. I've seen where payment plans go.")]
+    _drop_repeated_lines(R, session)
+    assert R.narration[0].text.startswith("I don't take payment plans.")  # never an empty turn

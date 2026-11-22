@@ -23,6 +23,7 @@ from narrator.suggestions import check_chips, suggest
 from narrator.tools import TOOL_REGISTRY, RequestRoll, execute_tool, roll_check
 from narrator.tts_backend import TTSBackend
 from narrator.voice_assignment import assign_voice
+from narrator.voices import voice_block
 from narrator.cast import keep_away_keepers, note as note_cast, present_line, refresh as refresh_cast
 from narrator.world import kuroshio, locals_line, select_cards
 from ruleset.attributes import Attribute
@@ -227,18 +228,28 @@ def _drop_repeated_lines(response, session: Session) -> None:
         if not line.startswith(("[", *actors)):
             for sentence in _SENTENCE.split(_SPEECH.sub("", line, count=1)):
                 remember(sentence)
+    # This turn's voice sample lines (narrator/voices.py) count too: a copy goes even on first use.
+    sample_runs = {run for text in session.voice_lines for s in _SENTENCE.split(text) for run in _runs(_words(s))}
+    sample_keys = {" ".join(_words(s)) for text in session.voice_lines for s in _SENTENCE.split(text)
+                   if len(_words(s)) >= 5}
+    keys |= sample_keys
+    runs |= sample_runs
+    cut_samples = []
     texts = []
     for seg in response.narration:
         kept = []
         for sentence in _SENTENCE.split(seg.text):
             words = _words(sentence)
             if " ".join(words) in keys or _runs(words) & runs:
+                if " ".join(words) in sample_keys or _runs(words) & sample_runs:
+                    cut_samples.append(sentence)
                 continue
             kept.append(sentence)
             remember(sentence)
         texts.append(" ".join(kept))
     if not any(t.strip() for t in texts):
         return  # everything repeated: a stale line beats an empty turn
+    session.log += [f"[sample line cut: {sentence[:60]}]" for sentence in cut_samples]
     for seg, text in zip(response.narration, texts):
         seg.text = text
     response.narration[:] = [seg for seg in response.narration if seg.text.strip()]
@@ -427,6 +438,9 @@ def _build_messages(session: Session, action_text: str, num_ctx: int) -> list[di
     if voice:
         parts.append(voice)
     parts.append(present_line(session))
+    voices = voice_block(session, action_text)
+    if voices:
+        parts.append(voices)
     if session.pending_world_events:
         parts.append("World event: " + " ".join(session.pending_world_events))
     world_budget = int(num_ctx * _WORLD_BUDGET_FRACTION * _CHARS_PER_TOKEN_ESTIMATE)
