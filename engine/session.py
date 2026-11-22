@@ -59,3 +59,5 @@ class Session:
     people: dict[str, dict] = field(default_factory=dict)
     # Places that grow (narrator/places.py): place -> {heat, warmth, marks, last_visit, warmed}.
     places: dict[str, dict] = field(default_factory=dict)
+    # Word that spreads (narrator/gossip.py): deeds with who knows them and how strongly.
+    deeds: list[dict] = field(default_factory=list)

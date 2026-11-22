@@ -8,7 +8,7 @@ from functools import cache
 from pathlib import Path
 
 from engine.session import Session
-from narrator import people, places, promises
+from narrator import gossip, people, places, promises
 from narrator.cast import _player_turns
 from narrator.world import _where, kuroshio
 
@@ -101,6 +101,9 @@ def tick(session: Session, player_id: str, health_before: int) -> None:
     outcomes = [r.get("outcome", "") for r in rolls]
     hurt = session.characters[player_id].health < health_before
     places.arrive(session)
+    if any(r.get("skill") in places._FIGHT_SKILLS for r in rolls) or session.in_combat:
+        gossip.record(session, f"{session.characters[player_id].name} started a fight at "
+                               f"{places.key(session) or 'the block'}", False)
     if places.heat(session, rolls, hurt):  # Blades in the Dark: at 9 heat the district locks down
         lockdown = next(e for e in events() if e["id"] == "lockdown")
         fire(session, {**lockdown, "text": lockdown["text"].replace("{place}", places.key(session) or "the block")})
@@ -117,6 +120,7 @@ def tick(session: Session, player_id: str, health_before: int) -> None:
         session.breather, session.tension = BREATHER_TURNS, RELEASE  # the peak is spent; let it breathe
         session.log.append("[director: breather]")
     session.quiet_turns = session.quiet_turns + 1 if session.tension <= QUIET_AT else 0
+    gossip.tick(session)
     last = max(session.events_used.values(), default=-MIN_GAP)
     if (session.quiet_turns >= QUIET_TURNS and not session.breather and not session.pending_world_events
             and _player_turns(session) - last >= MIN_GAP and (event := pick(session, player_id))):

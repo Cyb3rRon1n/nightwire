@@ -9,7 +9,7 @@ from engine.character import is_tsukumogami
 from engine.chrome import change_humanity
 from engine.debt import SHELL, new_shell, pay_installment, repo_target_name, repossess, unthrottle
 from engine.session import Session
-from narrator import memory, people, places, promises
+from narrator import gossip, memory, people, places, promises
 from narrator.movement import known_place, places_in
 from narrator.world import _mentions, _normalize, kuroshio
 from ruleset.cyberware import CHROME
@@ -261,15 +261,21 @@ def apply_verdict(session: Session, player_id: str, verdict: dict) -> None:
             phone.change_trust(contact, delta)
             if field == "helped_at_a_cost":
                 memory.remember(session, contact["name"], f"{name} came through for them", memory.ENGINE)
+                gossip.record(session, f"{name} helped {contact['name']} at a cost", True)
+                gossip.amends(session, contact["name"])
         elif contact["role"] not in ("rival", "enemy") and contact["trust"] >= 1:
             drop = 2 if contact["trust"] >= 4 or contact["role"] in ("family", "partner") else 1
             contact["trust"] = max(1.0, contact["trust"] - drop)
             contact["cold_until"] = phone.phone_of(session, player_id)["turn"] + 3
             session.pending_world_events.append(f"{contact['name']} knows {name} lied to them.")
             memory.remember(session, contact["name"], f"{name} lied to them", memory.ENGINE)
+            gossip.record(session, f"{name} lied to {contact['name']}", False)
     for field, kept in (("kept_promise_to", True), ("broke_promise_to", False)):
         if verdict.get(field):
             promises.close(session, verdict[field], kept, name)
+            gossip.record(session, f"{name} {'kept' if kept else 'broke'} their word to {verdict[field]}", kept)
+            if kept:
+                gossip.amends(session, verdict[field])
     if verdict.get("promise_made") and (parts := promises.split(verdict["promise_made"])):
         promises.record(session, *parts)
         memory.remember(session, parts[0], f"{name} promised: {parts[1]}", memory.ENGINE)
@@ -279,6 +285,8 @@ def apply_verdict(session: Session, player_id: str, verdict: dict) -> None:
         promises.note(session, done, "done")
     if verdict.get("new_person") and (parts := people.split(verdict["new_person"])):
         people.meet(session, *parts)
+        if (good := gossip.classify(parts[1])) is not None:
+            gossip.record(session, parts[1], good)
     places.mark(session, verdict.get("left_mark", ""))
     good = (verdict.get("human_moment", "none") != "none" or verdict.get("helped_at_a_cost")
             or verdict.get("kept_promise_to"))

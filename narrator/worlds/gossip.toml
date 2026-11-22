@@ -1,0 +1,21 @@
+# How word of a deed gets exaggerated as it spreads (docs/superpowers/specs/2026-11-22-places-gossip-design.md).
+# Owner-approved 2026-11-22. find is a regex on the deed's text; the first rule that matches is used.
+[[rule]]
+find = "started a fight"
+replace = "started a brawl"
+
+[[rule]]
+find = "\\b(?:punched|hit|kicked|hurt|beat up) (\\w+)"
+replace = "put \\1 in the clinic"
+
+[[rule]]
+find = "\\bhelped\\b"
+replace = "saved"
+
+[[rule]]
+find = "broke their word to (.+)"
+replace = "can't be trusted - ask \\1"
+
+[[rule]]
+find = "lied to (.+)"
+replace = "works for someone else - lied to \\1"

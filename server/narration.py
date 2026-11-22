@@ -25,7 +25,7 @@ from narrator.tts_backend import TTSBackend
 from narrator.voice_assignment import assign_voice
 from narrator.voices import voice_block
 from narrator.promises import business_line, call_in
-from narrator import director, memory, places, ratings
+from narrator import director, gossip, memory, places, ratings
 from narrator.cast import keep_away_keepers, note as note_cast, present_line, refresh as refresh_cast
 from narrator.world import kuroshio, locals_line, select_cards
 from ruleset.attributes import Attribute
@@ -445,6 +445,9 @@ def _build_messages(session: Session, action_text: str, num_ctx: int, voices: st
     remembered = memory.recall_block(session, action_text)  # late, next to the action (Lost in the Middle)
     if remembered:
         parts.append(remembered)
+    heard = gossip.heard_lines(session)  # second-hand, so the narrator hedges (Ryan et al.)
+    if heard:
+        parts.append(heard)
     if session.pending_world_events:
         parts.append("World event: " + " ".join(session.pending_world_events))
     world_budget = int(num_ctx * _WORLD_BUDGET_FRACTION * _CHARS_PER_TOKEN_ESTIMATE)

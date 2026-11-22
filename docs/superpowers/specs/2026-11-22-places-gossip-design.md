@@ -1,6 +1,6 @@
 # Places that grow, and word that spreads
 
-Status: draft for owner review (Nightwire Reviews, batch "Places and gossip"). Roadmap item 5, parts 2 and 3. Sources:
+Status: approved 2026-11-22 (all four cards kept). Roadmap item 5, parts 2 and 3. Sources:
 `2026-11-22-research-places-gossip-3.md`.
 
 ## Why

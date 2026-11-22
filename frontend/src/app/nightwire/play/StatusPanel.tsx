@@ -53,6 +53,18 @@ export function StatusPanel({ view, playerId, send }: { view: StateView; playerI
           ))}</ul>
         </section>
       )}
+      {(view.street ?? []).length > 0 && (
+        <section aria-label="Word on the street">
+          <h2 className="nw-panel-heading">Word on the street</h2>
+          <ul className="flex flex-col gap-1 text-sm">{view.street.map((w) => (
+            <li key={w.district}>
+              <strong>{w.district}</strong>
+              {w.good && <div>▲ {w.good}</div>}
+              {w.bad && <div>▼ {w.bad}</div>}
+            </li>
+          ))}</ul>
+        </section>
+      )}
       {(view.journal ?? []).length > 0 && (
         <details>
           <summary className="nw-panel-heading cursor-pointer">Journal ({view.journal.length})</summary>
