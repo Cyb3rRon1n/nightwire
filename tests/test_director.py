@@ -108,3 +108,11 @@ def test_old_saves_load_with_a_calm_director(tmp_path):
     path.write_text(json.dumps(data))
     s = store.load("old")
     assert (s.tension, s.breather, s.quiet_turns, s.events_used) == (0, 0, 0, {})
+
+
+def test_a_player_without_a_character_is_ignored_and_no_calm_note_in_a_fight():
+    s = _session()
+    director.tick(s, "nobody", 0)
+    assert s.tension == 0
+    s.breather, s.in_combat = 2, True
+    assert director.pacing_line(s) == ""

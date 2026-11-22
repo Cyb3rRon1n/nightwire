@@ -697,7 +697,7 @@ async def _run_turn(
     # Events are shown once, but only dropped after the narrator actually
     # responded; events queued during the turn survive to the next one.
     call_in(session)  # before shown_events, so a promise called in is shown this turn
-    health_before = session.characters[player_id].health
+    health_before = c.health if (c := session.characters.get(player_id)) else 0
     shown_events = list(session.pending_world_events)
     refresh_cast(session, referee_action or prompt_text)  # the action may already have moved the player
     voices = voice_block(session, prompt_text)

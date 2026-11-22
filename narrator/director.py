@@ -32,7 +32,7 @@ def events() -> tuple[dict, ...]:
 
 
 def pacing_line(session: Session) -> str:
-    return PACING if session.breather > 0 else ""
+    return PACING if session.breather > 0 and not session.in_combat else ""
 
 
 def _rolls_this_turn(session: Session) -> list[str]:
@@ -84,7 +84,7 @@ def fire(session: Session, event: dict) -> None:
 
 def tick(session: Session, player_id: str, health_before: int) -> None:
     """End of a player's turn, after the referee. Not on the set-up turn that opened a roll."""
-    if player_id in session.pending_rolls:
+    if player_id not in session.characters or player_id in session.pending_rolls:
         return
     outcomes = _rolls_this_turn(session)
     hurt = session.characters[player_id].health < health_before
