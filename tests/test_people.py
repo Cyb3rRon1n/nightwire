@@ -158,3 +158,14 @@ def test_a_named_answer_is_dropped_quietly():
     s.location = "Ikebe Low"
     _met(s, "Mama Sato", ACTION, "Mama Sato: Sit, child.")
     assert s.people == {} and not any("new_person" in line for line in s.log)
+
+
+def test_voices_shadows_and_groups_are_not_people():
+    s = _session()
+    s.location = "Ikebe Low"
+    _met(s, "A voice calls out from the shadows", "I look around.", "A voice calls out from the shadows.")
+    _met(s, "security enforcers", "I take the train.", "Security enforcers watch the platform.")
+    _met(s, "", "I look around.", "kuze boys: Move along.")
+    assert s.people == {}
+    _met(s, "dockworker with a burned hand", ACTION, "The dockworker with a burned hand staggers.")
+    assert len(s.people) == 1  # a singular "hand" after "with" doesn't trip the plural rule

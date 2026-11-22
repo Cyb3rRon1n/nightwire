@@ -79,6 +79,10 @@ def _new_lines(log: list[str], start: int) -> list[str]:
     return [line for line in log[start:] if not line.startswith(("[audio", "[image error", "[image prompt"))]
 
 
+_PROBE_SETUP = {"I ask about the debt collector in the corner.",  # collector_remembers_paid (turn 11)
+                "I thank him and promise to bring him tea tomorrow."}  # undo_kept_hara_promise_off (turn 16)
+
+
 async def main(turns: int, chips: bool = False) -> Path:
     client = create_narrator_backend()
     client.system_prompt = build_system_prompt()
@@ -105,7 +109,9 @@ async def main(turns: int, chips: bool = False) -> Path:
             offered = session.suggestions.get("rin", []) if chips else []
             # A chip never replaces a scripted move (soak 2026-11-21: a chip took the place of "I go home to my room
             # and sleep", so Rin woke up in the street), or the next scripted turns make no sense.
-            if offered and not texting and n % 3 == 0 and not _MOVE.search(_norm(action)):
+            # Nor a turn a scorecard probe is built on (2026-11-22: turns 9 and 15 were always chips, so the collector
+            # never sat down and the tea promise was never made; the undo probe passed for free).
+            if offered and not texting and n % 3 == 0 and not _MOVE.search(_norm(action)) and action not in _PROBE_SETUP:
                 pick = offered[(n // 3) % len(offered)]
                 action, row["chip"] = pick["text"], {k: pick[k] for k in ("text", "skill", "attribute", "difficulty")}
                 row["action"] = action

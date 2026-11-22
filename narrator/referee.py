@@ -241,7 +241,8 @@ def ground(session: Session, verdict: dict, action: str, narration: str) -> dict
         elif not parts or not people.grounded(session, parts[0], f"{action}\n{narration}"):
             session.log.append(f'[referee: new_person "{person}" is not in the scene, ignored]')
             person = ""
-    if not person and (speaker := _unnamed_speaker(narration)) and not people.has_a_name(session, speaker):
+    if not person and (speaker := _unnamed_speaker(narration)) and not people.has_a_name(session, speaker) \
+            and people.one_person(speaker):
         # The speaker is in the scene by construction, so only "not someone already named" is checked.
         # Soak 2026-11-22: "man in black duster" grabbed Rin and spoke three turns running, and the referee named no
         # one. An unnamed speaker in the scene is its own evidence; the player's action is what happened.

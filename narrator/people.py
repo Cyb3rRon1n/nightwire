@@ -37,11 +37,23 @@ def split(answer: str) -> tuple[str, str] | None:
     return (who, what) if sep and who and what else None
 
 
+_NOT_ONE_PERSON = {"voice", "voices", "shadow", "shadows", "silhouette", "footsteps", "crowd", "crew", "gang"}
+
+
+def one_person(who: str) -> bool:
+    """Soak 2026-11-22: "A voice calls out from the shadows" and "security enforcers" became people. A voice or a
+    shadow isn't someone you dealt with, and a group isn't one person."""
+    head = re.findall(r"[a-z0-9āēīōū]+", re.split(r"\b(?:with|who|from|in|at|on|by)\b", who.lower())[0])
+    return not (set(head) & _NOT_ONE_PERSON or (head and re.search(r"[^s]s$", head[-1])))
+
+
 def grounded(session: Session, who: str, scene: str) -> bool:
     """The walk-on's head word ("dockworker" in "dockworker with a burned hand") is in the scene, and "who" isn't
     someone who already has a name (review 2026-11-22: "Old Hara" would become a second persona)."""
     said = set(re.findall(r"[a-z0-9āēīōū]+", scene.lower()))
     head = re.split(r"\b(?:with|who|from|in|at|on|by)\b", who.lower())[0]
+    if not one_person(who):
+        return False
     words = set(re.findall(r"[a-z0-9āēīōū]+", head)) - _GENERIC - {"a", "an", "the"}
     if not words:  # "man with sake breath" (soak 2026-11-22): a plain head, so its own details must be in the scene
         words = {w for w in re.findall(r"[a-z0-9āēīōū]+", who.lower()) if len(w) >= 4} - _GENERIC
