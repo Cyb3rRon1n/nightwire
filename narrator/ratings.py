@@ -30,7 +30,7 @@ def _read() -> list[dict]:
     if not path.exists():
         return []
     rows = []
-    for line in path.read_text().splitlines():
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
         try:
             rows.append(json.loads(line))
         except json.JSONDecodeError:  # a torn last line must not lose every rating before it
@@ -43,6 +43,12 @@ def note_turn(session: Session, prompt: str, action: str, narration: str) -> Non
     session.last_turn = {"id": len(session.log), "prompt": prompt, "action": action, "narration": narration,
                          "location": session.location, "present": list(session.present)}
     session.last_rating = None
+    session.checkin_open = False  # a check-in lasts one turn; maybe_checkin reopens it only if still calm
+
+
+def clear_turn(session: Session) -> None:
+    session.last_turn = session.last_rating = None
+    session.checkin_open = False
 
 
 def rate(session: Session, like: bool, reason: str | None) -> None:
@@ -60,7 +66,7 @@ def rate(session: Session, like: bool, reason: str | None) -> None:
     path = ratings_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
-    tmp.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in [*rows, row]))
+    tmp.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in [*rows, row]), encoding="utf-8")
     tmp.replace(path)
     session.last_rating = {"like": like, "reason": row["reason"]}
     session.checkin_open = False
@@ -91,7 +97,9 @@ def example(session: Session) -> dict | None:
     """One liked turn: same place with someone the same present, then same place, then the newest. Never one still in
     the recent log (it would only repeat what just happened)."""
     recent = "\n".join(session.log[-_RECENT_LINES:])
-    liked = [r for r in _read() if r.get("like") and r.get("narration") and r["narration"][:80] not in recent]
+    # Narration is saved as its segments joined by newlines, each its own log line: compare the first one.
+    liked = [r for r in _read() if r.get("like") and r.get("narration")
+             and r["narration"].split("\n")[0][:80] not in recent]
     if not liked:
         return None
     here = [r for r in liked if r.get("location") and r["location"] == session.location]

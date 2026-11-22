@@ -773,8 +773,12 @@ async def _run_turn(
         session.log.append(f'[set-up cut: "{cut}"]')
     narration_text = await _log_narration(session, response, store, tts_backend, player_id)
     scene = f"{referee_action or prompt_text}\n{narration_text}"
-    if narration_text:
+    # Only a turn the player acted in can be rated: not the opening scene (its "action" is an engine note), and not a
+    # turn whose narration was all cut, which would leave the previous turn's buttons under it (review 2026-11-22).
+    if narration_text and (actor_line is not None or referee_action):
         ratings.note_turn(session, prompt_used, referee_action or prompt_text, narration_text)
+    else:
+        ratings.clear_turn(session)
     if chip_roll is not None:
         if response.tool == "request_roll":
             response.tool_call = _NoTool()

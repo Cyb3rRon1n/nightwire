@@ -118,3 +118,15 @@ def test_old_saves_load(tmp_path):
     path.write_text(json.dumps(data))
     loaded = store.load("old")
     assert loaded.last_turn is None and loaded.checkin_open is False and loaded.checkin_turn is None
+
+
+def test_review_fixes_check_ins_last_one_turn_and_short_first_lines_count_as_recent():
+    s = _session()
+    s.checkin_open = True
+    _turn(s, "I wait.", "Rain.\nMama Sato: Eat something.")
+    assert not s.checkin_open
+    ratings.rate(s, True, None)
+    s.log.append("Mama Sato: Eat something.")
+    assert ratings.example_block(s) == ("", [])
+    ratings.clear_turn(s)
+    assert build_view(s, "p1")["can_rate"] is False
