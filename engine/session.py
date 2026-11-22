@@ -42,3 +42,6 @@ class Session:
     last_moves: dict[str, str] = field(default_factory=dict)
     type_turns: dict[str, int] = field(default_factory=dict)
     voice_lines: list[str] = field(default_factory=list)
+    # Unfinished business (narrator/promises.py): open promises, and a journal of what is over.
+    promises: list[dict] = field(default_factory=list)
+    journal: list[dict] = field(default_factory=list)

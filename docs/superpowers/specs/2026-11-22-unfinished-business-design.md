@@ -65,7 +65,16 @@ there is no line.
 **Called in.** Once a promise is 16 turns old and still open, it goes out once as a world event: "{Who} hasn't
 forgotten: {what}." The promise is then marked `called_in`, so it is never called in again.
 
-**State.** `Session.promises` is saved like the other session fields; older saves load with an empty list.
+**Player view** (owner, 2026-11-22: "something they can always pull up to look at while playing"). The Status
+panel, which sits beside the character sheet and is always one tap away, gets two new sections under Objectives:
+- **Promises**: the open promises, newest first, shown as "Mama Sato: bring back her nephew Kenta · 9 turns ago".
+- **Journal**: a folded list (`<details>`), newest first, of things that are over. It records objectives finished,
+  objectives pushed off the list of 5 (marked "set aside"), promises kept or broken, and promises called in. It holds
+  the last 30 entries, stored in `Session.journal: list[dict]` as `{"text", "kind", "turn"}`.
+
+Today, a finished objective just disappears, and one pushed past 5 vanishes without a trace. The journal keeps both.
+
+**State.** `Session.promises` and `Session.journal` are saved like the other session fields; older saves load with an empty list.
 
 ## How we'll know it worked
 

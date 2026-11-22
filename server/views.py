@@ -6,6 +6,7 @@ from engine.chrome import usable_overclocks
 from engine.phone import unread
 from engine.session import Session
 from engine.turns import current_turn, is_players_turn
+from narrator.cast import _player_turns
 from narrator.place_art import location_art
 from narrator.tools import roll_chance
 
@@ -59,6 +60,8 @@ def build_view(session: Session, viewer_id: str) -> dict:
         "location_art": location_art(session.location),
         "scene_mood": session.scene_mood,
         "active_objectives": session.active_objectives,
+        "promises": [{"who": p["who"], "what": p["what"], "ago": _turns_ago(session, p["turn"])} for p in session.promises],
+        "journal": [{**j, "ago": _turns_ago(session, j["turn"])} for j in reversed(session.journal)],
         "pending_chrome_offers": (
             {viewer_id: session.pending_chrome_offers[viewer_id]} if viewer_id in session.pending_chrome_offers else {}
         ),
@@ -81,3 +84,7 @@ def _suggestions_view(session: Session, viewer_id: str) -> list[dict]:
              # computed here so it always matches the current sheet
              "chance": roll_chance(character, chip["attribute"], chip["skill"], chip["difficulty"]) if chip.get("skill") else None}
             for chip in session.suggestions.get(viewer_id, [])]
+
+
+def _turns_ago(session: Session, turn: int) -> int:
+    return max(0, _player_turns(session) - turn)

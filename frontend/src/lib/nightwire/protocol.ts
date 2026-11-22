@@ -97,6 +97,8 @@ export interface StateView {
   location_art: string | null
   scene_mood: string | null
   active_objectives: string[]
+  promises: { who: string; what: string; ago: number }[]
+  journal: { text: string; kind: string; turn: number; ago: number }[]
   characters: Record<string, CharacterSheet | RedactedCharacter>
   phone: { contacts: PhoneContact[]; threads: Record<string, PhoneMessage[]>; typing: string[] }
   pending_rolls: Record<string, PendingRoll>

@@ -29,6 +29,26 @@ export function StatusPanel({ view, playerId, send }: { view: StateView; playerI
           ? <p className="text-sm" style={{ color: "#9aa3ad" }}>None yet.</p>
           : <ul className="flex flex-col gap-1 text-sm">{view.active_objectives.map((o) => <li key={o}>◆ {o}</li>)}</ul>}
       </section>
+      <section aria-label="Promises">
+        <h2 className="nw-panel-heading">Promises</h2>
+        {(view.promises ?? []).length === 0
+          ? <p className="text-sm" style={{ color: "#9aa3ad" }}>None open.</p>
+          : <ul className="flex flex-col gap-1 text-sm">{[...view.promises].reverse().map((p) => (
+              <li key={p.who + p.what}>◇ <strong>{p.who}</strong>: {p.what} <span style={{ color: "#9aa3ad" }}>· {ago(p.ago)}</span></li>
+            ))}</ul>}
+      </section>
+      {(view.journal ?? []).length > 0 && (
+        <details>
+          <summary className="nw-panel-heading cursor-pointer">Journal ({view.journal.length})</summary>
+          <ul className="mt-2 flex flex-col gap-1 text-sm">{view.journal.map((j, i) => (
+            <li key={i}><span style={{ color: "#9aa3ad" }}>{j.kind}</span> · {j.text} <span style={{ color: "#9aa3ad" }}>· {ago(j.ago)}</span></li>
+          ))}</ul>
+        </details>
+      )}
     </aside>
   );
+}
+
+function ago(turns: number): string {
+  return turns === 0 ? "this turn" : turns === 1 ? "1 turn ago" : `${turns} turns ago`;
 }
