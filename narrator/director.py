@@ -13,7 +13,7 @@ from narrator.cast import _player_turns
 from narrator.world import _where, kuroshio
 
 TENSION_MAX, PEAK, RELEASE = 10, 8, 5
-BREATHER_TURNS, QUIET_AT, QUIET_TURNS = 2, 1, 4
+BREATHER_TURNS, QUIET_TURNS = 2, 4
 NO_REPEAT, MIN_GAP = 40, 6
 PACING = "Pacing: let this moment breathe - no new threats or arrivals this turn."
 _EVENTS = Path(__file__).resolve().parent / "worlds" / "events.toml"
@@ -122,7 +122,9 @@ def tick(session: Session, player_id: str, health_before: int) -> None:
     elif session.tension >= PEAK and not session.in_combat:
         session.breather, session.tension = BREATHER_TURNS, RELEASE  # the peak is spent; let it breathe
         session.log.append("[director: breather]")
-    session.quiet_turns = session.quiet_turns + 1 if session.tension <= QUIET_AT else 0
+    # Calm turns in a row, counted through a breather (soak 2026-11-22: waiting for tension to fall to 1 first
+    # meant 8 calm turns, so the walk home and sleep never got an event).
+    session.quiet_turns = session.quiet_turns + 1 if rise < 0 else 0
     gossip.tick(session)
     last = max(session.events_used.values(), default=-MIN_GAP)
     if (session.quiet_turns >= QUIET_TURNS and not session.breather and not session.pending_world_events

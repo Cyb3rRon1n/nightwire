@@ -160,6 +160,11 @@ def _names_something_in(lead: str, scene: str, session: Session) -> bool:
     (spec 2026-11-07 section 1; no invented leads)."""
     if places_in(lead) & places_in(scene) or _quotes_the_scene(lead, scene):
         return True
+    # A proper name the scene says too, past the lead's first word (soak 2026-11-22: "Look for Kuroda in the ledger"
+    # was dropped though the narration named Kuroda).
+    names = [w for w in re.findall(r"[^\W\d_][\w'-]*", lead)[1:] if w[0].isupper() and len(w) >= 4]
+    if any(re.search(rf"\b{re.escape(w)}\b", scene) for w in names):
+        return True
     world = kuroshio()
     lead_n, scene_n = _normalize(lead), _normalize(scene)
     people = [n for n in world.npcs if _mentions(n, lead_n) and _mentions(n, scene_n)]

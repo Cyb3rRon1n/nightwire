@@ -29,7 +29,7 @@ something that keeps play immersive and evolving, and costs no AI calls while th
   - −1 on any other turn.
 - **Breather.** When tension reaches 8 or more, the next 2 turns carry a pacing note and the director starts no
   events.
-- **Quiet spell.** After 4 player turns in a row at tension 1 or below, one event fires. It only fires if no other
+- **Quiet spell.** After 4 calm player turns in a row (no roll, not hurt, not in combat), one event fires. (Changed 2026-11-22 after the soak: "tension 1 or below" took 8 calm turns after a breather, so it never fired.) It only fires if no other
   world event is waiting, and only if the last director event was at least 6 turns ago.
 - **Event choice.** Events come from an owner-approved list (`narrator/worlds/events.toml`):
   - only events whose conditions match;
@@ -53,7 +53,7 @@ something that keeps play immersive and evolving, and costs no AI calls while th
 | Field | Type | Meaning |
 |---|---|---|
 | `Session.tension` | int | the current tension |
-| `Session.quiet_turns` | int | player turns in a row at tension 1 or below |
+| `Session.quiet_turns` | int | calm player turns in a row |
 | `Session.breather` | int | breather turns left |
 | `Session.events_used` | dict[str, int] | event id → the player turn it fired |
 

@@ -162,7 +162,7 @@ async def main(turns: int, chips: bool = False) -> Path:
         # The end state the scorecard's memory probes read (tools/soak_score.py PROBES).
         for k in ("npc_memory", "people", "places", "deeds", "events_used", "promises", "active_objectives", "journal"):
             summary[k] = getattr(session, k)
-        summary["score"] = score(out)  # tools/soak_score.py: the narrator scorecard
+        summary["score"] = score(out, summary)  # tools/soak_score.py: the narrator scorecard
         f.write(json.dumps({"summary": summary}) + "\n")
     print(json.dumps(summary))
     return out

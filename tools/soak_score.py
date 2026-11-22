@@ -59,9 +59,9 @@ def probes(summary: dict) -> dict:
     return out
 
 
-def score(path: Path) -> dict:
+def score(path: Path, summary: dict | None = None) -> dict:
     rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
-    summary = next((r["summary"] for r in rows if "summary" in r), {})
+    summary = summary or next((r["summary"] for r in rows if "summary" in r), {})  # soak_test passes its own
     memory = summary.get("npc_memory", {})
     facts = [f for fs in memory.values() for f in fs if isinstance(f, dict)]
     rows = [r for r in rows if "turn" in r]

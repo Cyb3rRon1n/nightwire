@@ -408,6 +408,21 @@ async def test_a_thing_to_find_quoted_from_the_scene_becomes_an_objective():
     assert s.active_objectives == ["Find the collector's ledger"]
 
 
+async def test_a_lead_naming_someone_the_scene_names_becomes_an_objective():
+    # Soak 2026-11-22: "Look for Kuroda in the ledger" was dropped though the narration named Kuroda.
+    s = _session()
+    await run_referee(s, _Client({"moved_to": "", "new_lead": "Look for Kuroda in the ledger", "human_moment_quote": "",
+                                  "human_moment": "none"}), "p1", "I read the ledger.", "A name catches your eye: Kuroda.")
+    assert s.active_objectives == ["Look for Kuroda in the ledger"]
+
+
+async def test_a_lead_naming_someone_the_scene_does_not_is_ignored():
+    s = _session()
+    await run_referee(s, _Client({"moved_to": "", "new_lead": "Look for Kuroda in the ledger", "human_moment_quote": "",
+                                  "human_moment": "none"}), "p1", "I read the ledger.", "The ink is faded.")
+    assert s.active_objectives == []
+
+
 async def test_a_lead_sharing_only_small_words_with_the_scene_is_ignored():
     s = _session()
     await run_referee(s, _Client({"moved_to": "", "new_lead": "Look around the room", "human_moment_quote": "",

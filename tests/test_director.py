@@ -66,6 +66,19 @@ def test_a_quiet_spell_fires_one_district_event_and_its_lead_becomes_an_objectiv
     assert s.pending_world_events == []
 
 
+def test_calm_turns_after_a_breather_count_toward_a_quiet_spell():
+    s = _session()
+    s.location = "Kuroshio Docks"
+    s.tension = 7
+    director.tick(s, "p1", _turn(s, "failure"))
+    assert (s.breather, s.tension) == (2, 5)
+    for _ in range(3):
+        director.tick(s, "p1", _turn(s))
+    assert s.pending_world_events == []
+    director.tick(s, "p1", _turn(s))  # the fourth calm turn in a row, breather over
+    assert len(s.pending_world_events) == 1
+
+
 def test_state_tied_events_come_first_and_fill_in_the_oldest_promise():
     s = _session()
     s.location = "Nowhere in particular"
