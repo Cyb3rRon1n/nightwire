@@ -202,7 +202,7 @@ def _tidy(response) -> None:
 _RECENT_LINES = 40
 
 
-def _drop_repeated_lines(response, session: Session) -> None:
+def _drop_repeated_lines(response, session: Session) -> bool:
     """Drops reply lines (prose or speech) that copy a recent story line word for word (playthrough 2026-11-07:
     Old Hara's whole speech before and after the roll, a ganger's threat across 4 turns). Keeps at least one line."""
     recent = {_opening_key(line.split(": ", 1)[1] if _SPEECH.match(line) else line)
@@ -218,6 +218,7 @@ def _drop_repeated_lines(response, session: Session) -> None:
     actors = tuple(f"{pid}: " for pid in session.characters) or ("\0",)
     keys: set[str] = set()
     runs: set[tuple[str, ...]] = set()
+    wholes: set[str] = set()  # whole lines of 5+ words: "Records go missing. Old paper, damp walls." has no long sentence
 
     def remember(sentence: str) -> None:
         words = _words(sentence)
@@ -229,18 +230,29 @@ def _drop_repeated_lines(response, session: Session) -> None:
     # 8-word runs are cheap, so they look much further back than whole-line openings do.
     for line in session.log[-_RUN_LINES:]:
         if not line.startswith(("[", *actors)):
-            for sentence in _SENTENCE.split(_SPEECH.sub("", line, count=1)):
+            body = _SPEECH.sub("", line, count=1)
+            if len(_words(body)) >= 5:
+                wholes.add(" ".join(_words(body)))
+            for sentence in _SENTENCE.split(body):
                 remember(sentence)
     # This turn's voice sample lines (narrator/voices.py) count too: a copy goes even on first use.
     sample_runs = {run for text in session.voice_lines for s in _SENTENCE.split(text) for run in _runs(_words(s))}
     sample_keys = {" ".join(_words(s)) for text in session.voice_lines for s in _SENTENCE.split(text)
                    if len(_words(s)) >= 5}
     keys |= sample_keys
+    sample_wholes = {" ".join(_words(text)) for text in session.voice_lines if len(_words(text)) >= 5}
+    wholes |= sample_wholes
     runs |= sample_runs
     cut_samples = []
     texts = []
     for seg in response.narration:
         kept = []
+        whole = " ".join(_words(seg.text))
+        if whole in wholes:  # soak 2026-11-22: Wataru's short-sentence sample line came back 13 turns later
+            if whole in sample_wholes:
+                cut_samples.append(seg.text)
+            texts.append("")
+            continue
         for sentence in _SENTENCE.split(seg.text):
             words = _words(sentence)
             if " ".join(words) in keys or _runs(words) & runs:
@@ -251,11 +263,12 @@ def _drop_repeated_lines(response, session: Session) -> None:
             remember(sentence)
         texts.append(" ".join(kept))
     if not any(t.strip() for t in texts):
-        return  # everything repeated: a stale line beats an empty turn
+        return True  # everything repeated: the caller redoes once, and a stale line beats an empty turn
     session.log += [f"[sample line cut: {sentence[:60]}]" for sentence in cut_samples]
     for seg, text in zip(response.narration, texts):
         seg.text = text
     response.narration[:] = [seg for seg in response.narration if seg.text.strip()]
+    return False
 
 
 _RUN = 8
@@ -753,7 +766,19 @@ async def _run_turn(
     _split_prose_from_speech(response)
     _drop_tool_lines(response)
     _tidy(response)
-    _drop_repeated_lines(response, session)
+    if _drop_repeated_lines(response, session):
+        # Soak 2026-11-22 turn 33: the roll's whole outcome was Wataru's line from turn 30. Redo once for new words,
+        # keeping this turn's tool decision; a second all-repeat stands.
+        session.pending_world_events[:0] = shown_events
+        redo = f"{prompt_text}\n\nEngine: that reply only repeated earlier lines word for word. Say what happens now, in new words."
+        retry = await narrator_client.respond(_build_messages(session, redo, narrator_client.num_ctx, voices))
+        del session.pending_world_events[:len(shown_events)]
+        _split_prose_from_speech(retry)
+        _drop_tool_lines(retry)
+        _tidy(retry)
+        session.log.append("[repeat redo]")
+        if not _drop_repeated_lines(retry, session):
+            response.narration[:] = retry.narration
     _drop_repeated_senses(response, session)
     response.narration[:] = [seg for _, seg in keep_away_keepers(session, [(s.speaker, s) for s in response.narration])]
     if not any(seg.text.strip() for seg in response.narration):

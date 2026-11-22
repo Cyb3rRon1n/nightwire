@@ -2232,3 +2232,33 @@ def test_a_copied_sample_line_is_cut_and_logged():
     R.narration = [NarrationSegment(speaker="Old Hara", text="I don't take payment plans. I've seen where payment plans go.")]
     _drop_repeated_lines(R, session)
     assert R.narration[0].text.startswith("I don't take payment plans.")  # never an empty turn
+
+
+def test_a_whole_line_of_short_sentences_repeated_later_is_cut():
+    # Soak 2026-11-22: "Records go missing. Old paper, damp walls. Terrible shame." came back 13 turns later; no
+    # sentence is long enough for the 8-word check, so the whole line is matched.
+    from narrator.client import NarrationSegment
+    from server.narration import _drop_repeated_lines
+    session = Session(session_id="s")
+    session.log += ["rin: I climb.", "Wataru Ono: Records go missing. Old paper, damp walls. Terrible shame."]
+    session.log += [f"Line {n} of filler prose." for n in range(60)]
+    class R: pass
+    r = R(); r.narration = [NarrationSegment(speaker="narrator", text="The terminal dies."),
+                            NarrationSegment(speaker="Wataru Ono", text="Records go missing. Old paper, damp walls. Terrible shame.")]
+    assert _drop_repeated_lines(r, session) is False
+    assert [s.text for s in r.narration] == ["The terminal dies."]
+
+
+async def test_a_reply_that_only_repeats_is_redone_once(tmp_path):
+    # Soak 2026-11-22 turn 33: the roll's whole outcome was Wataru's line from turn 30, kept as "better than empty".
+    session = _session_with_character()
+    line = "You think you're tracing a trail, but you're just another name in the ledger."
+    session.log += ["p1: I trace the data.", f"Wataru Ono: {line}"]
+    sent = []
+    client = _segments_client([[{"speaker": "Wataru Ono", "text": line}],
+                               [{"speaker": "narrator", "text": "The terminal goes dark under your hand."}]], sent)
+    await handle_action(session, client, JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(),
+                        "p1", {"type": "action", "text": "I follow the pulse."})
+    assert len(sent) == 2 and "repeated earlier lines" in sent[1][-1]["content"]
+    assert "The terminal goes dark under your hand." in session.log and "[repeat redo]" in session.log
+    assert session.log.count(f"Wataru Ono: {line}") == 1
