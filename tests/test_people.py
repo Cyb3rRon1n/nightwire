@@ -112,3 +112,23 @@ def test_a_name_that_is_also_a_word_only_counts_capitalised():
                         "returned": None}
     assert _named("She kicks him in the shin.", s) == []
     assert _named("Shin waves.", s) == ["Shin"]
+
+
+def test_an_unnamed_speaker_is_promoted_when_the_referee_names_no_one():
+    # Soak 2026-11-22: "man in black duster" grabbed Rin and spoke three turns running; new_person stayed empty.
+    s = _session()
+    s.location = "Ikebe Low"
+    scene = "A hand grabs your wrist.\nman in black duster: You don't punch me, kid."
+    _met(s, "", ACTION, scene)
+    (name,) = s.people
+    assert s.people[name]["who"] == "man in black duster"
+    assert s.people[name]["what"] == ACTION
+    _met(s, "", "I apologise and help him up.", "man in black duster: You think you're clever, kid.")
+    assert list(s.people) == [name] and s.people[name]["weight"] == 2
+
+
+def test_a_named_speaker_is_not_promoted():
+    s = _session()
+    s.location = "Ikebe Low"
+    _met(s, "", ACTION, "Mama Sato: Sit down, child.")
+    assert s.people == {}

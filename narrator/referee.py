@@ -173,6 +173,17 @@ def _names_something_in(lead: str, scene: str, session: Session) -> bool:
     return bool(people or contacts)
 
 
+_SPEAKER = re.compile(r"^([^:\n]{3,40}): ")
+
+
+def _unnamed_speaker(narration: str) -> str | None:
+    """The first speaker line from an extra ("man in black duster: ..."), not a named person ("Mama Sato: ...")."""
+    for line in narration.splitlines():
+        if (m := _SPEAKER.match(line)) and m.group(1) != "narrator" and not m.group(1)[:1].isupper():
+            return m.group(1)
+    return None
+
+
 def ground(session: Session, verdict: dict, action: str, narration: str) -> dict:
     """A level answer counts only if its quote really is in the text it may come from
     (Phase 18 live: plain stealth and jump turns earned +2 "human moments"). A human
@@ -226,6 +237,11 @@ def ground(session: Session, verdict: dict, action: str, narration: str) -> dict
         if not parts or not people.grounded(session, parts[0], f"{action}\n{narration}"):
             session.log.append(f'[referee: new_person "{person}" is not in the scene, ignored]')
             person = ""
+    if not person and (speaker := _unnamed_speaker(narration)) and not people.has_a_name(session, speaker):
+        # The speaker is in the scene by construction, so only "not someone already named" is checked.
+        # Soak 2026-11-22: "man in black duster" grabbed Rin and spoke three turns running, and the referee named no
+        # one. An unnamed speaker in the scene is its own evidence; the player's action is what happened.
+        person = f"{speaker}: {' '.join(action.split())}"
     if "new_person" in grounded or person:
         grounded["new_person"] = person
     mark = " ".join(str(grounded.get("left_mark", "")).split())[:_LOCATION_MAX]

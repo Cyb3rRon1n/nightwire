@@ -42,9 +42,13 @@ def grounded(session: Session, who: str, scene: str) -> bool:
     someone who already has a name (review 2026-11-22: "Old Hara" would become a second persona)."""
     said = set(re.findall(r"[a-z0-9āēīōū]+", scene.lower()))
     head = re.split(r"\b(?:with|who|from|in|at|on|by)\b", who.lower())[0]
+    return bool(set(re.findall(r"[a-z0-9āēīōū]+", head)) & said - _GENERIC - {"a", "an", "the"}) and not has_a_name(session, who)
+
+
+def has_a_name(session: Session, who: str) -> bool:
+    """ "who" names someone already known (a world NPC, a contact, someone on the roster, a player)."""
     known = {w for n in _taken(session) for w in re.findall(r"[a-z0-9āēīōū]+", n.lower()) if len(w) >= 3}
-    words = set(re.findall(r"[a-z0-9āēīōū]+", who.lower()))
-    return bool(set(re.findall(r"[a-z0-9āēīōū]+", head)) & said - _GENERIC - {"a", "an", "the"}) and not words & known
+    return bool(set(re.findall(r"[a-z0-9āēīōū]+", who.lower())) & known)
 
 
 def _district(session: Session) -> str | None:
