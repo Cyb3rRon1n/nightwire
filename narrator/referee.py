@@ -19,6 +19,7 @@ _AMOUNT = {"none": 0, "small": 2, "big": 4}
 _LEVEL_FIELDS = ("human_moment", "acted_as_machine")
 _HARA_OBJECTIVE = "Owe Old Hara a favor"
 _LOCATION_MAX = 60
+_PROMISE_MAX = 120
 _TEXT_FIELDS = ("moved_to", "new_lead", "objective_done", "promise_made")
 _MAX_OBJECTIVES = 5
 _TRUST_FIELDS = {"kept_promise_to": 1, "helped_at_a_cost": 1, "broke_promise_to": -1, "lie_discovered_by": 0}
@@ -85,7 +86,7 @@ def build_schema(questions: dict[str, str]) -> dict:
             properties[f"{k}_quote"] = {"type": "string"}
             properties[k] = {"type": "string", "enum": _LEVELS}
         elif k in _TEXT_FIELDS or k in _TRUST_FIELDS:
-            properties[k] = {"type": "string", "maxLength": _LOCATION_MAX}
+            properties[k] = {"type": "string", "maxLength": _PROMISE_MAX if k == "promise_made" else _LOCATION_MAX}
         else:
             properties[k] = {"type": "boolean"}
     return {"type": "object", "properties": properties, "required": list(properties), "additionalProperties": False}
@@ -193,11 +194,14 @@ def ground(session: Session, verdict: dict, action: str, narration: str) -> dict
     if "new_lead" in grounded or lead:
         grounded["new_lead"] = lead
     # A promise counts only if its person is in the scene and its "what" names or quotes something there too.
-    promise = " ".join(str(grounded.get("promise_made", "")).split())[:_LOCATION_MAX]
+    # Whole words only (review 2026-11-22: "Ken" matched "token"); split before capping, so "what" isn't cut mid-word.
+    promise = " ".join(str(grounded.get("promise_made", "")).split())
     if promise:
         parts = promises.split(promise)
         said = f"{action}\n{narration}"
-        if not parts or _squash(parts[0]) not in _squash(said) or not _names_something_in(parts[1], said, session):
+        if parts:
+            promise = f"{parts[0]}: {parts[1]}"
+        if not parts or not _has_words(parts[0], said) or not _names_something_in(parts[1], said, session):
             session.log.append(f'[referee: promise "{promise}" is not in the scene, ignored]')
             promise = ""
     if "promise_made" in grounded or promise:
@@ -206,12 +210,16 @@ def ground(session: Session, verdict: dict, action: str, narration: str) -> dict
     scene = _squash(f"{action}\n{narration}")
     for k in _TRUST_FIELDS:
         who = " ".join(str(grounded.get(k, "")).split())
-        if who and (not _squash(who) or _squash(who) not in scene):
+        if who and not _has_words(who, scene):
             session.log.append(f"[referee: {k} had no match in the scene, ignored]")
             who = ""
         if k in grounded or who:
             grounded[k] = who
     return grounded
+
+
+def _has_words(phrase: str, text: str) -> bool:
+    return bool(_squash(phrase)) and f" {_squash(phrase)} " in f" {_squash(text)} "
 
 
 def _find_contact(session: Session, player_id: str, written: str) -> dict | None:

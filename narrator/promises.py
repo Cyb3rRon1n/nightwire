@@ -9,6 +9,7 @@ JOURNAL_MAX = 30
 REMIND_AFTER = 8
 CALL_IN_AFTER = 16
 _SHOWN = 2
+_WHO_MAX, _WHAT_MAX = 30, 80
 
 
 def _key(text: str) -> str:
@@ -19,18 +20,24 @@ def note(session: Session, text: str, kind: str) -> None:
     session.journal = [*session.journal, {"text": text, "kind": kind, "turn": _player_turns(session)}][-JOURNAL_MAX:]
 
 
+def _cap(text: str, limit: int) -> str:
+    return text if len(text) <= limit else text[:limit].rsplit(" ", 1)[0]
+
+
 def split(answer: str) -> tuple[str, str] | None:
     """ "Mama Sato: bring back her nephew Kenta" -> ("Mama Sato", "bring back her nephew Kenta")."""
     who, sep, what = answer.partition(":")
-    who, what = " ".join(who.split()), " ".join(what.split())
+    who, what = _cap(" ".join(who.split()), _WHO_MAX), _cap(" ".join(what.split()), _WHAT_MAX)
     return (who, what) if sep and who and what else None
 
 
 def record(session: Session, who: str, what: str) -> None:
     if any(_key(p["who"]) == _key(who) and _key(p["what"]) == _key(what) for p in session.promises):
         return
-    session.promises = [*session.promises, {"who": who, "what": what, "turn": _player_turns(session),
-                                            "called_in": False}][-MAX_OPEN:]
+    grown = [*session.promises, {"who": who, "what": what, "turn": _player_turns(session), "called_in": False}]
+    for dropped in grown[:-MAX_OPEN]:
+        note(session, f"{dropped['who']}: {dropped['what']}", "set aside")
+    session.promises = grown[-MAX_OPEN:]
     session.log.append(f"[promise: {who}: {what}]")
 
 
@@ -39,9 +46,17 @@ def _is(written: str, who: str) -> bool:
     return bool(a and b) and (a == b or a in b.split() or b in a.split())
 
 
+def _find(session: Session, written: str) -> dict | None:
+    """The full name, or one word that belongs to exactly one person owed (review 2026-11-22: "Mama" closed Sato's
+    promise when Mama Kobayashi was owed too)."""
+    exact = [p for p in session.promises if _key(p["who"]) == _key(written)]
+    hits = exact or [p for p in session.promises if _is(written, p["who"])]
+    return hits[0] if len({_key(p["who"]) for p in hits}) == 1 else None
+
+
 def close(session: Session, written: str, kept: bool, name: str) -> None:
     """Closes the oldest open promise to that person; a broken one is heard about once."""
-    p = next((p for p in session.promises if _is(written, p["who"])), None)
+    p = _find(session, written)
     if p is None:
         return
     session.promises = [q for q in session.promises if q is not p]

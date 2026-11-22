@@ -80,6 +80,8 @@ def test_six_open_at_most_and_objectives_pushed_off_are_set_aside():
     for i in range(8):
         promises.record(s, f"P{i}", "x")
     assert [p["who"] for p in s.promises] == [f"P{i}" for i in range(2, 8)]
+    assert [j["text"] for j in s.journal] == ["P0: x", "P1: x"]
+    s.journal = []
     s.active_objectives = [f"o{i}" for i in range(5)]
     apply_verdict(s, "p1", {"new_lead": "o5", "objective_done": "o2"})
     assert s.active_objectives == ["o0", "o1", "o3", "o4", "o5"]
@@ -106,3 +108,23 @@ def test_the_player_sees_promises_and_the_journal_and_old_saves_load(tmp_path):
     path.write_text(json.dumps(data))
     loaded = store.load("old")
     assert loaded.promises == [] and loaded.journal == []
+
+
+def test_review_fixes_whole_words_ambiguous_names_and_long_promises():
+    # Review 2026-11-22: "Ken" matched "token"; "Mama" closed the wrong promise; "what" was cut mid-word.
+    s = _session()
+    apply_verdict(s, "p1", ground(s, {"promise_made": "Ken: steal the vault keys"}, "I hold a token.",
+                                  "The vault keys are behind the counter."))
+    assert s.promises == []
+    promises.record(s, "Mama Sato", "find Kenta")
+    promises.record(s, "Mama Kobayashi", "fix the radio")
+    promises.close(s, "Mama", True, "Rook")
+    assert len(s.promises) == 2
+    promises.close(s, "Kobayashi", True, "Rook")
+    assert [p["who"] for p in s.promises] == ["Mama Sato"]
+    who, what = promises.split("Mama Sato: bring her nephew Kenta home before the night market closes on the "
+                               "longest night of the whole cold year")
+    assert len(what) <= 80 and what.endswith(("night", "the", "whole", "of", "year", "cold", "longest"))
+    for i in range(6):
+        promises.record(s, f"P{i}", "x")
+    assert s.journal[-1] == {"text": "Mama Sato: find Kenta", "kind": "set aside", "turn": 0}
