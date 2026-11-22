@@ -9,7 +9,7 @@ from engine.character import is_tsukumogami
 from engine.chrome import change_humanity
 from engine.debt import SHELL, new_shell, pay_installment, repo_target_name, repossess, unthrottle
 from engine.session import Session
-from narrator import memory, people, promises
+from narrator import memory, people, places, promises
 from narrator.movement import known_place, places_in
 from narrator.world import _mentions, _normalize, kuroshio
 from ruleset.cyberware import CHROME
@@ -20,7 +20,7 @@ _LEVEL_FIELDS = ("human_moment", "acted_as_machine")
 _HARA_OBJECTIVE = "Owe Old Hara a favor"
 _LOCATION_MAX = 60
 _PROMISE_MAX = 120
-_TEXT_FIELDS = ("moved_to", "new_lead", "objective_done", "promise_made", "new_person")
+_TEXT_FIELDS = ("moved_to", "new_lead", "objective_done", "promise_made", "new_person", "left_mark")
 _TRUST_FIELDS = {"kept_promise_to": 1, "helped_at_a_cost": 1, "broke_promise_to": -1, "lie_discovered_by": 0}
 _SPEECH = re.compile(r"^[^:\n]{1,30}: ")  # "Mama Sato: ..." lines in the narration text
 _SYSTEM = (
@@ -59,6 +59,10 @@ def build_questions(session: Session, player_id: str) -> dict[str, str]:
                                f"happened\" in under 14 words (for example: dockworker with a burned hand: {name} "
                                "helped him lift a crate); otherwise empty. Named people and people only seen or "
                                "mentioned don't count.")
+    # Places that grow (spec 2026-11-22 part 2): what the player leaves behind.
+    questions["left_mark"] = (f"text: a lasting, visible change {name} caused to this place this turn (for example: "
+                              "broken window, burned stall, blood on the counter), under 8 words; otherwise empty. "
+                              "Moods, sounds and things that pass are not marks.")
     if ((p := session.phone.get(player_id)) and p["contacts"]) or session.promises:
         who = "the person's name exactly as written, or empty"
         questions["kept_promise_to"] = f"text: {name} kept a promise this turn to whom? {who}."
@@ -219,6 +223,12 @@ def ground(session: Session, verdict: dict, action: str, narration: str) -> dict
             person = ""
     if "new_person" in grounded or person:
         grounded["new_person"] = person
+    mark = " ".join(str(grounded.get("left_mark", "")).split())[:_LOCATION_MAX]
+    if mark and not people.grounded(session, mark, f"{action}\n{narration}"):
+        session.log.append(f'[referee: left_mark "{mark}" is not in the scene, ignored]')
+        mark = ""
+    if "left_mark" in grounded or mark:
+        grounded["left_mark"] = mark
     # A contact confronting you in dialogue is the evidence, so these use the full narration, speech included.
     scene = _squash(f"{action}\n{narration}")
     for k in _TRUST_FIELDS:
@@ -269,6 +279,11 @@ def apply_verdict(session: Session, player_id: str, verdict: dict) -> None:
         promises.note(session, done, "done")
     if verdict.get("new_person") and (parts := people.split(verdict["new_person"])):
         people.meet(session, *parts)
+    places.mark(session, verdict.get("left_mark", ""))
+    good = (verdict.get("human_moment", "none") != "none" or verdict.get("helped_at_a_cost")
+            or verdict.get("kept_promise_to"))
+    bad = verdict.get("broke_promise_to") or verdict.get("lie_discovered_by")
+    places.warm(session, (1 if good else 0) - (1 if bad else 0))
     if verdict.get("new_lead"):
         promises.add_lead(session, verdict["new_lead"])
     if verdict.get("moved_to") and verdict["moved_to"] != session.location:

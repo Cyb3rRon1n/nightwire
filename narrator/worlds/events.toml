@@ -100,3 +100,9 @@ id = "comeback"
 text = "{name}, the {who}, turns up again - they haven't forgotten: {what}."
 lead = "See what {name} wants"
 needs = ["people"]
+
+[[event]]
+id = "lockdown"
+text = "Ōgane Heavy sweeps {place}: checkpoints go up, scanners sweep faces, doors get kicked in, and somebody points your way."
+lead = "Lie low until the Ōgane sweep moves on"
+needs = ["lockdown"]

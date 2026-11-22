@@ -25,7 +25,7 @@ from narrator.tts_backend import TTSBackend
 from narrator.voice_assignment import assign_voice
 from narrator.voices import voice_block
 from narrator.promises import business_line, call_in
-from narrator import director, memory, ratings
+from narrator import director, memory, places, ratings
 from narrator.cast import keep_away_keepers, note as note_cast, present_line, refresh as refresh_cast
 from narrator.world import kuroshio, locals_line, select_cards
 from ruleset.attributes import Attribute
@@ -439,6 +439,9 @@ def _build_messages(session: Session, action_text: str, num_ctx: int, voices: st
         voices = voice_block(session, action_text)
     if voices:
         parts.append(voices)
+    here = places.line(session, " / ".join(c.name for c in session.characters.values()))
+    if here:
+        parts.append(here)
     remembered = memory.recall_block(session, action_text)  # late, next to the action (Lost in the Middle)
     if remembered:
         parts.append(remembered)

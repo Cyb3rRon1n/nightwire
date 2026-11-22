@@ -57,3 +57,5 @@ class Session:
     events_used: dict[str, int] = field(default_factory=dict)
     # Emerging characters (narrator/people.py): name -> {who, what, district, place, turn, weight, returned}.
     people: dict[str, dict] = field(default_factory=dict)
+    # Places that grow (narrator/places.py): place -> {heat, warmth, marks, last_visit, warmed}.
+    places: dict[str, dict] = field(default_factory=dict)

@@ -8,7 +8,7 @@ from functools import cache
 from pathlib import Path
 
 from engine.session import Session
-from narrator import people, promises
+from narrator import people, places, promises
 from narrator.cast import _player_turns
 from narrator.world import _where, kuroshio
 
@@ -17,7 +17,7 @@ BREATHER_TURNS, QUIET_AT, QUIET_TURNS = 2, 1, 4
 NO_REPEAT, MIN_GAP = 40, 6
 PACING = "Pacing: let this moment breathe - no new threats or arrivals this turn."
 _EVENTS = Path(__file__).resolve().parent / "worlds" / "events.toml"
-_NEEDS = {"owes", "promise_open", "throttled", "people"}
+_NEEDS = {"owes", "promise_open", "throttled", "people", "lockdown"}
 
 
 @cache
@@ -35,24 +35,25 @@ def pacing_line(session: Session) -> str:
     return PACING if session.breather > 0 and not session.in_combat else ""
 
 
-def _rolls_this_turn(session: Session) -> list[str]:
-    """Outcomes of the rolls since the player's last action line (a roll-resolution turn holds its roll)."""
+def _rolls_this_turn(session: Session) -> list[dict]:
+    """The rolls since the player's last action line (a roll-resolution turn holds its roll)."""
     actors = tuple(f"{pid}: " for pid in session.characters)
     starts = [i for i, line in enumerate(session.log) if line.startswith(actors)]
     outcomes = []
     for line in session.log[starts[-1] if starts else 0:]:
         if line.startswith("[roll: "):
             try:
-                outcomes.append(json.loads(line[len("[roll: "):-1]).get("outcome", ""))
+                outcomes.append(json.loads(line[len("[roll: "):-1]))
             except json.JSONDecodeError:
-                outcomes.append("")
+                outcomes.append({})
     return outcomes
 
 
 def _met(session: Session, player_id: str, need: str) -> bool:
     c = session.characters[player_id]
     return {"owes": c.installments_owed > 0, "promise_open": bool(session.promises),
-            "throttled": bool(c.throttled), "people": people.comeback(session) is not None}[need]
+            "throttled": bool(c.throttled), "people": people.comeback(session) is not None,
+            "lockdown": False}[need]  # lockdown fires from places.heat, never by a quiet spell
 
 
 def pick(session: Session, player_id: str) -> dict | None:
@@ -96,8 +97,13 @@ def tick(session: Session, player_id: str, health_before: int) -> None:
     """End of a player's turn, after the referee. Not on the set-up turn that opened a roll."""
     if player_id not in session.characters or player_id in session.pending_rolls:
         return
-    outcomes = _rolls_this_turn(session)
+    rolls = _rolls_this_turn(session)
+    outcomes = [r.get("outcome", "") for r in rolls]
     hurt = session.characters[player_id].health < health_before
+    places.arrive(session)
+    if places.heat(session, rolls, hurt):  # Blades in the Dark: at 9 heat the district locks down
+        lockdown = next(e for e in events() if e["id"] == "lockdown")
+        fire(session, {**lockdown, "text": lockdown["text"].replace("{place}", places.key(session) or "the block")})
     if session.in_combat:
         rise = 3
     elif outcomes or hurt:
