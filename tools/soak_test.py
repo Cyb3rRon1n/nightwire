@@ -27,6 +27,7 @@ from narrator.image_backend import create_image_backend
 from narrator.place_art import location_art
 from narrator.tts_backend import KokoroBackend
 from server.__main__ import build_system_prompt
+from tools.soak_score import score
 from server.narration import handle_action, narrate_roll, refresh_suggestions, resolve_roll
 from server.phone_turns import deliver_due, handle_text
 
@@ -140,7 +141,7 @@ async def main(turns: int, chips: bool = False) -> Path:
                        repeated_opening=bool(opening) and opening in openings,
                        voice_filtered=sum(line.startswith("[voice filtered") for line in lines),
                        unread=unread(session, "rin"), replies=[{"from": a, "text": b} for a, b in replies],
-                       notes=[line[:120] for line in lines if line.startswith(("[tool error", "[referee", "[redo", "[ooc", "[chips error", "[set-up cut", "[moved", "[update_world", "[empty reply", "[chips dropped", "[sample line cut"))])
+                       notes=[line[:120] for line in lines if line.startswith(("[tool error", "[referee", "[redo", "[ooc", "[chips error", "[set-up cut", "[moved", "[update_world", "[empty reply", "[chips dropped", "[sample line cut", "[promise"))])
             openings.append(opening)
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
             f.flush()
@@ -158,6 +159,7 @@ async def main(turns: int, chips: bool = False) -> Path:
                    "texts_sent": len(texts), "replies_delivered": len(replies),
                    "texts_in_session_log": sum(w in line for w in words for line in session.log),  # must be 0
                    "chip_turns": sum("chip" in r for r in rows)}
+        summary["score"] = score(out)  # tools/soak_score.py: the narrator scorecard
         f.write(json.dumps({"summary": summary}) + "\n")
     print(json.dumps(summary))
     return out
