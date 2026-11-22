@@ -1,6 +1,6 @@
 # NPC memory that keeps what matters
 
-Status: draft for owner review (Nightwire Reviews, batch "NPC memory"). Item 4 on the approved roadmap (2026-11-22).
+Status: approved 2026-11-22 (cards kept; the problem card marked Fix, read as "fix this"). Item 4 on the roadmap.
 
 ## Why
 
