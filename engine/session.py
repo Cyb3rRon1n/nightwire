@@ -50,3 +50,8 @@ class Session:
     last_rating: dict | None = None
     checkin_open: bool = False
     checkin_turn: int | None = None
+    # The director (narrator/director.py): tension 0-10, breather turns left, quiet turns in a row, event id -> turn.
+    tension: int = 0
+    breather: int = 0
+    quiet_turns: int = 0
+    events_used: dict[str, int] = field(default_factory=dict)

@@ -25,7 +25,7 @@ from narrator.tts_backend import TTSBackend
 from narrator.voice_assignment import assign_voice
 from narrator.voices import voice_block
 from narrator.promises import business_line, call_in
-from narrator import ratings
+from narrator import director, ratings
 from narrator.cast import keep_away_keepers, note as note_cast, present_line, refresh as refresh_cast
 from narrator.world import kuroshio, locals_line, select_cards
 from ruleset.attributes import Attribute
@@ -451,6 +451,9 @@ def _build_messages(session: Session, action_text: str, num_ctx: int, voices: st
     avoid = ratings.avoid_line()
     if avoid:
         parts.append(avoid)
+    pacing = director.pacing_line(session)
+    if pacing:
+        parts.append(pacing)
     if voices is None:  # _run_turn picks once per turn, so a redo keeps the lines the kept reply saw (review 2026-11-22)
         voices = voice_block(session, action_text)
     if voices:
@@ -694,6 +697,7 @@ async def _run_turn(
     # Events are shown once, but only dropped after the narrator actually
     # responded; events queued during the turn survive to the next one.
     call_in(session)  # before shown_events, so a promise called in is shown this turn
+    health_before = session.characters[player_id].health
     shown_events = list(session.pending_world_events)
     refresh_cast(session, referee_action or prompt_text)  # the action may already have moved the player
     voices = voice_block(session, prompt_text)
@@ -796,6 +800,8 @@ async def _run_turn(
         await run_referee(session, narrator_client, player_id, referee_action or prompt_text, narration_text)
     refresh_cast(session, referee_action or prompt_text)  # update_world or the referee may have moved them
     note_cast(session, [(seg.speaker, seg.text) for seg in response.narration])
+    if narration_text and (actor_line is not None or referee_action):
+        director.tick(session, player_id, health_before)
     ratings.maybe_checkin(session)
 
     generated_image = False

@@ -1,7 +1,8 @@
 # The director: tension, breathers, and events that fit the moment
 
-Status: draft for owner review (Nightwire Reviews, batch "Director"). Item 3 on the approved roadmap
-(2026-11-22).
+Status: approved 2026-11-22 (all event cards kept). The owner's note on the mechanism card: "it can be world events or
+something that at least drives the story". So every event now leaves a lead on the objectives list, and the two
+events that were scenery only (the rain, the charm kid) were rewritten to carry one. Item 3 on the approved roadmap.
 
 ## Why
 
@@ -41,7 +42,8 @@ something that keeps play immersive and evolving, and costs no AI calls while th
 ## Non-goals
 
 - Choosing events with a model.
-- Spawning fights or rolls; events are scene texture and hooks.
+- Spawning fights or rolls. Events are things happening in the city that give the player something to chase.
+- Scenery-only events. Every event either carries a lead or is tied to the player's own state (a promise, a debt).
 - Changing the time of day (Nightwire is always night).
 
 ## Design
@@ -66,9 +68,15 @@ rolled, failed, hurt)`. A roll-resolution turn counts as the turn with the roll.
 [[event]]
 id = "torite-van"
 text = "A torite van idles at the corner, engine running, someone inside checking a list."
+lead = "Find out whose name is on the torite van's list outside the Torite office"
 where = ["Ikebe Low"]       # districts; empty = anywhere
 needs = ["owes"]            # owes | promise_open | throttled; empty = always
 ```
+
+**Leads.** When an event fires, its `lead` joins `active_objectives` through the same path as the referee's
+`new_lead` (deduped, capped at 5, the oldest journaled as "set aside"). So the player sees it in the Status panel and
+the narrator sees it in the scene line. A lead may be empty only when `needs` ties the event to the player's state.
+The location may be a place; its district is the place's `home` in `kuroshio.toml`.
 
 `{who}` and `{what}` fill from the oldest open promise.
 
@@ -85,6 +93,8 @@ needs = ["owes"]            # owes | promise_open | throttled; empty = always
   - a quiet spell fires exactly one matching event;
   - the order of preference is followed;
   - no repeat within 40 turns;
+  - a fired event's lead lands in the objectives;
+  - every event without `needs` has a lead;
   - old saves load.
 - In a soak, the quiet middle stretch (the walk home, sleeping, waking) should get one event, and the turns after the
   crane climb and the punch should get breathers.

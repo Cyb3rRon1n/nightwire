@@ -31,6 +31,19 @@ def split(answer: str) -> tuple[str, str] | None:
     return (who, what) if sep and who and what else None
 
 
+MAX_OBJECTIVES = 5
+
+
+def add_lead(session: Session, lead: str) -> None:
+    """A new objective; the oldest past 5 are journaled as set aside (referee leads and director events)."""
+    if lead in session.active_objectives:
+        return
+    grown = [*session.active_objectives, lead]
+    for dropped in grown[:-MAX_OBJECTIVES]:
+        note(session, dropped, "set aside")
+    session.active_objectives = grown[-MAX_OBJECTIVES:]
+
+
 def record(session: Session, who: str, what: str) -> None:
     if any(_key(p["who"]) == _key(who) and _key(p["what"]) == _key(what) for p in session.promises):
         return

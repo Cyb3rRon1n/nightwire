@@ -61,6 +61,8 @@ def score(path: Path) -> dict:
         "sample_lines_cut": sum(n.startswith("[sample line cut") for n in notes),
         "referee_ignored": sum(n.startswith("[referee") and "ignored" in n for n in notes),
         "promises": sum(n.startswith("[promise") for n in notes),
+        "director_events": sum(n.startswith("[director") and "breather" not in n for n in notes),
+        "breathers": sum(n == "[director: breather]" for n in notes),
     }
 
 

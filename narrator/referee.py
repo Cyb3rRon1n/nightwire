@@ -21,7 +21,6 @@ _HARA_OBJECTIVE = "Owe Old Hara a favor"
 _LOCATION_MAX = 60
 _PROMISE_MAX = 120
 _TEXT_FIELDS = ("moved_to", "new_lead", "objective_done", "promise_made")
-_MAX_OBJECTIVES = 5
 _TRUST_FIELDS = {"kept_promise_to": 1, "helped_at_a_cost": 1, "broke_promise_to": -1, "lie_discovered_by": 0}
 _SPEECH = re.compile(r"^[^:\n]{1,30}: ")  # "Mama Sato: ..." lines in the narration text
 _SYSTEM = (
@@ -250,12 +249,8 @@ def apply_verdict(session: Session, player_id: str, verdict: dict) -> None:
     if done in session.active_objectives:
         session.active_objectives = [o for o in session.active_objectives if o != done]
         promises.note(session, done, "done")
-    lead = verdict.get("new_lead")
-    if lead and lead not in session.active_objectives:
-        grown = [*session.active_objectives, lead]
-        for dropped in grown[:-_MAX_OBJECTIVES]:
-            promises.note(session, dropped, "set aside")
-        session.active_objectives = grown[-_MAX_OBJECTIVES:]
+    if verdict.get("new_lead"):
+        promises.add_lead(session, verdict["new_lead"])
     if verdict.get("moved_to") and verdict["moved_to"] != session.location:
         session.location = verdict["moved_to"]
         session.log.append(f"[moved: {session.location} (referee)]")

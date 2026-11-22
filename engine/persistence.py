@@ -78,4 +78,8 @@ class JSONFileSessionStore:
             last_rating=data.get("last_rating"),
             checkin_open=data.get("checkin_open", False),
             checkin_turn=data.get("checkin_turn"),
+            tension=data.get("tension", 0),
+            breather=data.get("breather", 0),
+            quiet_turns=data.get("quiet_turns", 0),
+            events_used=data.get("events_used", {}),
         )

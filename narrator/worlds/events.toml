@@ -1,0 +1,96 @@
+# Director events (docs/superpowers/specs/2026-11-22-director-design.md), owner-approved 2026-11-22.
+# where: districts (empty = anywhere). needs: owes | promise_open | throttled (empty = always).
+# lead: joins the objectives when the event fires; empty only when needs ties the event to the player.
+
+[[event]]
+id = "ikebe-blackout"
+text = "A power cut rolls down the street; every lantern in Ikebe Low goes dark for a breath, then the backup generators cough on."
+lead = "Ask at the Low-city shrine who cut Ikebe Low's power"
+where = ["Ikebe Low"]
+
+[[event]]
+id = "torite-van"
+text = "A torite van idles at the corner, engine running, someone inside checking a list."
+lead = "Find out whose name is on the torite van's list outside the Torite office"
+where = ["Ikebe Low"]
+needs = ["owes"]
+
+[[event]]
+id = "charm-kid"
+text = "A kid sells paper charms from a tray, swearing one kept the repo men off a whole floor of the Stacked block."
+lead = "Find out what really kept the repo men off a floor of the Stacked block"
+where = ["Ikebe Low"]
+
+[[event]]
+id = "crane-jam"
+text = "A container crane jams with a shriek; dockworkers shout, and an Ōgane patrol drifts over to see who to fine."
+lead = "Find out who jammed the crane at Kuroshio Docks before Ōgane does"
+where = ["Kuroshio Docks"]
+
+[[event]]
+id = "three-horns"
+text = "A ship's horn sounds three times - the old signal for a body in the water."
+lead = "Find out whose body is in the water at Kuroshio Docks"
+where = ["Kuroshio Docks"]
+
+[[event]]
+id = "mitsu-glitch"
+text = "Every screen on the block cuts to Mitsu mid-song, then glitches into a debt notice for a second before anyone can be sure."
+lead = "Find out at the Streaming studio who hacked Mitsu's feed"
+where = ["Hanabira-chō"]
+
+[[event]]
+id = "kuze-envelopes"
+text = "A Kuze-gumi enforcer is collecting envelopes door to door, bowing politely at each one."
+lead = "Find out which door on the block didn't pay the Kuze-gumi"
+where = ["Hanabira-chō"]
+
+[[event]]
+id = "loop-race"
+text = "Engines scream past: a Kaminari Run race tears down the Loop, and something small and expensive falls off a bike."
+lead = "Decide what to do with what fell off the Kaminari Run bike"
+where = ["The Loop"]
+
+[[event]]
+id = "audit-drone"
+text = "A Hoshikawa audit drone hums past at eye level, scanning status lights one face at a time."
+lead = "Find out who the Hoshikawa audit drone is looking for"
+where = ["Tenjō Heights"]
+
+[[event]]
+id = "train-settlement"
+text = "The train stops between stations. The lights dim. An announcement apologises for \"a passenger settlement in progress.\""
+lead = "Find out who was settled on the stopped Ring Line train"
+where = ["Ring Line"]
+
+[[event]]
+id = "yomi-lantern"
+text = "A paper lantern drifts down the sealed tunnel with no one carrying it."
+lead = "Follow the lantern down the Yomi Line tunnel"
+where = ["Yomi Line"]
+
+[[event]]
+id = "photo-text"
+text = "Your phone buzzes: an unknown number, a single photo of the place you were an hour ago."
+lead = "Find out who is following you and sending photos"
+
+[[event]]
+id = "doorway-job"
+text = "Rain turns to hard sideways sheets; in the doorway everyone ducks into, a stranger is whispering about a job that pays tonight."
+lead = "Find out about the job that pays tonight from the stranger in the doorway"
+
+[[event]]
+id = "red-light"
+text = "A stranger's status light flips red right beside you; they look at you like you might help."
+lead = "Find out why the stranger's status light went red"
+
+[[event]]
+id = "asking-after"
+text = "Someone mentions {who} - they were asking after you, and about {what}."
+needs = ["promise_open"]
+
+[[event]]
+id = "billing-ping"
+text = "Your throttled chrome twitches on its own: a reminder ping from Hoshikawa billing."
+lead = "Get the throttle off your chrome before Hoshikawa billing escalates"
+needs = ["throttled"]
