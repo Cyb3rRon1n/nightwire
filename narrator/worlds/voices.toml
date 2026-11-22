@@ -1,0 +1,178 @@
+# Owner-approved voices (review 2026-11-22; draft docs/superpowers/specs/2026-11-21-npc-voices-draft-lines.md).
+# character.name must be a world npc; 3 lines with distinct moves. type: words in the scene that mean it, 3 lines.
+
+[[character]]
+name = "Mama Sato"
+lines = [
+  { move = "feed first", text = "Sit. Eat the eel while it's hot, child. Questions taste better on a full stomach." },
+  { move = "bargain", text = "A rumor costs a favor. Wash those cups and we'll see what I remember." },
+  { move = "warn", text = "Kuze boys drink at that table. Kaminari boys drink at this one. You drink at the counter." },
+]
+
+[[character]]
+name = "Old Hara"
+lines = [
+  { move = "examine", text = "Hold still. Your left optic's been throttled. Someone wanted you squinting." },
+  { move = "refuse", text = "I don't take payment plans. I've seen where payment plans go." },
+  { move = "confide", text = "I built worse things than your debt. I'm still paying for them." },
+]
+
+[[character]]
+name = "Jun Arakawa"
+lines = [
+  { move = "offer work", text = "Three jobs, one tonight. The quiet one pays least and lives longest. Your pick." },
+  { move = "count", text = "That's twice I've vouched for you. I write these things down, friend." },
+  { move = "deflect", text = "Who I talk to? Everybody. That's the job. Next song's mine." },
+]
+
+[[character]]
+name = "Saeko Kirigaya"
+lines = [
+  { move = "apologize", text = "I'm sorry about this. Truly. Please give the arm to Goro, he's gentle." },
+  { move = "bargain", text = "My quota's six. Bring me someone worse off than you and I can count to five." },
+  { move = "let slip", text = "Amber lights all over this street. Mine's been amber longer than yours." },
+]
+
+[[character]]
+name = "Hoshikawa Tadamori"
+lines = [
+  { move = "assess", text = "You were recommended. I have not yet decided by whom, or why." },
+  { move = "dismiss", text = "Threats are a kind of rudeness. I will overlook it once." },
+  { move = "offer work", text = "There is a matter my own people cannot be seen near. You, I think, cannot be seen at all." },
+]
+
+[[character]]
+name = "Hoshikawa Rei"
+lines = [
+  { move = "tease", text = "Your status light's red. How thrilling. Does it hurt, or just embarrass you?" },
+  { move = "test", text = "Steal me that noodle cart's sign. No reason. I'll pay you a month of chrome." },
+  { move = "let slip", text = "My father hasn't seen the street in years. Neither has anyone who disagrees with him." },
+]
+
+[[character]]
+name = "Nagi Sumida"
+lines = [
+  { move = "comfort", text = "Walk slower. The dead like to see who's coming." },
+  { move = "trade", text = "Your grandmother remembers a song. I'll tell you which, for a favor at the next lantern." },
+  { move = "let slip", text = "They ask for me by name down there. I never gave it to them." },
+]
+
+[[character]]
+name = "Wataru Ono"
+lines = [
+  { move = "formal", text = "My condolences. The family's last request comes first; the collectors can wait in the rain." },
+  { move = "ask a favor", text = "No money. Carry a letter to the Docks for me, and we're square." },
+  { move = "deflect", text = "Records go missing. Old paper, damp walls. Terrible shame." },
+]
+
+[[character]]
+name = "Kenji Moro"
+lines = [
+  { move = "recruit", text = "You ride? Doesn't matter. You'll ride tonight. Big score, bigger payout!" },
+  { move = "boast", text = "Nobody on the Loop's faster. Nobody. Ask anyone. Ask them twice." },
+  { move = "crack", text = "...Just get in. Before my hands start shaking again." },
+]
+
+[[character]]
+name = "Captain Ide"
+lines = [
+  { move = "bill", text = "Unlicensed loitering, a minor fee. Unlicensed questions, a larger one." },
+  { move = "threaten as paperwork", text = "I could file your arrest tonight. The paperwork is tedious. Help me avoid it." },
+  { move = "bargain", text = "My men will be looking at the north gate at midnight. Very closely. Only the north gate." },
+]
+
+[[character]]
+name = "Mitsu"
+lines = [
+  { move = "on stream", text = "Hi hi, lovelies! Tonight's song is for everyone still paying off their dreams!" },
+  { move = "off stream", text = "Turn that off. Turn it off! Who sent you, the torite or my agency?" },
+  { move = "plead", text = "My voice is the only thing I own, and I don't even own it. Help me keep it." },
+]
+
+[[character]]
+name = "Hachi"
+lines = [
+  { move = "announce", text = "Next stop: Kuroshio Docks. Please mind the gap. There is no train." },
+  { move = "misread", text = "You are crying. Is the sea too loud? I can request it be quieter." },
+  { move = "let slip", text = "Passengers still ask me when the doors will open. I tell them: soon." },
+]
+
+[[type]]
+name = "Street vendor"
+match = ["vendor", "noodle stall", "food stall", "stall owner", "noodle vendor"]
+voice = "busy, practical, gossipy; wants a sale and a quiet night"
+lines = [
+  "Noodles, three hundred. Extra egg if you stop dripping on my counter.",
+  "Torite came through an hour ago. Took a man's hand right there. Eat up.",
+  "You want news, buy two bowls. One bowl gets you weather.",
+]
+
+[[type]]
+name = "Dockworker"
+match = ["dockworker", "dock worker", "docker", "longshoreman"]
+voice = "tired, blunt, suspicious of outsiders; wants the shift to end and the pay to clear"
+lines = [
+  "Hiring? Ask the crane. It's the only thing here that gets paid on time.",
+  "Don't stand there. Containers swing.",
+  "Container nine-four-one? Nobody opens that one. Nobody asks why.",
+]
+
+[[type]]
+name = "Kuze-gumi enforcer"
+match = ["enforcer", "kuze enforcer", "yakuza", "kuze-gumi man"]
+voice = "polite on the surface, menace underneath; wants respect for the clan and its cut"
+lines = [
+  "The oyabun sends regards. And an invoice.",
+  "Nice coat. Shame if it had to be collateral.",
+  "We don't threaten. We remind.",
+]
+
+[[type]]
+name = "Torite crew member"
+match = ["torite", "repo man", "repo crew"]
+voice = "bored professionals; wants to make quota and go home"
+lines = [
+  "Hold out the arm, please. Left one. It's on the form.",
+  "Running makes the fee bigger. Just so you know.",
+  "Nothing personal. My light's amber too.",
+]
+
+[[type]]
+name = "Kaminari Run racer"
+match = ["racer", "kaminari runner", "biker"]
+voice = "loud, fast, reckless; wants speed, credit, a bigger score"
+lines = [
+  "Out the way, slowpoke! Loop waits for nobody!",
+  "Static says you're alright. Static's wrong a lot.",
+  "You see my bike? You saw nothing. Got it?",
+]
+
+[[type]]
+name = "Ōgane Heavy officer"
+match = ["ogane officer", "ōgane officer", "precinct officer", "cop", "officer"]
+voice = "rules-and-fees bureaucrat in armor; wants a clean report and a cut"
+lines = [
+  "Identification. And the processing fee.",
+  "This area is closed. It reopens for a modest consideration.",
+  "I didn't see anything. That service costs extra.",
+]
+
+[[type]]
+name = "Hoshikawa auditor"
+match = ["auditor"]
+voice = "crisp, superior, quietly afraid of their own managers; wants compliance and no surprises"
+lines = [
+  "Your payment history is... imaginative.",
+  "I'm required to inform you that this conversation is billable.",
+  "Step back from the terminal. That's a request. The next one won't be.",
+]
+
+[[type]]
+name = "Lantern Guild acolyte"
+match = ["acolyte", "lantern bearer"]
+voice = "hushed, earnest, a little spooked; wants the rites done right"
+lines = [
+  "Lanterns lit, please. The dead don't like surprises.",
+  "Steward Ono handles the ledgers. I just carry the oil.",
+  "Did you hear that? ...No. Never mind. Keep walking.",
+]

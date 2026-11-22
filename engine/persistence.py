@@ -69,4 +69,7 @@ class JSONFileSessionStore:
             present=data.get("present", []),
             cast_location=data.get("cast_location"),
             drop_in_turn=data.get("drop_in_turn"),
+            last_moves=data.get("last_moves", {}),
+            type_turns=data.get("type_turns", {}),
+            voice_lines=data.get("voice_lines", []),
         )
