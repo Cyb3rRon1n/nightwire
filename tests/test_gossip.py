@@ -49,7 +49,7 @@ def test_word_spreads_two_hops_then_stops(monkeypatch):
 
 def test_exaggeration_follows_the_owner_table():
     assert gossip.exaggerate("Rook punched Tetsu") == "Rook put Tetsu in the clinic"
-    assert gossip.exaggerate("Rook started a fight at Ikebe Low") == "Rook started a brawl at Ikebe Low"
+    assert gossip.exaggerate("Rook got into a fight at Ikebe Low") == "Rook started a brawl at Ikebe Low"
     assert gossip.exaggerate("Rook broke their word to Mama Sato") == "Rook can't be trusted - ask Mama Sato"
     assert gossip.exaggerate("Rook bought noodles") == "Rook bought noodles"
 
@@ -91,7 +91,7 @@ def test_a_fight_turn_is_a_deed_once():
     for _ in range(3):
         s.log += ["p1: I swing.", '[roll: {"skill": "melee", "outcome": "failure"}]']
         director.tick(s, "p1", s.characters["p1"].health)
-    assert [d["what"] for d in s.deeds] == ["Rook started a fight at Kuroshio Docks"]
+    assert [d["what"] for d in s.deeds] == ["Rook got into a fight at Kuroshio Docks"]
 
 
 def test_old_saves_load_without_deeds(tmp_path):

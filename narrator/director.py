@@ -101,12 +101,15 @@ def tick(session: Session, player_id: str, health_before: int) -> None:
     outcomes = [r.get("outcome", "") for r in rolls]
     hurt = session.characters[player_id].health < health_before
     places.arrive(session)
-    if any(r.get("skill") in places._FIGHT_SKILLS for r in rolls) or session.in_combat:
-        gossip.record(session, f"{session.characters[player_id].name} started a fight at "
+    if any(r.get("skill") in places._FIGHT_SKILLS for r in rolls):  # a roll to fight is the player's own doing
+        gossip.record(session, f"{session.characters[player_id].name} got into a fight at "
                                f"{places.key(session) or 'the block'}", False)
-    if places.heat(session, rolls, hurt):  # Blades in the Dark: at 9 heat the district locks down
-        lockdown = next(e for e in events() if e["id"] == "lockdown")
+    # Blades in the Dark: at 9 heat the district locks down; once per 40 turns, so a long fight sweeps once.
+    lockdown = next(e for e in events() if e["id"] == "lockdown")
+    if (places.heat(session, rolls, hurt)
+            and _player_turns(session) - session.events_used.get("lockdown", -NO_REPEAT) >= NO_REPEAT):
         fire(session, {**lockdown, "text": lockdown["text"].replace("{place}", places.key(session) or "the block")})
+        places.cool_after_lockdown(session)
     if session.in_combat:
         rise = 3
     elif outcomes or hurt:

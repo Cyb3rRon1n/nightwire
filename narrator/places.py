@@ -4,6 +4,7 @@ See docs/superpowers/specs/2026-11-22-places-gossip-design.md, part 2."""
 
 from engine.session import Session
 from narrator.cast import _player_turns
+from narrator.movement import known_place
 from narrator.world import _where, kuroshio
 
 HEAT_MAX, LOCKDOWN_AFTER, HEAT_COOL_EVERY = 9, 5, 5
@@ -16,32 +17,46 @@ _WARMTH_WORDS = {-3: "hostile", -2: "hostile", -1: "cool", 0: "neutral", 1: "fri
 
 
 def key(session: Session) -> str | None:
-    """The place the player is at: its own name, else the district, else the location as written."""
+    """One key per place however the location is written (review 2026-11-22: "the izakaya" split Mama Sato's
+    izakaya's state): a world place, else a known place ("the izakaya" -> Mama Sato's izakaya), else the district,
+    else the location in plain lower case."""
+    if not session.location:
+        return None
     place, district = _where(kuroshio(), session.location)
-    return place.name if place else (session.location or (district.name if district else None))
+    if place:
+        return place.name
+    known = known_place(session.location)
+    if known:
+        return known
+    return district.name if district else " ".join(session.location.lower().split())
 
 
 def _state(session: Session, k: str) -> dict:
-    return session.places.setdefault(k, {"heat": 0, "warmth": 0, "marks": [], "last_visit": _player_turns(session),
-                                         "warmed": -1})
+    now = _player_turns(session)
+    s = session.places.setdefault(k, {"heat": 0, "warmth": 0, "marks": []})
+    for field in ("cooled", "drifted"):
+        s.setdefault(field, now)
+    s.setdefault("warmed", -1)
+    return s
 
 
 def arrive(session: Session) -> None:
-    """Called each turn: cooling and drift for the time away, and a mark seen again stays for good."""
-    k = key(session)
-    if not k:
-        return
-    now, s = _player_turns(session), _state(session, k)
-    away = now - s["last_visit"]
-    if away > 1:
-        s["heat"] = max(0, s["heat"] - away // HEAT_COOL_EVERY)
-        drift = min(abs(s["warmth"]), away // WARMTH_DRIFT_EVERY)
-        s["warmth"] -= drift if s["warmth"] > 0 else -drift
+    """Called each player turn. Every place cools 1 heat per 5 turns since its last heat and drifts 1 warmth toward 0
+    per 30 turns since its last change, whether or not the player is there (review 2026-11-22). A mark the player is
+    still with 5+ turns later, or comes back to, has been seen again and stays for good; others fade after 30."""
+    now, here = _player_turns(session), key(session)
+    for k, s in session.places.items():
+        s = _state(session, k)
+        if now - s["cooled"] >= HEAT_COOL_EVERY:
+            steps = (now - s["cooled"]) // HEAT_COOL_EVERY
+            s["heat"], s["cooled"] = max(0, s["heat"] - steps), s["cooled"] + steps * HEAT_COOL_EVERY
+        if now - s["drifted"] >= WARMTH_DRIFT_EVERY:
+            s["drifted"] = now
+            s["warmth"] -= (s["warmth"] > 0) - (s["warmth"] < 0)
         for m in s["marks"]:
-            if not m["permanent"] and now - m["turn"] <= MARK_LIFE:
-                m["permanent"] = True  # came back while it was still there
-    s["marks"] = [m for m in s["marks"] if m["permanent"] or now - m["turn"] <= MARK_LIFE]
-    s["last_visit"] = now
+            if k == here and not m["permanent"] and 5 <= now - m["turn"] <= MARK_LIFE:
+                m["permanent"] = True
+        s["marks"] = [m for m in s["marks"] if m["permanent"] or now - m["turn"] <= MARK_LIFE]
 
 
 def warm(session: Session, step: int) -> None:
@@ -52,7 +67,7 @@ def warm(session: Session, step: int) -> None:
     s, now = _state(session, k), _player_turns(session)
     if s["warmed"] == now:
         return
-    s["warmed"] = now
+    s["warmed"] = s["drifted"] = now
     s["warmth"] = max(-WARMTH_MAX, min(WARMTH_MAX, s["warmth"] + (1 if step > 0 else -1)))
 
 
@@ -80,12 +95,14 @@ def heat(session: Session, rolls: list[dict], hurt: bool) -> bool:
     if not rise:
         return False
     s = _state(session, k)
-    s["heat"] = min(HEAT_MAX, s["heat"] + rise)
+    s["heat"], s["cooled"] = min(HEAT_MAX, s["heat"] + rise), _player_turns(session)
     warm(session, -1)
-    if s["heat"] >= HEAT_MAX:
-        s["heat"] = LOCKDOWN_AFTER
-        return True
-    return False
+    return s["heat"] >= HEAT_MAX
+
+
+def cool_after_lockdown(session: Session) -> None:
+    s = _state(session, key(session))
+    s["heat"] = LOCKDOWN_AFTER
 
 
 def mood(s: dict) -> str:

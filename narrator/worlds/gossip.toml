@@ -1,7 +1,7 @@
 # How word of a deed gets exaggerated as it spreads (docs/superpowers/specs/2026-11-22-places-gossip-design.md).
 # Owner-approved 2026-11-22. find is a regex on the deed's text; the first rule that matches is used.
 [[rule]]
-find = "started a fight"
+find = "got into a fight"
 replace = "started a brawl"
 
 [[rule]]

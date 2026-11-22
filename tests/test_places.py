@@ -104,3 +104,33 @@ def test_old_saves_load_without_places(tmp_path):
     data.pop("places")
     path.write_text(json.dumps(data))
     assert store.load("old").places == {}
+
+
+def test_a_long_fight_locks_down_once_and_heat_cools_while_you_stay():
+    s = _session()
+    s.location = "Kuroshio Docks"
+    s.in_combat = True
+    for _ in range(6):
+        director.tick(s, "p1", _turn(s))
+    assert sum(e.startswith("Ōgane Heavy sweeps") for e in s.pending_world_events) == 1
+    s.in_combat = False
+    for _ in range(25):
+        director.tick(s, "p1", _turn(s))
+    assert _here(s)["heat"] < 9 - 4
+
+
+def test_a_mark_you_stay_with_is_kept():
+    s = _session()
+    s.location = "Ikebe Low"
+    places.mark(s, "smashed noodle stall")
+    for _ in range(40):
+        director.tick(s, "p1", _turn(s))
+    assert _here(s)["marks"][0]["permanent"]
+
+
+def test_one_place_however_it_is_written():
+    s = _session()
+    s.location = "Mama Sato's izakaya"
+    first = places.key(s)
+    s.location = "the izakaya"
+    assert places.key(s) == first

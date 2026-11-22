@@ -85,4 +85,5 @@ class JSONFileSessionStore:
             people=data.get("people", {}),
             places=data.get("places", {}),
             deeds=data.get("deeds", []),
+            gossip_turn=data.get("gossip_turn"),
         )

@@ -61,3 +61,4 @@ class Session:
     places: dict[str, dict] = field(default_factory=dict)
     # Word that spreads (narrator/gossip.py): deeds with who knows them and how strongly.
     deeds: list[dict] = field(default_factory=list)
+    gossip_turn: int | None = None

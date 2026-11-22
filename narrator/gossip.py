@@ -68,10 +68,14 @@ def _locals(session: Session, district: str | None) -> list[str]:
 def tick(session: Session) -> None:
     """Every 5 player turns each knower (strength 2+) tells one local who doesn't know; every 30, everything fades."""
     now = _player_turns(session)
+    if now == session.gossip_turn:
+        return  # one spread per player turn, however often the turn ticks
+    session.gossip_turn = now
     if now and now % SPREAD_EVERY == 0:
         for d in session.deeds:
             for teller, k in list(d["knows"].items()):
-                fresh = [n for n in _locals(session, d["district"]) if n not in d["knows"]]
+                # Not someone the deed is about: they'd only hear about themselves (review 2026-11-22).
+                fresh = [n for n in _locals(session, d["district"]) if n not in d["knows"] and n not in d["what"]]
                 if k["s"] >= 2 and fresh:
                     told = random.random() < EXAGGERATE
                     d["knows"][random.choice(fresh)] = {"s": k["s"] - 1, "seen": False,
