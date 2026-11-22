@@ -1,6 +1,8 @@
 # Liked turns: 👍/👎 that teach the narrator now and train it later
 
-Status: draft for owner review (Nightwire Reviews, batch "Liked turns").
+Status: approved 2026-11-22 (all three cards kept). The owner then added one condition: "make sure that it does not
+take away from the immersion". So the per-turn buttons only appear in developer mode, and normal players are asked
+during calm stretches instead (see **Two ways to rate** below).
 
 ## Why
 
@@ -39,6 +41,22 @@ These are from research pass 2 (`2026-11-22-research-backend-intelligence-2.md`)
 
 ## Design
 
+**Two ways to rate.**
+- *Developer mode* (off by default). It is turned on with the "Dev" toggle in the Status panel, and the setting is
+  remembered in the browser. With it on, 👍/👎 appear under every newest turn, as described in the rest of this
+  design. The owner rates this way while testing.
+- *Check-ins*, for normal play. A small card appears under the newest turn:
+  "Quick one, choom: how's the story treating you?"
+  - It offers 👍/👎. After 👎, the reason chips appear.
+  - It has a "Not now" link, and it never blocks typing.
+  - It appears only when the scene is calm: no combat, no roll waiting, and no roll in the player's last 3 turns.
+  - It also needs at least 10 player turns in, and 20 player turns since the last check-in, whether that one was
+    answered or dismissed.
+  - The server sets `session.checkin_turn`. The view sends `checkin: true` while one is open. "Not now" sends
+    `{"type": "dismiss_checkin"}`.
+  - A check-in answer rates the newest turn, the same way the dev buttons do, with `"checkin": true` added to the
+    saved record. That way, ratings taken at quiet moments can be told apart from per-turn ones.
+
 **Rating.**
 - Only the newest turn can be rated: the player's action plus the narration after it, up to the next action.
 - The client sends `{"type": "rate_turn", "like": true|false, "reason": str|null}`.
@@ -76,7 +94,8 @@ A turn this player liked (match its feel and pacing; never reuse its words):
   `The player has disliked: repeating yourself; deciding what they do.`
 
 **Player view.**
-- 👍 and 👎 show as two small buttons at the end of the newest turn in the feed.
+- In developer mode, 👍 and 👎 show as two small buttons at the end of the newest turn in the feed. Otherwise
+  they appear only on the check-in card.
 - After 👎, the five reasons appear as chips, and picking one is optional.
 - The chosen state stays visible until the next action. Nothing else in the feed changes.
 
