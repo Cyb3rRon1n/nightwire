@@ -236,7 +236,9 @@ def ground(session: Session, verdict: dict, action: str, narration: str) -> dict
         person = f"{person}: {' '.join(action.split())}"
     if person:
         parts = people.split(person)
-        if not parts or not people.grounded(session, parts[0], f"{action}\n{narration}"):
+        if parts and people.has_a_name(session, parts[0]):
+            person = ""  # soak 2026-11-22: the referee often names Mama Sato here; not a walk-on, and not an error
+        elif not parts or not people.grounded(session, parts[0], f"{action}\n{narration}"):
             session.log.append(f'[referee: new_person "{person}" is not in the scene, ignored]')
             person = ""
     if not person and (speaker := _unnamed_speaker(narration)) and not people.has_a_name(session, speaker):

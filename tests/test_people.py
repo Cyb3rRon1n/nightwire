@@ -141,3 +141,20 @@ def test_a_bare_description_from_the_referee_takes_the_action_as_what_happened()
     _met(s, "enforcer", ACTION, "The enforcer catches your fist mid-air.")
     (name,) = s.people
     assert (s.people[name]["who"], s.people[name]["what"]) == ("enforcer", ACTION)
+
+
+def test_a_plain_man_counts_when_his_details_are_in_the_scene():
+    # Soak 2026-11-22 turn 25: "man with sake breath" was dropped because "man" is too plain a word.
+    s = _session()
+    s.location = "Ikebe Low"
+    _met(s, "man with sake breath", ACTION, "A man bumps into you, his sake breath hot on your face.")
+    assert [p["who"] for p in s.people.values()] == ["man with sake breath"]
+    _met(s, "man with a scar", ACTION, "A man bumps into you.")
+    assert len(s.people) == 1
+
+
+def test_a_named_answer_is_dropped_quietly():
+    s = _session()
+    s.location = "Ikebe Low"
+    _met(s, "Mama Sato", ACTION, "Mama Sato: Sit, child.")
+    assert s.people == {} and not any("new_person" in line for line in s.log)

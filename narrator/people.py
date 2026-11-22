@@ -42,7 +42,10 @@ def grounded(session: Session, who: str, scene: str) -> bool:
     someone who already has a name (review 2026-11-22: "Old Hara" would become a second persona)."""
     said = set(re.findall(r"[a-z0-9āēīōū]+", scene.lower()))
     head = re.split(r"\b(?:with|who|from|in|at|on|by)\b", who.lower())[0]
-    return bool(set(re.findall(r"[a-z0-9āēīōū]+", head)) & said - _GENERIC - {"a", "an", "the"}) and not has_a_name(session, who)
+    words = set(re.findall(r"[a-z0-9āēīōū]+", head)) - _GENERIC - {"a", "an", "the"}
+    if not words:  # "man with sake breath" (soak 2026-11-22): a plain head, so its own details must be in the scene
+        words = {w for w in re.findall(r"[a-z0-9āēīōū]+", who.lower()) if len(w) >= 4} - _GENERIC
+    return bool(words & said) and not has_a_name(session, who)
 
 
 def has_a_name(session: Session, who: str) -> bool:
