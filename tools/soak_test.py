@@ -80,7 +80,7 @@ def _new_lines(log: list[str], start: int) -> list[str]:
 
 
 _PROBE_SETUP = {"I ask about the debt collector in the corner.",  # collector_remembers_paid (turn 11)
-                "I thank him and promise to bring him tea tomorrow."}  # undo_kept_hara_promise_off (turn 16)
+                "I thank him and promise to bring him tea tomorrow."}  # tea_promise_survives_undo (turn 16)
 
 
 async def main(turns: int, chips: bool = False) -> Path:

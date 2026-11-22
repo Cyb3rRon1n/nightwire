@@ -35,8 +35,10 @@ def _remembers(m: dict, name: str, *words: str) -> bool:
 PROBES = {
     # turn 11: "I tell him I already paid this week." -> the collector should remember it.
     "collector_remembers_paid": lambda s: any(_remembers(s["npc_memory"], n, "paid") for n in s["npc_memory"]),
-    # turn 16 "undo that" takes back the tea promise to Old Hara.
-    "undo_kept_hara_promise_off": lambda s: not any("tea" in p["what"].lower() for p in s["promises"]),
+    # turn 15 promises Old Hara tea; turn 16 "undo that" is answered "there is no undo" (narrator/ooc.py), so the
+    # promise must still be there at the end, open or in the journal.
+    "tea_promise_survives_undo": lambda s: any("tea" in p["what"].lower() for p in s["promises"])
+                                           or any("tea" in j["text"].lower() for j in s["journal"]),
     # turns 25-26: punch the guy, then help him up -> one person, met twice.
     "punched_guy_became_someone": lambda s: any(p["weight"] >= 2 for p in s["people"].values()),
     # the punch made a deed that someone who wasn't there has heard.
