@@ -19,3 +19,12 @@ def test_the_scorecard_counts_what_slipped_through(tmp_path):
     assert s["npc_lines"] == 2 and s["npc_distinct_openings"] == 0.5
     assert s["acted_for_player"] == 2  # "nod" and "agree" were not in the action
     assert (s["sample_lines_cut"], s["promises"], s["referee_ignored"]) == (1, 1, 1)
+
+
+def test_memory_probes_read_the_end_state_and_say_none_for_older_soaks():
+    from tools.soak_score import probes
+    assert set(probes({}).values()) == {None}
+    end = {"npc_memory": {"Wataru Ono": [{"text": "Rin said she already paid this week"}]}, "promises": [],
+           "people": {"Goro": {"weight": 2}}, "deeds": [{"knows": {"Goro": {"seen": True}, "Hara": {"seen": False}}}],
+           "places": {"Ikebe Low": {"heat": 1, "warmth": 0, "marks": []}}, "events_used": {"comeback": 30}}
+    assert set(probes(end).values()) == {True}

@@ -159,7 +159,9 @@ async def main(turns: int, chips: bool = False) -> Path:
                    "texts_sent": len(texts), "replies_delivered": len(replies),
                    "texts_in_session_log": sum(w in line for w in words for line in session.log),  # must be 0
                    "chip_turns": sum("chip" in r for r in rows)}
-        summary["npc_memory"] = session.npc_memory  # what each NPC still remembers at the end (soak_score reads it)
+        # The end state the scorecard's memory probes read (tools/soak_score.py PROBES).
+        for k in ("npc_memory", "people", "places", "deeds", "events_used", "promises", "active_objectives", "journal"):
+            summary[k] = getattr(session, k)
         summary["score"] = score(out)  # tools/soak_score.py: the narrator scorecard
         f.write(json.dumps({"summary": summary}) + "\n")
     print(json.dumps(summary))

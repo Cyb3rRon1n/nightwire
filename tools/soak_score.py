@@ -26,9 +26,43 @@ def _runs(words: list[str]) -> set[tuple]:
     return {tuple(words[i:i + _RUN]) for i in range(len(words) - _RUN + 1)}
 
 
+def _remembers(m: dict, name: str, *words: str) -> bool:
+    return any(all(w in (f["text"] if isinstance(f, dict) else f).lower() for w in words) for f in m.get(name, []))
+
+
+# LoCoMo-style memory probes (Maharana et al., arXiv:2402.17753): "does X still know Y at the end?", checked on the
+# end state the soak saves, tied to moments in tools/soak_test.py ACTIONS. None = the soak predates that state.
+PROBES = {
+    # turn 11: "I tell him I already paid this week." -> the collector should remember it.
+    "collector_remembers_paid": lambda s: any(_remembers(s["npc_memory"], n, "paid") for n in s["npc_memory"]),
+    # turn 16 "undo that" takes back the tea promise to Old Hara.
+    "undo_kept_hara_promise_off": lambda s: not any("tea" in p["what"].lower() for p in s["promises"]),
+    # turns 25-26: punch the guy, then help him up -> one person, met twice.
+    "punched_guy_became_someone": lambda s: any(p["weight"] >= 2 for p in s["people"].values()),
+    # the punch made a deed that someone who wasn't there has heard.
+    "punch_spread": lambda s: any(not k["seen"] for d in s["deeds"] for k in d["knows"].values()),
+    # the punch left Ikebe Low less than calm, or marked.
+    "ikebe_remembers": lambda s: any(
+        "ikebe" in k.lower() and (v["heat"] or v["warmth"] or v["marks"]) for k, v in s["places"].items()),
+    # quiet stretches (walk home, sleep, wake) got at least one director event.
+    "director_fired": lambda s: bool(s["events_used"]),
+}
+
+
+def probes(summary: dict) -> dict:
+    out = {}
+    for name, check in PROBES.items():
+        try:
+            out[name] = bool(check(summary))
+        except (KeyError, TypeError):
+            out[name] = None  # the soak predates this state
+    return out
+
+
 def score(path: Path) -> dict:
     rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
-    memory = next((r["summary"].get("npc_memory", {}) for r in rows if "summary" in r), {})
+    summary = next((r["summary"] for r in rows if "summary" in r), {})
+    memory = summary.get("npc_memory", {})
     facts = [f for fs in memory.values() for f in fs if isinstance(f, dict)]
     rows = [r for r in rows if "turn" in r]
     seen: set[tuple] = set()
@@ -67,6 +101,7 @@ def score(path: Path) -> dict:
         "director_events": sum(n.startswith("[director") and "breather" not in n for n in notes),
         "npc_facts": len(facts),
         "npc_facts_weighted": sum(f.get("weight") == 3 for f in facts),
+        **{f"probe_{k}": v for k, v in probes(summary).items()},
         "breathers": sum(n == "[director: breather]" for n in notes),
     }
 
