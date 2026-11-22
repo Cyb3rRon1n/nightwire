@@ -83,3 +83,28 @@ def test_old_saves_with_plain_string_facts_still_work(tmp_path):
     assert "What Jax remembers: offered the party a job." == memory.recall_block(loaded, "I call Jax.")
     memory.remember(loaded, "Jax", "owes Rook money")
     assert [f["text"] for f in loaded.npc_memory["Jax"]] == ["offered the party a job", "owes Rook money"]
+
+
+def test_one_person_is_one_entry_whatever_name_the_model_wrote():
+    s = _session()
+    memory.remember(s, "Mama Sato", "Rook lied to them", memory.ENGINE)
+    memory.remember(s, "Sato", "Rook promised: find Kenta", memory.ENGINE)
+    memory.remember(s, "mama sato", "likes the rain")
+    assert list(s.npc_memory) == ["Mama Sato"]
+    assert len(s.npc_memory["Mama Sato"]) == 3
+
+
+def test_a_shared_first_name_or_common_word_does_not_pull_in_someone_else():
+    s = _session()
+    memory.remember(s, "Jun Arakawa", "owes Rook a favour")
+    memory.remember(s, "Jun Mori", "sells noodles")
+    memory.remember(s, "Old Man Hara", "fixed Rook's arm")
+    s.present = ["Jun Mori"]
+    block = memory.recall_block(s, "I nod at the man by the door.")
+    assert block.splitlines() == ["What Jun Mori remembers: sells noodles."]
+    assert "Jun Arakawa" in memory.recall_block(s, "I call Arakawa.")
+
+
+def test_common_words_are_not_relevance():
+    f = {"text": "Rook lied to them", "turn": 0, "last_used": 0, "weight": 3}
+    assert memory._score(f, 0, memory._words("I tell them everything")) == memory._score(f, 0, set())
