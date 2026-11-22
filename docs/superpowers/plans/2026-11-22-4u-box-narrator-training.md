@@ -1,6 +1,6 @@
 # 4U box: train the narrator on 👍/👎 and A/B a 14B model
 
-Status: plan for owner review (Nightwire Reviews, batch "4U box"). Roadmap item 6. Runs on the 4U box: RTX 4070 (12 GB)
+Status: approved 2026-11-22 (both 4U box cards kept). Roadmap item 6. Runs on the 4U box: RTX 4070 (12 GB)
 and RTX 3060 Ti (8 GB). Nothing here runs on the current CPU-only setup except the export step.
 
 **Goal:** a narrator tuned on the owner's own ratings, and a measured answer on whether 14B beats 8B. Both are judged by
