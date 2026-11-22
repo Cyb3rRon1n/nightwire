@@ -79,3 +79,24 @@ def test_the_new_session_fields_load_from_an_old_save(tmp_path):
     path.write_text(json.dumps(data))
     loaded = store.load("s")
     assert loaded.last_moves == {} and loaded.type_turns == {} and loaded.voice_lines == []
+
+
+def test_a_named_character_replaces_their_type_and_a_bare_faction_word_is_not_a_person():
+    # Review 2026-11-22: "officer" beside Captain Ide gave two officer voices; "torite" is said in most narration.
+    s = Session(session_id="s", present=["Captain Ide"], log=["An officer stamps a form."])
+    assert "ōgane heavy officer" not in voice_block(s, "I wait.")
+    s = Session(session_id="s", log=["The torite took his arm last week."])
+    assert voice_block(s, "I wait.") == ""
+    s = Session(session_id="s", log=["A torite crew member blocks the door."])
+    assert "torite crew member" in voice_block(s, "I wait.")
+
+
+def test_a_redo_reuses_the_turns_voices():
+    # Review 2026-11-22: a redo rebuilt the prompt and rerolled the lines the kept reply was checked against.
+    from server.narration import _build_messages
+    s = Session(session_id="s", present=["Mama Sato"])
+    block = voice_block(s, "I sit.")
+    lines, moves = list(s.voice_lines), dict(s.last_moves)
+    for _ in range(3):
+        assert block in _build_messages(s, "I sit.", 8192, block)[0]["content"]
+    assert s.voice_lines == lines and s.last_moves == moves

@@ -35,6 +35,7 @@ class TypeSheet:
     match: tuple[str, ...]
     voice: str
     lines: tuple[str, ...]
+    exclude: tuple[str, ...] = ()  # named characters who replace this type when present
 
 
 @dataclass(frozen=True)
@@ -58,7 +59,8 @@ def load_voices(path: Path, world: World) -> Voices:
     for t in raw.get("type", []):
         if not t.get("match") or len(t.get("lines", [])) != 3:
             raise ValueError(f"type {t.get('name')!r} needs match words and 3 lines")
-        types.append(TypeSheet(t["name"], tuple(_normalize(m) for m in t["match"]), t["voice"], tuple(t["lines"])))
+        types.append(TypeSheet(t["name"], tuple(_normalize(m) for m in t["match"]), t["voice"], tuple(t["lines"]),
+                               tuple(t.get("exclude", ()))))
     return Voices(characters, tuple(types))
 
 
@@ -74,7 +76,7 @@ def _mentioned_types(session: Session, action_text: str) -> list[TypeSheet]:
     for text in texts:
         t = _normalize(text)
         for sheet in voices().types:
-            if sheet not in found and any(re.search(rf"\b{re.escape(m)}\b", t) for m in sheet.match):
+            if sheet not in found and not set(sheet.exclude) & set(session.present) and any(re.search(rf"\b{re.escape(m)}\b", t) for m in sheet.match):
                 found.append(sheet)
     return found[:_MAX_TYPES]
 

@@ -399,7 +399,7 @@ def _voice_line(session: Session) -> str:
     return f'Narrate in third person: call each player character by name ({", ".join(names)}), never "you".' if names else ""
 
 
-def _build_messages(session: Session, action_text: str, num_ctx: int) -> list[dict]:
+def _build_messages(session: Session, action_text: str, num_ctx: int, voices: str | None = None) -> list[dict]:
     # apply_character_update's player_id is trusted as-is (it legitimately
     # targets a different character than the actor, e.g. damage to a
     # teammate) - but the model was never told what real player_ids exist,
@@ -438,7 +438,8 @@ def _build_messages(session: Session, action_text: str, num_ctx: int) -> list[di
     if voice:
         parts.append(voice)
     parts.append(present_line(session))
-    voices = voice_block(session, action_text)
+    if voices is None:  # _run_turn picks once per turn, so a redo keeps the lines the kept reply saw (review 2026-11-22)
+        voices = voice_block(session, action_text)
     if voices:
         parts.append(voices)
     if session.pending_world_events:
@@ -681,7 +682,8 @@ async def _run_turn(
     # responded; events queued during the turn survive to the next one.
     shown_events = list(session.pending_world_events)
     refresh_cast(session, referee_action or prompt_text)  # the action may already have moved the player
-    messages = _build_messages(session, prompt_text, narrator_client.num_ctx)
+    voices = voice_block(session, prompt_text)
+    messages = _build_messages(session, prompt_text, narrator_client.num_ctx, voices)
     response = await narrator_client.respond(messages)
     del session.pending_world_events[:len(shown_events)]
 
@@ -691,13 +693,13 @@ async def _run_turn(
         # Risky (narrator/risk.py) but resolved without a roll: redo once, nothing logged yet. A second miss stands.
         session.pending_world_events[:0] = shown_events
         retry_prompt = f"{prompt_text}\n\nEngine: you resolved it without a roll. Narrate only the set-up and call request_roll."
-        messages = _build_messages(session, retry_prompt, narrator_client.num_ctx)
+        messages = _build_messages(session, retry_prompt, narrator_client.num_ctx, voices)
         response = await narrator_client.respond(messages)
         del session.pending_world_events[:len(shown_events)]
     elif refusal is None and no_roll and response.tool == "request_roll":
         # Plainly not risky but the narrator asked for a roll (live: "what's good tonight?" -> Persuasion): redo once.
         session.pending_world_events[:0] = shown_events
-        messages = _build_messages(session, f"{prompt_text}\n\n{NO_ROLL}", narrator_client.num_ctx)
+        messages = _build_messages(session, f"{prompt_text}\n\n{NO_ROLL}", narrator_client.num_ctx, voices)
         response = await narrator_client.respond(messages)
         del session.pending_world_events[:len(shown_events)]
         if response.tool == "request_roll":  # the check said plain: no roll, whatever the narrator wants (playthrough)
@@ -707,7 +709,7 @@ async def _run_turn(
         # refused narration is never shown; narrate again with the refusal as fact.
         session.pending_world_events[:0] = shown_events
         retry_prompt = f"{prompt_text}\n\nEngine: {refusal}. That does not happen - narrate the attempt failing or not being possible."
-        messages = _build_messages(session, retry_prompt, narrator_client.num_ctx)
+        messages = _build_messages(session, retry_prompt, narrator_client.num_ctx, voices)
         response = await narrator_client.respond(messages)
         del session.pending_world_events[:len(shown_events)]
 
@@ -717,7 +719,7 @@ async def _run_turn(
         session.pending_world_events[:0] = shown_events
         redo = (f"{prompt_text}\n\nEngine: don't open with \"{opening}...\" - that opening was already used. "
                 "Start with what the action causes.")
-        response = await narrator_client.respond(_build_messages(session, redo, narrator_client.num_ctx))
+        response = await narrator_client.respond(_build_messages(session, redo, narrator_client.num_ctx, voices))
         del session.pending_world_events[:len(shown_events)]
         if _opening(response) in _recent_openings(session):
             _drop_opening(response)
@@ -731,7 +733,7 @@ async def _run_turn(
         if quote:
             session.pending_world_events[:0] = shown_events
             redo = f"{prompt_text}\n\n{outcome_redo(quote)}"
-            retry = await narrator_client.respond(_build_messages(session, redo, narrator_client.num_ctx))
+            retry = await narrator_client.respond(_build_messages(session, redo, narrator_client.num_ctx, voices))
             del session.pending_world_events[:len(shown_events)]
             if retry.tool == "request_roll" or rolling:   # a redo that drops the roll keeps the first set-up
                 response = retry

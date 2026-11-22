@@ -1,5 +1,7 @@
 # Owner-approved voices (review 2026-11-22; draft docs/superpowers/specs/2026-11-21-npc-voices-draft-lines.md).
-# character.name must be a world npc; 3 lines with distinct moves. type: words in the scene that mean it, 3 lines.
+# character.name must be a world npc; 3 lines with distinct moves. type: words in the scene that mean an unnamed
+# person of that kind (never a bare faction name, which narration says all the time), 3 lines, and exclude = named
+# characters who replace the type when present.
 
 [[character]]
 name = "Mama Sato"
@@ -129,7 +131,8 @@ lines = [
 
 [[type]]
 name = "Torite crew member"
-match = ["torite", "repo man", "repo crew"]
+match = ["torite crew", "repo man", "repo woman", "crew member"]
+exclude = ["Saeko Kirigaya"]  # her own crew talks through her
 voice = "bored professionals; wants to make quota and go home"
 lines = [
   "Hold out the arm, please. Left one. It's on the form.",
@@ -150,6 +153,7 @@ lines = [
 [[type]]
 name = "Ōgane Heavy officer"
 match = ["ogane officer", "ōgane officer", "precinct officer", "cop", "officer"]
+exclude = ["Captain Ide"]  # the named sheet wins
 voice = "rules-and-fees bureaucrat in armor; wants a clean report and a cut"
 lines = [
   "Identification. And the processing fee.",
