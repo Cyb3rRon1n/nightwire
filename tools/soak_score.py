@@ -33,7 +33,8 @@ def score(path: Path) -> dict:
     openings, speech = [], 0
     for r in rows:
         parts = [p.strip() for p in r.get("narration", "").split(" / ") if p.strip()]
-        if not parts and "text_to" not in r and not r["action"].startswith("(ooc"):
+        ooc = any(n.startswith("[ooc") for n in r.get("notes", []))  # "undo that" is answered out of character
+        if not parts and "text_to" not in r and not ooc:
             empty += 1
         runs = set().union(*(_runs(_words(p)) for p in parts)) if parts else set()
         repeated_runs += len(runs & seen)
