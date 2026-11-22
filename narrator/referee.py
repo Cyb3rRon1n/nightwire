@@ -54,11 +54,11 @@ def build_questions(session: Session, player_id: str) -> dict[str, str]:
                                  'person, written as "Who: what" in under 12 words (for example: Mama Sato: bring '
                                  "back her nephew Kenta); otherwise empty.")
     # Emerging characters (spec 2026-11-22): promote on consequence, not mention (Nemesis; Starforged connections).
-    questions["new_person"] = (f"text: someone WITHOUT a name that {name} dealt with directly this turn (talked to, "
-                               f"fought, helped, traded with, or was helped or hurt by), written as \"who: what "
-                               f"happened\" in under 14 words (for example: dockworker with a burned hand: {name} "
-                               "helped him lift a crate); otherwise empty. Named people and people only seen or "
-                               "mentioned don't count.")
+    # Soak 2026-11-22: the 8B referee left the "who: what happened" form empty on every turn of four soaks, a fistfight
+    # included; a bare description it fills (live check: enforcer, Kaminari man, guard). The action is what happened.
+    questions["new_person"] = (f"text: the unnamed person {name} talked to, fought, helped or traded with this turn, as "
+                               "a 1-6 word description taken from the scene (for example: enforcer, dockworker with a "
+                               "burned hand, noodle vendor); empty if there is none or they have a name.")
     # Places that grow (spec 2026-11-22 part 2): what the player leaves behind.
     questions["left_mark"] = (f"text: a lasting, visible change {name} caused to this place this turn (for example: "
                               "broken window, burned stall, blood on the counter), under 8 words; otherwise empty. "
@@ -232,6 +232,8 @@ def ground(session: Session, verdict: dict, action: str, narration: str) -> dict
     if "promise_made" in grounded or promise:
         grounded["promise_made"] = promise
     person = " ".join(str(grounded.get("new_person", "")).split())
+    if person and ":" not in person:
+        person = f"{person}: {' '.join(action.split())}"
     if person:
         parts = people.split(person)
         if not parts or not people.grounded(session, parts[0], f"{action}\n{narration}"):

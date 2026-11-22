@@ -132,3 +132,12 @@ def test_a_named_speaker_is_not_promoted():
     s.location = "Ikebe Low"
     _met(s, "", ACTION, "Mama Sato: Sit down, child.")
     assert s.people == {}
+
+
+def test_a_bare_description_from_the_referee_takes_the_action_as_what_happened():
+    # Soak 2026-11-22: the referee fills a bare "enforcer" where it left "who: what" empty.
+    s = _session()
+    s.location = "Ikebe Low"
+    _met(s, "enforcer", ACTION, "The enforcer catches your fist mid-air.")
+    (name,) = s.people
+    assert (s.people[name]["who"], s.people[name]["what"]) == ("enforcer", ACTION)
