@@ -4,7 +4,7 @@ from collections.abc import Awaitable, Callable
 from typing import Annotated, Literal, Protocol, Union, runtime_checkable
 
 import ollama
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from narrator.tools import ApplyCharacterUpdate, OfferChrome, RememberNPC, RequestRoll, UpdateWorld
 
@@ -91,6 +91,12 @@ class NarratorResponse(BaseModel):
     # on narration - conflating it into the discriminated union above would
     # mix two different kinds of decision the schema is meant to keep apart.
     image_request: ImageRequest | None = None
+
+    @field_validator("tool_call", mode="before")
+    @classmethod
+    def _empty_tool_call_is_no_tool(cls, v):
+        # Soak 2026-11-22 turn 2: the model sent "tool_call": {} and the whole turn errored. No tool named = no tool.
+        return {"tool": None} if v == {} else v
 
     # `.tool`/`.tool_args` kept as the external shape every existing caller
     # (server/narration.py, tests) already expects - `tool_args` as a plain

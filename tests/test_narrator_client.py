@@ -385,3 +385,10 @@ async def test_default_chat_caps_reply_length():
     client._client = _Fake()
     await client.respond([{"role": "user", "content": "hi"}])
     assert seen["options"]["num_predict"] == 800
+
+
+def test_an_empty_tool_call_means_no_tool():
+    # Soak 2026-11-22 turn 2: "tool_call": {} errored the whole turn.
+    from narrator.client import NarratorResponse
+    r = NarratorResponse.model_validate_json('{"narration": [{"speaker": "narrator", "text": "Hi."}], "tool_call": {}}')
+    assert r.tool is None
