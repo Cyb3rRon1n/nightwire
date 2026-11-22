@@ -2,6 +2,7 @@
 See docs/superpowers/specs/2026-11-22-unfinished-business-design.md."""
 
 from engine.session import Session
+from narrator import memory
 from narrator.cast import _player_turns
 
 MAX_OPEN = 6
@@ -76,6 +77,7 @@ def close(session: Session, written: str, kept: bool, name: str) -> None:
     kind = "kept" if kept else "broken"
     session.log.append(f"[promise {kind}: {p['who']}: {p['what']}]")
     note(session, f"{p['who']}: {p['what']}", kind)
+    memory.remember(session, p["who"], f"{name} {'kept' if kept else 'broke'} their word: {p['what']}", memory.ENGINE)
     if not kept:
         session.pending_world_events.append(f"{p['who']} remembers {name} broke their word: {p['what']}.")
 

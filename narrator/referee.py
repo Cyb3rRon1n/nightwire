@@ -9,7 +9,7 @@ from engine.character import is_tsukumogami
 from engine.chrome import change_humanity
 from engine.debt import SHELL, new_shell, pay_installment, repo_target_name, repossess, unthrottle
 from engine.session import Session
-from narrator import promises
+from narrator import memory, promises
 from narrator.movement import known_place, places_in
 from narrator.world import _mentions, _normalize, kuroshio
 from ruleset.cyberware import CHROME
@@ -235,16 +235,20 @@ def apply_verdict(session: Session, player_id: str, verdict: dict) -> None:
             continue
         if field != "lie_discovered_by":
             phone.change_trust(contact, delta)
+            if field == "helped_at_a_cost":
+                memory.remember(session, contact["name"], f"{name} came through for them", memory.ENGINE)
         elif contact["role"] not in ("rival", "enemy") and contact["trust"] >= 1:
             drop = 2 if contact["trust"] >= 4 or contact["role"] in ("family", "partner") else 1
             contact["trust"] = max(1.0, contact["trust"] - drop)
             contact["cold_until"] = phone.phone_of(session, player_id)["turn"] + 3
             session.pending_world_events.append(f"{contact['name']} knows {name} lied to them.")
+            memory.remember(session, contact["name"], f"{name} lied to them", memory.ENGINE)
     for field, kept in (("kept_promise_to", True), ("broke_promise_to", False)):
         if verdict.get(field):
             promises.close(session, verdict[field], kept, name)
     if verdict.get("promise_made") and (parts := promises.split(verdict["promise_made"])):
         promises.record(session, *parts)
+        memory.remember(session, parts[0], f"{name} promised: {parts[1]}", memory.ENGINE)
     done = verdict.get("objective_done")
     if done in session.active_objectives:
         session.active_objectives = [o for o in session.active_objectives if o != done]
@@ -276,6 +280,8 @@ def apply_verdict(session: Session, player_id: str, verdict: dict) -> None:
         session.log.append(f"[utsusemi: {name} wakes in a new shell]")
     if verdict.get("gig_paid_out") and c.installments_owed > 0:
         pay_installment(c, 1)
+        for creditor in [k for k in phone.phone_of(session, player_id)["contacts"].values() if k["role"] == "creditor"]:
+            memory.remember(session, creditor["name"], f"{name} paid an installment on what they owe", memory.ENGINE)
         jun = phone.add_contact(session, player_id, "Jun Arakawa", "fixer")
         phone.post(session, player_id, "Jun Arakawa", "Jun Arakawa", "Money's in. Clean work.",
                    phone.phone_of(session, player_id)["turn"])

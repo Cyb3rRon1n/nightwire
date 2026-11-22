@@ -202,7 +202,7 @@ def test_unknown_tool_name_raises_value_error():
 def test_remember_npc_stores_a_fact():
     session = Session(session_id="s1")
     result = execute_tool(session, "remember_npc", {"name": "Jax", "fact": "offered the party a job"})
-    assert session.npc_memory["Jax"] == ["offered the party a job"]
+    assert [f["text"] for f in session.npc_memory["Jax"]] == ["offered the party a job"]
     assert result == {"name": "Jax", "facts": ["offered the party a job"]}
 
 
@@ -210,14 +210,16 @@ def test_remember_npc_appends_multiple_facts_for_the_same_npc():
     session = Session(session_id="s1")
     execute_tool(session, "remember_npc", {"name": "Jax", "fact": "first fact"})
     execute_tool(session, "remember_npc", {"name": "Jax", "fact": "second fact"})
-    assert session.npc_memory["Jax"] == ["first fact", "second fact"]
+    assert [f["text"] for f in session.npc_memory["Jax"]] == ["first fact", "second fact"]
 
 
-def test_remember_npc_caps_facts_per_npc_dropping_the_oldest():
+def test_remember_npc_caps_facts_per_npc_dropping_the_least_important():
     session = Session(session_id="s1")
-    for i in range(7):
+    execute_tool(session, "remember_npc", {"name": "Jax", "fact": "they promised him a cut"})
+    for i in range(12):
         execute_tool(session, "remember_npc", {"name": "Jax", "fact": f"fact {i}"})
-    assert session.npc_memory["Jax"] == ["fact 2", "fact 3", "fact 4", "fact 5", "fact 6"]
+    texts = [f["text"] for f in session.npc_memory["Jax"]]
+    assert len(texts) == 12 and "they promised him a cut" in texts and "fact 0" not in texts
 
 
 def test_remember_npc_evicts_the_least_recently_touched_npc_once_over_the_cap():

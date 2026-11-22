@@ -6,18 +6,13 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from engine.debt import active_chrome
 from engine.session import Session
+from narrator import memory
 from narrator.movement import known_place
 from ruleset.attributes import modifier
 from ruleset.cyberware import CHROME, SOCIAL_SKILLS, chrome_roll_bonus, overclock_tier_bonus, slot_capacity, social_penalty
 from ruleset.difficulty import STAKES, Difficulty
 from ruleset.resolution import Outcome, resolve_roll
 
-# Write-time sanity caps, not the primary context-budget mechanism (that's
-# server/narration.py's _select_npc_memory_for_context, a separate,
-# num_ctx-adaptive read-time bound) - these just stop truly unbounded
-# growth over a very long campaign. Deliberately generous.
-_MAX_NPCS = 50
-_MAX_FACTS_PER_NPC = 5
 
 
 class RequestRoll(BaseModel):
@@ -180,16 +175,8 @@ def _execute_update_world(session: Session, tool: UpdateWorld) -> dict:
 
 
 def _execute_remember_npc(session: Session, tool: RememberNPC) -> dict:
-    # .pop then re-insert moves this NPC to the end of the dict - Python's
-    # insertion-ordering gives LRU-by-touch for free, no extra state needed.
-    facts = session.npc_memory.pop(tool.name, [])
-    facts.append(tool.fact)
-    facts = facts[-_MAX_FACTS_PER_NPC:]
-    session.npc_memory[tool.name] = facts
-    if len(session.npc_memory) > _MAX_NPCS:
-        oldest = next(iter(session.npc_memory))
-        del session.npc_memory[oldest]
-    return {"name": tool.name, "facts": list(facts)}
+    facts = memory.remember(session, tool.name, tool.fact)
+    return {"name": tool.name, "facts": [f["text"] for f in facts]}
 
 
 def _execute_offer_chrome(session: Session, tool: OfferChrome) -> dict:

@@ -27,6 +27,8 @@ def _runs(words: list[str]) -> set[tuple]:
 
 def score(path: Path) -> dict:
     rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+    memory = next((r["summary"].get("npc_memory", {}) for r in rows if "summary" in r), {})
+    facts = [f for fs in memory.values() for f in fs if isinstance(f, dict)]
     rows = [r for r in rows if "turn" in r]
     seen: set[tuple] = set()
     repeated_runs = agency = empty = 0
@@ -62,6 +64,8 @@ def score(path: Path) -> dict:
         "referee_ignored": sum(n.startswith("[referee") and "ignored" in n for n in notes),
         "promises": sum(n.startswith("[promise") for n in notes),
         "director_events": sum(n.startswith("[director") and "breather" not in n for n in notes),
+        "npc_facts": len(facts),
+        "npc_facts_weighted": sum(f.get("weight") == 3 for f in facts),
         "breathers": sum(n == "[director: breather]" for n in notes),
     }
 

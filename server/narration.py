@@ -25,7 +25,7 @@ from narrator.tts_backend import TTSBackend
 from narrator.voice_assignment import assign_voice
 from narrator.voices import voice_block
 from narrator.promises import business_line, call_in
-from narrator import director, ratings
+from narrator import director, memory, ratings
 from narrator.cast import keep_away_keepers, note as note_cast, present_line, refresh as refresh_cast
 from narrator.world import kuroshio, locals_line, select_cards
 from ruleset.attributes import Attribute
@@ -65,7 +65,6 @@ _MAX_SUMMARIZE_INPUT_CHARS = 24000
 # _VERBATIM_BUDGET_FRACTION. 5% at num_ctx=8192 is ~410 tokens (~1,640
 # chars), conservative against the ~1,940 tokens of generation headroom
 # Phase 11's own final review measured. A starting value, not tuned.
-_NPC_MEMORY_BUDGET_FRACTION = 0.05
 # World cards (Phase 14): ~490 tokens at num_ctx=8192, enough for the
 # 4-card cap at the 400-char card limit. A starting value, not tuned.
 _WORLD_BUDGET_FRACTION = 0.06
@@ -312,23 +311,6 @@ def _drop_opening(response) -> None:
     # else: the opening is the whole story; a repeat beats an empty turn
 
 
-def _npc_entry(name: str, facts: list[str]) -> str:
-    return f"{name}: {'; '.join(facts)}"
-
-
-def _select_npc_memory_for_context(session: Session, num_ctx: int) -> dict[str, list[str]]:
-    budget_chars = int(num_ctx * _NPC_MEMORY_BUDGET_FRACTION * _CHARS_PER_TOKEN_ESTIMATE)
-    selected: list[tuple[str, list[str]]] = []
-    total = 0
-    for name, facts in reversed(session.npc_memory.items()):
-        total += len(_npc_entry(name, facts)) + 1
-        if total > budget_chars:
-            break
-        selected.append((name, facts))
-    selected.reverse()
-    return dict(selected)
-
-
 # The Scene line sits outside every num_ctx budget, and location / mood /
 # objectives are model-written with no length limit (objectives only
 # grow), so cap them on the read side: per-field chars, newest objectives.
@@ -421,10 +403,6 @@ def _build_messages(session: Session, action_text: str, num_ctx: int, voices: st
     parts = []
     if session.narrative_summary:
         parts.append(f"Summary of earlier events: {session.narrative_summary}")
-    npc_memory = _select_npc_memory_for_context(session, num_ctx)
-    if npc_memory:
-        npc_lines = "\n".join(_npc_entry(name, facts) for name, facts in npc_memory.items())
-        parts.append(f"Known NPCs:\n{npc_lines}")
     if verbatim:
         parts.append("Recent events:\n" + "\n".join(verbatim))
     # Scene + world notes go last, right before the action - content
@@ -458,6 +436,9 @@ def _build_messages(session: Session, action_text: str, num_ctx: int, voices: st
         voices = voice_block(session, action_text)
     if voices:
         parts.append(voices)
+    remembered = memory.recall_block(session, action_text)  # late, next to the action (Lost in the Middle)
+    if remembered:
+        parts.append(remembered)
     if session.pending_world_events:
         parts.append("World event: " + " ".join(session.pending_world_events))
     world_budget = int(num_ctx * _WORLD_BUDGET_FRACTION * _CHARS_PER_TOKEN_ESTIMATE)
