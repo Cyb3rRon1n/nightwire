@@ -123,3 +123,41 @@ def test_a_promise_with_words_the_scene_never_said_is_still_ignored():
     apply_verdict(s, "p1", ground(s, {"promise_made": "Old Hara: bring sake tonight"},
                                   "I promise to bring him tea tomorrow.", "Old Hara nods."))
     assert not s.promises
+
+
+def _told(s: Session, answer: str, action: str = "I tell him I already paid this week.",
+          scene: str = "Wataru Ono taps the ledger.") -> None:
+    apply_verdict(s, "p1", ground(s, {"told_npc": answer}, action, scene))
+
+
+def test_what_the_player_tells_a_named_person_is_remembered():
+    # Soak 2026-11-22 turn 11: "I already paid this week" was told to the collector and nobody remembered it.
+    s = _session()
+    s.present = ["Wataru Ono"]
+    _told(s, "Wataru: already paid this week")
+    assert s.npc_memory["Wataru Ono"][-1]["text"] == "Rook told them: already paid this week"
+    assert s.npc_memory["Wataru Ono"][-1]["weight"] == memory.NOTABLE
+
+
+def test_told_to_an_unnamed_or_absent_person_is_ignored():
+    s = _session()
+    _told(s, "the guard: already paid this week")
+    _told(s, "Old Hara: already paid this week")
+    assert not s.npc_memory
+
+
+def test_told_words_the_player_never_said_are_ignored():
+    s = _session()
+    s.present = ["Wataru Ono"]
+    _told(s, "Wataru Ono: owes him a favour")
+    assert not s.npc_memory and any("told_npc" in l for l in s.log)
+
+
+def test_told_matches_whole_names_once_and_never_a_player():
+    # Review 2026-11-23: "ama" matched Mama Sato; two Satos picked one; a player's own name made an NPC memory.
+    s = _session()
+    s.present = ["Mama Sato", "Kenta Sato"]
+    _told(s, "ama: already paid this week", scene="Mama Sato pours.")
+    _told(s, "Sato: already paid this week", scene="Mama Sato pours.")
+    _told(s, "Rook: already paid this week", scene="Rook pays.")
+    assert not s.npc_memory

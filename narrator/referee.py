@@ -20,7 +20,7 @@ _LEVEL_FIELDS = ("human_moment", "acted_as_machine")
 _HARA_OBJECTIVE = "Owe Old Hara a favor"
 _LOCATION_MAX = 60
 _PROMISE_MAX = 120
-_TEXT_FIELDS = ("moved_to", "new_lead", "objective_done", "promise_made", "new_person", "left_mark")
+_TEXT_FIELDS = ("moved_to", "new_lead", "objective_done", "promise_made", "told_npc", "new_person", "left_mark")
 _TRUST_FIELDS = {"kept_promise_to": 1, "helped_at_a_cost": 1, "broke_promise_to": -1, "lie_discovered_by": 0}
 _SPEECH = re.compile(r"^[^:\n]{1,30}: ")  # "Mama Sato: ..." lines in the narration text
 _SYSTEM = (
@@ -53,6 +53,10 @@ def build_questions(session: Session, player_id: str) -> dict[str, str]:
     questions["promise_made"] = (f"text: a new promise, debt or favour agreed this turn between {name} and one named "
                                  'person, written as "Who: what" in under 12 words (for example: Mama Sato: bring '
                                  "back her nephew Kenta); otherwise empty.")
+    # Spec 2026-11-22 told-npc: soak 7 turn 11, "I already paid this week" was told to the collector and lost.
+    questions["told_npc"] = (f"text: what {name} told a named person in the scene this turn that they would remember "
+                             '(a claim, an offer, a threat, a lie), written as "Name: what was said, a few words" (for '
+                             "example: Wataru Ono: already paid this week); otherwise empty.")
     # Emerging characters (spec 2026-11-22): promote on consequence, not mention (Nemesis; Starforged connections).
     # Soak 2026-11-22: the 8B referee left the "who: what happened" form empty on every turn of four soaks, a fistfight
     # included; a bare description it fills (live check: enforcer, Kaminari man, guard). The action is what happened.
@@ -95,7 +99,7 @@ def build_schema(questions: dict[str, str]) -> dict:
             properties[f"{k}_quote"] = {"type": "string"}
             properties[k] = {"type": "string", "enum": _LEVELS}
         elif k in _TEXT_FIELDS or k in _TRUST_FIELDS:
-            properties[k] = {"type": "string", "maxLength": _PROMISE_MAX if k in ("promise_made", "new_person") else _LOCATION_MAX}
+            properties[k] = {"type": "string", "maxLength": _PROMISE_MAX if k in ("promise_made", "told_npc", "new_person") else _LOCATION_MAX}
         else:
             properties[k] = {"type": "boolean"}
     return {"type": "object", "properties": properties, "required": list(properties), "additionalProperties": False}
@@ -232,6 +236,23 @@ def ground(session: Session, verdict: dict, action: str, narration: str, player:
             promise = ""
     if "promise_made" in grounded or promise:
         grounded["promise_made"] = promise
+    told = " ".join(str(grounded.get("told_npc", "")).split())
+    if told:
+        parts = promises.split(told)
+        # Whole words, one match only (review: "ama" matched Mama Sato; "Sato" with two Satos picked one).
+        said = set(_squash(parts[0]).split()) if parts else set()
+        hits = [p for p in session.present if said and said <= set(_squash(p).split())]
+        who = hits[0] if len(hits) == 1 else parts and parts[0]
+        players = {w for c in session.characters.values() for w in _squash(c.name).split()}
+        if not parts or len(hits) > 1 or not people.has_a_name(session, who) or set(_squash(who).split()) & players \
+                or not (who in session.present or _has_words(parts[0], f"{action}\n{narration}")) \
+                or not _every_word_in(parts[1], action):
+            session.log.append(f'[referee: told_npc "{told}" is not something said to someone here, ignored]')
+            told = ""
+        else:
+            told = f"{who}: {parts[1]}"
+    if "told_npc" in grounded or told:
+        grounded["told_npc"] = told
     person = " ".join(str(grounded.get("new_person", "")).split())
     # Soak 2026-11-22: the bare action made Daisuke "remember" "I punch the guy who bumps into me."; quote it as Rin's.
     deed = f'{player} did this: "{" ".join(action.split()).rstrip(".")}"'
@@ -319,6 +340,8 @@ def apply_verdict(session: Session, player_id: str, verdict: dict) -> None:
     if verdict.get("promise_made") and (parts := promises.split(verdict["promise_made"])):
         promises.record(session, *parts)
         memory.remember(session, parts[0], f"{name} promised: {parts[1]}", memory.ENGINE)
+    if verdict.get("told_npc") and (parts := promises.split(verdict["told_npc"])):
+        memory.remember(session, parts[0], f"{name} told them: {parts[1]}", memory.NOTABLE)
     done = verdict.get("objective_done")
     if done in session.active_objectives:
         session.active_objectives = [o for o in session.active_objectives if o != done]
