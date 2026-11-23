@@ -2262,3 +2262,19 @@ async def test_a_reply_that_only_repeats_is_redone_once(tmp_path):
     assert len(sent) == 2 and "repeated earlier lines" in sent[1][-1]["content"]
     assert "The terminal goes dark under your hand." in session.log and "[repeat redo]" in session.log
     assert session.log.count(f"Wataru Ono: {line}") == 1
+
+
+async def test_when_the_redo_repeats_too_only_one_sentence_of_the_stale_reply_stays(tmp_path):
+    # Soak 2026-11-22 turn 26: reply and redo both copied turns 24-25, and the whole three-line reply was kept.
+    session = _session_with_character()
+    a = "The man's blade slips free, and he draws it with a flick of his wrist. He is not backing down."
+    b = "He steps closer, the blade catching the flicker of the shrine's lanterns tonight."
+    session.log += ["p1: I punch him.", a, b]
+    sent = []
+    client = _segments_client([[{"speaker": "narrator", "text": a}, {"speaker": "narrator", "text": b}],
+                               [{"speaker": "narrator", "text": b}]], sent)
+    await handle_action(session, client, JSONFileSessionStore(tmp_path), _UnusedImageBackend(), FakeTTSBackend(),
+                        "p1", {"type": "action", "text": "I help him up."})
+    after = session.log[session.log.index("[repeat redo]") + 1:]
+    prose = [l for l in after if not l.startswith(("[", "p1: "))]
+    assert len(prose) == 1 and prose[0] in (b, "The man's blade slips free, and he draws it with a flick of his wrist.")

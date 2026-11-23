@@ -779,6 +779,10 @@ async def _run_turn(
         session.log.append("[repeat redo]")
         if not _drop_repeated_lines(retry, session):
             response.narration[:] = retry.narration
+        else:  # soak 2026-11-22 turn 26: both copied turns 24-25 and all three lines stood; keep one stale sentence
+            first = response.narration[0]
+            first.text = _SENTENCE.split(first.text.strip())[0]
+            response.narration[:] = [first]
     _drop_repeated_senses(response, session)
     response.narration[:] = [seg for _, seg in keep_away_keepers(session, [(s.speaker, s) for s in response.narration])]
     if not any(seg.text.strip() for seg in response.narration):
