@@ -254,6 +254,32 @@ Each phase gets its own brainstorming pass (questions → approaches → design 
     - **Open**: anime A/B paid test (needs the owner's fal account); only Kling's rate confirmed on fal's pricing page, re-check Seedance rates before the first paid run; `idcheck` not yet run on a real take; one pose per figure per short.
     - **Next**: Phase 1 voices and music (IndexTTS2, ACE-Step); Phase 2 local Wan on a 24 GB card. Each needs its own plan.
 
+24. **The living city on a CPU** (designed and built 2026-11-21 to 11-23, roadmap items 1-5 owner-approved, every spec
+    through Nightwire Reviews cards). Specs in `docs/superpowers/specs/`: `2026-11-22-npc-voices-design.md`,
+    `-unfinished-business-`, `-liked-turns-`, `-director-`, `-npc-memory-`, `-emerging-characters-`,
+    `-places-gossip-`, `-told-npc-memory-`, and `2026-11-23-night-clock-design.md`.
+    - **Built**:
+      - NPC voice sheets and dialogue moves.
+      - Promises and a journal.
+      - 👍/👎 turn ratings (the KTO training data).
+      - The soak scorecard (`tools/soak_score.py`) with memory probes.
+      - A director: tension, breathers, events that leave leads.
+      - Ranked NPC memory: engine-written big moments, plus what the player tells people (referee `told_npc`).
+      - Emerging characters: walk-ons promoted on consequence get a district name and come back.
+      - Places with heat, warmth and marks, and gossip that spreads.
+      - The night clock: five stretches a night, sleep jumps to the next evening, people and events keep hours.
+    - **Soak-driven fixes**:
+      - The repeat cut redoes an all-repeat reply once, and keeps a single sentence if the redo repeats too.
+      - The 8-word window counts story lines only.
+      - Probe set-up turns are never chip-replaced.
+      - Voices, groups and objects aren't people, and walk-ons need the action to deal with them.
+      - Promises ground on every word.
+      - "none" counts as a blank answer.
+    - **Verified**: 33-turn `qwen3:8b` soaks on CPU (about 6 min/turn). Soak 10 (`design-data/soak/20261123-084135`)
+      passed all six memory probes with 0 errors.
+    - **Next**: roadmap item 6, KTO training and a 14B A/B on the 4U box
+      (`docs/superpowers/plans/2026-11-22-4u-box-narrator-training.md`, approved).
+
 ### Studio track (candidates, surfaced 2026-10-28)
 Owner interest: if players like the world and story, grow toward an animation-studio-style pipeline. Candidate phases, roughly in order: **19c designs in play** (player design at creation, scenes and portraits reuse saved designs); **19d stronger identity** (per-character LoRA for principals, IPAdapter if it fits 8 GB, two named characters per scene via regional prompting); **props and the chrome catalog** (prop and vehicle sheets); **more character sheets** (pose and action, mouth and lip-sync, hands, height line-up, costume variants); **colour script and FX sheets** (overclock, Yomi static, glitch, bloom); **stage view** (visual-novel-style presentation: location art plus the speaking NPC with a matching expression, over free-text play); **district map** (clickable Kuroshio map from the location designs); **storyboard and animatic export** from session logs.
 
