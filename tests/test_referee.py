@@ -436,3 +436,12 @@ async def test_a_finished_objective_is_removed():
                                   "human_moment_quote": "", "human_moment": "none"}),
                       "p1", "I go in and talk to Mama Sato.", "Mama Sato: Sit, child.")
     assert s.active_objectives == ["Pick up Jun's case"]
+
+
+async def test_a_promoted_walk_on_remembers_the_action_as_the_players_deed():
+    # Soak 2026-11-22: Daisuke "remembered" "I punch the guy who bumps into me." in the player's own voice.
+    s = _session()
+    who = s.characters["p1"].name
+    client = _Client({"human_moment_quote": "", "human_moment": "none", "new_person": "enforcer"})
+    await run_referee(s, client, "p1", "I punch the enforcer.", "The enforcer staggers back, spitting blood.")
+    assert [p["what"] for p in s.people.values()] == [f'{who} did this: "I punch the enforcer"']

@@ -184,7 +184,7 @@ def _unnamed_speaker(narration: str) -> str | None:
     return None
 
 
-def ground(session: Session, verdict: dict, action: str, narration: str) -> dict:
+def ground(session: Session, verdict: dict, action: str, narration: str, player: str = "the player") -> dict:
     """A level answer counts only if its quote really is in the text it may come from
     (Phase 18 live: plain stealth and jump turns earned +2 "human moments"). A human
     moment can be in the narration (being thanked); acting as a machine is the
@@ -232,8 +232,10 @@ def ground(session: Session, verdict: dict, action: str, narration: str) -> dict
     if "promise_made" in grounded or promise:
         grounded["promise_made"] = promise
     person = " ".join(str(grounded.get("new_person", "")).split())
+    # Soak 2026-11-22: the bare action made Daisuke "remember" "I punch the guy who bumps into me."; quote it as Rin's.
+    deed = f'{player} did this: "{" ".join(action.split()).rstrip(".")}"'
     if person and ":" not in person:
-        person = f"{person}: {' '.join(action.split())}"
+        person = f"{person}: {deed}"
     if person:
         parts = people.split(person)
         if parts and people.has_a_name(session, parts[0]):
@@ -246,7 +248,7 @@ def ground(session: Session, verdict: dict, action: str, narration: str) -> dict
         # The speaker is in the scene by construction, so only "not someone already named" is checked.
         # Soak 2026-11-22: "man in black duster" grabbed Rin and spoke three turns running, and the referee named no
         # one. An unnamed speaker in the scene is its own evidence; the player's action is what happened.
-        person = f"{speaker}: {' '.join(action.split())}"
+        person = f"{speaker}: {deed}"
     if "new_person" in grounded or person:
         grounded["new_person"] = person
     mark = " ".join(str(grounded.get("left_mark", "")).split())[:_LOCATION_MAX]
@@ -364,4 +366,5 @@ async def run_referee(session: Session, client, player_id: str, action_text: str
     except Exception as e:  # a failed referee must never break the turn
         session.log.append(f"[referee error: {e}]")
         return
-    apply_verdict(session, player_id, ground(session, verdict, action_text, narration_text))
+    apply_verdict(session, player_id, ground(session, verdict, action_text, narration_text,
+                                             session.characters[player_id].name))

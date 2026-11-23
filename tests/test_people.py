@@ -122,7 +122,7 @@ def test_an_unnamed_speaker_is_promoted_when_the_referee_names_no_one():
     _met(s, "", ACTION, scene)
     (name,) = s.people
     assert s.people[name]["who"] == "man in black duster"
-    assert s.people[name]["what"] == ACTION
+    assert s.people[name]["what"] == f'the player did this: "{ACTION.rstrip(".")}"'
     _met(s, "", "I apologise and help him up.", "man in black duster: You think you're clever, kid.")
     assert list(s.people) == [name] and s.people[name]["weight"] == 2
 
@@ -140,7 +140,7 @@ def test_a_bare_description_from_the_referee_takes_the_action_as_what_happened()
     s.location = "Ikebe Low"
     _met(s, "enforcer", ACTION, "The enforcer catches your fist mid-air.")
     (name,) = s.people
-    assert (s.people[name]["who"], s.people[name]["what"]) == ("enforcer", ACTION)
+    assert (s.people[name]["who"], s.people[name]["what"]) == ("enforcer", f'the player did this: "{ACTION.rstrip(".")}"')
 
 
 def test_a_plain_man_counts_when_his_details_are_in_the_scene():
