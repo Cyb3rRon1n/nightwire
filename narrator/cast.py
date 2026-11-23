@@ -39,7 +39,9 @@ def refresh(session: Session, action_text: str) -> None:
     action names them (soak 2026-11-21: Mama Sato walked out with Rin and stayed by her side for 20 turns)."""
     named = _named(action_text, session)
     if session.location != session.cast_location:
-        keeper = _named(session.location or "")  # Mama Sato in Mama Sato's izakaya
+        from narrator import clock  # clock counts turns with this module's _player_turns
+        # The night clock: a keeper asleep isn't there when you arrive; someone the action names still is.
+        keeper = [n for n in _named(session.location or "") if not clock.asleep(session, n)]
         session.present = list(dict.fromkeys([*keeper, *named]))
         session.cast_location = session.location
     away = _away_keepers(session) - set(named)

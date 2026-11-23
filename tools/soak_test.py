@@ -166,7 +166,8 @@ async def main(turns: int, chips: bool = False) -> Path:
                    "texts_in_session_log": sum(w in line for w in words for line in session.log),  # must be 0
                    "chip_turns": sum("chip" in r for r in rows)}
         # The end state the scorecard's memory probes read (tools/soak_score.py PROBES).
-        for k in ("npc_memory", "people", "places", "deeds", "events_used", "promises", "active_objectives", "journal"):
+        for k in ("npc_memory", "people", "places", "deeds", "events_used", "promises", "active_objectives", "journal",
+                  "night"):
             summary[k] = getattr(session, k)
         summary["score"] = score(out, summary)  # tools/soak_score.py: the narrator scorecard
         f.write(json.dumps({"summary": summary}) + "\n")

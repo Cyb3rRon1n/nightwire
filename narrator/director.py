@@ -8,7 +8,7 @@ from functools import cache
 from pathlib import Path
 
 from engine.session import Session
-from narrator import gossip, people, places, promises
+from narrator import clock, gossip, people, places, promises
 from narrator.cast import _player_turns
 from narrator.world import _where, kuroshio
 
@@ -26,6 +26,8 @@ def events() -> tuple[dict, ...]:
     for e in raw:
         if set(e.get("needs", [])) - _NEEDS:
             raise ValueError(f"event {e['id']!r}: unknown needs {e['needs']}")
+        if set(e.get("stretches", [])) - set(clock.STRETCHES):
+            raise ValueError(f"event {e['id']!r}: unknown stretches {e['stretches']}")
         if not e.get("lead") and not e.get("needs"):
             raise ValueError(f"event {e['id']!r}: needs a lead (only state-tied events may go without)")
     return tuple(raw)
@@ -64,6 +66,7 @@ def pick(session: Session, player_id: str) -> dict | None:
     here = district.name if district else None
     ok = [e for e in events()
           if (not e.get("where") or here in e["where"])
+          and (not e.get("stretches") or clock.stretch(session) in e["stretches"])
           and all(_met(session, player_id, n) for n in e.get("needs", []))
           and now - session.events_used.get(e["id"], -NO_REPEAT) >= NO_REPEAT]
     if not ok:
@@ -101,6 +104,7 @@ def tick(session: Session, player_id: str, health_before: int) -> None:
     outcomes = [r.get("outcome", "") for r in rolls]
     hurt = session.characters[player_id].health < health_before
     places.arrive(session)
+    clock.tick(session)
     if any(r.get("skill") in places._FIGHT_SKILLS for r in rolls):  # a roll to fight is the player's own doing
         gossip.record(session, f"{session.characters[player_id].name} got into a fight at "
                                f"{places.key(session) or 'the block'}", False)

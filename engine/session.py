@@ -62,3 +62,8 @@ class Session:
     # Word that spreads (narrator/gossip.py): deeds with who knows them and how strongly.
     deeds: list[dict] = field(default_factory=list)
     gossip_turn: int | None = None
+    # The night clock (narrator/clock.py): night number, stretch 0-4, the turn the stretch began, the district last seen.
+    night: int = 1
+    stretch: int = 0
+    stretch_start: int | None = 0  # None: a save from before the clock; set on the first tick
+    clock_district: str | None = None

@@ -46,6 +46,8 @@ PROBES = {
     # the punch left Ikebe Low less than calm, or marked.
     "ikebe_remembers": lambda s: any(
         "ikebe" in k.lower() and (v["heat"] or v["warmth"] or v["marks"]) for k, v in s["places"].items()),
+    # the night clock: "I go home to my room and sleep" (or the night running out) moved on to night 2.
+    "night_moved": lambda s: s["night"] >= 2,
     # quiet stretches (walk home, sleep, wake) got at least one director event.
     "director_fired": lambda s: bool(s["events_used"]),
 }

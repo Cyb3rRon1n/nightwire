@@ -23,6 +23,11 @@ export function StatusPanel({ view, playerId, send }: { view: StateView; playerI
         onAllocateAttribute={(attribute) => send({ type: "allocate_attribute_points", attribute, amount: 1 })}
         onRemoveChrome={(item) => send({ type: "remove_chrome", item })}
       />
+      {view.clock && (
+        <p className="text-sm" aria-label="Time">
+          <span className="nw-panel-heading">Now</span> Night {view.clock.night} · {view.clock.stretch}
+        </p>
+      )}
       {view.here && (
         <p className="text-sm" aria-label="Here">
           <span className="nw-panel-heading">Here</span> {view.here.place}: {view.here.mood}{view.here.mark ? ` · ${view.here.mark}` : ""}

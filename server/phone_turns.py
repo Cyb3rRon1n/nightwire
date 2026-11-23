@@ -3,6 +3,7 @@
 import re
 
 from engine import phone
+from narrator import clock
 from narrator.phone_reply import write_reply
 
 MAX_TEXT = 500
@@ -21,12 +22,16 @@ async def deliver_due(session, client, player_id) -> None:
     for name, msgs in p["threads"].items():
         for m in msgs:
             if m["text"] is None and m["deliver_at"] <= p["turn"]:
+                if clock.asleep(session, name):  # the night clock: checked at delivery, so a sleep jump wakes them
+                    m["deliver_at"] = p["turn"] + 1
+                    continue
                 await _fill(session, client, player_id, m, name)
     if phone.may_text_first(session, player_id):
         for name, c in p["contacts"].items():
             msgs = p["threads"].get(name, [])
             last = msgs[-1]["turn"] if msgs else 0
-            if c["role"] in ("family", "partner") and c["trust"] >= 3 and last <= p["turn"] - 8:
+            if c["role"] in ("family", "partner") and c["trust"] >= 3 and last <= p["turn"] - 8 \
+                    and not clock.asleep(session, name):
                 text = await write_reply(client, c, phone.tone(c, p["turn"]), [], session.characters[player_id].name)
                 phone.post(session, player_id, name, name, text, p["turn"])
                 phone.mark_unprompted(session, player_id)
@@ -55,6 +60,8 @@ async def handle_text(session, client, player_id, message) -> None:
     d = phone.delay(contact)
     if contact["role"] == "fixer" and _WORK.search(text):
         d = min(d, 1)  # a fixer asked for work answers next turn (playthrough 2026-11-07: Jun took 6)
+    if d == 0 and clock.asleep(session, name):
+        d = 1  # asleep: deliver_due holds the reply until they wake
     msg = phone.post(session, player_id, name, name, None, p["turn"] + d)
     if d == 0:
         await _fill(session, client, player_id, msg, name)

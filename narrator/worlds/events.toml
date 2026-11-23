@@ -14,12 +14,14 @@ text = "A torite van idles at the corner, engine running, someone inside checkin
 lead = "Find out whose name is on the torite van's list outside the Torite office"
 where = ["Ikebe Low"]
 needs = ["owes"]
+stretches = ["shutters down", "small hours"]  # the night clock: the repo crews work when the street is empty
 
 [[event]]
 id = "charm-kid"
 text = "A kid sells paper charms from a tray, swearing one kept the repo men off a whole floor of the Stacked block."
 lead = "Find out what really kept the repo men off a floor of the Stacked block"
 where = ["Ikebe Low"]
+stretches = ["evening", "last train"]
 
 [[event]]
 id = "crane-jam"

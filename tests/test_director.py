@@ -92,6 +92,7 @@ def test_state_tied_events_come_first_and_fill_in_the_oldest_promise():
 def test_debt_events_need_debt():
     s = _session()
     s.location = "Ikebe Low"
+    s.stretch = 3  # the night clock: the torite van works the small hours
     assert director.pick(s, "p1")["id"] != "torite-van"
     s.characters["p1"].installments_owed = 2
     assert director.pick(s, "p1")["id"] == "torite-van"

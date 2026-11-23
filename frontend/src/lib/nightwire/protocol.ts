@@ -100,6 +100,7 @@ export interface StateView {
   promises: { who: string; what: string; ago: number }[]
   // The current place's mood and newest mark (narrator/places.py).
   here: { place: string; mood: string; mark: string | null } | null
+  clock?: { night: number; stretch: string }  // the night clock; older servers send none
   // Word on the street per district: the strongest good and bad thing said about the player (narrator/gossip.py).
   street: { district: string; good: string | null; bad: string | null }[]
   // Recurring people met in play (narrator/people.py), newest first.

@@ -9,7 +9,7 @@ from engine.character import is_tsukumogami
 from engine.chrome import change_humanity
 from engine.debt import SHELL, new_shell, pay_installment, repo_target_name, repossess, unthrottle
 from engine.session import Session
-from narrator import gossip, memory, people, places, promises
+from narrator import clock, gossip, memory, people, places, promises
 from narrator.movement import known_place, places_in
 from narrator.world import _mentions, _normalize, kuroshio
 from ruleset.cyberware import CHROME
@@ -83,6 +83,7 @@ def build_questions(session: Session, player_id: str) -> dict[str, str]:
                                           f"{repo_target_name(c.pending_repo)} to the repo crew?")
     if c.installments_owed > 0 and not c.bodiless:
         questions["gig_paid_out"] = f"true/false: did {name} get paid for finished work?"
+    questions["went_to_sleep"] = f"true/false: did {name} lie down and go to sleep this turn?"  # the night clock
     if c.bodiless:
         questions["got_new_shell"] = f"true/false: did {name} get a new utsusemi shell?"
     if c.throttled:
@@ -111,6 +112,8 @@ def validate_verdict(verdict: dict, questions: dict[str, str]) -> None:
         for k in (*_TEXT_FIELDS, *_TRUST_FIELDS):  # optional: older answers and test fakes leave them out
             if k in questions:
                 verdict.setdefault(k, "")
+        if "went_to_sleep" in questions:
+            verdict.setdefault("went_to_sleep", False)
     if not isinstance(verdict, dict) or set(verdict) != expected:
         raise ValueError(f"referee answered {sorted(verdict) if isinstance(verdict, dict) else verdict!r}, "
                          f"expected {sorted(expected)}")
@@ -148,6 +151,7 @@ def _squash(text: str) -> str:
     return " ".join(re.sub(r"[^\w\s']", " ", text.lower()).split())
 
 
+_SLEEP = re.compile(r"\b(sleep|sleeps|sleeping|slept|asleep|bed|nap|naps|doze|dozes|crash|turn in)\b", re.I)
 _NON_ANSWERS = {"none", "n a", "empty", "nothing", "no one", "nobody"}
 _SMALL_WORDS = {"about", "from", "into", "with", "that", "this", "there", "their", "your", "what", "where", "when"}
 
@@ -198,6 +202,10 @@ def ground(session: Session, verdict: dict, action: str, narration: str, player:
     sources = {"human_moment": (_squash(f"{action}\n{narration}"), "the scene"),
                "acted_as_machine": (_squash(action), "the player's action")}
     grounded = {k: v for k, v in verdict.items() if not k.endswith("_quote")}
+    # The night clock (review 2026-11-23): sleep skips the night, so "I rest a moment" must not count.
+    if grounded.get("went_to_sleep") and not _SLEEP.search(action):
+        grounded["went_to_sleep"] = False
+        session.log.append("[referee: went_to_sleep without sleep in the action, ignored]")
     for k in _TEXT_FIELDS:  # soak 2026-11-23: "none" for empty is a non-answer, not an invention to log
         if _squash(str(grounded.get(k, ""))) in _NON_ANSWERS:
             grounded[k] = ""
@@ -381,6 +389,8 @@ def apply_verdict(session: Session, player_id: str, verdict: dict) -> None:
         unthrottle(c)
         if _HARA_OBJECTIVE not in session.active_objectives:
             session.active_objectives.append(_HARA_OBJECTIVE)
+    if verdict.get("went_to_sleep"):
+        clock.sleep(session)
     if verdict.get("got_new_shell") and c.bodiless:
         new_shell(c)
         session.log.append(f"[utsusemi: {name} wakes in a new shell]")

@@ -133,3 +133,18 @@ async def test_a_text_clears_the_players_chips():
     s.suggestions["p1"] = [{"id": "c1", "text": "I wait."}]
     await handle_text(s, Judge(), "p1", {"to": "Mika", "text": "hi"})
     assert "p1" not in s.suggestions
+
+
+async def test_a_contact_asleep_answers_when_they_wake():
+    # The night clock: Jun sleeps at first train, so even a fixer asked for work waits until he wakes.
+    s = Session(session_id="s")
+    s.characters["p1"] = Character(player_id="p1", name="Rook", role="solo", lifepath="streetkid")
+    phone.add_contact(s, "p1", "Jun Arakawa", "fixer")["trust"] = 5
+    s.stretch = 4
+    await handle_text(s, Judge(), "p1", {"to": "Jun Arakawa", "text": "any work?"})
+    for _ in range(3):
+        await deliver_due(s, Judge(), "p1")
+    assert s.phone["p1"]["threads"]["Jun Arakawa"][-1]["text"] is None
+    s.stretch = 0  # the next evening
+    await deliver_due(s, Judge(), "p1")
+    assert s.phone["p1"]["threads"]["Jun Arakawa"][-1]["text"] == "ok then"

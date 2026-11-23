@@ -1,0 +1,6 @@
+# The night clock (spec 2026-11-23): stretches when a person is asleep or their place is shut. Anyone not listed is
+# around all night. Stretches: evening, last train, shutters down, small hours, first train.
+[asleep]
+"Old Hara" = ["last train"]       # naps before the late trade; the clinic is busiest after shutters
+"Mama Sato" = ["first train"]     # the izakaya shuts as the trains start
+"Jun Arakawa" = ["first train"]   # a fixer sleeps when the jobs do

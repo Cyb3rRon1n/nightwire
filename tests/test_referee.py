@@ -18,15 +18,15 @@ def _session(**kw) -> Session:
 
 
 def test_human_with_no_debt_is_only_asked_about_human_moments_location_leads_and_promises():
-    assert list(build_questions(_session(), "p1")) == ["human_moment", "moved_to", "new_lead", "promise_made", "told_npc", "new_person", "left_mark"]
+    assert list(build_questions(_session(), "p1")) == ["human_moment", "moved_to", "new_lead", "promise_made", "told_npc", "new_person", "left_mark", "went_to_sleep"]
 
 
 def test_conditional_questions_follow_state():
     s = _session(lifepath="tsukumogami", installments_owed=4, pending_repo="kagerou", throttled="kagerou")
-    assert set(build_questions(s, "p1")) == {"human_moment", "moved_to", "new_lead", "promise_made", "told_npc", "new_person", "left_mark", "acted_as_machine", "gave_up_repo_item",
+    assert set(build_questions(s, "p1")) == {"human_moment", "moved_to", "new_lead", "promise_made", "told_npc", "new_person", "left_mark", "went_to_sleep", "acted_as_machine", "gave_up_repo_item",
                                              "gig_paid_out", "hara_unlocked_chrome"}
     bodiless = _session(lifepath="tsukumogami", installments_owed=4, bodiless=True)
-    assert set(build_questions(bodiless, "p1")) == {"human_moment", "moved_to", "new_lead", "promise_made", "told_npc", "new_person", "left_mark", "acted_as_machine", "got_new_shell"}
+    assert set(build_questions(bodiless, "p1")) == {"human_moment", "moved_to", "new_lead", "promise_made", "told_npc", "new_person", "left_mark", "went_to_sleep", "acted_as_machine", "got_new_shell"}
 
 
 def test_schema_requires_every_question():

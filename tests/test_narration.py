@@ -814,6 +814,7 @@ def test_build_messages_puts_scene_and_world_notes_right_before_the_action():
         "Crew: Rook: no chrome, owes nothing\n\n"
         'Narrate in second person: call Rook "you", never by name.\n\n'
         'Present: no named characters. Anyone else must arrive on screen first.\n\n'
+        "Time: night 1, evening (the city filling up, shops and stalls open).\n\n"
         f"World notes:\n{ikebe}\n{sato}\n{locals_line(kuroshio(), session)}\n\n"
         "Player action: I order a drink."
     )
