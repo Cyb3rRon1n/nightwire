@@ -2278,3 +2278,18 @@ async def test_when_the_redo_repeats_too_only_one_sentence_of_the_stale_reply_st
     after = session.log[session.log.index("[repeat redo]") + 1:]
     prose = [l for l in after if not l.startswith(("[", "p1: "))]
     assert len(prose) == 1 and prose[0] in (b, "The man's blade slips free, and he draws it with a flick of his wrist.")
+
+
+def test_engine_notes_do_not_push_story_lines_out_of_the_repeat_window():
+    # Soak 2026-11-22 turn 25: Mama Sato's turn-7 line came back word for word; 18 turns of [notes] filled the window.
+    from narrator.client import NarrationSegment
+    from server.narration import _drop_repeated_lines
+    session = Session(session_id="s")
+    line = "Child, you've made your choice. The Kuze-gumi will come for you. Or you can run, and I'll call them now."
+    session.log += ["rin: I steal.", f"Mama Sato: {line}"]
+    session.log += [l for n in range(100) for l in (f"Line {n} of filler prose.", f"[referee: note {n}]")]
+    class R: pass
+    r = R(); r.narration = [NarrationSegment(speaker="narrator", text="The punch lands clean."),
+                            NarrationSegment(speaker="Mama Sato", text=line)]
+    assert _drop_repeated_lines(r, session) is False
+    assert [s.text for s in r.narration] == ["The punch lands clean."]

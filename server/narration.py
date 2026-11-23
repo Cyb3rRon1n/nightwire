@@ -228,13 +228,13 @@ def _drop_repeated_lines(response, session: Session) -> bool:
 
     # Soak 2026-11-22: Wataru's turn-11 line came back word for word on turns 23, 24 and 26, past the recent window.
     # 8-word runs are cheap, so they look much further back than whole-line openings do.
-    for line in session.log[-_RUN_LINES:]:
-        if not line.startswith(("[", *actors)):
-            body = _SPEECH.sub("", line, count=1)
-            if len(_words(body)) >= 5:
-                wholes.add(" ".join(_words(body)))
-            for sentence in _SENTENCE.split(body):
-                remember(sentence)
+    # Soak 2026-11-22 turn 25: engine [notes] filled the window and a turn-7 line came back; count story lines only.
+    for line in [l for l in session.log if not l.startswith(("[", *actors))][-_RUN_LINES:]:
+        body = _SPEECH.sub("", line, count=1)
+        if len(_words(body)) >= 5:
+            wholes.add(" ".join(_words(body)))
+        for sentence in _SENTENCE.split(body):
+            remember(sentence)
     # This turn's voice sample lines (narrator/voices.py) count too: a copy goes even on first use.
     sample_runs = {run for text in session.voice_lines for s in _SENTENCE.split(text) for run in _runs(_words(s))}
     sample_keys = {" ".join(_words(s)) for text in session.voice_lines for s in _SENTENCE.split(text)
