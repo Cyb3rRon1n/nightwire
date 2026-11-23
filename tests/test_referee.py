@@ -445,3 +445,12 @@ async def test_a_promoted_walk_on_remembers_the_action_as_the_players_deed():
     client = _Client({"human_moment_quote": "", "human_moment": "none", "new_person": "enforcer"})
     await run_referee(s, client, "p1", "I punch the enforcer.", "The enforcer staggers back, spitting blood.")
     assert [p["what"] for p in s.people.values()] == [f'{who} did this: "I punch the enforcer"']
+
+
+def test_none_in_a_text_field_is_an_empty_answer_not_an_ignored_one():
+    # Soak 2026-11-23: told_npc "none" was logged as ignored and padded the scorecard.
+    from narrator.referee import ground
+    s = _session()
+    got = ground(s, {"told_npc": "None", "new_lead": "nothing"}, "I wait.", "Nothing happens.")
+    assert (got["told_npc"], got["new_lead"]) == ("", "")
+    assert not any("ignored" in l for l in s.log)

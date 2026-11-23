@@ -148,6 +148,7 @@ def _squash(text: str) -> str:
     return " ".join(re.sub(r"[^\w\s']", " ", text.lower()).split())
 
 
+_NON_ANSWERS = {"none", "n a", "empty", "nothing", "no one", "nobody"}
 _SMALL_WORDS = {"about", "from", "into", "with", "that", "this", "there", "their", "your", "what", "where", "when"}
 
 
@@ -197,6 +198,9 @@ def ground(session: Session, verdict: dict, action: str, narration: str, player:
     sources = {"human_moment": (_squash(f"{action}\n{narration}"), "the scene"),
                "acted_as_machine": (_squash(action), "the player's action")}
     grounded = {k: v for k, v in verdict.items() if not k.endswith("_quote")}
+    for k in _TEXT_FIELDS:  # soak 2026-11-23: "none" for empty is a non-answer, not an invention to log
+        if _squash(str(grounded.get(k, ""))) in _NON_ANSWERS:
+            grounded[k] = ""
     for k in _LEVEL_FIELDS:
         text, where = sources[k]
         quote = _squash(verdict.get(f"{k}_quote", ""))
