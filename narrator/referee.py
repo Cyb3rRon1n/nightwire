@@ -226,7 +226,8 @@ def ground(session: Session, verdict: dict, action: str, narration: str, player:
         said = f"{action}\n{narration}"
         if parts:
             promise = f"{parts[0]}: {parts[1]}"
-        if not parts or not _has_words(parts[0], said) or not _names_something_in(parts[1], said, session):
+        if not parts or not _has_words(parts[0], said) or not (_names_something_in(parts[1], said, session)
+                                                                or _every_word_in(parts[1], said)):
             session.log.append(f'[referee: promise "{promise}" is not in the scene, ignored]')
             promise = ""
     if "promise_made" in grounded or promise:
@@ -242,6 +243,9 @@ def ground(session: Session, verdict: dict, action: str, narration: str, player:
             person = ""  # soak 2026-11-22: the referee often names Mama Sato here; not a walk-on, and not an error
         elif not parts or not people.grounded(session, parts[0], f"{action}\n{narration}"):
             session.log.append(f'[referee: new_person "{person}" is not in the scene, ignored]')
+            person = ""
+        elif not people.dealt_with(parts[0], action):
+            session.log.append(f'[referee: new_person "{person}" is not someone the action dealt with, ignored]')
             person = ""
     if not person and (speaker := _unnamed_speaker(narration)) and not people.has_a_name(session, speaker) \
             and people.one_person(speaker):
@@ -267,6 +271,14 @@ def ground(session: Session, verdict: dict, action: str, narration: str, player:
         if k in grounded or who:
             grounded[k] = who
     return grounded
+
+
+def _every_word_in(what: str, text: str) -> bool:
+    """Every real word (3+ letters) of a promise, at least two, is in the scene (soak 2026-11-22: "Old Hara: bring tea
+    tomorrow" was dropped; "tea" is too short for the two-words-in-a-row quote rule)."""
+    words = [w for w in _squash(what).split() if len(w) >= 3 and w not in _SMALL_WORDS]
+    said = set(_squash(text).split())
+    return len(words) >= 2 and all(w in said for w in words)
 
 
 def _has_words(phrase: str, text: str) -> bool:

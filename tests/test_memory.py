@@ -108,3 +108,18 @@ def test_a_shared_first_name_or_common_word_does_not_pull_in_someone_else():
 def test_common_words_are_not_relevance():
     f = {"text": "Rook lied to them", "turn": 0, "last_used": 0, "weight": 3}
     assert memory._score(f, 0, memory._words("I tell them everything")) == memory._score(f, 0, set())
+
+
+def test_a_promise_with_a_short_word_is_kept_when_every_word_is_in_the_scene():
+    # Soak 2026-11-22 turn 15: "Old Hara: bring tea tomorrow" was dropped; "tea" is too short to quote.
+    s = _session()
+    action = "I thank him and promise to bring him tea tomorrow."
+    apply_verdict(s, "p1", ground(s, {"promise_made": "Old Hara: bring tea tomorrow"}, action, "Old Hara nods."))
+    assert [p["what"] for p in s.promises] == ["bring tea tomorrow"]
+
+
+def test_a_promise_with_words_the_scene_never_said_is_still_ignored():
+    s = _session()
+    apply_verdict(s, "p1", ground(s, {"promise_made": "Old Hara: bring sake tonight"},
+                                  "I promise to bring him tea tomorrow.", "Old Hara nods."))
+    assert not s.promises

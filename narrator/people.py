@@ -60,6 +60,18 @@ def grounded(session: Session, who: str, scene: str) -> bool:
     return bool(words & said) and not has_a_name(session, who)
 
 
+_SOMEONE = {"him", "her", "them", "he", "she", "they", "guy", "man", "woman", "kid", "someone", "somebody", "stranger",
+            "person"}
+
+
+def dealt_with(who: str, action: str) -> bool:
+    """The player's action is aimed at a person: it names "who" or refers to someone (soak 2026-11-22: the referee
+    promoted a "noren curtain" on "I step off the Ring Line at Ikebe Low and look around.")."""
+    did = set(re.findall(r"[a-z0-9āēīōū]+", action.lower()))
+    named = {w for w in re.findall(r"[a-z0-9āēīōū]+", who.lower()) if len(w) >= 4} - _GENERIC
+    return bool(did & (_SOMEONE | named))
+
+
 def has_a_name(session: Session, who: str) -> bool:
     """ "who" names someone already known (a world NPC, a contact, someone on the roster, a player)."""
     known = {w for n in _taken(session) for w in re.findall(r"[a-z0-9āēīōū]+", n.lower()) if len(w) >= 3}

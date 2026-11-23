@@ -169,3 +169,11 @@ def test_voices_shadows_and_groups_are_not_people():
     assert s.people == {}
     _met(s, "dockworker with a burned hand", ACTION, "The dockworker with a burned hand staggers.")
     assert len(s.people) == 1  # a singular "hand" after "with" doesn't trip the plural rule
+
+
+def test_a_walk_on_the_action_never_dealt_with_is_not_promoted():
+    # Soak 2026-11-22: "noren curtain" became Goro on the arrival turn.
+    s = _session()
+    _met(s, "noren curtain", "I step off the Ring Line at Ikebe Low and look around.",
+         "A noren curtain sways in the breeze, revealing a small clinic.")
+    assert not s.people and any("not someone the action dealt with" in l for l in s.log)
