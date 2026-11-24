@@ -454,3 +454,15 @@ def test_none_in_a_text_field_is_an_empty_answer_not_an_ignored_one():
     got = ground(s, {"told_npc": "None", "new_lead": "nothing"}, "I wait.", "Nothing happens.")
     assert (got["told_npc"], got["new_lead"]) == ("", "")
     assert not any("ignored" in l for l in s.log)
+
+
+def test_the_narrator_cannot_walk_the_player_somewhere_the_action_did_not_go():
+    from narrator.referee import ground
+    # Soak 2026-11-23 turn 22: "I head back toward Ikebe Low" landed Rin in Old Hara's clinic.
+    s = _session()
+    got = ground(s, {"moved_to": "Old Hara's clinic"}, "I head back toward Ikebe Low.",
+                 "You head back toward Ikebe Low. You step inside Old Hara's clinic.")
+    assert got["moved_to"] == "" and any("not where the action went" in l for l in s.log)
+    got = ground(s, {"moved_to": "Old Hara's clinic"}, "I walk to Old Hara's clinic in Ikebe Low.",
+                 "You step inside Old Hara's clinic.")
+    assert got["moved_to"] == "Old Hara's clinic"

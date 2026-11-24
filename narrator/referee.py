@@ -10,7 +10,7 @@ from engine.chrome import change_humanity
 from engine.debt import SHELL, new_shell, pay_installment, repo_target_name, repossess, unthrottle
 from engine.session import Session
 from narrator import clock, gossip, memory, people, places, promises
-from narrator.movement import known_place, places_in
+from narrator.movement import destination, known_place, places_in
 from narrator.world import _mentions, _normalize, kuroshio
 from ruleset.cyberware import CHROME
 
@@ -223,6 +223,13 @@ def ground(session: Session, verdict: dict, action: str, narration: str, player:
     named_here = known_place(moved) in places_in(f"{action}\n{prose}")  # "the izakaya" names Mama Sato's izakaya
     if moved and _squash(moved) not in _squash(f"{action}\n{prose}") and not named_here:
         session.log.append("[referee: moved_to had no match in the scene, ignored]")
+        moved = ""
+    # Soak 2026-11-23 turn 22: "I head back toward Ikebe Low" and the narrator walked Rin into Old Hara's clinic, so
+    # the next five turns (the punch) happened there. When the action says where it goes, the narrator can't pick
+    # somewhere else.
+    went = destination(action)
+    if moved and went and known_place(moved) != went and known_place(moved) not in places_in(action):
+        session.log.append(f'[referee: moved_to "{moved}" is not where the action went ({went}), ignored]')
         moved = ""
     # Only a known place moves the player, by its own name ("Ikebe Low - Old Hara's clinic" -> Old Hara's clinic).
     if moved and not known_place(moved):
