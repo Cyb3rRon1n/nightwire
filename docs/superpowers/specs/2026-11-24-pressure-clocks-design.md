@@ -1,6 +1,6 @@
 # Pressure clocks
 
-Status: draft 2026-11-24, waiting on the review card "Pressure clocks". Builds on the director
+Status: approved 2026-11-24 (review card "pressure-clocks", kept with no notes); built 81bbd1b. Builds on the director
 (`2026-11-22-director-design.md`), places and heat (`2026-11-22-places-gossip-design.md`) and the night clock
 (`2026-11-23-night-clock-design.md`).
 

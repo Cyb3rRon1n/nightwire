@@ -1,6 +1,7 @@
 # District map
 
-Status: draft 2026-11-24, waiting on the review card "District map". Candidate from the studio track in `ROADMAP.md`
+Status: approved 2026-11-24 (review card "district-map", kept). Owner: "go with what you think is right": the
+station order stays as drawn, and the Yomi Line is always shown (a line sealed twenty years ago is common knowledge). Candidate from the studio track in `ROADMAP.md`
 ("clickable Kuroshio map from the location designs").
 
 ## Why
