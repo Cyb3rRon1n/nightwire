@@ -395,7 +395,9 @@ def apply_verdict(session: Session, player_id: str, verdict: dict) -> None:
         if _HARA_OBJECTIVE not in session.active_objectives:
             session.active_objectives.append(_HARA_OBJECTIVE)
     if verdict.get("went_to_sleep"):
-        clock.sleep(session)
+        clock.sleep(session, player_id)
+    elif player_id in session.sleepers:
+        session.sleepers.remove(player_id)  # up and doing something: they're awake again
     if verdict.get("got_new_shell") and c.bodiless:
         new_shell(c)
         session.log.append(f"[utsusemi: {name} wakes in a new shell]")

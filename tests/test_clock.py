@@ -5,6 +5,7 @@ from engine.session import Session
 from narrator import clock, director
 from narrator.cast import refresh
 from narrator.referee import apply_verdict
+from engine.character import CharacterSheet
 from tests.test_referee import _session
 
 
@@ -107,3 +108,33 @@ def test_old_saves_load_at_night_one_evening(tmp_path):
     loaded.log += ["p1: I wait."] * 20  # a long game from before the clock
     clock.tick(loaded)
     assert clock.stretch(loaded) == "evening"  # its first turn starts the stretch, it doesn't jump one
+
+
+def _party() -> Session:
+    s = _session()
+    s.characters["p2"] = CharacterSheet(player_id="p2", name="Ghost", role="netrunner", lifepath="streetkid",
+                                        attributes={}, humanity=50)
+    return s
+
+
+def test_a_party_spends_a_stretch_per_three_rounds_not_three_turns():
+    s = _party()
+    for _ in range(3):
+        s.log += ["p1: I wait.", "p2: I wait."]
+        clock.tick(s)
+    assert clock.stretch(s) == "last train"
+    s = _party()
+    s.log += ["p1: I wait.", "p2: I wait.", "p1: I wait."]
+    clock.tick(s)
+    assert clock.stretch(s) == "evening"
+
+
+def test_the_night_jumps_only_when_the_whole_party_sleeps():
+    s = _party()
+    apply_verdict(s, "p1", {"human_moment": "none", "went_to_sleep": True})
+    assert (s.night, s.sleepers) == (1, ["p1"])
+    apply_verdict(s, "p1", {"human_moment": "none"})  # p1 gets up again
+    apply_verdict(s, "p2", {"human_moment": "none", "went_to_sleep": True})
+    assert s.night == 1
+    apply_verdict(s, "p1", {"human_moment": "none", "went_to_sleep": True})
+    assert (s.night, clock.stretch(s), s.sleepers) == (2, "evening", [])

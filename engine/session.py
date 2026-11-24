@@ -67,3 +67,4 @@ class Session:
     stretch: int = 0
     stretch_start: int | None = 0  # None: a save from before the clock; set on the first tick
     clock_district: str | None = None
+    sleepers: list[str] = field(default_factory=list)  # players asleep, waiting for the rest of the party

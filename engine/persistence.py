@@ -90,4 +90,5 @@ class JSONFileSessionStore:
             stretch=data.get("stretch", 0),
             stretch_start=data.get("stretch_start"),
             clock_district=data.get("clock_district"),
+            sleepers=data.get("sleepers", []),
         )

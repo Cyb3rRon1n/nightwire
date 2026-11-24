@@ -66,6 +66,10 @@ walk or pay for a taxi". The engine does not block the move.
 
 **Player view.** The Status panel header shows "Night 2 · small hours".
 
+**More than one player** (owner's call 2026-11-23, option A of three). A round, one turn each, counts as one turn,
+so a stretch is 3 rounds however big the party. The night only jumps when every player is asleep; a player who sleeps
+alone rests, and is awake again on their next action.
+
 ## Non-goals
 
 - Minutes or hours on a clock face. The owner chose stretches.

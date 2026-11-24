@@ -16,7 +16,7 @@ STRETCHES = {
     "first train": "the first trains; the night giving out",
 }
 ORDER = list(STRETCHES)
-TURNS = 3  # player turns per stretch: about 15 turns a night
+TURNS = 3  # rounds per stretch (a round is one turn each): about 15 a night, however big the party
 NO_TRAINS = {"shutters down", "small hours"}
 DAYBREAK = "The sky greys, the city shutters for the day, and the next night comes on."
 _HOURS_PATH = Path(__file__).parent / "worlds" / "hours.toml"
@@ -45,6 +45,11 @@ def _district(session: Session) -> str | None:
     return d.name if d else None
 
 
+def _rounds(session: Session) -> int:
+    """Owner's call 2026-11-23: a party of 3 must not burn a stretch every round, so time counts rounds, not turns."""
+    return _player_turns(session) // max(1, len(session.characters))
+
+
 def _next(session: Session) -> None:
     if session.stretch == len(ORDER) - 1:
         session.night += 1
@@ -57,7 +62,7 @@ def _next(session: Session) -> None:
 
 def tick(session: Session) -> None:
     """End of a player's turn: every TURNS turns, and each ride to another district, moves the night on one stretch."""
-    now, here = _player_turns(session), _district(session)
+    now, here = _rounds(session), _district(session)
     if session.stretch_start is None:  # a save from before the clock starts its stretch now, not 3 turns ago
         session.stretch_start = now
     rode = bool(here and session.clock_district and here != session.clock_district)
@@ -69,11 +74,17 @@ def tick(session: Session) -> None:
         session.stretch_start = now
 
 
-def sleep(session: Session) -> None:
-    """Sleep always works (Disco Elysium players get stuck when it doesn't): the next night's evening."""
+def sleep(session: Session, player_id: str) -> None:
+    """Sleep always works (Disco Elysium players get stuck when it doesn't): the next night's evening, once the whole
+    party sleeps (owner's call 2026-11-23); until then the sleeper just rests."""
+    session.sleepers = sorted({*session.sleepers, player_id})
+    if set(session.characters) - set(session.sleepers):
+        session.log.append(f"[clock: {session.characters[player_id].name} sleeps; the night goes on until everyone does]")
+        return
+    session.sleepers = []
     session.night += 1
     session.stretch = 0
-    session.stretch_start = _player_turns(session)
+    session.stretch_start = _rounds(session)
     session.clock_district = _district(session) or session.clock_district
     session.log.append(f"[clock: slept; night {session.night}, evening]")
 
