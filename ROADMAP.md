@@ -252,7 +252,11 @@ Each phase gets its own brainstorming pass (questions → approaches → design 
     - **Owner decisions**: promotion and personal use only; NoobAI-XL designs stay the source of truth; no daytime scenes; `FAL_KEY` entered by the owner; every paid run and download needs the owner's go-ahead.
     - **Pilot**: "Resting" (Saeko + Rin at Mama Sato's, 3 shots, 24 s). Grey-box built; awaiting owner review.
     - **Open**: anime A/B paid test (needs the owner's fal account); only Kling's rate confirmed on fal's pricing page, re-check Seedance rates before the first paid run; `idcheck` not yet run on a real take; one pose per figure per short.
-    - **Next**: Phase 1 voices and music (IndexTTS2, ACE-Step); Phase 2 local Wan on a 24 GB card. Each needs its own plan.
+    - **Next**: Phase 1 voices and music (IndexTTS2, ACE-Step). Phase 2 rethought 2026-11-23
+      (`docs/superpowers/research/2026-11-23-local-video-and-stills.md`): the owner's goal is local stills plus
+      minimal looping background motion, with Seedance only for final polish. Test on the 4U box's 4070 first:
+      Wan 2.2 first+last frame loops, AniSora V3, LTX-2.3, against Seedance 2.5. Buy a 3090 only if Wan character
+      LoRAs or depth control turn out to be needed. Each needs its own plan.
 
 24. **The living city on a CPU** (designed and built 2026-11-21 to 11-23, roadmap items 1-5 owner-approved, every spec
     through Nightwire Reviews cards). Specs in `docs/superpowers/specs/`: `2026-11-22-npc-voices-design.md`,
