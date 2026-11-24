@@ -13,7 +13,7 @@ from narrator.world import _normalize, kuroshio
 
 # "I head to", "I take the Ring Line to", "I walk back toward": a movement verb, then the place after it.
 _MOVE = re.compile(r"\b(?:go|goes|going|head|heads|heading|walk|walks|run|runs|drive|ride|rides|travel|return|returns"
-                   r"|enter|enters|follow|follows|step (?:into|inside)|make (?:my|our|his|her|their) way|take the (?:ring|yomi) line)\b")
+                   r"|enter|enters|follow|follows|step (?:into|inside)|make (?:my|our|his|her|their) way|take the (?:ring|yomi) line|(?:take|takes|catch|catches|hail|hails) (?:a|the) (?:taxi|cab))\b")
 _TOWARD = re.compile(r"\b(?:to|toward|towards|into|for)\b")
 
 

@@ -466,3 +466,12 @@ def test_the_narrator_cannot_walk_the_player_somewhere_the_action_did_not_go():
     got = ground(s, {"moved_to": "Old Hara's clinic"}, "I walk to Old Hara's clinic in Ikebe Low.",
                  "You step inside Old Hara's clinic.")
     assert got["moved_to"] == "Old Hara's clinic"
+
+
+def test_a_taxi_to_a_place_lands_at_the_place_not_its_district():
+    from narrator.referee import ground
+    # Soak 2026-11-23 turn 35: the referee said Hanabira-chō, so Rin never reached the back room (or Jun).
+    s = _session()
+    got = ground(s, {"moved_to": "Hanabira-chō"}, "I take a taxi to the Pachinko back room in Hanabira-chō.",
+                 "The taxi stops in Hanabira-chō. You step into the pachinko back room.")
+    assert got["moved_to"] == "Pachinko back room"

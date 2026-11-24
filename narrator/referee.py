@@ -228,9 +228,12 @@ def ground(session: Session, verdict: dict, action: str, narration: str, player:
     # the next five turns (the punch) happened there. When the action says where it goes, the narrator can't pick
     # somewhere else.
     went = destination(action)
-    if moved and went and known_place(moved) != went and known_place(moved) not in places_in(action):
-        session.log.append(f'[referee: moved_to "{moved}" is not where the action went ({went}), ignored]')
-        moved = ""
+    if moved and went and known_place(moved) != went:
+        if known_place(moved) in places_in(action):
+            moved = went  # "a taxi to the back room in Hanabira-chō" lands in the back room, not just the district
+        else:
+            session.log.append(f'[referee: moved_to "{moved}" is not where the action went ({went}), ignored]')
+            moved = ""
     # Only a known place moves the player, by its own name ("Ikebe Low - Old Hara's clinic" -> Old Hara's clinic).
     if moved and not known_place(moved):
         session.log.append("[referee: moved_to is not a known place, ignored]")
