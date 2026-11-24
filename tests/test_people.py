@@ -188,3 +188,19 @@ def test_him_is_the_walk_on_already_here_even_described_differently():
     _met(s, "man with sharp eyes: Rook helped him up", "I apologise and help him up.",
          "The man with sharp eyes takes your hand.")
     assert list(s.people) == ["Tetsu"] and s.people["Tetsu"]["weight"] == 2
+
+
+def test_a_bare_man_counts_when_the_scene_says_man():
+    # Soak 2026-11-24 turn 25: the referee answered just "man" for the punched guy, and "The man stumbles back" was
+    # in the narration, but a bare "man" had no details left to check, so he was dropped and never came back.
+    s = _session()
+    s.location = "Ikebe Low"
+    _met(s, "man", "I punch the guy who bumps into me.", "The man stumbles back, his breath ragged.")
+    assert [p["who"] for p in s.people.values()] == ["man"]
+
+
+def test_a_bare_man_not_in_the_scene_is_still_dropped():
+    s = _session()
+    s.location = "Ikebe Low"
+    _met(s, "woman", "I punch the guy who bumps into me.", "The man stumbles back, his breath ragged.")
+    assert s.people == {}

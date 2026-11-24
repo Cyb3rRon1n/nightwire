@@ -57,6 +57,8 @@ def grounded(session: Session, who: str, scene: str) -> bool:
     words = set(re.findall(r"[a-z0-9āēīōū]+", head)) - _GENERIC - {"a", "an", "the"}
     if not words:  # "man with sake breath" (soak 2026-11-22): a plain head, so its own details must be in the scene
         words = {w for w in re.findall(r"[a-z0-9āēīōū]+", who.lower()) if len(w) >= 4} - _GENERIC
+    if not words:  # a bare "man" (soak 2026-11-24): nothing but the plain head is left, so the scene must say it
+        words = set(re.findall(r"[a-z0-9āēīōū]+", head)) - {"a", "an", "the"}
     return bool(words & said) and not has_a_name(session, who)
 
 
