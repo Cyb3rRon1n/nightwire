@@ -26,7 +26,8 @@ def test_memory_probes_read_the_end_state_and_say_none_for_older_soaks():
     assert set(probes({}).values()) == {None}
     end = {"npc_memory": {"Wataru Ono": [{"text": "Rin said she already paid this week"}]}, "promises": [{"who": "Old Hara", "what": "bring him tea tomorrow"}], "journal": [],
            "people": {"Goro": {"weight": 2}}, "deeds": [{"knows": {"Goro": {"seen": True}, "Hara": {"seen": False}}}],
-           "places": {"Ikebe Low": {"heat": 1, "warmth": 0, "marks": []}}, "events_used": {"comeback": 30}, "night": 2}
+           "places": {"Ikebe Low": {"heat": 1, "warmth": 0, "marks": []}}, "events_used": {"comeback": 30}, "night": 2,
+           "found_jun": True}
     assert set(probes(end).values()) == {True}
     assert probes({**end, "night": 1})["night_moved"] is False
     assert probes({**end, "promises": []})["tea_promise_survives_undo"] is False

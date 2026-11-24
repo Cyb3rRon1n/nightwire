@@ -48,6 +48,8 @@ PROBES = {
         "ikebe" in k.lower() and (v["heat"] or v["warmth"] or v["marks"]) for k, v in s["places"].items()),
     # the night clock: "I go home to my room and sleep" (or the night running out) moved on to night 2.
     "night_moved": lambda s: s["night"] >= 2,
+    # whereabouts: asked where Jun is, waited until the small hours, and found him in the pachinko back room.
+    "waited_and_found_jun": lambda s: s["found_jun"],
     # quiet stretches (walk home, sleep, wake) got at least one director event.
     "director_fired": lambda s: bool(s["events_used"]),
 }

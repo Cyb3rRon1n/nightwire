@@ -462,6 +462,8 @@ def _build_messages(session: Session, action_text: str, num_ctx: int, voices: st
     if heard:
         parts.append(heard)
     parts.append(clock.line(session))  # the night clock: the engine owns time, the narrator is told it
+    if usual := clock.whereabouts(session, action_text):
+        parts.append(usual)
     if session.pending_world_events:
         parts.append("World event: " + " ".join(session.pending_world_events))
     world_budget = int(num_ctx * _WORLD_BUDGET_FRACTION * _CHARS_PER_TOKEN_ESTIMATE)
@@ -701,6 +703,9 @@ async def _run_turn(
     # Events are shown once, but only dropped after the narrator actually
     # responded; events queued during the turn survive to the next one.
     call_in(session)  # before shown_events, so a promise called in is shown this turn
+    # Only the turn the player acted in: a roll's follow-up turn re-sends the same text (review 2026-11-23).
+    if actor_line is not None and referee_action and (waited := clock.wait(session, referee_action)):  # before shown_events: a daybreak shows now
+        session.pending_world_events.append(waited)
     health_before = c.health if (c := session.characters.get(player_id)) else 0
     shown_events = list(session.pending_world_events)
     refresh_cast(session, referee_action or prompt_text)  # the action may already have moved the player

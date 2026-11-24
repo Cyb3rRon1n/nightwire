@@ -4,3 +4,20 @@
 "Old Hara" = ["last train"]       # naps before the late trade; the clinic is busiest after shutters
 "Mama Sato" = ["first train"]     # the izakaya shuts as the trains start
 "Jun Arakawa" = ["first train"]   # a fixer sleeps when the jobs do
+
+# Where some people are in some stretches (spec 2026-11-23-whereabouts). Any other stretch: where they always are.
+# Places must be place cards in kuroshio.toml.
+[where."Jun Arakawa"]
+"small hours" = "Pachinko back room"   # counting the night's take where the money is
+[where."Hoshikawa Rei"]
+"shutters down" = "Club stage"         # slumming in Hanabira-chō
+"small hours" = "Pachinko back room"
+[where."Mitsu"]
+"evening" = "Streaming studio"         # on stream while the city is up
+"last train" = "Streaming studio"
+"shutters down" = "Club stage"
+[where."Kenji Moro"]
+"small hours" = "Off-ramp garage"      # the Loop races run on empty roads
+[where."Hachi"]
+"evening" = "Courier depot"            # courier jobs; the pier at the other hours
+"last train" = "Courier depot"

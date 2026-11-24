@@ -64,6 +64,9 @@ ACTIONS = [
     "I try to talk my way past the doorman.",
     "I look out over the city.",
     "I head back down to the street.",
+    "I ask around where Jun Arakawa is this late.",  # whereabouts: the usual-place line
+    "I wait until the small hours.",  # waiting skips the night on
+    "I take a taxi to the Pachinko back room in Hanabira-chō.",  # and Jun is there then
     "👍",
 ]
 
@@ -164,7 +167,9 @@ async def main(turns: int, chips: bool = False) -> Path:
                    "turns_without_art": sum(not r["art"] for r in rows),
                    "texts_sent": len(texts), "replies_delivered": len(replies),
                    "texts_in_session_log": sum(w in line for w in words for line in session.log),  # must be 0
-                   "chip_turns": sum("chip" in r for r in rows)}
+                   "chip_turns": sum("chip" in r for r in rows),
+                   "found_jun": any("pachinko" in (r["location"] or "").lower() and "Jun Arakawa" in r["present"]
+                                    for r in rows)}
         # The end state the scorecard's memory probes read (tools/soak_score.py PROBES).
         for k in ("npc_memory", "people", "places", "deeds", "events_used", "promises", "active_objectives", "journal",
                   "night"):

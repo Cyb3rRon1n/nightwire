@@ -1,11 +1,12 @@
 """The night clock (spec 2026-11-23-night-clock-design.md): five stretches a night, told by the city's rhythm, owned by
 the engine (Song, Zhu & Callison-Burch 2024: state the engine controls stays consistent). The day passes off-screen."""
 import functools
+import re
 import tomllib
 from pathlib import Path
 
 from engine.session import Session
-from narrator.cast import _player_turns
+from narrator.cast import _named, _player_turns
 from narrator.world import _where, kuroshio
 
 STRETCHES = {
@@ -32,12 +33,55 @@ def _asleep_table() -> dict[str, tuple[str, ...]]:
     return table
 
 
+@functools.cache
+def _where_table() -> dict[str, dict[str, str]]:
+    """Spec 2026-11-23-whereabouts: an NPC's place in some stretches (Stardew keeps schedules as data, with a default)."""
+    with _HOURS_PATH.open("rb") as f:
+        table = tomllib.load(f).get("where", {})
+    places = {p.name for p in kuroshio().places}
+    npcs = {n.name for n in kuroshio().npcs}
+    for name, slots in table.items():
+        if name not in npcs or set(slots) - set(STRETCHES) or set(slots.values()) - places:
+            raise ValueError(f"hours.toml: [where.{name!r}] needs a world NPC, known stretches and place cards: {slots}")
+    return table
+
+
 def stretch(session: Session) -> str:
     return ORDER[session.stretch]
 
 
 def asleep(session: Session, name: str) -> bool:
     return stretch(session) in _asleep_table().get(name, ())
+
+
+def where(session: Session, name: str) -> str | None:
+    """The place card someone is at this stretch, or None: where they always are (their venue, or nowhere fixed)."""
+    return _where_table().get(name, {}).get(stretch(session))
+
+
+def scheduled_here(session: Session) -> list[str]:
+    place = _where(kuroshio(), session.location)[0]  # the world's own place matching, aliases included
+    return [n for n in _where_table() if place and where(session, n) == place.name]
+
+
+def elsewhere(session: Session, name: str) -> bool:
+    """Scheduled at some other place right now, so not at their own venue."""
+    return bool(where(session, name)) and name not in scheduled_here(session)
+
+
+def whereabouts(session: Session, action: str) -> str | None:
+    """Asking around: "where" plus a scheduled NPC's name tells the narrator where they usually are, now and next."""
+    if not re.search(r"\bwhere\b", action, re.I):
+        return None
+    lines = []
+    asked = set(_named(action))  # whole names and aliases: "tomorrow" is not Moro (review 2026-11-23)
+    for name, slots in _where_table().items():
+        if name not in asked:
+            continue
+        for s in (ORDER[session.stretch], ORDER[(session.stretch + 1) % len(ORDER)]):
+            if s in slots:
+                lines.append(f"{name} is usually at the {slots[s]} in the {s}")
+    return ("If asked: " + "; ".join(lines) + ".") if lines else None
 
 
 def _district(session: Session) -> str | None:
@@ -87,6 +131,36 @@ def sleep(session: Session, player_id: str) -> None:
     session.stretch_start = _rounds(session)
     session.clock_district = _district(session) or session.clock_district
     session.log.append(f"[clock: slept; night {session.night}, evening]")
+
+
+# The player's own wait, not "I can't wait to..." or "tell her to wait" (review 2026-11-23).
+_WAIT = re.compile(r"\bI\s+(?:\w+\s+){0,2}?(wait|kill time|pass the time|lie low)\b", re.I)
+_NOT = re.compile(r"\b(can't|cannot|can not|don't|do not|won't|will not|not)\s+(wait|kill|pass|lie)\b", re.I)
+# A bare wait skips an hour only when it says so: "I wait for her answer" is a moment, not a stretch.
+_A_WHILE = re.compile(r"kill(ing)? time|pass(ing)? the time|lie low|a while|an hour|it out|until later", re.I)
+_ALIASES = {"dawn": "first train", "morning": "first train", "midnight": "last train", "shutters": "shutters down"}
+_WORDS = {s: s for s in ORDER} | _ALIASES
+_UNTIL = re.compile(r"\b(?:until|till|for|through)\s+(?:the\s+)?(" + "|".join(sorted(_WORDS, key=len, reverse=True))
+                    + r")\b", re.I)
+
+
+def wait(session: Session, action: str) -> str | None:
+    """A wait skips to a named stretch's start (or one stretch); a past stretch means the next night's. Refused in a
+    fight, with the reason told (Skyrim players hate refusals they can't see the cause of). Returns the narrator note."""
+    if not _WAIT.search(action) or _NOT.search(action):
+        return None
+    named = _UNTIL.search(action)
+    if not named and not _A_WHILE.search(action):
+        return None
+    if session.in_combat:
+        return "No waiting: there's a fight on. Say so in the story."
+    target = ORDER.index(_WORDS[named[1].lower()]) if named else (session.stretch + 1) % len(ORDER)
+    for _ in range((target - session.stretch) % len(ORDER) or len(ORDER)):
+        _next(session)
+    session.stretch_start = _rounds(session)
+    session.clock_district = _district(session) or session.clock_district  # a ride this turn is part of the wait
+    session.cast_location = None  # who is here changes with the hour: the cast is rebuilt for the new stretch
+    return f"You waited until {stretch(session)}: tell the wait in one sentence, then the new hour."
 
 
 def line(session: Session) -> str:

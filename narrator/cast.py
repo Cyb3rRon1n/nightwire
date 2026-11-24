@@ -37,14 +37,18 @@ def _player_turns(session: Session) -> int:
 def refresh(session: Session, action_text: str) -> None:
     """Resets the cast when the player is somewhere new. A keeper away from their place goes back to it unless the
     action names them (soak 2026-11-21: Mama Sato walked out with Rin and stayed by her side for 20 turns)."""
+    from narrator import clock  # clock counts turns with this module's _player_turns
     named = _named(action_text, session)
     if session.location != session.cast_location:
-        from narrator import clock  # clock counts turns with this module's _player_turns
-        # The night clock: a keeper asleep isn't there when you arrive; someone the action names still is.
-        keeper = [n for n in _named(session.location or "") if not clock.asleep(session, n)]
-        session.present = list(dict.fromkeys([*keeper, *named]))
+        # The night clock: a keeper asleep or scheduled elsewhere isn't there when you arrive; anyone scheduled here
+        # now is (spec 2026-11-23-whereabouts); someone the action names still is.
+        keeper = [n for n in _named(session.location or "") if not clock.asleep(session, n)
+                  and not clock.elsewhere(session, n)]
+        session.present = list(dict.fromkeys([*keeper, *clock.scheduled_here(session), *named]))
         session.cast_location = session.location
-    away = _away_keepers(session) - set(named)
+    # A scheduled keeper already on stage stays until the player leaves, even when their stretch ends (review).
+    away = _away_keepers(session) - set(named) - set(clock.scheduled_here(session)) \
+        - (set(session.present) & set(clock._where_table()))
     session.present = [name for name in session.present if name not in away]
 
 
