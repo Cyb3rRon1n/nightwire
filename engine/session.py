@@ -61,6 +61,8 @@ class Session:
     places: dict[str, dict] = field(default_factory=dict)
     # Pressure clocks (narrator/clocks.py): clock id -> {filled, night, rest_until}.
     clocks: dict[str, dict] = field(default_factory=dict)
+    # Where each player turn ended, as [turn number, location] (narrator/recap.py picks panels' places from it).
+    trail: list[list] = field(default_factory=list)
     # Word that spreads (narrator/gossip.py): deeds with who knows them and how strongly.
     deeds: list[dict] = field(default_factory=list)
     gossip_turn: int | None = None

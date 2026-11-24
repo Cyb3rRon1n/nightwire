@@ -68,6 +68,7 @@ def rate(session: Session, like: bool, reason: str | None) -> None:
     tmp = path.with_suffix(".tmp")
     tmp.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in [*rows, row]), encoding="utf-8")
     tmp.replace(path)
+    session.log.append(f"[rated: {'like' if like else 'dislike'}]")  # the night recap scores liked turns
     session.last_rating = {"like": like, "reason": row["reason"]}
     session.checkin_open = False
 

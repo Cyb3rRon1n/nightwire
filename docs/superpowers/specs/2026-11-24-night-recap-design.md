@@ -1,6 +1,7 @@
 # Night recap: a storyboard of a played night
 
-Status: draft 2026-11-24, waiting on the review card "Night recap". Candidate from the studio track in `ROADMAP.md`
+Status: approved 2026-11-24 (owner in chat: "yes and sure" — 12 panels × 3.5 s, and the player's own action shown
+as a small line under each panel). Candidate from the studio track in `ROADMAP.md`
 ("storyboard and animatic export from session logs"). It is a step toward the owner's goal of shorts about the
 characters' daily lives.
 
@@ -45,13 +46,15 @@ The log is cut into turns at each player action line. Each turn scores what the 
 | a promise made, kept or broken | 3 |
 | a director event, or a pressure clock's portent or full | 2 |
 | a new person met, or one coming back | 2 |
-| a liked turn (👍) | 3 |
-| a place mark left | 1 |
+| a liked turn (👍), logged as `[rated: like]` by `ratings.rate` | 3 |
+| a place mark left, logged as `[mark: ...]` by `places.mark` | 1 |
 
 - **Opening:** the first turn of the night, always.
 - **Closing:** the last turn, always, plus an open-promise line as a "next time" hook.
 - **Establishing:** the first turn in each new district is kept.
-- **The rest:** the highest scores, at most 3 panels in a row in one place, with ties going to the earlier turn.
+- **The rest:** the highest scores, with ties going to the earlier turn. A scene (a stretch of turns in one place)
+  holds panels in proportion to its turns, at least 3, so one busy scene can't crowd out the rest (build ruling:
+  a flat 3-per-place cap left a night spent in one place with only 3 panels).
 - **Total:** at most 12 panels, at least 3 (a short night shows every turn).
 
 ### A panel
@@ -60,8 +63,9 @@ The log is cut into turns at each player action line. Each turn scores what the 
 - **Caption,** top left: "Ikebe Low · small hours".
 - **One line.** If an NPC spoke that turn, their shortest line of 4 to 20 words becomes a speech panel with their
   approved portrait inset. Otherwise it is the narration's first sentence, cut at 160 characters.
-- **Left out:** engine lines in brackets, hidden clocks, rolls' numbers, and the player's own action text. The
-  action is what the player did, so the panel shows what the city did back.
+- **The player's action** as a small line under the panel ("Rin: I punch the guy who bumps into me."), the
+  player's name in place of their id (owner's call).
+- **Left out:** engine lines in brackets, hidden clocks, and rolls' numbers.
 
 ### Outputs (`python -m tools.recap <session.json> [--out DIR]`)
 
@@ -91,8 +95,7 @@ The log is cut into turns at each player action line. Each turn scores what the 
 - Model-written captions. The lines come from what was actually said and narrated.
 - Sound and voice.
 
-## Open for the owner
+## Owner answers
 
 - 12 panels at most, 3.5 s each (about 45 s of animatic). Longer or shorter?
-- Should the player's own action show as a small line under each panel ("Rin: I punch the guy who bumps into me")?
-  This draft leaves it out.
+- Answered: 12 panels × 3.5 s is right, and the action line shows.

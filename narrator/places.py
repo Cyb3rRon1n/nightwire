@@ -79,6 +79,7 @@ def mark(session: Session, text: str) -> None:
     if any(m["text"].lower() == text.lower() for m in s["marks"]):
         return
     s["marks"].append({"text": text, "turn": _player_turns(session), "permanent": False})
+    session.log.append(f"[mark: {text}]")  # the night recap scores the turn
     while len(s["marks"]) > MARKS_MAX:
         temp = [m for m in s["marks"] if not m["permanent"]]
         s["marks"].remove((temp or s["marks"])[0])

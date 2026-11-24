@@ -103,6 +103,7 @@ def tick(session: Session, player_id: str, health_before: int) -> None:
     rolls = _rolls_this_turn(session)
     outcomes = [r.get("outcome", "") for r in rolls]
     hurt = session.characters[player_id].health < health_before
+    session.trail.append([_player_turns(session), session.location or ""])  # the recap's places
     places.arrive(session)
     clock.tick(session)
     if any(r.get("skill") in places._FIGHT_SKILLS for r in rolls):  # a roll to fight is the player's own doing
