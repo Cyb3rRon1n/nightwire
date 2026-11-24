@@ -11,7 +11,7 @@ from pathlib import Path
 
 from narrator import designs as _designs
 from tools.shorts import SHORTS_DIR, approve, data_dir, guides, remote
-from tools.shorts.backends import manual
+from tools.shorts.backends import comfy_video, manual
 from tools.shorts.greybox.scene import FPS, scene_json
 from tools.shorts.model import load_short, scene_look, scene_mood, validate_short
 from tools.shorts.prompt import build_prompt, expected_refs, ref_files, trim_refs
@@ -581,6 +581,26 @@ def cmd_animatic(a) -> int:
     return 0
 
 
+def cmd_loop(a) -> int:
+    """A free local looping clip on the 4U box's ComfyUI (plan 2026-11-23-4u-local-loop-tests): no ledger, no --yes."""
+    import time
+
+    from tools.image_studio import Comfy
+    s = _short(a.slug)
+    shot = _shot(s, a.shot)
+    prompt = a.prompt or shot.motion or "the city moves; the people stay still"
+    t = time.monotonic()
+    try:
+        tid = comfy_video.run_take(_work(s.slug), shot.id, a.model, prompt, Path(a.still), a.seconds,
+                                   comfy=Comfy(a.comfy, ""), seed=a.seed, loop=not a.no_loop)
+    except (RuntimeError, ValueError, FileNotFoundError) as e:
+        raise CliError(f"loop failed, nothing filed: {e}")
+    meta = _work(s.slug) / "shots" / shot.id / "takes" / f"{tid}.json"
+    seam = json.loads(meta.read_text()).get("seam") if meta.exists() else None
+    print(f"{shot.id} {tid}: {a.model}, {time.monotonic() - t:.0f}s, seam {seam}")
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="python -m tools.shorts")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -595,6 +615,11 @@ def main(argv=None) -> int:
     q = sub.add_parser("submit"); q.add_argument("slug"); q.add_argument("shot"); q.add_argument("--model", required=True)
     q.add_argument("--seconds", type=float); q.add_argument("--yes", action="store_true")
     q.add_argument("--override")
+    q = sub.add_parser("loop"); q.add_argument("slug"); q.add_argument("shot"); q.add_argument("--still", required=True)
+    q.add_argument("--model", required=True, choices=tuple(comfy_video.MODELS))
+    q.add_argument("--seconds", type=float, default=5.0); q.add_argument("--seed", type=int, default=0); q.add_argument("--prompt")
+    q.add_argument("--no-loop", action="store_true", help="for a model whose workflow has no end frame")
+    q.add_argument("--comfy", default=os.environ.get("NIGHTWIRE_COMFY_URL", "http://127.0.0.1:8188"))
     q = sub.add_parser("ledger-sync"); q.add_argument("slug"); q.add_argument("--balance", type=float, required=True)
     q = sub.add_parser("preflight"); q.add_argument("slug"); q.add_argument("shot", nargs="?"); q.add_argument("--model")
     q = sub.add_parser("idcheck"); q.add_argument("slug"); q.add_argument("shot"); q.add_argument("take")

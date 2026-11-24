@@ -29,6 +29,7 @@ Commands are `python -m tools.shorts <command> <slug> ...`. Pilot slug: `saeko-r
 7. Get takes, either way:
    - Manual: `bundle <slug> S01` writes prompt plus reference files to upload to any web tool; put the result in via `inbox <slug> S01 --cost 0.4 --model seedance-2.0`.
    - fal: `submit <slug> S01 --model kling-3 [--seconds N] [--yes]` shows the estimate and asks y/N (skip with `--yes`).
+   - Local (4U box, free): `loop <slug> S01 --still PATH --model wan22-flf|anisora-v3|ltx23 [--seconds 5] [--seed N] [--no-loop]` makes a looping background clip on ComfyUI (`--comfy URL` or `$NIGHTWIRE_COMFY_URL`) and prints the seam (first vs last frame, near 0 loops cleanly). Needs the workflow JSONs from plan 2026-11-23-4u-local-loop-tests Task 1.
 8. `idcheck <slug> S01 t001` (needs `qa` extra and a real take) prints a face-identity report per cast member. Not yet run on a real take.
 9. `verdicts <slug>` pulls review verdicts into `shots/<id>/verdicts.json`; `status <slug>` lists shots, takes, verdicts and spend.
 10. `assemble <slug> [--music bed.mp3]` writes `draft.mp4`: newest kept take per shot, mixed takes normalised to 1280x720 / 24 fps (silence added if a take has no audio), subtitles burned from the script lines.

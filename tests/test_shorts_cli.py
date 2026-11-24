@@ -1,3 +1,4 @@
+import pytest
 import json
 
 from test_shorts_model import PLANNED, SHORT, SHOT
@@ -470,3 +471,33 @@ def test_preflight_warns_once_when_store_unreachable(tmp_path, monkeypatch, caps
     monkeypatch.setattr("tools.shorts.__main__._images_api", lambda: None)
     main(["preflight", "pilot", "--model", "seedance-2.0-fast"])
     assert capsys.readouterr().err.count("review store unreachable: approvals read as missing") == 1
+
+
+def test_loop_runs_a_local_take_without_asking(tmp_path, monkeypatch, capsys):
+    setup(tmp_path, monkeypatch)
+    still = tmp_path / "still.png"
+    still.write_bytes(b"png")
+    calls = []
+    monkeypatch.setattr("builtins.input", lambda _: pytest.fail("a free local take must not ask"))
+    monkeypatch.setattr("tools.shorts.backends.comfy_video.run_take", lambda *a, **k: calls.append((a, k)) or "t001")
+    assert main(["loop", "pilot", "S01", "--still", str(still), "--model", "wan22-flf", "--seed", "3"]) == 0
+    (short_dir, shot, model, prompt, got_still, seconds), kw = calls[0]
+    assert (shot, model, got_still, seconds, kw["seed"], kw["loop"]) == ("S01", "wan22-flf", still, 5.0, 3, True)
+    assert prompt  # the shot's motion, or the default "the city moves" line
+    assert "t001" in capsys.readouterr().out
+
+
+def test_loop_refuses_a_paid_model(tmp_path, monkeypatch):
+    setup(tmp_path, monkeypatch)
+    with pytest.raises(SystemExit) as e:
+        main(["loop", "pilot", "S01", "--still", "x.png", "--model", "seedance-2.5"])
+    assert e.value.code == 2  # argparse choices: only local models
+
+
+def test_loop_reports_a_comfy_failure(tmp_path, monkeypatch, capsys):
+    setup(tmp_path, monkeypatch)
+    def boom(*a, **k):
+        raise RuntimeError("ComfyUI at http://127.0.0.1:8188 unreachable (refused)")
+    monkeypatch.setattr("tools.shorts.backends.comfy_video.run_take", boom)
+    assert main(["loop", "pilot", "S01", "--still", "x.png", "--model", "ltx23", "--no-loop"]) == 1
+    assert "unreachable" in capsys.readouterr().err
