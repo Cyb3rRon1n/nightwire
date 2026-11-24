@@ -257,7 +257,7 @@ Each phase gets its own brainstorming pass (questions → approaches → design 
 24. **The living city on a CPU** (designed and built 2026-11-21 to 11-23, roadmap items 1-5 owner-approved, every spec
     through Nightwire Reviews cards). Specs in `docs/superpowers/specs/`: `2026-11-22-npc-voices-design.md`,
     `-unfinished-business-`, `-liked-turns-`, `-director-`, `-npc-memory-`, `-emerging-characters-`,
-    `-places-gossip-`, `-told-npc-memory-`, and `2026-11-23-night-clock-design.md`.
+    `-places-gossip-`, `-told-npc-memory-`, `2026-11-23-night-clock-design.md` and `-whereabouts-and-waiting-`.
     - **Built**:
       - NPC voice sheets and dialogue moves.
       - Promises and a journal.
@@ -268,6 +268,8 @@ Each phase gets its own brainstorming pass (questions → approaches → design 
       - Emerging characters: walk-ons promoted on consequence get a district name and come back.
       - Places with heat, warmth and marks, and gossip that spreads.
       - The night clock: five stretches a night, sleep jumps to the next evening, people and events keep hours.
+        A party counts rounds, and the night jumps only when everyone sleeps (owner's call).
+      - Where people are by stretch (five NPCs), asking where someone usually is, and "I wait until ...".
     - **Soak-driven fixes**:
       - The repeat cut redoes an all-repeat reply once, and keeps a single sentence if the redo repeats too.
       - The 8-word window counts story lines only.
