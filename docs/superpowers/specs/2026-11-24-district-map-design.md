@@ -68,9 +68,10 @@ A **"Go"** button puts a travel line in the action box. The player can edit it a
 |---|---|
 | a Ring Line district, trains running | "I take the Ring Line to <district>." |
 | small hours (no trains, per the night clock) | "I take a taxi to <district>." |
-| Tenjō Heights | "I take a maglev pod up to Tenjō Heights." |
-| Yomi Line | "I look for a way down into the sealed Yomi Line." |
+| Tenjō Heights | "I ride a maglev pod up to Tenjō Heights." |
+| Yomi Line | "I head down into the sealed Yomi Line." |
 | The Loop | "I ride up onto the Loop." |
+| the Ring Line hub | "I head down to the Ring Line." (review: every line must parse as a move) |
 
 ### Where it lives
 

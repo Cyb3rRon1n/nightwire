@@ -10,9 +10,11 @@ from narrator.world import _where, kuroshio
 
 ORDER = ("Tenjō Heights", "Hanabira-chō", "Ikebe Low", "Kuroshio Docks", "Ring Line", "The Loop", "Yomi Line")
 _MOOD_RANK = ("calm", "wary", "tense", "locked down")
-_LINES = {"Tenjō Heights": "I take a maglev pod up to Tenjō Heights.",
-          "Yomi Line": "I look for a way down into the sealed Yomi Line.",
-          "The Loop": "I ride up onto the Loop."}
+# Every line must parse as a move (narrator/movement.destination), or the referee refuses the trip (review 2026-11-24).
+_LINES = {"Tenjō Heights": "I ride a maglev pod up to Tenjō Heights.",
+          "Yomi Line": "I head down into the sealed Yomi Line.",
+          "The Loop": "I ride up onto the Loop.",
+          "Ring Line": "I head down to the Ring Line."}
 
 
 def _district(text: str | None) -> str | None:

@@ -277,6 +277,9 @@ Each phase gets its own brainstorming pass (questions → approaches → design 
       - Pressure clocks (spec `2026-11-24-pressure-clocks-design.md`): three written clocks (Ōgane crackdown on the
         Docks, the no-manifest container, Kuze-gumi squeeze on Ikebe Low) fill from fights, misses, heat and nights,
         ease when their leads are done, send portents and a full beat with a lead, and show as pips on Status.
+      - District map (spec `2026-11-24-district-map-design.md`): a Beck-style diagram of the seven districts in the
+        World panel (Ring Line inner ring, the Loop outer), marking where you are and each district's clock or mood; a
+        card with art, people and known places; Go fills a travel line that the referee accepts as a move.
     - **Soak-driven fixes**:
       - The repeat cut redoes an all-repeat reply once, and keeps a single sentence if the redo repeats too.
       - The 8-word window counts story lines only.

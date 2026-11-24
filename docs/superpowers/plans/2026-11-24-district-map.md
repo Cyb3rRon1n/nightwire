@@ -22,8 +22,8 @@ said "go with what you think is right": the station order stays as drawn, and th
 - The travel lines, copied exactly:
   - Ring Line district: "I take the Ring Line to <d>."
   - No trains (`clock.NO_TRAINS`): "I take a taxi to <d>."
-  - Tenjō Heights: "I take a maglev pod up to Tenjō Heights."
-  - Yomi Line: "I look for a way down into the sealed Yomi Line."
+  - Tenjō Heights: "I ride a maglev pod up to Tenjō Heights."
+  - Yomi Line: "I head down into the sealed Yomi Line."
   - The Loop: "I ride up onto the Loop."
   - The current district: none.
 - Go fills the action box. It never sends.

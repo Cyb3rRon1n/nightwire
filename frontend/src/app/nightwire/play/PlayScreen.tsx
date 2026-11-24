@@ -53,9 +53,12 @@ export function PlayScreen({ view, playerId, send, readyLabel, error, errorSeq, 
   const unread = totalUnread(view);
   const [tab, setTab] = useState<(typeof TABS)[number]>("feed");
   // Go on the district map fills the action box (never sends); seq makes the same line twice still land.
+  // Cleared once the feed has used it, so a remounted feed (tab switch, resize) never refills an old line.
   const [draft, setDraft] = useState<{ text: string; seq: number } | null>(null);
+  const draftCount = useRef(0);
   function go(text: string) {
-    setDraft((d) => ({ text, seq: (d?.seq ?? 0) + 1 }));
+    draftCount.current += 1;
+    setDraft({ text, seq: draftCount.current });
     if (narrow) setTab("feed");
   }
 
@@ -136,7 +139,7 @@ export function PlayScreen({ view, playerId, send, readyLabel, error, errorSeq, 
       {narrow ? (
         <>
           <div className="min-h-0 flex-1">
-            {tab === "feed" && <FeedPanel view={view} playerId={playerId} send={send} error={error} errorSeq={errorSeq} sceneArt={sceneArt} chips={chips} dev={dev} onOpenGallery={setGalleryIndex} draft={draft} compact />}
+            {tab === "feed" && <FeedPanel view={view} playerId={playerId} send={send} error={error} errorSeq={errorSeq} sceneArt={sceneArt} chips={chips} dev={dev} onOpenGallery={setGalleryIndex} draft={draft} onDraftTaken={() => setDraft(null)} compact />}
             {tab === "status" && <StatusPanel view={view} playerId={playerId} send={send} />}
             {tab === "world" && <WorldPanel view={view} playerId={playerId} onGo={go} />}
             {tab === "phone" && <PhonePanel view={view} send={send} />}
@@ -158,7 +161,7 @@ export function PlayScreen({ view, playerId, send, readyLabel, error, errorSeq, 
         </Panel>
         <Separator className="nw-separator" aria-label="Resize status panel" />
         <Panel id="feed" defaultSize="58" minSize="40">
-          <FeedPanel view={view} playerId={playerId} send={send} error={error} errorSeq={errorSeq} sceneArt={sceneArt} chips={chips} dev={dev} onOpenGallery={setGalleryIndex} draft={draft} />
+          <FeedPanel view={view} playerId={playerId} send={send} error={error} errorSeq={errorSeq} sceneArt={sceneArt} chips={chips} dev={dev} onOpenGallery={setGalleryIndex} draft={draft} onDraftTaken={() => setDraft(null)} />
         </Panel>
         <Separator className="nw-separator" aria-label="Resize world panel" />
         <Panel id="world" panelRef={worldRef} defaultSize={RAIL_PX} minSize="14" collapsible collapsedSize={RAIL_PX} onResize={watchCollapsed(setWorldCollapsed)}>

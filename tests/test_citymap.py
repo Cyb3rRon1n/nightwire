@@ -27,8 +27,8 @@ def test_on_the_ring_line_it_is_here():
 def test_special_lines_and_taxis_when_no_trains():
     s = _session()
     v = citymap.view(s)
-    assert _d(v, "Tenjō Heights")["go"] == "I take a maglev pod up to Tenjō Heights."
-    assert _d(v, "Yomi Line")["go"] == "I look for a way down into the sealed Yomi Line."
+    assert _d(v, "Tenjō Heights")["go"] == "I ride a maglev pod up to Tenjō Heights."
+    assert _d(v, "Yomi Line")["go"] == "I head down into the sealed Yomi Line."
     assert _d(v, "The Loop")["go"] == "I ride up onto the Loop."
     s.stretch = 3  # small hours
     v = citymap.view(s)
@@ -76,3 +76,12 @@ def test_people_by_district_and_places_known_by_visit_or_objective():
 
 def test_the_view_carries_the_map():
     assert len(build_view(_session(), "p1")["map"]["districts"]) == 7
+
+
+def test_every_go_line_is_a_move_to_its_district():
+    from narrator.movement import destination
+    s = _session()
+    for stretch in (0, 3):  # trains, then taxis
+        s.stretch = stretch
+        for d in citymap.view(s)["districts"]:
+            assert destination(d["go"]) == d["name"], d["go"]

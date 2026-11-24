@@ -100,7 +100,7 @@ function newestTarget(el: HTMLDivElement): number {
   return Math.min(bottom, Math.max(0, last.offsetTop - FADE));
 }
 
-export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, chips = true, dev = false, onOpenGallery, compact = false, draft = null }: {
+export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, chips = true, dev = false, onOpenGallery, compact = false, draft = null, onDraftTaken }: {
   view: StateView;
   playerId: string;
   send: (msg: ClientMessage) => void;
@@ -112,6 +112,7 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, chi
   onOpenGallery: (index: number) => void;
   compact?: boolean;
   draft?: { text: string; seq: number } | null;  // a travel line from the district map's Go
+  onDraftTaken?: () => void;
 }) {
   const [composerMode, setComposerMode] = useState<ComposerMode>("do");
   const [composerText, setComposerText] = useState("");
@@ -131,8 +132,10 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, chi
     setComposerMode("do");
   }
   useEffect(() => {
-    if (draftSeq) inputRef.current?.focus();
-  }, [draftSeq]);
+    if (!draftSeq) return;
+    inputRef.current?.focus();
+    onDraftTaken?.();
+  }, [draftSeq]); // eslint-disable-line react-hooks/exhaustive-deps -- once per new draft, not per parent render
 
   // The only signal a sent action resolved is the next broadcast this
   // connection receives - the protocol has no per-request ack. Key on
