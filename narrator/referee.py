@@ -308,6 +308,9 @@ def ground(session: Session, verdict: dict, action: str, narration: str, player:
         # Soak 2026-11-22: "man in black duster" grabbed Rin and spoke three turns running, and the referee named no
         # one. An unnamed speaker in the scene is its own evidence; the player's action is what happened.
         person = f"{speaker}: {deed}"
+    if person and (parts := people.split(person)) and not people.find(session, parts[0]) \
+            and (same := people.the_one_here(session, action)):
+        person = f"{session.people[same]['who']}: {parts[1]}"  # "help him up": the one already here, however described
     if "new_person" in grounded or person:
         grounded["new_person"] = person
     mark = " ".join(str(grounded.get("left_mark", "")).split())[:_LOCATION_MAX]

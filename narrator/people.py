@@ -103,6 +103,15 @@ def find(session: Session, who: str) -> str | None:
     return best if best and scores[best] >= 1 and list(scores.values()).count(scores[best]) == 1 else None
 
 
+def the_one_here(session: Session, action: str) -> str | None:
+    """ "Help him up": a pronoun means the one walk-on already in the scene (soak 2026-11-24: the referee described
+    Daisuke as "man with sharp eyes" the turn after "man with a blade", and he became a second person)."""
+    if not re.search(r"\b(?:him|her|them)\b", action.lower()):
+        return None
+    here = [n for n in session.present if n in session.people]
+    return here[0] if len(here) == 1 else None
+
+
 def meet(session: Session, who: str, what: str) -> str | None:
     """A walk-on the player dealt with: raise an existing person's weight, or name a new one. Returns the name."""
     now = _player_turns(session)

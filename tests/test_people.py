@@ -177,3 +177,14 @@ def test_a_walk_on_the_action_never_dealt_with_is_not_promoted():
     _met(s, "noren curtain", "I step off the Ring Line at Ikebe Low and look around.",
          "A noren curtain sways in the breeze, revealing a small clinic.")
     assert not s.people and any("not someone the action dealt with" in l for l in s.log)
+
+
+def test_him_is_the_walk_on_already_here_even_described_differently():
+    # Soak 2026-11-24: Daisuke ("man with a blade") was punched, then "I apologise and help him up" made "Fumi = man
+    # with sharp eyes", so neither ever came back.
+    s = _session()
+    s.location = "Kuroshio Docks"
+    _met(s, "dockworker with a burned hand: Rook punched him")
+    _met(s, "man with sharp eyes: Rook helped him up", "I apologise and help him up.",
+         "The man with sharp eyes takes your hand.")
+    assert list(s.people) == ["Tetsu"] and s.people["Tetsu"]["weight"] == 2
