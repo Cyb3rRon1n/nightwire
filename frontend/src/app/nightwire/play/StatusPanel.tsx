@@ -33,6 +33,19 @@ export function StatusPanel({ view, playerId, send }: { view: StateView; playerI
           <span className="nw-panel-heading">Here</span> {view.here.place}: {view.here.mood}{view.here.mark ? ` · ${view.here.mark}` : ""}
         </p>
       )}
+      {(view.pressure ?? []).length > 0 && (
+        <section aria-label="Pressure">
+          <h2 className="nw-panel-heading">Pressure</h2>
+          <ul className="flex flex-col gap-1 text-sm">{view.pressure.map((c) => (
+            <li key={c.name}>
+              {c.name}{" "}
+              <span role="img" aria-label={`${c.name} ${c.filled} of ${c.size}`}>
+                {Array.from({ length: c.size }, (_, i) => (i < c.filled ? "●" : "○")).join(" ")}
+              </span>
+            </li>
+          ))}</ul>
+        </section>
+      )}
       <section aria-label="Objectives">
         <h2 className="nw-panel-heading">Objectives</h2>
         {view.active_objectives.length === 0

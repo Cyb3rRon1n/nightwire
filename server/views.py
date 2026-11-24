@@ -6,7 +6,7 @@ from engine.chrome import usable_overclocks
 from engine.phone import unread
 from engine.session import Session
 from engine.turns import current_turn, is_players_turn
-from narrator import clock, gossip, places
+from narrator import clock, clocks, gossip, places
 from narrator.cast import _player_turns
 from narrator.place_art import location_art
 from narrator.tools import roll_chance
@@ -68,6 +68,7 @@ def build_view(session: Session, viewer_id: str) -> dict:
         "people": [{"name": n, "who": p["who"], "what": p["what"], "place": p.get("place") or p.get("district"),
                     "ago": _turns_ago(session, p["turn"])} for n, p in reversed(session.people.items())],
         "here": places.view(session),
+        "pressure": clocks.view(session),
         "clock": {"night": session.night, "stretch": clock.stretch(session)},
         "street": gossip.street(session),
         "journal": [{**j, "ago": _turns_ago(session, j["turn"])} for j in reversed(session.journal)],

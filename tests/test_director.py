@@ -130,3 +130,17 @@ def test_a_player_without_a_character_is_ignored_and_no_calm_note_in_a_fight():
     assert s.tension == 0
     s.breather, s.in_combat = 2, True
     assert director.pacing_line(s) == ""
+
+
+def test_tick_moves_pressure_clocks_and_the_prompt_shows_shown_ones_here():
+    s = _session()
+    s.location = "Kuroshio Docks"
+    s.log.append("p1: I look around.")
+    director.tick(s, "p1", s.characters["p1"].health)
+    s.log.append("p1: I swing at the guard.")
+    s.log.append(f"[roll: {json.dumps({'outcome': 'clean_success', 'skill': 'melee'})}]")
+    director.tick(s, "p1", s.characters["p1"].health)
+    assert s.clocks["ogane-docks"]["filled"] == 1
+    assert "Pressure: Ōgane crackdown on the Docks 1/6." in _build_messages(s, "I walk on.", 8192)[-1]["content"]
+    s.clocks["ogane-docks"]["filled"], s.clocks["container"]["filled"] = 0, 2
+    assert "Pressure:" not in _build_messages(s, "I walk on.", 8192)[-1]["content"]

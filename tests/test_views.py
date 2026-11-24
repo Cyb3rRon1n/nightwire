@@ -234,3 +234,12 @@ def test_the_view_lists_every_image_in_the_session():
     s = Session(session_id="s")
     s.log = ["[image: images/s/1.png]"] + ["filler"] * 60 + ["[image: images/s/2.png]"]
     assert build_view(s, "p1")["images"] == ["images/s/1.png", "images/s/2.png"]
+
+
+def test_view_shows_shown_pressure_clocks_only():
+    from tests.test_referee import _session
+    s = _session()
+    s.clocks = {"kuze-ikebe": {"filled": 3, "night": 1, "rest_until": 0}}
+    pressure = build_view(s, "p1")["pressure"]
+    assert [(c["name"], c["filled"], c["size"]) for c in pressure] == [
+        ("Ōgane crackdown on the Docks", 0, 6), ("Kuze-gumi squeeze on Ikebe Low", 3, 6)]

@@ -52,6 +52,9 @@ PROBES = {
     "waited_and_found_jun": lambda s: s["found_jun"],
     # quiet stretches (walk home, sleep, wake) got at least one director event.
     "director_fired": lambda s: bool(s["events_used"]),
+    # pressure clocks: one moved (or filled and is resting) by the end, and one reached a portent or filled.
+    "clock_moved": lambda s: any(c["filled"] > 0 or c["rest_until"] > 0 for c in s["clocks"].values()),
+    "clock_portent": lambda s: s["clock_portent"],
 }
 
 

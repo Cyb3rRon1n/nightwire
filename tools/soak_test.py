@@ -174,8 +174,11 @@ async def main(turns: int, chips: bool = False) -> Path:
                                     for r in rows)}
         # The end state the scorecard's memory probes read (tools/soak_score.py PROBES).
         for k in ("npc_memory", "people", "places", "deeds", "events_used", "promises", "active_objectives", "journal",
-                  "night"):
+                  "night", "clocks"):
             summary[k] = getattr(session, k)
+        # A pressure clock reached a portent or filled ("[clock: night ..." lines are the night clock's).
+        summary["clock_portent"] = any(line.startswith("[clock: ") and not line.startswith("[clock: night ")
+                                       for line in session.log)
         summary["score"] = score(out, summary)  # tools/soak_score.py: the narrator scorecard
         f.write(json.dumps({"summary": summary}) + "\n")
     print(json.dumps(summary))

@@ -274,6 +274,9 @@ Each phase gets its own brainstorming pass (questions → approaches → design 
       - The night clock: five stretches a night, sleep jumps to the next evening, people and events keep hours.
         A party counts rounds, and the night jumps only when everyone sleeps (owner's call).
       - Where people are by stretch (five NPCs), asking where someone usually is, and "I wait until ...".
+      - Pressure clocks (spec `2026-11-24-pressure-clocks-design.md`): three written clocks (Ōgane crackdown on the
+        Docks, the no-manifest container, Kuze-gumi squeeze on Ikebe Low) fill from fights, misses, heat and nights,
+        ease when their leads are done, send portents and a full beat with a lead, and show as pips on Status.
     - **Soak-driven fixes**:
       - The repeat cut redoes an all-repeat reply once, and keeps a single sentence if the redo repeats too.
       - The 8-word window counts story lines only.

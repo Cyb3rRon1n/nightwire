@@ -8,7 +8,7 @@ from functools import cache
 from pathlib import Path
 
 from engine.session import Session
-from narrator import clock, gossip, people, places, promises
+from narrator import clock, clocks, gossip, people, places, promises
 from narrator.cast import _player_turns
 from narrator.world import _where, kuroshio
 
@@ -110,10 +110,14 @@ def tick(session: Session, player_id: str, health_before: int) -> None:
                                f"{places.key(session) or 'the block'}", False)
     # Blades in the Dark: at 9 heat the district locks down; once per 40 turns, so a long fight sweeps once.
     lockdown = next(e for e in events() if e["id"] == "lockdown")
-    if (places.heat(session, rolls, hurt)
+    heat_before = session.places.get(places.key(session) or "", {}).get("heat", 0)
+    locked = places.heat(session, rolls, hurt)
+    heat_rose = session.places.get(places.key(session) or "", {}).get("heat", 0) > heat_before or locked
+    if (locked
             and _player_turns(session) - session.events_used.get("lockdown", -NO_REPEAT) >= NO_REPEAT):
         fire(session, {**lockdown, "text": lockdown["text"].replace("{place}", places.key(session) or "the block")})
         places.cool_after_lockdown(session)
+    clocks.tick(session, rolls, heat_rose)
     if session.in_combat:
         rise = 3
     elif outcomes or hurt:
