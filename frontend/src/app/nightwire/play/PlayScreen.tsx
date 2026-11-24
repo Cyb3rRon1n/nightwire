@@ -52,6 +52,12 @@ export function PlayScreen({ view, playerId, send, readyLabel, error, errorSeq, 
   const [phoneOpen, setPhoneOpen] = useState(false);
   const unread = totalUnread(view);
   const [tab, setTab] = useState<(typeof TABS)[number]>("feed");
+  // Go on the district map fills the action box (never sends); seq makes the same line twice still land.
+  const [draft, setDraft] = useState<{ text: string; seq: number } | null>(null);
+  function go(text: string) {
+    setDraft((d) => ({ text, seq: (d?.seq ?? 0) + 1 }));
+    if (narrow) setTab("feed");
+  }
 
   const [chips, setChips] = useState(() => readFlag(browserStore, CHIPS_KEY, true));
   // Developer mode: 👍/👎 under every newest turn (spec 2026-11-22 liked turns); players only see calm check-ins.
@@ -130,9 +136,9 @@ export function PlayScreen({ view, playerId, send, readyLabel, error, errorSeq, 
       {narrow ? (
         <>
           <div className="min-h-0 flex-1">
-            {tab === "feed" && <FeedPanel view={view} playerId={playerId} send={send} error={error} errorSeq={errorSeq} sceneArt={sceneArt} chips={chips} dev={dev} onOpenGallery={setGalleryIndex} compact />}
+            {tab === "feed" && <FeedPanel view={view} playerId={playerId} send={send} error={error} errorSeq={errorSeq} sceneArt={sceneArt} chips={chips} dev={dev} onOpenGallery={setGalleryIndex} draft={draft} compact />}
             {tab === "status" && <StatusPanel view={view} playerId={playerId} send={send} />}
-            {tab === "world" && <WorldPanel view={view} playerId={playerId} />}
+            {tab === "world" && <WorldPanel view={view} playerId={playerId} onGo={go} />}
             {tab === "phone" && <PhonePanel view={view} send={send} />}
           </div>
           <nav aria-label="Panels" className="nw-tabs">
@@ -152,13 +158,13 @@ export function PlayScreen({ view, playerId, send, readyLabel, error, errorSeq, 
         </Panel>
         <Separator className="nw-separator" aria-label="Resize status panel" />
         <Panel id="feed" defaultSize="58" minSize="40">
-          <FeedPanel view={view} playerId={playerId} send={send} error={error} errorSeq={errorSeq} sceneArt={sceneArt} chips={chips} dev={dev} onOpenGallery={setGalleryIndex} />
+          <FeedPanel view={view} playerId={playerId} send={send} error={error} errorSeq={errorSeq} sceneArt={sceneArt} chips={chips} dev={dev} onOpenGallery={setGalleryIndex} draft={draft} />
         </Panel>
         <Separator className="nw-separator" aria-label="Resize world panel" />
         <Panel id="world" panelRef={worldRef} defaultSize={RAIL_PX} minSize="14" collapsible collapsedSize={RAIL_PX} onResize={watchCollapsed(setWorldCollapsed)}>
           {worldCollapsed
-            ? <Rail label="Party" side="right" onOpen={() => worldRef.current?.expand()} />
-            : <WorldPanel view={view} playerId={playerId} />}
+            ? <Rail label="Map" side="right" onOpen={() => worldRef.current?.expand()} />
+            : <WorldPanel view={view} playerId={playerId} onGo={go} />}
         </Panel>
       </Group>
       )}

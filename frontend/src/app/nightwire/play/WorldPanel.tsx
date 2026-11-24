@@ -1,10 +1,26 @@
+import { useState } from "react";
 import type { StateView } from "@/lib/nightwire/protocol";
+import { browserStore, readFlag, writeFlag } from "@/lib/nightwire/safeStorage";
+import { CityMap } from "./CityMap";
 import { portraitFor } from "@/lib/nightwire/portrait";
 import { mediaUrl } from "@/lib/nightwire/media";
 
-export function WorldPanel({ view, playerId }: { view: StateView; playerId: string }) {
+const MAP_KEY = "nightwire-map-open";
+
+export function WorldPanel({ view, playerId, onGo }: { view: StateView; playerId: string; onGo: (text: string) => void }) {
+  const [mapOpen, setMapOpen] = useState(() => readFlag(browserStore, MAP_KEY, true));
   return (
     <aside aria-label="World" className="nw-side flex flex-col gap-4 p-4">
+      {view.map && (
+        <details open={mapOpen} onToggle={(e) => {
+          const open = e.currentTarget.open;
+          writeFlag(browserStore, MAP_KEY, open);
+          setMapOpen(open);
+        }}>
+          <summary className="nw-panel-heading cursor-pointer">Map</summary>
+          <CityMap map={view.map} onGo={onGo} />
+        </details>
+      )}
       <section aria-label="Scene">
         <h2 className="nw-panel-heading">Scene</h2>
         <p className="text-sm">{view.location ?? "Kuroshio"}{view.scene_mood ? ` · ${view.scene_mood}` : ""}</p>

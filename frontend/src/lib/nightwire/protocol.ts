@@ -102,6 +102,8 @@ export interface StateView {
   here: { place: string; mood: string; mark: string | null } | null
   // Pressure clocks the player can see (narrator/clocks.py): filled of size segments.
   pressure: { name: string; district: string; filled: number; size: number }[]
+  // The district map (narrator/citymap.py): seven districts in diagram order, and Go's travel line for each.
+  map?: { districts: MapDistrict[]; trains: boolean; caption: string }  // older servers send none
   clock?: { night: number; stretch: string }  // the night clock; older servers send none
   // Word on the street per district: the strongest good and bad thing said about the player (narrator/gossip.py).
   street: { district: string; good: string | null; bad: string | null }[]
@@ -242,3 +244,14 @@ export type ClientMessage =
   | ReadMessage
   | RateTurnMessage
   | DismissCheckinMessage
+
+export type MapDistrict = {
+  name: string
+  here: boolean
+  mood: string
+  clock: { filled: number; size: number } | null
+  people: string[]
+  places: string[]
+  art: string | null
+  go: string | null
+}

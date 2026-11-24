@@ -100,7 +100,7 @@ function newestTarget(el: HTMLDivElement): number {
   return Math.min(bottom, Math.max(0, last.offsetTop - FADE));
 }
 
-export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, chips = true, dev = false, onOpenGallery, compact = false }: {
+export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, chips = true, dev = false, onOpenGallery, compact = false, draft = null }: {
   view: StateView;
   playerId: string;
   send: (msg: ClientMessage) => void;
@@ -111,6 +111,7 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, chi
   dev?: boolean;
   onOpenGallery: (index: number) => void;
   compact?: boolean;
+  draft?: { text: string; seq: number } | null;  // a travel line from the district map's Go
 }) {
   const [composerMode, setComposerMode] = useState<ComposerMode>("do");
   const [composerText, setComposerText] = useState("");
@@ -122,6 +123,16 @@ export function FeedPanel({ view, playerId, send, error, errorSeq, sceneArt, chi
   const [pinned, setPinned] = useState(true);
   const pinnedRef = useRef(true);
   const [unseen, setUnseen] = useState(false);
+  // The district map's Go fills the box (React's "adjust state when a prop changes"); the player still sends it.
+  const [draftSeq, setDraftSeq] = useState(0);
+  if (draft && draft.seq !== draftSeq) {
+    setDraftSeq(draft.seq);
+    setComposerText(draft.text);
+    setComposerMode("do");
+  }
+  useEffect(() => {
+    if (draftSeq) inputRef.current?.focus();
+  }, [draftSeq]);
 
   // The only signal a sent action resolved is the next broadcast this
   // connection receives - the protocol has no per-request ack. Key on
