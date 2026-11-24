@@ -62,3 +62,69 @@ def graph_from(path: Path, model: str, start: str, end: str | None, prompt: str,
 
 def graph(model: str, start: str, end: str | None, prompt: str, seconds: float, seed: int) -> dict:
     return graph_from(WORKFLOWS / MODELS[model]["workflow"], model, start, end, prompt, seconds, seed)
+
+
+def seam(video: Path) -> float:
+    """How far the last frame is from the first (mean absolute grey difference, 0-255): near 0 loops cleanly."""
+    w, h = 64, 36
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", str(video), "-vf", f"scale={w}:{h},format=gray", "-f", "rawvideo", "-"],
+                         capture_output=True, check=True).stdout
+    n = w * h
+    if len(raw) < n:
+        raise RuntimeError(f"{video.name}: no frames")
+    first, last = raw[:n], raw[len(raw) - n:]
+    return round(sum(abs(a - b) for a, b in zip(first, last)) / n, 2)
+
+
+def _video(outputs: dict) -> dict | None:
+    """The first video a run saved: VHS Video Combine reports it under "gifs", native SaveVideo under "videos"/"images"."""
+    for node in outputs.values():
+        for kind in ("gifs", "videos", "images"):
+            for item in node.get(kind, []):
+                if item.get("filename", "").lower().endswith(VIDEO_EXT):
+                    return item
+    return None
+
+
+def _wait(comfy, pid: str, model: str, poll_s: float, timeout_s: float) -> dict:
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        h = comfy.history(pid)
+        status = (h or {}).get("status", {})
+        if status.get("status_str") == "error":
+            err = next((m[1] for m in status.get("messages", []) if m[0] == "execution_error"), {})
+            raise RuntimeError(f"{model}: node {err.get('node_type', '?')} ({err.get('node_id', '?')}) failed: "
+                               f"{err.get('exception_message', 'unknown error').strip()}")
+        if status.get("completed"):
+            return h["outputs"]
+        time.sleep(poll_s)
+    raise RuntimeError(f"{model}: no result after {timeout_s:.0f}s (prompt {pid} may still be running in ComfyUI)")
+
+
+def run_take(short_dir: Path, shot_id: str, model: str, prompt: str, still: Path, seconds: float, *, comfy,
+             seed: int = 0, loop: bool = True, poll_s: float = 5.0, timeout_s: float = 1800) -> str:
+    """Make one clip from the still (first and last frame when loop) and file it as a free take. Returns the take id."""
+    still = Path(still)
+    if not still.is_file():
+        raise FileNotFoundError(f"still not found: {still}")
+    url = getattr(comfy, "comfy", "ComfyUI")
+    try:
+        name = comfy.upload(still.name, still.read_bytes())
+        g = graph(model, name, name if loop else None, prompt, seconds, seed)
+        pid = comfy.submit(g)
+        item = _video(_wait(comfy, pid, model, poll_s, timeout_s))
+        if item is None:
+            raise RuntimeError(f"{model}: the run saved no video (check the workflow's output node)")
+        data = comfy.image(item)
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"ComfyUI at {url} unreachable ({e.reason})") from e
+    shot_dir = short_dir / "shots" / shot_id
+    shot_dir.mkdir(parents=True, exist_ok=True)
+    tmp = shot_dir / "incoming.mp4"
+    tmp.write_bytes(data)
+    try:
+        tid = file_take(shot_dir, tmp, {"model": model, "backend": "comfy", "cost": 0, "seconds": seconds, "seed": seed,
+                                        "loop": loop, "seam": seam(tmp), "still": still.name, "prompt": prompt})
+    finally:
+        tmp.unlink(missing_ok=True)
+    return tid
