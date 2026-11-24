@@ -19,8 +19,8 @@ with no notes: all three clocks as written, the container clock hidden).
 - Sizes are 4, 6 or 8. At most one segment per clock per turn, up or down; never below 0.
 - Triggers are exactly `fight`, `miss`, `heat`, `night`, `lead_done`.
 - Full: the `full` line goes to `session.pending_world_events`, the clock's `lead` goes through `promises.add_lead`,
-  the log gets `[clock: <id> full]`, the clock resets to 0 and rests 40 player turns (`director.NO_REPEAT`).
-- A portent line is queued once each time the clock rises onto its stage; the log gets `[clock: <id> <n>/<size>]`.
+  the log gets `[pressure: <id> full]`, the clock resets to 0 and rests 40 player turns (`director.NO_REPEAT`).
+- A portent line is queued once each time the clock rises onto its stage; the log gets `[pressure: <id> <n>/<size>]`.
 - Narrator line, shown clocks in the current district only: `Pressure: <name> <n>/<size>.`
 - At most 2 shown clocks; hidden clocks never appear in the view or the prompt line.
 - Old saves load with `clocks = {}`.

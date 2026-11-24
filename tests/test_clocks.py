@@ -75,7 +75,7 @@ def test_portent_queued_on_stage():
     _turn(s, MELEE)
     assert _filled(s, "ogane-docks") == 2
     assert any("drones" in e for e in s.pending_world_events)
-    assert "[clock: ogane-docks 2/6]" in s.log
+    assert "[pressure: ogane-docks 2/6]" in s.log
 
 
 def test_ease_then_rise_requeues_portent():
@@ -106,7 +106,7 @@ def test_full_fires_lead_and_rests():
     assert _filled(s, "container") == 0
     assert any("ships out" in e for e in s.pending_world_events)
     assert "Find out where the no-manifest container went" in s.active_objectives
-    assert "[clock: container full]" in s.log
+    assert "[pressure: container full]" in s.log
     s.night += 1
     _turn(s)
     assert _filled(s, "container") == 0

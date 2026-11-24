@@ -79,11 +79,11 @@ def tick(session: Session, rolls: list[dict], heat_rose: bool) -> None:
         if s["filled"] >= c["size"]:
             session.pending_world_events.append(c["full"])
             promises.add_lead(session, c["lead"])
-            session.log.append(f"[clock: {c['id']} full]")
+            session.log.append(f"[pressure: {c['id']} full]")
             s["filled"], s["rest_until"] = 0, now + REST
         elif portent := c.get("portents", {}).get(str(s["filled"])):
             session.pending_world_events.append(portent)
-            session.log.append(f"[clock: {c['id']} {s['filled']}/{c['size']}]")
+            session.log.append(f"[pressure: {c['id']} {s['filled']}/{c['size']}]")
 
 
 def line(session: Session) -> str:

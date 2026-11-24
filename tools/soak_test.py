@@ -176,9 +176,8 @@ async def main(turns: int, chips: bool = False) -> Path:
         for k in ("npc_memory", "people", "places", "deeds", "events_used", "promises", "active_objectives", "journal",
                   "night", "clocks"):
             summary[k] = getattr(session, k)
-        # A pressure clock reached a portent or filled ("[clock: night ..." lines are the night clock's).
-        summary["clock_portent"] = any(line.startswith("[clock: ") and not line.startswith("[clock: night ")
-                                       for line in session.log)
+        # A pressure clock reached a portent or filled (narrator/clocks.py logs "[pressure: <id> ...]").
+        summary["clock_portent"] = any(line.startswith("[pressure: ") for line in session.log)
         summary["score"] = score(out, summary)  # tools/soak_score.py: the narrator scorecard
         f.write(json.dumps({"summary": summary}) + "\n")
     print(json.dumps(summary))

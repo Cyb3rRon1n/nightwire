@@ -70,7 +70,7 @@ the same triggers and moves the clock back one segment. It never goes below 0.
 ### When it fills
 
 The `full` line goes to the narrator as a `World event:`, the lead joins the objectives, and the log gets
-`[clock: <id> full]`. Then the clock resets to 0 and rests for 40 turns, the same no-repeat window director
+`[pressure: <id> full]`. Then the clock resets to 0 and rests for 40 turns, the same no-repeat window director
 events use. A clock never ends the game, kills anyone or removes chrome. Those stay with the engine's own rules,
 such as the repo clock.
 
