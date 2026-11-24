@@ -43,3 +43,22 @@ def test_video_lasts_hold_times_panels(tmp_path):
     probe = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "json", str(video)],
                            capture_output=True, text=True, check=True)
     assert abs(float(json.loads(probe.stdout)["format"]["duration"]) - 3 * render.HOLD_S) < 0.3
+
+
+def test_art_paths_from_the_log_stay_inside_their_roots(tmp_path):
+    secret = tmp_path.parent / "secret.png"
+    Image.new("RGB", (4, 4)).save(secret)
+    (tmp_path / "notes.txt").write_text("x")
+    assert render.source(f"../{secret.name}", tmp_path) is None
+    assert render.source(str(secret), tmp_path) is None
+    assert render.source("notes.txt", tmp_path) is None
+    assert render.source("place-art/../../../pyproject.toml", tmp_path) is None
+    assert render.source("place-art/ikebe-low.jpg", tmp_path) is not None
+
+
+def test_no_turns_is_a_value_error_not_an_exit(tmp_path):
+    s = _session()
+    s.session_id = "empty"
+    JSONFileSessionStore(tmp_path).save(s)
+    with pytest.raises(ValueError):
+        render.build(tmp_path / "empty.json", tmp_path / "out", video=False)

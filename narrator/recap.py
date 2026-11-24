@@ -12,7 +12,7 @@ from narrator.world import _where, kuroshio
 MAX_PANELS, MIN_PANELS, RUN_MAX = 12, 3, 3  # RUN_MAX: the least a scene may hold
 _SENTENCE = re.compile(r"(?<=[.!?…])\s+")
 _SPEECH = re.compile(r"^([^:\[\]]{1,40}):\s+(.+)$")
-_SCORES = (("[promise: ", 3), ("[promise kept: ", 3), ("[promise broken: ", 3), ("[rated: like]", 3),
+_SCORES = (("[promise: ", 3), ("[promise kept: ", 3), ("[promise broken: ", 3),
            ("[pressure: ", 2), ("[person: ", 2), ("[mark: ", 1))
 
 
@@ -43,6 +43,9 @@ def turns(session: Session) -> list[dict]:
 
 def score(t: dict) -> int:
     total = 0
+    rated = [n for n in t["notes"] if n.startswith("[rated: ")]
+    if rated and rated[-1] == "[rated: like]":  # a re-rated turn counts its last rating once
+        total += 3
     for note in t["notes"]:
         if note.startswith("[roll: "):
             try:
@@ -84,6 +87,11 @@ def _pick(ts: list[dict]) -> list[dict]:
         if len(keep) >= MAX_PANELS:
             break
         if score(t) and t["n"] not in keep and run_ok(keep | {t["n"]}):
+            keep.add(t["n"])
+    for t in ts:  # a quiet night still gets its minimum (review 2026-11-24): the earliest turns that fit
+        if len(keep) >= min(MIN_PANELS, len(ts)):
+            break
+        if t["n"] not in keep and run_ok(keep | {t["n"]}):
             keep.add(t["n"])
     if len(keep) > MAX_PANELS:  # more districts than room: keep the first and last, then the earliest
         middle = sorted(keep - {ts[0]["n"], ts[-1]["n"]})[:MAX_PANELS - 2]

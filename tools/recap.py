@@ -23,18 +23,19 @@ from tools.shorts.remote import h264_encoder
 
 HOLD_S, FADE_S, FPS, SIZE = 3.5, 0.5, 12, (1216, 832)
 CHARACTER_ART = ART_DIR.parent / "character_art"
+IMAGE_EXT = (".png", ".jpg", ".jpeg", ".webp")
 
 
 def source(art: str | None, media_root: Path) -> Path | None:
     """The file behind a panel's art path, or None when it isn't on disk (the panel gets a dark card)."""
     if not art:
         return None
-    for prefix, root in (("place-art/", ART_DIR), ("character-art/", CHARACTER_ART)):
-        if art.startswith(prefix):
-            p = root / art[len(prefix):]
-            return p if p.is_file() else None
-    p = media_root / art
-    return p if p.is_file() else None
+    root, rel = next(((r, art[len(prefix):]) for prefix, r in (("place-art/", ART_DIR), ("character-art/", CHARACTER_ART))
+                      if art.startswith(prefix)), (media_root, art))
+    # Art paths come from the log, which model text can reach (review 2026-11-24): only image files inside the root.
+    p = (root / rel).resolve()
+    ok = p.is_relative_to(root.resolve()) and p.suffix.lower() in IMAGE_EXT and p.is_file()
+    return p if ok else None
 
 
 def art_for(p: dict, media_root: Path) -> Path | None:
@@ -134,7 +135,10 @@ def write_video(panels: list[dict], media_root: Path, out: Path, fps: int = FPS)
         for im in frames(panels, media_root, fps):
             ff.stdin.write(im.tobytes())
     finally:
-        ff.stdin.close()
+        try:
+            ff.stdin.close()
+        except BrokenPipeError:
+            pass  # ffmpeg died early; its exit code says so below
         if ff.wait() != 0:
             raise RuntimeError(f"ffmpeg failed writing {path}")
     return path
@@ -144,10 +148,10 @@ def build(session_file: Path, out: Path, video: bool = True) -> list[Path]:
     session_file = Path(session_file)
     session = JSONFileSessionStore(session_file.parent).load(session_file.stem)
     if session is None:
-        raise SystemExit(f"no session at {session_file}")
+        raise ValueError(f"no session at {session_file}")
     panels = recap.panels(session)
     if not panels:
-        raise SystemExit(f"{session_file.name}: no turns to recap")
+        raise ValueError(f"{session_file.name}: no turns to recap")
     out.mkdir(parents=True, exist_ok=True)
     made = [write_html(session, panels, session_file.parent, out)]
     if video:
@@ -161,7 +165,12 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--out", type=Path)
     a.add_argument("--no-video", action="store_true")
     args = a.parse_args(argv)
-    for p in build(args.session, args.out or args.session.with_name(f"{args.session.stem}-recap"), not args.no_video):
+    try:
+        made = build(args.session, args.out or args.session.with_name(f"{args.session.stem}-recap"), not args.no_video)
+    except ValueError as e:
+        print(e)
+        return 1
+    for p in made:
         print(p)
     return 0
 

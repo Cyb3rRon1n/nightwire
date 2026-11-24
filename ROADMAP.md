@@ -280,6 +280,9 @@ Each phase gets its own brainstorming pass (questions → approaches → design 
       - District map (spec `2026-11-24-district-map-design.md`): a Beck-style diagram of the seven districts in the
         World panel (Ring Line inner ring, the Loop outer), marking where you are and each district's clock or mood; a
         card with art, people and known places; Go fills a travel line that the referee accepts as a move.
+      - Night recap (spec `2026-11-24-night-recap-design.md`): `python -m tools.recap <session.json>` picks 3-12
+        panels from a played night (first, last, each new district, then scored beats; scenes share panels by
+        length) and writes an HTML storyboard with a facts box and a silent animatic. Every soak draws one.
     - **Soak-driven fixes**:
       - The repeat cut redoes an all-repeat reply once, and keeps a single sentence if the redo repeats too.
       - The 8-word window counts story lines only.

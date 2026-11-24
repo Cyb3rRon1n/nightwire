@@ -119,3 +119,15 @@ def test_an_unnamed_voice_is_not_a_speaker_and_quotes_are_trimmed():
           "Wataru Ono: \u201cThe dead keep better books than the living.\u201d")
     p = recap.panels(s)[0]
     assert (p["speaker"], p["text"]) == ("Wataru Ono", "The dead keep better books than the living.")
+
+
+def test_a_quiet_night_still_gets_three_panels():
+    s = _session()
+    for i in range(8):
+        _turn(s, f"I wander {i}.", "Ikebe Low", f"Nothing much {i}.")
+    assert [p["n"] for p in recap.panels(s)] == [1, 2, 8]
+
+
+def test_a_re_rated_turn_counts_its_last_rating_once():
+    assert recap.score({"notes": ["[rated: like]", "[rated: like]"]}) == 3
+    assert recap.score({"notes": ["[rated: like]", "[rated: dislike]"]}) == 0
