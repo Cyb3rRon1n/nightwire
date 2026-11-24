@@ -13,6 +13,7 @@ import argparse
 import asyncio
 import json
 import os
+import shutil
 import tempfile
 import time
 from pathlib import Path
@@ -180,6 +181,14 @@ async def main(turns: int, chips: bool = False) -> Path:
         summary["clock_portent"] = any(line.startswith("[pressure: ") for line in session.log)
         summary["score"] = score(out, summary)  # tools/soak_score.py: the narrator scorecard
         f.write(json.dumps({"summary": summary}) + "\n")
+    # The night recap (tools/recap.py): keep the session beside the soak and draw it as a storyboard.
+    store.save(session)
+    kept = shutil.copytree(store.directory, out.with_name(f"{out.stem}-session"))
+    try:
+        from tools import recap
+        recap.build(kept / "soak.json", out.with_name(f"{out.stem}-recap"))
+    except Exception as e:  # noqa: BLE001 - a recap failure must never lose the soak's summary
+        print(f"recap failed: {e}")
     print(json.dumps(summary))
     return out
 

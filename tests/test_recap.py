@@ -111,3 +111,11 @@ def test_facts():
     f = recap.facts(s)
     assert f["people"] == ["Tomoe, man with broken wrist"] and f["promises_open"] == ["Old Hara: bring tea"]
     assert f["leads"] == ["Find Jun"]
+
+
+def test_an_unnamed_voice_is_not_a_speaker_and_quotes_are_trimmed():
+    s = _session()
+    _turn(s, "I look around.", "Ikebe Low", "A voice calls from the shadows: 'Looking for work, stranger?'",
+          "Wataru Ono: \u201cThe dead keep better books than the living.\u201d")
+    p = recap.panels(s)[0]
+    assert (p["speaker"], p["text"]) == ("Wataru Ono", "The dead keep better books than the living.")

@@ -100,8 +100,11 @@ def _line(t: dict, players: set[str]) -> tuple[str | None, str]:
     speech = []
     for line in t["lines"]:
         m = _SPEECH.match(line)
-        if m and m.group(1).strip().lower() not in players and 4 <= len(m.group(2).split()) <= 20:
-            speech.append((m.group(1).strip(), m.group(2).strip()))
+        who = m.group(1).strip() if m else ""
+        words = who.split()
+        named = all(w[:1].isupper() for w in words) and 0 < len(words) <= 3 and words[0].lower() not in ("a", "an", "the")
+        if named and who.lower() not in players and 4 <= len(m.group(2).split()) <= 20:  # not "A voice calls out"
+            speech.append((who, m.group(2).strip().strip("'\"“”‘’ ")))
     if speech:
         return min(speech, key=lambda s: len(s[1]))
     prose = next((l for l in t["lines"] if not _SPEECH.match(l)), "")
