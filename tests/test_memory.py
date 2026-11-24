@@ -161,3 +161,21 @@ def test_told_matches_whole_names_once_and_never_a_player():
     _told(s, "Sato: already paid this week", scene="Mama Sato pours.")
     _told(s, "Rook: already paid this week", scene="Rook pays.")
     assert not s.npc_memory
+
+
+def test_told_him_goes_to_the_one_person_who_answers():
+    # Soak 2026-11-23 turn 11: "I tell him I already paid" was filed under Wataru (named in speech), not Goro.
+    s = _session()
+    s.present, s.people["Goro"] = ["Wataru Ono", "Goro"], {}
+    _told(s, "Wataru Ono: already paid this week",
+          scene="Goro: You already paid? Then you still owe Wataru Ono.\nThe man leans back.")
+    assert s.npc_memory["Goro"][-1]["text"] == "Rook told them: already paid this week"
+    assert "Wataru Ono" not in s.npc_memory
+
+
+def test_told_by_name_stays_with_the_named_person_even_if_another_answers():
+    s = _session()
+    s.present, s.people["Goro"] = ["Wataru Ono", "Goro"], {}
+    _told(s, "Wataru: already paid this week", action="I tell Wataru I already paid this week.",
+          scene="Goro: He paid, Wataru.")
+    assert "Goro" not in s.npc_memory and s.npc_memory["Wataru Ono"]

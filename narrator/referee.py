@@ -255,6 +255,11 @@ def ground(session: Session, verdict: dict, action: str, narration: str, player:
         said = set(_squash(parts[0]).split()) if parts else set()
         hits = [p for p in session.present if said and said <= set(_squash(p).split())]
         who = hits[0] if len(hits) == 1 else parts and parts[0]
+        # Soak 2026-11-23 turn 11: "I tell him I already paid" went to Wataru (named in speech), not Goro who answered.
+        # The action names nobody, so "him" is whoever in the scene speaks back this turn, if exactly one does.
+        speakers = {p for p in session.present for l in narration.splitlines() if l.startswith(f"{p}:")}
+        if len(speakers) == 1 and who not in speakers and not (parts and _has_words(parts[0], action)):
+            who = next(iter(speakers))
         players = {w for c in session.characters.values() for w in _squash(c.name).split()}
         if not parts or len(hits) > 1 or not people.has_a_name(session, who) or set(_squash(who).split()) & players \
                 or not (who in session.present or _has_words(parts[0], f"{action}\n{narration}")) \
