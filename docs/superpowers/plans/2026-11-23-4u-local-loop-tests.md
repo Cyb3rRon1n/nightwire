@@ -50,6 +50,8 @@
   - LTX-2.3 distilled GGUF.
 - [ ] **Step 4:** In the ComfyUI UI, build or load each model's first+last-frame image-to-video template and run it once at 832×480, 5 s. Export each graph in API format to `tools/shorts/backends/workflows/{wan22-flf,anisora-v3,ltx23}.json`.
   - Give the nodes these titles: `start`, `end`, `prompt`, `length` and `seed`.
+  - Wan 2.2 has two samplers. Title the high-noise one `seed` (it adds the noise); titling both is fine, as every `seed` node is patched.
+  - A first+last-frame workflow always gets an end frame, so `--no-loop` is refused for it.
   - AniSora and LTX may lack an end-frame input. If so, leave `end` out of that file and note it.
 - [ ] **Step 5:** Record seconds per clip and peak VRAM for each model in the research doc (`nvidia-smi --query-gpu=memory.used --format=csv -l 1` during the run).
 - [ ] **Step 6:** Commit.

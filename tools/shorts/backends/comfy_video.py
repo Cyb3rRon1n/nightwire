@@ -11,6 +11,7 @@ import time
 import urllib.error
 from pathlib import Path
 
+from tools.shorts.remote import h264_encoder
 from tools.shorts.takes import file_take
 
 WORKFLOWS = Path(__file__).parent / "workflows"
@@ -28,6 +29,8 @@ VIDEO_EXT = (".mp4", ".webm", ".mov", ".mkv")
 
 def frames(model: str, seconds: float) -> int:
     """At least `seconds` of video, rounded up to the model's step*n+1 frame rule (Wan 4n+1, LTX 8n+1)."""
+    if seconds <= 0:
+        raise ValueError(f"seconds must be more than 0, got {seconds}")
     m = MODELS[model]
     step = m["frame_step"]
     return step * math.ceil((math.ceil(seconds * m["fps"]) - 1) / step) + 1
@@ -35,6 +38,13 @@ def frames(model: str, seconds: float) -> int:
 
 def titled(g: dict, title: str) -> dict | None:
     return next((n for n in g.values() if n.get("_meta", {}).get("title") == title), None)
+
+
+def _set_all(g: dict, title: str, value) -> None:
+    """Every node with the title: a Wan 2.2 graph has two samplers, and only one of them adds the noise."""
+    for node in g.values():
+        if node.get("_meta", {}).get("title") == title:
+            _set(node, title, value)
 
 
 def _set(node: dict, title: str, value) -> None:
@@ -51,12 +61,14 @@ def graph_from(path: Path, model: str, start: str, end: str | None, prompt: str,
         raise ValueError(f"{Path(path).name}: no node titled {', '.join(missing)}")
     if end is not None and titled(g, "end") is None:
         raise ValueError(f"{model} has no end frame input in {Path(path).name}; run it without a loop")
+    if end is None and titled(g, "end") is not None:
+        raise ValueError(f"{model} always takes an end frame ({Path(path).name}); run it as a loop")
     _set(titled(g, "start"), "start", start)
-    if titled(g, "end") is not None:
-        _set(titled(g, "end"), "end", end or start)  # a workflow that has an end frame always needs one
+    if end is not None:
+        _set(titled(g, "end"), "end", end)
     _set(titled(g, "prompt"), "prompt", prompt)
     _set(titled(g, "length"), "length", frames(model, seconds))
-    _set(titled(g, "seed"), "seed", seed)
+    _set_all(g, "seed", seed)
     return g
 
 
@@ -76,6 +88,11 @@ def seam(video: Path) -> float:
     return round(sum(abs(a - b) for a, b in zip(first, last)) / n, 2)
 
 
+def _h264() -> list[str]:
+    enc = h264_encoder()  # Fedora's ffmpeg has libopenh264, not libx264
+    return ["-c:v", enc, *(["-crf", "18"] if enc == "libx264" else ["-b:v", "8M"])]
+
+
 def _video(outputs: dict) -> dict | None:
     """The first video a run saved: VHS Video Combine reports it under "gifs", native SaveVideo under "videos"/"images"."""
     for node in outputs.values():
@@ -86,19 +103,39 @@ def _video(outputs: dict) -> dict | None:
     return None
 
 
-def _wait(comfy, pid: str, model: str, poll_s: float, timeout_s: float) -> dict:
-    deadline = time.monotonic() + timeout_s
+def _stop(comfy, pid: str) -> None:
+    """Take our prompt out of the queue, or stop it if it is the one running; never someone else's job."""
+    try:
+        comfy.cancel(pid)
+        if any(pid in item for item in (comfy.queue() or {}).get("queue_running", [])):
+            comfy.interrupt(pid)
+    except (OSError, ValueError):
+        pass  # best effort: the caller is already reporting the real failure
+
+
+def _wait(comfy, pid: str, model: str, poll_s: float, timeout_s: float, tries: int = 3) -> dict:
+    deadline, failed = time.monotonic() + timeout_s, 0
     while time.monotonic() < deadline:
-        h = comfy.history(pid)
+        try:
+            h, failed = comfy.history(pid), 0
+        except OSError:  # URLError and socket timeouts: a dropped poll is not a failed render
+            failed += 1
+            if failed >= tries:
+                raise
+            time.sleep(poll_s)
+            continue
         status = (h or {}).get("status", {})
         if status.get("status_str") == "error":
-            err = next((m[1] for m in status.get("messages", []) if m[0] == "execution_error"), {})
-            raise RuntimeError(f"{model}: node {err.get('node_type', '?')} ({err.get('node_id', '?')}) failed: "
-                               f"{err.get('exception_message', 'unknown error').strip()}")
+            kind, err = next(((m[0], m[1]) for m in status.get("messages", [])
+                              if m[0] in ("execution_error", "execution_interrupted")), ("", {}))
+            what = "was interrupted" if kind == "execution_interrupted" else \
+                f"failed: {err.get('exception_message', 'unknown error').strip()}"
+            raise RuntimeError(f"{model}: node {err.get('node_type', '?')} ({err.get('node_id', '?')}) {what}")
         if status.get("completed"):
             return h["outputs"]
         time.sleep(poll_s)
-    raise RuntimeError(f"{model}: no result after {timeout_s:.0f}s (prompt {pid} may still be running in ComfyUI)")
+    _stop(comfy, pid)
+    raise RuntimeError(f"{model}: no result after {timeout_s:.0f}s; prompt {pid} was cancelled")
 
 
 def run_take(short_dir: Path, shot_id: str, model: str, prompt: str, still: Path, seconds: float, *, comfy,
@@ -116,15 +153,29 @@ def run_take(short_dir: Path, shot_id: str, model: str, prompt: str, still: Path
         if item is None:
             raise RuntimeError(f"{model}: the run saved no video (check the workflow's output node)")
         data = comfy.image(item)
-    except urllib.error.URLError as e:
-        raise RuntimeError(f"ComfyUI at {url} unreachable ({e.reason})") from e
+    except urllib.error.HTTPError as e:  # before URLError, its parent: ComfyUI answered and said no
+        body = e.read().decode(errors="replace")[:800]
+        raise RuntimeError(f"{model}: ComfyUI refused the workflow ({e.code}): {body}") from e
+    except OSError as e:  # URLError, refused, or a poll that timed out every retry
+        raise RuntimeError(f"ComfyUI at {url} unreachable ({getattr(e, 'reason', e)})") from e
     shot_dir = short_dir / "shots" / shot_id
     shot_dir.mkdir(parents=True, exist_ok=True)
+    raw = shot_dir / f"incoming{Path(item['filename']).suffix.lower()}"
+    raw.write_bytes(data)
     tmp = shot_dir / "incoming.mp4"
-    tmp.write_bytes(data)
     try:
+        if raw != tmp:  # takes are .mp4: re-encode a WebM/MOV/MKV output
+            subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(raw), *_h264(), "-pix_fmt", "yuv420p", str(tmp)],
+                           check=True)
+        try:
+            score = seam(tmp)
+        except (OSError, subprocess.CalledProcessError, RuntimeError):
+            score = None  # a finished render is never thrown away over its score
         tid = file_take(shot_dir, tmp, {"model": model, "backend": "comfy", "cost": 0, "seconds": seconds, "seed": seed,
-                                        "loop": loop, "seam": seam(tmp), "still": still.name, "prompt": prompt})
-    finally:
-        tmp.unlink(missing_ok=True)
+                                        "loop": loop, "seam": score, "still": still.name, "prompt": prompt})
+    except (OSError, subprocess.CalledProcessError) as e:
+        raise RuntimeError(f"{model}: the clip came back but couldn't be filed; it is kept at {raw} ({e})") from e
+    if raw != tmp:
+        raw.unlink(missing_ok=True)
+    tmp.unlink(missing_ok=True)
     return tid
