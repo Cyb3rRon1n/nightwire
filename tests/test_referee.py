@@ -475,3 +475,16 @@ def test_a_taxi_to_a_place_lands_at_the_place_not_its_district():
     got = ground(s, {"moved_to": "Hanabira-chō"}, "I take a taxi to the Pachinko back room in Hanabira-chō.",
                  "The taxi stops in Hanabira-chō. You step into the pachinko back room.")
     assert got["moved_to"] == "Pachinko back room"
+
+
+def test_asking_around_does_not_carry_the_player_to_another_district():
+    from narrator.referee import ground
+    # Soak 2026-11-24 turn 33: "I ask around where Jun is" and the narrator walked Rin from Tenjō Heights to Hanabira-chō.
+    s = _session()
+    s.location = "Tenjō Heights"
+    got = ground(s, {"moved_to": "Hanabira-chō"}, "I ask around where Jun Arakawa is this late.",
+                 "A bartender points you to Hanabira-chō. You head there.")
+    assert got["moved_to"] == "" and any("did not ask to move" in l for l in s.log)
+    s.location = "Ikebe Low"  # stepping inside somewhere in the same district still works
+    got = ground(s, {"moved_to": "Mama Sato's izakaya"}, "I duck out of the rain.", "You step into Mama Sato's izakaya.")
+    assert got["moved_to"] == "Mama Sato's izakaya"

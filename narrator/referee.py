@@ -10,8 +10,8 @@ from engine.chrome import change_humanity
 from engine.debt import SHELL, new_shell, pay_installment, repo_target_name, repossess, unthrottle
 from engine.session import Session
 from narrator import clock, gossip, memory, people, places, promises
-from narrator.movement import destination, known_place, places_in
-from narrator.world import _mentions, _normalize, kuroshio
+from narrator.movement import _MOVE, _norm, destination, known_place, places_in
+from narrator.world import _mentions, _normalize, _where, kuroshio
 from ruleset.cyberware import CHROME
 
 _LEVELS = ["none", "small", "big"]
@@ -233,6 +233,13 @@ def ground(session: Session, verdict: dict, action: str, narration: str, player:
             moved = went  # "a taxi to the back room in Hanabira-chō" lands in the back room, not just the district
         else:
             session.log.append(f'[referee: moved_to "{moved}" is not where the action went ({went}), ignored]')
+            moved = ""
+    # Soak 2026-11-24 turn 33: "I ask around where Jun is" and the narrator walked Rin across the city. An action that
+    # doesn't ask to move can step inside somewhere nearby, but not change district.
+    if moved and not went and not _MOVE.search(_norm(action)) and known_place(moved):
+        here, there = (_where(kuroshio(), p)[1] for p in (session.location, known_place(moved)))
+        if here and there and here.name != there.name:
+            session.log.append(f'[referee: moved_to "{moved}" is another district and the action did not ask to move, ignored]')
             moved = ""
     # Only a known place moves the player, by its own name ("Ikebe Low - Old Hara's clinic" -> Old Hara's clinic).
     if moved and not known_place(moved):
