@@ -1,0 +1,47 @@
+# Pressure clocks (docs/superpowers/specs/2026-11-24-pressure-clocks-design.md), owner-approved 2026-11-24.
+# ticks / eases: fight | miss | heat (in its district) | night (anywhere) | lead_done.
+# lead_done: the clock's own lead, or one in eases_leads, or (no eases_leads) any done lead naming its district.
+# portents: segment -> the line the narrator gets when the clock rises onto it. full + lead: when it fills.
+
+[[clock]]
+id = "ogane-docks"
+name = "Ōgane crackdown on the Docks"
+size = 6
+shown = true
+where = ["Kuroshio Docks"]
+ticks = ["fight", "heat", "night"]
+eases = ["lead_done"]
+eases_leads = ["Find out who jammed the crane at Kuroshio Docks before Ōgane does"]
+full = "An Ōgane armored response team sweeps the container canyons, kicking open doors and billing every crew it finds."
+lead = "Find out who sold the Docks out to Ōgane"
+[clock.portents]
+2 = "Extra Ōgane drones hang over the gantry cranes, sweeping the container canyons with light."
+4 = "Ōgane checkpoints go up at the Docks gates, fining everyone who passes."
+
+[[clock]]
+id = "container"
+name = "The no-manifest container"
+size = 4
+shown = false
+where = ["Kuroshio Docks"]
+ticks = ["night"]
+eases = []
+full = "The no-manifest container ships out on the night tide; whatever was running inside is gone."
+lead = "Find out where the no-manifest container went"
+[clock.portents]
+2 = "The no-manifest container's light flickers in a pattern, as if something inside is counting."
+3 = "A crane lifts the no-manifest container to the outbound stack on its own, with no operator in the cab."
+
+[[clock]]
+id = "kuze-ikebe"
+name = "Kuze-gumi squeeze on Ikebe Low"
+size = 6
+shown = true
+where = ["Ikebe Low"]
+ticks = ["miss", "night"]
+eases = ["lead_done"]
+full = "The Kuze-gumi takes over a block of Ikebe Low, and two men in suits pay Mama Sato's izakaya a polite visit."
+lead = "Find out who in Ikebe Low is paying the Kuze-gumi"
+[clock.portents]
+2 = "Shop shutters in Ikebe Low carry fresh Kuze-gumi protection stickers."
+4 = "A chrome-ya clinic behind a noren curtain closes \"for renovation\", a Kuze-gumi lantern at its door."
