@@ -1,6 +1,10 @@
 import { useState } from "react";
 import type { CharacterSheet, ClientMessage, StateView } from "@/lib/nightwire/protocol";
 import { CharacterSheetBody } from "../CharacterSheetOverlay";
+import { browserStore } from "@/lib/nightwire/safeStorage";
+import { LastNightOverlay } from "./LastNightOverlay";
+
+const seenKey = (session: string) => `nightwire-last-night-seen:${session}`;
 
 export function StatusPanel({ view, playerId, send }: { view: StateView; playerId: string; send: (msg: ClientMessage) => void }) {
   const me = view.characters[playerId] as CharacterSheet;
@@ -8,6 +12,10 @@ export function StatusPanel({ view, playerId, send }: { view: StateView; playerI
   // appears right after joining). "Generating" clears when the next view arrives, with or without a portrait.
   const [requested, setRequested] = useState<StateView | null>(null);
   const generating = requested === view;
+  // The chip is "new" in the new night's first stretch until this player opens it (spec 2026-11-24, last night).
+  const [seen, setSeen] = useState(() => browserStore.getItem(seenKey(view.session_id)));
+  const lastNight = view.last_night ?? null;
+  const fresh = !!lastNight && view.clock?.stretch === "evening" && seen !== String(lastNight.night);
   return (
     // .nw-theme keeps the sheet's own (older) classes working inside the play screen.
     <aside aria-label="Status" className="nw-side nw-theme flex flex-col gap-4 p-4" style={{ background: "#0b0d11" }}>
@@ -26,6 +34,15 @@ export function StatusPanel({ view, playerId, send }: { view: StateView; playerI
       {view.clock && (
         <p className="text-sm" aria-label="Time">
           <span className="nw-panel-heading">Now</span> Night {view.clock.night} · {view.clock.stretch}
+          {lastNight && (
+            <LastNightOverlay recap={lastNight}
+              onOpen={() => { browserStore.setItem(seenKey(view.session_id), String(lastNight.night)); setSeen(String(lastNight.night)); }}
+              trigger={
+                <button type="button" className="nw-chip ml-2" aria-label={fresh ? "Last night, new" : "Last night"}>
+                  {fresh && <span className="nw-new-dot" aria-hidden="true" />}Last night
+                </button>
+              } />
+          )}
         </p>
       )}
       {view.here && (

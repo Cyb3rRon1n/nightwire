@@ -49,6 +49,9 @@ def _last_words(slugs: tuple[str, ...]) -> dict[str, str]:
     return {word: found[0] for word, found in last.items() if len(found) == 1 and word not in _GENERIC}
 
 
+# Review 2026-11-24: uncached, the in-game recap's 12 lookups parsed every design TOML (~200 ms a view). Keyed on the
+# art files, so new art is seen at once. ponytail: a design approved without new art needs a restart to count.
+@functools.cache
 def _keys(slugs: tuple[str, ...]) -> list[tuple[str, str]]:
     keys = [(word, slug) for word, slug in _last_words(slugs).items()]
     for slug in slugs:

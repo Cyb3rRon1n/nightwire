@@ -713,8 +713,12 @@ async def _run_turn(
     # responded; events queued during the turn survive to the next one.
     call_in(session)  # before shown_events, so a promise called in is shown this turn
     # Only the turn the player acted in: a roll's follow-up turn re-sends the same text (review 2026-11-23).
+    mark = len(session.log)
     if actor_line is not None and referee_action and (waited := clock.wait(session, referee_action)):  # before shown_events: a daybreak shows now
         session.pending_world_events.append(waited)
+    # The wait's clock lines go after the actor line, so a wait across daybreak stays in the night it began
+    # (review 2026-11-24: the recap filed "I wait until evening" under the next night).
+    wait_lines, session.log[mark:] = session.log[mark:], []
     health_before = c.health if (c := session.characters.get(player_id)) else 0
     shown_events = list(session.pending_world_events)
     refresh_cast(session, referee_action or prompt_text)  # the action may already have moved the player
@@ -805,6 +809,7 @@ async def _run_turn(
 
     if actor_line is not None:
         session.log.append(actor_line)
+    session.log += wait_lines
     if refusal is not None:
         session.log.append(f"[redo: {refusal}]")
     if cut is not None:

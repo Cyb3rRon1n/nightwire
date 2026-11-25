@@ -105,6 +105,8 @@ export interface StateView {
   // The district map (narrator/citymap.py): seven districts in diagram order, and Go's travel line for each.
   map?: { districts: MapDistrict[]; trains: boolean; caption: string }  // older servers send none
   clock?: { night: number; stretch: string }  // the night clock; older servers send none
+  // Last night's recap panels (narrator/recap.py), from night 2 on; art and portrait are server-root paths.
+  last_night?: { night: number; open: string[]; panels: RecapPanel[] } | null
   // Word on the street per district: the strongest good and bad thing said about the player (narrator/gossip.py).
   street: { district: string; good: string | null; bad: string | null }[]
   // Recurring people met in play (narrator/people.py), newest first.
@@ -244,6 +246,11 @@ export type ClientMessage =
   | ReadMessage
   | RateTurnMessage
   | DismissCheckinMessage
+
+export type RecapPanel = {
+  n: number; place: string; caption: string; art: string | null; speaker: string | null; portrait: string | null
+  text: string; action: string
+}
 
 export type MapDistrict = {
   name: string

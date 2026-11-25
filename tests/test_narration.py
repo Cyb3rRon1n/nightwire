@@ -2320,3 +2320,17 @@ def test_a_reply_that_is_only_the_copied_sample_is_remembered_too():
 
     assert _drop_repeated_lines(R, session) is True
     assert session.copied_lines == [line]
+
+
+async def test_a_wait_across_daybreak_logs_its_clock_line_after_the_action(tmp_path):
+    # Review 2026-11-24: clock.wait ran before the actor line was logged, so the recap filed "I wait until evening"
+    # under the next night.
+    from narrator import recap
+    session = _session_with_character()
+    session.stretch = 4  # first train, the night's last stretch
+    client = _scripted_client([_say("You wait out the dawn in a doorway.")], judge_answers=[])
+    await _call(session, client, "p1", {"text": "I wait until evening."}, tmp_path, tts_backend=FakeTTSBackend())
+    assert session.night == 2
+    act = next(i for i, l in enumerate(session.log) if l.startswith("p1: "))
+    clock_at = next(i for i, l in enumerate(session.log) if l.startswith("[clock: night 2"))
+    assert act < clock_at and [t["night"] for t in recap.turns(session)] == [1]
