@@ -265,6 +265,13 @@ def ground(session: Session, verdict: dict, action: str, narration: str, player:
                                                                 or _every_word_in(parts[1], said)):
             session.log.append(f'[referee: promise "{promise}" is not in the scene, ignored]')
             promise = ""
+        # Soak 19 turn 2: Mama Sato's own "Sit. Eat. Then we'll talk." was filed as the player's promise. Their own
+        # words, which the action doesn't take up, are what they said, not what the player promised.
+        elif not _has_words(parts[1], action) and any(_has_words(parts[1], line.split(":", 1)[1])
+                                                      for line in narration.splitlines()
+                                                      if line.split(":", 1)[0].strip() == parts[0]):
+            session.log.append(f'[referee: promise "{promise}" is {parts[0]}\'s own words, ignored]')
+            promise = ""
     # Soak 17 turn 15: "I thank him and promise to bring him tea tomorrow", and the referee answered with Hara's own
     # "I'll fix it". The player's own promise, to the one named person here, is the evidence.
     # Review: only the player's own "I promise" (not "Hara promised me", "the promising lead" or "I can't promise").

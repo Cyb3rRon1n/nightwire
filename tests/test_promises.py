@@ -177,3 +177,18 @@ def test_i_promise_him_with_a_walk_on_here_records_nothing():
     s.present, s.people["Tomoe"] = ["Old Hara", "Tomoe"], {"who": "kuze-gumi"}
     apply_verdict(s, "p1", ground(s, {"promise_made": ""}, "I promise him I'll come back.", "He nods."))
     assert s.promises == []
+
+
+def test_a_persons_own_words_are_not_a_promise_the_player_made():
+    # Soak 2026-11-24 (19) turn 2: "I head to Mama Sato's izakaya." and the referee filed her greeting
+    # "Sit. Eat. Then we'll talk." as Rin's promise; it came back in her memory as "Rin promised: Sit. Eat."
+    s = _session()
+    s.present = ["Mama Sato"]
+    scene = "Mama Sato: Child, you look like you've been running. Sit. Eat. Then we'll talk."
+    apply_verdict(s, "p1", ground(s, {"promise_made": "Mama Sato: Sit. Eat. Then we'll talk."},
+                                  "I head to Mama Sato's izakaya.", scene))
+    assert s.promises == []
+    # The player taking up her words in the action is still a promise.
+    apply_verdict(s, "p1", ground(s, {"promise_made": "Mama Sato: come back tomorrow night"},
+                                  "I promise I'll come back tomorrow night.", "Mama Sato: Come back tomorrow night."))
+    assert [(p["who"], p["what"]) for p in s.promises] == [("Mama Sato", "come back tomorrow night")]
