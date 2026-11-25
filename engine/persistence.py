@@ -71,6 +71,7 @@ class JSONFileSessionStore:
             drop_in_turn=data.get("drop_in_turn"),
             last_moves=data.get("last_moves", {}),
             type_turns=data.get("type_turns", {}),
+            copied_lines=data.get("copied_lines", []),
             voice_lines=data.get("voice_lines", []),
             promises=data.get("promises", []),
             journal=data.get("journal", []),

@@ -2294,3 +2294,29 @@ def test_engine_notes_do_not_push_story_lines_out_of_the_repeat_window():
                             NarrationSegment(speaker="Mama Sato", text=line)]
     assert _drop_repeated_lines(r, session) is False
     assert [s.text for s in r.narration] == ["The punch lands clean."]
+
+
+def test_a_copied_sample_line_is_remembered_so_it_is_not_shown_again():
+    from narrator.client import NarrationSegment
+    from server.narration import _drop_repeated_lines
+    line = "Sit. Eat the eel while it's hot, child. Questions taste better on a full stomach."
+    session = Session(session_id="s", voice_lines=[line, "A rumor costs a favor."])
+
+    class R:
+        narration = [NarrationSegment(speaker="Mama Sato", text="Eat the eel while it's hot, child. Then we talk.")]
+
+    _drop_repeated_lines(R, session)
+    assert session.copied_lines == [line]
+
+
+def test_a_reply_that_is_only_the_copied_sample_is_remembered_too():
+    from narrator.client import NarrationSegment
+    from server.narration import _drop_repeated_lines
+    line = "Sit. Eat the eel while it's hot, child. Questions taste better on a full stomach."
+    session = Session(session_id="s", voice_lines=[line])
+
+    class R:
+        narration = [NarrationSegment(speaker="Mama Sato", text=line)]
+
+    assert _drop_repeated_lines(R, session) is True
+    assert session.copied_lines == [line]

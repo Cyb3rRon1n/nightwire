@@ -74,11 +74,11 @@ def test_the_new_session_fields_load_from_an_old_save(tmp_path):
     store.save(Session(session_id="s"))
     path = next(tmp_path.glob("*.json"))
     data = json.loads(path.read_text())
-    for key in ("last_moves", "type_turns", "voice_lines"):
+    for key in ("last_moves", "type_turns", "voice_lines", "copied_lines"):
         data.pop(key)
     path.write_text(json.dumps(data))
     loaded = store.load("s")
-    assert loaded.last_moves == {} and loaded.type_turns == {} and loaded.voice_lines == []
+    assert loaded.last_moves == {} and loaded.type_turns == {} and loaded.voice_lines == [] and loaded.copied_lines == []
 
 
 def test_a_named_character_replaces_their_type_and_a_bare_faction_word_is_not_a_person():
@@ -100,3 +100,28 @@ def test_a_redo_reuses_the_turns_voices():
     for _ in range(3):
         assert block in _build_messages(s, "I sit.", 8192, block)[0]["content"]
     assert s.voice_lines == lines and s.last_moves == moves
+
+
+def test_a_copied_line_is_not_shown_again():
+    # Soak 17: Mama Sato's eel line was copied (and cut) 4 times, the sea line 3 times; a copied line gets copied again.
+    random.seed(1)
+    hers = [line.text for line in voices().characters["Mama Sato"].lines]
+    s = Session(session_id="s", present=["Mama Sato"], copied_lines=hers[:2])
+    for _ in range(4):
+        voice_block(s, "I wait.")
+        assert s.voice_lines in ([hers[2]], [])
+    s.copied_lines = hers  # all copied: the move and no line to copy
+    block = voice_block(s, "I wait.")
+    assert "- Mama Sato will " in block and '"' not in block and s.voice_lines == []
+
+
+def test_a_copied_type_line_is_skipped_in_the_rotation():
+    vendor = next(t for t in voices().types if t.name == "Street vendor")
+    s = Session(session_id="s", log=["A noodle vendor waves you over."], copied_lines=[vendor.lines[0]])
+    shown = []
+    for _ in range(3):
+        voice_block(s, "I walk up.")
+        shown += s.voice_lines
+    assert shown == [vendor.lines[1], vendor.lines[2], vendor.lines[1]]  # never the same line twice running
+    s.copied_lines = list(vendor.lines)
+    assert "sounds like" not in voice_block(s, "I walk up.") and s.voice_lines == []

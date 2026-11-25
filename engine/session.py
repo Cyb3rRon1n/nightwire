@@ -41,6 +41,7 @@ class Session:
     # NPC voices (narrator/voices.py): each character's last move, each type's line counter, this turn's sample lines.
     last_moves: dict[str, str] = field(default_factory=dict)
     type_turns: dict[str, int] = field(default_factory=dict)
+    copied_lines: list[str] = field(default_factory=list)  # voice samples the narrator copied: not shown again
     voice_lines: list[str] = field(default_factory=list)
     # Unfinished business (narrator/promises.py): open promises, and a journal of what is over.
     promises: list[dict] = field(default_factory=list)

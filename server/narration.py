@@ -200,6 +200,7 @@ def _tidy(response) -> None:
 
 
 _RECENT_LINES = 40
+_COPIED_MAX = 60
 
 
 def _drop_repeated_lines(response, session: Session) -> bool:
@@ -262,6 +263,12 @@ def _drop_repeated_lines(response, session: Session) -> bool:
             kept.append(sentence)
             remember(sentence)
         texts.append(" ".join(kept))
+    for text in session.voice_lines:  # soak 17: remembered (even when the whole reply was the copy), so narrator/voices.py stops showing it
+        t_runs = {r for s in _SENTENCE.split(text) for r in _runs(_words(s))}
+        t_keys = {" ".join(_words(s)) for s in _SENTENCE.split(text)} | {" ".join(_words(text))}
+        if text not in session.copied_lines and any(
+                " ".join(_words(c)) in t_keys or _runs(_words(c)) & t_runs for c in cut_samples):
+            session.copied_lines = [*session.copied_lines, text][-_COPIED_MAX:]
     if not any(t.strip() for t in texts):
         return True  # everything repeated: the caller redoes once, and a stale line beats an empty turn
     session.log += [f"[sample line cut: {sentence[:60]}]" for sentence in cut_samples]
