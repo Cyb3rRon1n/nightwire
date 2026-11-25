@@ -283,6 +283,9 @@ Each phase gets its own brainstorming pass (questions → approaches → design 
       - Night recap (spec `2026-11-24-night-recap-design.md`): `python -m tools.recap <session.json>` picks 3-12
         panels from a played night (first, last, each new district, then scored beats; scenes share panels by
         length) and writes an HTML storyboard with a facts box and a silent animatic. Every soak draws one.
+      - Last night (spec `2026-11-24-last-night-recap-design.md`): from night 2, a "Last night" chip beside the
+        night clock opens that night's panels and what is still open; marked new in the first stretch, never opens
+        by itself.
     - **Soak-driven fixes**:
       - The repeat cut redoes an all-repeat reply once, and keeps a single sentence if the redo repeats too.
       - The 8-word window counts story lines only.
