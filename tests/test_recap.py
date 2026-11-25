@@ -131,3 +131,48 @@ def test_a_quiet_night_still_gets_three_panels():
 def test_a_re_rated_turn_counts_its_last_rating_once():
     assert recap.score({"notes": ["[rated: like]", "[rated: like]"]}) == 3
     assert recap.score({"notes": ["[rated: like]", "[rated: dislike]"]}) == 0
+
+
+def _two_nights(s):
+    _turn(s, "I look around.", "Ikebe Low", "Lanterns sway in the rain.")
+    _turn(s, "I go home to my room and sleep.", "Ikebe Low", "You sleep.", "[clock: slept; night 2, evening]")
+    _turn(s, "I wake up.", "Ikebe Low", "Morning never comes here.", "[image: images/s1/wake.png]")
+    _turn(s, "I walk on.", "Ikebe Low", "The alley narrows.", "[clock: night 2, late]")
+
+
+def test_turns_carry_their_night_and_the_sleep_turn_stays_in_the_old_one():
+    s = _session()
+    _two_nights(s)
+    assert [t["night"] for t in recap.turns(s)] == [1, 1, 2, 2]
+    assert [p["n"] for p in recap.panels(s, night=1)] == [1, 2]
+    assert [p["n"] for p in recap.panels(s, night=2)] == [3, 4]
+
+
+def test_a_save_with_no_clock_lines_is_all_night_one():
+    s = _session()
+    _turn(s, "I look around.", "Ikebe Low", "Lanterns sway.")
+    assert [t["night"] for t in recap.turns(s)] == [1]
+
+
+def test_last_night_is_none_on_night_one_and_fills_on_the_next():
+    s = _session()
+    _turn(s, "I look around.", "Ikebe Low", "Lanterns sway.")
+    assert recap.last_night(s) is None
+    _two_nights(s)
+    s.night = 3
+    s.log.append("[clock: slept; night 3, evening]")
+    s.promises = [{"who": "Old Hara", "what": "bring tea", "turn": 2, "called_in": False}]
+    s.active_objectives = ["Find Jun"]
+    ln = recap.last_night(s)
+    assert ln["night"] == 2 and [p["n"] for p in ln["panels"]] == [4, 5]
+    assert ln["panels"][0]["art"] == "media/images/s1/wake.png"
+    assert ln["panels"][1]["art"].startswith("place-art/")
+    assert ln["open"] == ["Old Hara: bring tea", "Find Jun"]
+    s.night = 4
+    assert recap.last_night(s) is None  # night 3 has no turns yet
+
+
+def test_the_view_has_last_night():
+    from server.views import build_view
+    s = _session()
+    assert build_view(s, "p1")["last_night"] is None

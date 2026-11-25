@@ -11,6 +11,7 @@ from narrator.world import _where, kuroshio
 
 MAX_PANELS, MIN_PANELS, RUN_MAX = 12, 3, 3  # RUN_MAX: the least a scene may hold
 _SENTENCE = re.compile(r"(?<=[.!?…])\s+")
+_NIGHT = re.compile(r"^\[clock: (?:slept; )?night (\d+)")
 _SPEECH = re.compile(r"^([^:\[\]]{1,40}):\s+(.+)$")
 _SCORES = (("[promise: ", 3), ("[promise kept: ", 3), ("[promise broken: ", 3),
            ("[pressure: ", 2), ("[person: ", 2), ("[mark: ", 1))
@@ -26,13 +27,16 @@ def turns(session: Session) -> list[dict]:
     actors = {f"{pid}: ": pid for pid in session.characters}
     trail = {n: loc for n, loc in session.trail}
     out: list[dict] = []
+    night = 1  # a turn is in the night current when its action came, so the sleep turn stays in the old night
     for line in session.log:
+        if m := _NIGHT.match(line):
+            night = int(m.group(1))
         pid = next((p for prefix, p in actors.items() if line.startswith(prefix)), None)
         if pid is not None:
             n = len(out) + 1
             place = trail.get(n) or next((trail[k] for k in sorted(trail, reverse=True) if k < n and trail[k]), None)
             out.append({"n": n, "player": session.characters[pid].name, "action": line[len(pid) + 2:].strip(),
-                        "place": place or session.location or "", "lines": [], "notes": [], "image": None})
+                        "place": place or session.location or "", "lines": [], "notes": [], "image": None, "night": night})
         elif out:
             t = out[-1]
             if line.startswith("[image: ") and line.endswith("]"):
@@ -120,10 +124,10 @@ def _line(t: dict, players: set[str]) -> tuple[str | None, str]:
     return None, first if len(first) <= 160 else first[:159].rstrip() + "…"
 
 
-def panels(session: Session) -> list[dict]:
+def panels(session: Session, night: int | None = None) -> list[dict]:
     players = {c.name.strip().lower() for c in session.characters.values()} | {p.lower() for p in session.characters}
     out = []
-    for t in _pick(turns(session)):
+    for t in _pick([t for t in turns(session) if night is None or t["night"] == night]):
         speaker, text = _line(t, players)
         art = t["image"] or location_art(t["place"])
         if not art and (d := district_art(t["place"])):
@@ -140,3 +144,21 @@ def facts(session: Session) -> dict:
             "promises_open": [f"{p['who']}: {p['what']}" for p in session.promises],
             "promises_done": [f"{j['text']} ({j['kind']})" for j in done],
             "leads": list(session.active_objectives), "night": session.night}
+
+
+def _served(path: str | None) -> str | None:
+    """A path the game server serves from its root: approved art as is, a scene image under media/."""
+    return path if not path or path.startswith(("place-art/", "character-art/")) else f"media/{path}"
+
+
+def last_night(session: Session) -> dict | None:
+    """Spec 2026-11-24-last-night-recap-design.md: the night before this one, for the in-game chip; None on night 1
+    or when that night had no turns."""
+    night = session.night - 1
+    ps = panels(session, night) if night >= 1 else []
+    if not ps:
+        return None
+    for p in ps:
+        p["art"], p["portrait"] = _served(p["art"]), _served(p["portrait"])
+    return {"night": night, "panels": ps,
+            "open": [f"{p['who']}: {p['what']}" for p in session.promises] + list(session.active_objectives)}
