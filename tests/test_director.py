@@ -141,6 +141,6 @@ def test_tick_moves_pressure_clocks_and_the_prompt_shows_shown_ones_here():
     s.log.append(f"[roll: {json.dumps({'outcome': 'clean_success', 'skill': 'melee'})}]")
     director.tick(s, "p1", s.characters["p1"].health)
     assert s.clocks["ogane-docks"]["filled"] == 1
-    assert "Pressure: Ōgane crackdown on the Docks 1/6." in _build_messages(s, "I walk on.", 8192)[-1]["content"]
+    assert "Pressure: Ōgane crackdown on the Docks is stirring." in _build_messages(s, "I walk on.", 8192)[-1]["content"]
     s.clocks["ogane-docks"]["filled"], s.clocks["container"]["filled"] = 0, 2
     assert "Pressure:" not in _build_messages(s, "I walk on.", 8192)[-1]["content"]

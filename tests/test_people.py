@@ -204,3 +204,35 @@ def test_a_bare_man_not_in_the_scene_is_still_dropped():
     s.location = "Ikebe Low"
     _met(s, "woman", "I punch the guy who bumps into me.", "The man stumbles back, his breath ragged.")
     assert s.people == {}
+
+
+def test_helping_him_up_meets_the_walk_on_again_when_the_referee_names_no_one():
+    # Soak 2026-11-24 (17) turn 26: Tomoe (kuze-gumi) was punched, then "I apologise and help him up" got no
+    # new_person from the referee, so he was met once and the punched-guy check failed.
+    s = _session()
+    s.location = "Ikebe Low"
+    _met(s, "kuze-gumi enforcer", "I punch the guy who bumps into me.", "The kuze-gumi enforcer steps back.")
+    name = next(iter(s.people))
+    s.present = ["Wataru Ono", name]
+    _met(s, "", "I apologise and help him up.", "He takes your hand, the kuze-gumi tattoo on his wrist.")
+    assert s.people[name]["weight"] == 2
+
+
+def test_a_pronoun_with_the_walk_on_not_in_the_scene_meets_no_one():
+    s = _session()
+    s.location = "Ikebe Low"
+    _met(s, "kuze-gumi enforcer", "I punch the guy who bumps into me.", "The kuze-gumi enforcer steps back.")
+    name = next(iter(s.people))
+    _met(s, "", "I ask him about the shrine.", "Wataru Ono: The lanterns are quiet tonight.")
+    assert s.people[name]["weight"] == 1
+
+
+def test_her_is_the_named_person_who_answers_not_the_walk_on():
+    # Review 2026-11-24: "I ask her about Kenta" with Mama Sato answering raised the enforcer passing by.
+    s = _session()
+    s.location = "Ikebe Low"
+    _met(s, "kuze-gumi enforcer", "I punch the guy who bumps into me.", "The kuze-gumi enforcer steps back.")
+    name = next(iter(s.people))
+    s.present = ["Mama Sato", name]
+    _met(s, "", "I ask her about Kenta.", "Mama Sato: Kenta is gone, child.\nThe kuze-gumi enforcer watches.")
+    assert s.people[name]["weight"] == 1

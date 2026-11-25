@@ -86,10 +86,15 @@ def tick(session: Session, rolls: list[dict], heat_rose: bool) -> None:
             session.log.append(f"[pressure: {c['id']} {s['filled']}/{c['size']}]")
 
 
+def _level(filled: int, size: int) -> str:
+    return "stirring" if filled * 3 <= size else "rising" if filled * 3 < size * 2 else "close to breaking"
+
+
 def line(session: Session) -> str:
-    """"Pressure: Kuze-gumi squeeze on Ikebe Low 4/6." for shown clocks here above 0, else ""."""
+    """"Pressure: Kuze-gumi squeeze on Ikebe Low is rising." for shown clocks here above 0, else "". Words, not
+    counts: soak 17's narrator read "2/6" aloud as "now it's two out of six"."""
     here = _district(session.location)
-    bits = [f"{c['name']} {s['filled']}/{c['size']}" for c in defs()
+    bits = [f"{c['name']} is {_level(s['filled'], c['size'])}" for c in defs()
             if c.get("shown") and here in c["where"] and (s := session.clocks.get(c["id"])) and s["filled"] > 0]
     return f"Pressure: {'; '.join(bits)}." if bits else ""
 

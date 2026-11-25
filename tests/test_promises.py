@@ -128,3 +128,52 @@ def test_review_fixes_whole_words_ambiguous_names_and_long_promises():
     for i in range(6):
         promises.record(s, f"P{i}", "x")
     assert s.journal[-1] == {"text": "Mama Sato: find Kenta", "kind": "set aside", "turn": 0}
+
+
+def test_a_promise_in_the_players_own_words_is_kept_when_the_referee_picks_the_wrong_one():
+    # Soak 2026-11-24 (17) turn 15: "I thank him and promise to bring him tea tomorrow." The referee answered with
+    # Hara's own "I'll fix it", which was rightly too vague, and the tea promise was lost.
+    s = _session()
+    s.present = ["Old Hara"]
+    action = "I thank him and promise to bring him tea tomorrow."
+    scene = "Old Hara: I'll fix it. But you'll owe me more than tea."
+    apply_verdict(s, "p1", ground(s, {"promise_made": "Old Hara: fix it"}, action, scene))
+    assert [(p["who"], p["what"]) for p in s.promises] == [("Old Hara", "bring him tea tomorrow")]
+
+
+def test_a_promise_in_the_action_needs_exactly_one_named_person_here():
+    s = _session()
+    action = "I promise to bring tea tomorrow."
+    for present in ([], ["Old Hara", "Mama Sato"]):
+        s.present = present
+        apply_verdict(s, "p1", ground(s, {"promise_made": ""}, action, "The bulb flickers."))
+    assert s.promises == []
+
+
+def test_the_action_backstop_only_takes_the_players_own_promise():
+    # Review 2026-11-24: negations, other people's promises and "promising" made promises; odd spacing crashed.
+    s = _session()
+    s.present = ["Old Hara"]
+    for action in ("I follow the promising lead to the docks.", "I make no promises to anyone.",
+                   "Hara promised me he'd fix it, so I wait.", "I can't promise that he'll live.",
+                   "I ask her to promise she'll stay.", "I promise    ."):
+        apply_verdict(s, "p1", ground(s, {"promise_made": ""}, action, "The bulb flickers."))
+    assert s.promises == []
+
+
+def test_the_action_backstop_cleans_up_the_words_and_takes_a_named_person():
+    s = _session()
+    s.present = ["Old Hara", "Mama Sato"]
+    apply_verdict(s, "p1", ground(s, {"promise_made": ""}, "I promise Mama Sato I'll find Kenta.", "She nods."))
+    s.present = ["Old Hara"]
+    apply_verdict(s, "p1", ground(s, {"promise_made": ""}, "I promised her I'd bring tea.", "He nods."))
+    apply_verdict(s, "p1", ground(s, {"promise_made": ""}, "I promise you I'll be back.", "He nods."))
+    assert [(p["who"], p["what"]) for p in s.promises] == [
+        ("Mama Sato", "find Kenta"), ("Old Hara", "bring tea"), ("Old Hara", "be back")]
+
+
+def test_i_promise_him_with_a_walk_on_here_records_nothing():
+    s = _session()
+    s.present, s.people["Tomoe"] = ["Old Hara", "Tomoe"], {"who": "kuze-gumi"}
+    apply_verdict(s, "p1", ground(s, {"promise_made": ""}, "I promise him I'll come back.", "He nods."))
+    assert s.promises == []

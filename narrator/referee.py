@@ -20,6 +20,8 @@ _LEVEL_FIELDS = ("human_moment", "acted_as_machine")
 _HARA_OBJECTIVE = "Owe Old Hara a favor"
 _LOCATION_MAX = 60
 _PROMISE_MAX = 120
+_PROMISE = re.compile(r"(?:\bi\s+(?:\w+\s+)?|^i\b.*\band\s+)promise(?:d)?\s+(?:(?:you|him|her|them)\s+)?(?:(?:to|that|i'll|i'd|i will|i would|i'm going to)\s+)?([^.!?]*[^.!?\s][^.!?]*)", re.I)
+_NO_PROMISE = re.compile(r"\b(?:no|not|never|can't|cannot|don't|won't)\b", re.I)
 _TEXT_FIELDS = ("moved_to", "new_lead", "objective_done", "promise_made", "told_npc", "new_person", "left_mark")
 _TRUST_FIELDS = {"kept_promise_to": 1, "helped_at_a_cost": 1, "broke_promise_to": -1, "lie_discovered_by": 0}
 _SPEECH = re.compile(r"^[^:\n]{1,30}: ")  # "Mama Sato: ..." lines in the narration text
@@ -263,6 +265,20 @@ def ground(session: Session, verdict: dict, action: str, narration: str, player:
                                                                 or _every_word_in(parts[1], said)):
             session.log.append(f'[referee: promise "{promise}" is not in the scene, ignored]')
             promise = ""
+    # Soak 17 turn 15: "I thank him and promise to bring him tea tomorrow", and the referee answered with Hara's own
+    # "I'll fix it". The player's own promise, to the one named person here, is the evidence.
+    # Review: only the player's own "I promise" (not "Hara promised me", "the promising lead" or "I can't promise").
+    if not promise and (m := _PROMISE.search(action)) and not _NO_PROMISE.search(action[:m.start(1)]):
+        what = m.group(1).strip()
+        named = [p for p in session.present if p not in session.people and people.has_a_name(session, p)]
+        lead = [p for p in named if what.lower().startswith(p.lower() + " ")]  # "I promise Mama Sato I'll find Kenta"
+        if lead:
+            named, what = lead, re.sub(r"^(?:i'll|i'd|i will|i would|i'm going to|to|that)\s+", "", what[len(lead[0]):].strip(), flags=re.I)
+        elif re.search(r"\b(?:him|her|them)\b", action[m.start():m.start(1)], re.I) \
+                and any(p in session.people for p in session.present):
+            named = []  # "I promise him" with a walk-on here: maybe him, not the named one
+        if len(named) == 1 and (parts := promises.split(f"{named[0]}: {what}")):
+            promise = f"{parts[0]}: {parts[1]}"
     if "promise_made" in grounded or promise:
         grounded["promise_made"] = promise
     told = " ".join(str(grounded.get("told_npc", "")).split())
@@ -308,6 +324,12 @@ def ground(session: Session, verdict: dict, action: str, narration: str, player:
         # Soak 2026-11-22: "man in black duster" grabbed Rin and spoke three turns running, and the referee named no
         # one. An unnamed speaker in the scene is its own evidence; the player's action is what happened.
         person = f"{speaker}: {deed}"
+    if not person and (same := people.the_one_here(session, action)) \
+            and (who := session.people[same].get("who", "")) and people.grounded(session, who, f"{action}\n{narration}") \
+            and not any(l.startswith(f"{p}:") for p in session.present if p not in session.people
+                        for l in narration.splitlines()):  # review: a named person answering means "her" is them
+        # Soak 17 turn 26: "I apologise and help him up" and the referee named no one; "him" is the walk-on still here.
+        person = f"{who}: {deed}"
     if person and (parts := people.split(person)) and not people.find(session, parts[0]) \
             and (same := people.the_one_here(session, action)):
         person = f"{session.people[same]['who']}: {parts[1]}"  # "help him up": the one already here, however described

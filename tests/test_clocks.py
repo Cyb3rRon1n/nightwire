@@ -128,7 +128,8 @@ def test_never_below_zero():
 
 def test_line_and_view():
     s = _at("Ikebe Low", kuze_ikebe=4)
-    assert clocks.line(s) == "Pressure: Kuze-gumi squeeze on Ikebe Low 4/6."
+    # Soak 17: "now it's two out of six" — the narrator read the numbers aloud, so it gets words, not counts.
+    assert clocks.line(s) == "Pressure: Kuze-gumi squeeze on Ikebe Low is close to breaking."
     d = _at("Kuroshio Docks", container=2)
     assert clocks.line(d) == ""
     assert [v["name"] for v in clocks.view(d)] == ["Ōgane crackdown on the Docks", "Kuze-gumi squeeze on Ikebe Low"]
