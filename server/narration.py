@@ -236,10 +236,13 @@ def _drop_repeated_lines(response, session: Session) -> bool:
             wholes.add(" ".join(_words(body)))
         for sentence in _SENTENCE.split(body):
             remember(sentence)
+        keys.update(_tags(_SENTENCE.split(body)).values())
     # This turn's voice sample lines (narrator/voices.py) count too: a copy goes even on first use.
     sample_runs = {run for text in session.voice_lines for s in _SENTENCE.split(text) for run in _runs(_words(s))}
     sample_keys = {" ".join(_words(s)) for text in session.voice_lines for s in _SENTENCE.split(text)
                    if len(_words(s)) >= 5}
+    sample_tags = {key for text in session.voice_lines for key in _tags(_SENTENCE.split(text)).values()}
+    sample_keys |= sample_tags  # a short-sentence tag from a sample counts as a sample copy (review)
     keys |= sample_keys
     sample_wholes = {" ".join(_words(text)) for text in session.voice_lines if len(_words(text)) >= 5}
     wholes |= sample_wholes
@@ -254,18 +257,25 @@ def _drop_repeated_lines(response, session: Session) -> bool:
                 cut_samples.append(seg.text)
             texts.append("")
             continue
-        for sentence in _SENTENCE.split(seg.text):
+        sentences = _SENTENCE.split(seg.text)
+        tags = _tags(sentences)
+        tagged = {k: key for (i, j), key in tags.items() if key in keys for k in range(i, j + 1)}  # sentence -> its row
+        keys.update(tags.values())
+        for n, sentence in enumerate(sentences):
             words = _words(sentence)
-            if " ".join(words) in keys or _runs(words) & runs:
+            if n in tagged or " ".join(words) in keys or _runs(words) & runs:
                 if " ".join(words) in sample_keys or _runs(words) & sample_runs:
                     cut_samples.append(sentence)
+                elif tagged.get(n) in sample_tags and tagged[n] not in cut_samples:
+                    cut_samples.append(tagged[n])
                 continue
             kept.append(sentence)
             remember(sentence)
         texts.append(" ".join(kept))
     for text in session.voice_lines:  # soak 17: remembered (even when the whole reply was the copy), so narrator/voices.py stops showing it
         t_runs = {r for s in _SENTENCE.split(text) for r in _runs(_words(s))}
-        t_keys = {" ".join(_words(s)) for s in _SENTENCE.split(text)} | {" ".join(_words(text))}
+        t_keys = {" ".join(_words(s)) for s in _SENTENCE.split(text)} | {" ".join(_words(text))} \
+            | set(_tags(_SENTENCE.split(text)).values())
         if text not in session.copied_lines and any(
                 " ".join(_words(c)) in t_keys or _runs(_words(c)) & t_runs for c in cut_samples):
             session.copied_lines = [*session.copied_lines, text][-_COPIED_MAX:]
@@ -284,6 +294,21 @@ _RUN_LINES = 150  # log lines whose 8-word runs a new sentence may not copy
 
 def _words(text: str) -> list[str]:
     return re.findall(r"[a-z0-9']+", text.lower().replace("\u2019", "'"))  # curly and straight apostrophes match
+
+
+def _tags(sentences: list[str]) -> dict[tuple[int, int], str]:
+    """Rows of 2+ short sentences (under 5 words each, 5+ words together), by first and last index: a spoken tag
+    like "Sit. Eat. Then we'll talk." (soak 19) that no single sentence is long enough to match."""
+    short = [0 < len(_words(s)) < 5 for s in sentences]
+    out = {}
+    for i in range(len(sentences)):
+        for j in range(i + 1, len(sentences)):
+            if not short[j] or not short[i]:
+                break
+            words = [w for s in sentences[i:j + 1] for w in _words(s)]
+            if len(words) >= 5:
+                out[(i, j)] = " ".join(words)
+    return out
 
 
 def _runs(words: list[str]) -> set[tuple[str, ...]]:

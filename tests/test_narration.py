@@ -2334,3 +2334,35 @@ async def test_a_wait_across_daybreak_logs_its_clock_line_after_the_action(tmp_p
     act = next(i for i, l in enumerate(session.log) if l.startswith("p1: "))
     clock_at = next(i for i, l in enumerate(session.log) if l.startswith("[clock: night 2"))
     assert act < clock_at and [t["night"] for t in recap.turns(session)] == [1]
+
+
+def test_a_tag_of_short_sentences_repeated_inside_a_new_line_is_cut():
+    # Soak 2026-11-24 (19): Mama Sato ended six lines with "Sit. Eat. Then we'll talk." Each sentence is under 5 words
+    # and the lines around it were new, so neither the sentence nor the whole-line check saw it.
+    from narrator.client import NarrationSegment
+    from server.narration import _drop_repeated_lines
+    session = Session(session_id="s")
+    session.log += ["rin: I sit.", "Mama Sato: Child, you look like you've been running. Sit. Eat. Then we’ll talk."]
+
+    class R:
+        narration = [NarrationSegment(speaker="Mama Sato",
+                                      text="You're looking for trouble, child. Trouble has a price. Sit. Eat. Then we'll talk.")]
+
+    assert _drop_repeated_lines(R, session) is False
+    assert [s.text for s in R.narration] == ["You're looking for trouble, child. Trouble has a price."]
+
+
+def test_a_short_sentence_tag_copied_from_a_voice_sample_is_cut_and_retired():
+    # Review: a sample tag goes even on first use, and is recorded so narrator/voices.py stops showing it.
+    from narrator.client import NarrationSegment
+    from server.narration import _drop_repeated_lines
+    session = Session(session_id="s")
+    session.log += ["rin: I sit."]
+    session.voice_lines = ["Sit. Eat. Then we'll talk."]
+
+    class R:
+        narration = [NarrationSegment(speaker="Mama Sato", text="You look tired, child. Sit. Eat. Then we'll talk.")]
+
+    assert _drop_repeated_lines(R, session) is False
+    assert [s.text for s in R.narration] == ["You look tired, child."]
+    assert session.copied_lines == ["Sit. Eat. Then we'll talk."]

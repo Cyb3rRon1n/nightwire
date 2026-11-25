@@ -192,3 +192,18 @@ def test_a_persons_own_words_are_not_a_promise_the_player_made():
     apply_verdict(s, "p1", ground(s, {"promise_made": "Mama Sato: come back tomorrow night"},
                                   "I promise I'll come back tomorrow night.", "Mama Sato: Come back tomorrow night."))
     assert [(p["who"], p["what"]) for p in s.promises] == [("Mama Sato", "come back tomorrow night")]
+
+
+def test_agreeing_to_a_persons_terms_in_other_words_is_still_a_promise():
+    # Review of the soak 19 fix: "I'll do it." agrees to Mama Sato's "Find Kenta before the Ryu do."
+    s = _session()
+    s.present = ["Mama Sato"]
+    apply_verdict(s, "p1", ground(s, {"promise_made": "Mama Sato: find Kenta before the Ryu do"},
+                                  "I tell her I'll do it.", "Mama Sato: Good. Find Kenta before the Ryu do."))
+    assert [p["what"] for p in s.promises] == ["find Kenta before the Ryu do"]
+
+
+def test_a_narration_line_that_is_only_a_name_does_not_crash_the_referee():
+    s = _session()
+    s.present = ["Mama Sato"]
+    ground(s, {"promise_made": "Mama Sato: find Kenta"}, "I head inside.", "Mama Sato\nMama Sato: Find Kenta.")

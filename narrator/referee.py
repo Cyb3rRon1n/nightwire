@@ -22,6 +22,7 @@ _LOCATION_MAX = 60
 _PROMISE_MAX = 120
 _PROMISE = re.compile(r"(?:\bi\s+(?:\w+\s+)?|^i\b.*\band\s+)promise(?:d)?\s+(?:(?:you|him|her|them)\s+)?(?:(?:to|that|i'll|i'd|i will|i would|i'm going to)\s+)?([^.!?]*[^.!?\s][^.!?]*)", re.I)
 _NO_PROMISE = re.compile(r"\b(?:no|not|never|can't|cannot|don't|won't)\b", re.I)
+_AGREES = re.compile(r"\b(?:i'll|i will|i'd|i can|deal|okay|ok|yes|sure|agreed?|fine|done)\b", re.I)
 _TEXT_FIELDS = ("moved_to", "new_lead", "objective_done", "promise_made", "told_npc", "new_person", "left_mark")
 _TRUST_FIELDS = {"kept_promise_to": 1, "helped_at_a_cost": 1, "broke_promise_to": -1, "lie_discovered_by": 0}
 _SPEECH = re.compile(r"^[^:\n]{1,30}: ")  # "Mama Sato: ..." lines in the narration text
@@ -267,9 +268,11 @@ def ground(session: Session, verdict: dict, action: str, narration: str, player:
             promise = ""
         # Soak 19 turn 2: Mama Sato's own "Sit. Eat. Then we'll talk." was filed as the player's promise. Their own
         # words, which the action doesn't take up, are what they said, not what the player promised.
-        elif not _has_words(parts[1], action) and any(_has_words(parts[1], line.split(":", 1)[1])
-                                                      for line in narration.splitlines()
-                                                      if line.split(":", 1)[0].strip() == parts[0]):
+        # Review: "I'll do it." or "Deal." agrees to their terms, so only an action with no agreement at all.
+        elif not _has_words(parts[1], action) and not _PROMISE.search(action) and not _AGREES.search(action) \
+                and any(sep and _has_words(parts[1], body) for who, sep, body in map(lambda l: l.partition(":"),
+                                                                                     narration.splitlines())
+                        if who.strip().lower() == parts[0].lower()):
             session.log.append(f'[referee: promise "{promise}" is {parts[0]}\'s own words, ignored]')
             promise = ""
     # Soak 17 turn 15: "I thank him and promise to bring him tea tomorrow", and the referee answered with Hara's own
