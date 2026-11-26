@@ -137,7 +137,13 @@ class Motion:
             px = min(amp * self.H, _MAX_BEND * length)
             move = px * sum(_TERMS) * (1 + _ACROSS)
             r.reach = move
-            w = _extend(weights(mask, roots, hanging), mask, move)
+            if hanging:  # the height profile itself continues past the edge: no slant from a diagonal hem
+                full = weights(np.ones_like(mask), roots, hanging=True)
+                full = np.clip(full / max(full[mask >= 0.5].max(), 1e-6), 0, 1)
+                out = cv2.distanceTransform((mask < 0.5).astype(np.uint8), cv2.DIST_L2, 5)
+                w = np.where(mask >= 0.5, full, full * np.clip(1 - out / (_FADE * move), 0, 1)).astype(np.float32)
+            else:
+                w = _extend(weights(mask, roots), mask, move)
             wind_hold = _hold(face, roots)
 
             def add(c, theta, maps, hold):  # maps: P, Q for x, then P, Q for y; smoothed between two holds
