@@ -148,7 +148,9 @@ class Motion:
         return dx, dy
 
     def _remap(self, img, dx, dy):
-        gx, gy = np.meshgrid(np.arange(self.W, dtype=np.float32), np.arange(self.H, dtype=np.float32))
+        if not hasattr(self, "_grid"):
+            self._grid = np.meshgrid(np.arange(self.W, dtype=np.float32), np.arange(self.H, dtype=np.float32))
+        gx, gy = self._grid
         return cv2.remap(img, gx - dx, gy - dy, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
 
     def layers(self, img: np.ndarray, i: int) -> list[tuple[np.ndarray, np.ndarray]]:
