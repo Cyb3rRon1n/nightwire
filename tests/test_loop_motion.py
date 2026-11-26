@@ -92,3 +92,21 @@ def test_clean_regions_drops_stray_specks():
     face = np.zeros_like(coat)
     _, c, _ = clean_regions(np.zeros_like(coat), coat, face, matte)
     assert c[50, 70] == 0 and c[50, 20] == 1
+
+
+def test_short_hair_moves_at_most_six_percent_of_its_length():
+    face = np.zeros((H, W), np.float32); face[100:160, 90:150] = 1
+    hair = np.zeros((H, W), np.float32); hair[80:170, 80:160] = 1; hair[100:160, 90:150] = 0  # a short bob
+    m = Motion({"hair": hair}, face, (W, H), N, 2.0, (-1.0, 0.0), 1, set())
+    far = max(np.hypot(*m.field(i, "hair")).max() for i in range(N))
+    assert far <= 0.06 * 20 * 1.2 + 1e-3  # tips about 20 px from the roots
+    lo, hi = min(m.stretch(i)[0] for i in range(N)), max(m.stretch(i)[1] for i in range(N))
+    assert 0.9 <= lo and hi <= 1.1
+
+
+def test_field_outside_two_parts_has_no_seam():
+    coat = np.zeros((H, W), np.float32); coat[150:390, 30:90] = 1; coat[150:250, 150:210] = 1  # tails of two lengths
+    m = Motion({"coat": coat}, np.zeros((H, W), np.float32), (W, H), N, 2.0, (-1.0, 0.0), 1, set(), breath=0)
+    for i in range(0, N, 8):
+        dx, _ = m.field(i, "coat")
+        assert np.abs(np.diff(dx[240:390, 90:150], axis=1)).max() < 0.1  # between the tails, where the nearest part switches

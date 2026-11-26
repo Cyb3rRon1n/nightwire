@@ -14,6 +14,8 @@ _LAG = 0.25               # tips run this many cycles behind their roots
 _ACROSS = 0.3             # share of the sway across the wind
 _SMOOTH = 3.0             # px, Gaussian on the field so no edge shears
 _HOLD = 4.0               # px over which the field eases in from a held root or the face
+_MAX_BEND = 0.06          # a tip moves at most this share of its distance from the roots
+_SEAM = 1.0               # px per px of reach over which the outside field eases into its blurred copy
 _FADE = 25                # the field fades out past the region over this many times its largest move (slope 1/25)
 
 
@@ -37,6 +39,14 @@ def weights(region: np.ndarray, root: np.ndarray) -> np.ndarray:
     return np.where(inside, np.clip(d / far, 0, 1) ** 1.5, 0).astype(np.float32)
 
 
+def _length(region: np.ndarray, root: np.ndarray) -> float:
+    """The farthest a pixel of the region lies from its roots."""
+    inside = region >= 0.5
+    if not inside.any() or not (root > 0).any():
+        return 0.0
+    return float(cv2.distanceTransform(np.where(root > 0, 0, 255).astype(np.uint8), cv2.DIST_L2, 5)[inside].max())
+
+
 def _roots(name: str, region: np.ndarray, face: np.ndarray) -> np.ndarray:
     inside = region >= 0.5
     ys = np.nonzero(inside.any(axis=1))[0]
@@ -54,7 +64,9 @@ def _roots(name: str, region: np.ndarray, face: np.ndarray) -> np.ndarray:
 
 
 def _extend(field: np.ndarray, region: np.ndarray, reach: float) -> np.ndarray:
-    """Carry the field past the region's edge, fading over `reach` px, so a strand can move out over what's behind."""
+    """Carry the field past the region's edge, fading over `reach` px, so a strand can move out over what's behind.
+    Right at the edge it takes the nearest region pixel's value (no step at the edge); farther out it eases into a
+    blurred copy, so there is no seam where two parts of a coat meet."""
     inside = (region >= 0.5).astype(np.uint8)
     if not inside.any() or reach <= 0:
         return field
@@ -63,7 +75,11 @@ def _extend(field: np.ndarray, region: np.ndarray, reach: float) -> np.ndarray:
     order = np.zeros(labels.max() + 1, np.int64)
     order[1:len(zy) + 1] = zy * field.shape[1] + zx
     near = field.reshape(-1)[order[labels]]
-    return np.where(inside > 0, field, near * np.clip(1 - dist / reach, 0, 1)).astype(np.float32)
+    soft = max(8.0, _SEAM * reach)
+    smooth = cv2.GaussianBlur(near, (0, 0), soft / 2)
+    t = np.clip(dist / soft, 0, 1)
+    out = (near * (1 - t) + smooth * t) * np.clip(1 - dist / (_FADE * reach), 0, 1)
+    return np.where(inside > 0, field, out).astype(np.float32)
 
 
 def _hold(*masks: np.ndarray) -> np.ndarray:
@@ -104,9 +120,13 @@ class Motion:
             roots = _roots(name, mask, face)
             self.roots = np.maximum(self.roots, roots)
             r = self.regions[name] = _Region(mask, roots)
-            move = amp * self.H * sum(_TERMS) * (1 + _ACROSS)
+            # Tips move amp of the image height, but never more than _MAX_BEND of their own length from the roots:
+            # a short bob that swung as far as long hair would tear (soak of rin-kageyama--alley, 2026-11-26).
+            length = _length(mask, roots)
+            px = min(amp * self.H, _MAX_BEND * length)
+            move = px * sum(_TERMS) * (1 + _ACROSS)
             r.reach = move
-            w = _extend(weights(mask, roots), mask, _FADE * move)
+            w = _extend(weights(mask, roots), mask, move)
             wind_hold, breath_hold = _hold(face, roots), _hold(face)
 
             def add(c, theta, maps, hold):  # maps: P, Q for x, then P, Q for y; smoothed between two holds
@@ -118,7 +138,7 @@ class Motion:
             for k, a in enumerate(_TERMS):
                 c = pick_cycles(hz * (1.0, 1.7)[k], seconds, taken)
                 self.cycles[name].append(c)
-                s = a * amp * self.H
+                s = a * px
                 ax, ay = s * (wx - _ACROSS * wy), s * (wy + _ACROSS * wx)
                 add(c, rng.uniform(0, 2 * np.pi), (ax * p, ax * q, ay * p, ay * q), wind_hold)
             if name == "coat" and breath:
@@ -126,7 +146,7 @@ class Motion:
                 top, bottom = ys[0], ys[-1]
                 rise = breath * (bottom - top)
                 wb = np.clip((bottom - np.arange(self.H, dtype=np.float32)) / max(1, bottom - top), 0, 1)[:, None]
-                wb = _extend(np.where(mask >= 0.5, wb, 0).astype(np.float32), mask, _FADE * max(rise, 1))
+                wb = _extend(np.where(mask >= 0.5, wb, 0).astype(np.float32), mask, max(rise, 1))
                 c = pick_cycles(0.25, seconds, taken)
                 self.cycles["breath"] = [c]
                 zero = np.zeros_like(wb)

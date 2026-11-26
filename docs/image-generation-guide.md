@@ -135,3 +135,22 @@ Restarting the `comfyui` container reinstalls ComfyUI's Python requirements, and
 
 ComfyUI-Inpaint-CropAndStitch is installed at commit 6005efc02f7745649118edd89cdd084c2b9bd3ae (v3.0.20, GPLv3), nodes only, with no bundled test files. The pinned commit is in `PINNED_COMMIT` in its folder. It has not replaced `tools.fix_area` yet: compare them on a real fix first.
 
+
+## Loops from a still (no GPU)
+
+`python -m tools.loop_still STILL` turns one approved scene still into a seamless loop on the CPU: the neon breathes,
+rain falls behind and in front of the character, splashes land and fog drifts, while her hair and coat stir a little
+and her face never changes (spec `docs/superpowers/specs/2026-11-25-layered-loop-design.md`).
+
+1. The cut-out is made the first time and saved as `<still>.matte.png` (BiRefNet; models and licences in
+   `tools/loop_still/MODELS.md`). Fix it by hand if needed; it is never overwritten unless `--redo-matte`.
+2. For hair and coat motion, make the masks once (needs the `loops` extra; points are fractions of width,height):
+   `python -m tools.loop_still.regions STILL --hair X,Y --coat X,Y --face X,Y [--coat-not X,Y]`. Check the
+   overlays at full size. Without masks she holds completely still.
+3. Render: `python -m tools.loop_still STILL --lights --fog [--rain heavy] [--edge-tint] [--preset NAME]`. Output in
+   `design-data/loops/<still>/<preset>/`: `master.mkv` (lossless), `loop.mp4`, `preview3x.mp4`, `poster.jpg`,
+   `meta.json`. It exits 1 if a check fails (face changed, stretched art, visible seam, edge halo, or a hidden
+   shorter repeat); the numbers are in `meta.json`. `--frames-only 6` writes a few PNGs for a quick look.
+4. Blinks turn on by themselves once `<still>.blink-half.png` and `<still>.blink-closed.png` exist (RGBA, eye area
+   only, drawn with `tools/fix_area.py`).
+5. Watch `preview3x.mp4` back to back before showing anyone: the loop should not be noticeable.

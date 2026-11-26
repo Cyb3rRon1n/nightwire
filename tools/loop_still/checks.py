@@ -17,7 +17,7 @@ def _small(img: np.ndarray) -> np.ndarray:
 
 class Checks:
     def __init__(self, still: np.ndarray, face: np.ndarray, matte: np.ndarray, frames: int, fps: int,
-                 blink_mask: np.ndarray | None = None):
+                 blink_mask: np.ndarray | None = None, ring_skip: np.ndarray | None = None):
         self.still, self.N, self.fps = still.astype(np.float32), frames, fps
         held = face > 0
         if blink_mask is not None:
@@ -25,6 +25,8 @@ class Checks:
         self.face = held if held.any() else None
         hard = (matte >= 0.5).astype(np.uint8)
         ring = (cv2.dilate(hard, np.ones((7, 7), np.uint8)) > 0) & (hard == 0)  # 3 px just outside her
+        if ring_skip is not None:  # where moving hair or cloth may pass, a brighter ring is the cloth, not a leak
+            ring &= ~(ring_skip > 0)
         self.ring = ring if ring.any() and hard.any() else None
         self.ring_still = float(self.still[self.ring].mean()) if self.ring is not None else None
         self.face_diff = 0.0 if self.face is not None else None

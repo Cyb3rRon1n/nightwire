@@ -82,3 +82,13 @@ def test_empty_matte_gives_none_not_crash():
     z = np.zeros((H, W), np.float32)
     r = _run(_frames(still), still, z, z)
     assert r["face_max_diff"] is None and r["halo_ratio"] is None and r["passed"]
+
+
+def test_halo_ring_skips_where_moving_cloth_can_reach():
+    still, face, matte = _scene()
+    glow = still.copy(); glow[14:58, 34:62] += 0.3; glow[16:56, 36:60] = still[16:56, 36:60]
+    skip = np.ones((H, W), np.float32)
+    c = Checks(still, face, matte, N, FPS, ring_skip=skip)
+    for i, f in enumerate(_frames(still)):
+        c.character(i, still); c.back(i, glow); c.final(i, f)
+    assert c.result()["halo_ratio"] is None

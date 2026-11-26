@@ -149,7 +149,7 @@ def render(o: Options) -> Path:
     still_dc = decontaminate(still, matte) if has_char else still
 
     regions = {k: _fit_mask(v, W, H) for k, v in load_regions(o.still).items()} if has_char else {}
-    face = regions.pop("face", np.zeros((H, W), np.float32))
+    face = (regions.pop("face", np.zeros((H, W), np.float32)) >= 0.5).astype(np.float32)  # resizing leaves faint edges
     wanted = set(o.motion.split(",")) if o.motion and not o.still_character else set()
     # Grow each moving region by its outline (SAM 2 stops just inside the ink line), so the line moves with the cloth.
     moving = {k: np.minimum(cv2.dilate(v, np.ones((7, 7), np.uint8)), matte) * (1 - face)
@@ -193,8 +193,10 @@ def render(o: Options) -> Path:
     held = "matte core" if o.still_character else "face"
     held_mask = (cv2.erode((matte >= 0.5).astype(np.uint8), np.ones((5, 5), np.uint8)) > 0).astype(np.float32) \
         if o.still_character else face
+    reach = max((r.reach for r in motion.regions.values()), default=0) if motion else 0
+    swept = cv2.dilate((union >= 0.05).astype(np.uint8), np.ones((2 * int(reach) + 7,) * 2, np.uint8)) if motion else None
     checks = Checks(still_dc, held_mask, matte if has_char else np.zeros_like(matte), N, o.fps,
-                    blinks.mask if blinks else None)
+                    blinks.mask if blinks else None, ring_skip=swept)
     rim = ((matte >= 0.5) & (cv2.distanceTransform((matte >= 0.5).astype(np.uint8), cv2.DIST_L2, 3) <= 3)) \
         .astype(np.float32)[..., None] if o.edge_tint and has_char and lights else None
 
