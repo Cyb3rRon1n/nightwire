@@ -1,0 +1,86 @@
+import numpy as np
+
+from tools.loop_still.motion import Motion, weights
+from tools.loop_still.regions import clean_regions
+
+W, H, N = 240, 400, 48
+
+
+def _masks(w=W, h=H):
+    face = np.zeros((h, w), np.float32); face[100:160, 90:150] = 1
+    hair = np.zeros((h, w), np.float32); hair[60:300, 60:180] = 1; hair[100:160, 90:150] = 0
+    coat = np.zeros((h, w), np.float32); coat[200:390, 50:190] = 1; coat[200:300, 60:180] = 0
+    return hair, coat, face
+
+
+def _motion(**kw):
+    hair, coat, face = _masks()
+    return Motion({"hair": hair, "coat": coat}, face, (W, H), N, 2.0, (-1.0, 0.0), 1, set(), **kw)
+
+
+def test_field_at_frame_0_equals_frame_N():
+    m = _motion()
+    for a, b in zip(m.field(0), m.field(N)):
+        assert np.allclose(a, b, atol=1e-6)
+
+
+def test_roots_and_face_move_zero():
+    _, _, face = _masks()
+    for i in range(0, N, 10):
+        dx, dy = _motion().field(i)  # breathing on: the face still never moves
+        assert np.abs(dx[face > 0]).max() == 0 and np.abs(dy[face > 0]).max() == 0
+    m = _motion(breath=0)  # breathing lifts the shoulders, so roots are checked without it
+    for name, r in m.regions.items():
+        for i in range(0, N, 10):
+            dx, dy = m.field(i, name)
+            assert np.abs(dx[r.roots > 0]).max() == 0 and np.abs(dy[r.roots > 0]).max() == 0
+
+
+def test_tips_move_most():
+    m = _motion(breath=0)
+    peak = max(np.hypot(*m.field(i))[280:300, 60:180].max() for i in range(N))
+    assert peak >= 0.6 * 0.015 * H
+
+
+def test_stretch_stays_in_bounds():
+    m = _motion()
+    lo, hi = min(m.stretch(i)[0] for i in range(N)), max(m.stretch(i)[1] for i in range(N))
+    assert 0.9 <= lo and hi <= 1.1
+
+
+def test_masks_of_another_size_are_resized():
+    hair, coat, face = _masks(120, 200)
+    m = Motion({"hair": hair, "coat": coat}, face, (W, H), N, 2.0, (-1.0, 0.0), 1, set())
+    assert m.field(5)[0].shape == (H, W)
+
+
+def test_hair_at_frame_edge_reflects_not_black():
+    face = np.zeros((H, W), np.float32); face[100:150, 100:150] = 1
+    hair = np.zeros((H, W), np.float32); hair[40:300, 0:110] = 1; hair[100:150, 100:110] = 0
+    m = Motion({"hair": hair}, face, (W, H), N, 2.0, (-1.0, 0.0), 1, set(), amp=0.03)
+    img = np.random.default_rng(0).uniform(0.4, 0.9, (H, W, 3)).astype(np.float32)
+    for i in range(0, N, 6):
+        assert m.warp(img, i).min() >= img.min() - 1e-6
+
+
+def test_no_regions_is_identity():
+    m = Motion({}, np.zeros((H, W), np.float32), (W, H), N, 2.0, (-1.0, 0.0), 1, set())
+    img = np.random.default_rng(0).random((H, W, 3)).astype(np.float32)
+    assert np.array_equal(m.warp(img, 7), img)
+
+
+def test_weights_zero_at_root_one_at_tip():
+    region = np.zeros((50, 20), np.float32); region[5:45] = 1
+    root = np.zeros_like(region); root[5] = 1
+    w = weights(region, root)
+    assert w[5].max() == 0 and np.isclose(w[44].max(), 1) and w[0].max() == 0
+
+
+def test_clean_regions_subtracts_face_and_clips_to_matte():
+    matte = np.zeros((10, 10), np.float32); matte[:, :8] = 1
+    hair = np.ones((10, 10), np.float32); coat = np.ones((10, 10), np.float32); coat[:5] = 0
+    face = np.zeros((10, 10), np.float32); face[2:4, 2:4] = 1
+    h, c, f = clean_regions(hair, coat, face, matte)
+    assert h[2, 2] == 0 and h[0, 9] == 0 and h[0, 0] == 1
+    assert c[7, 0] == 0  # a pixel belongs to one region: hair wins over coat
+    assert np.array_equal(f, face)
