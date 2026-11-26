@@ -21,8 +21,9 @@ def _infer(img_bgr: np.ndarray, model: Path) -> np.ndarray:
     x = cv2.resize(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB), (_SIDE, _SIDE), interpolation=cv2.INTER_AREA)
     x = ((x.astype(np.float32) / 255 - _MEAN) / _STD).transpose(2, 0, 1)[None]
     out = sess.run(None, {sess.get_inputs()[0].name: x})[0][0, 0]
-    if out.min() < 0 or out.max() > 1:  # logits
-        out = 1 / (1 + np.exp(-out))
+    if out.min() < -0.01 or out.max() > 1.01:  # logits (a sigmoid output can overshoot 0..1 by rounding)
+        out = 1 / (1 + np.exp(-np.clip(out, -50, 50)))
+    out = np.clip(out, 0, 1)
     return cv2.resize(out.astype(np.float32), img_bgr.shape[1::-1], interpolation=cv2.INTER_LINEAR)
 
 
