@@ -44,12 +44,13 @@ def load_or_make_matte(still: Path, model: Path | None, redo: bool = False) -> n
 
 
 def feather(matte: np.ndarray, px: int = 2) -> np.ndarray:
-    """Soften only the edge: pixels farther than px from it keep their value."""
+    """Soften the edge outward only: the cut-out never loses alpha (so her ink line stays whole), and fades over px
+    past its edge, where the still is the street anyway."""
     hard = (matte >= 0.5).astype(np.uint8)
-    inside = cv2.distanceTransform(hard, cv2.DIST_L2, 3)
+    if not hard.any():
+        return matte.astype(np.float32)
     outside = cv2.distanceTransform(1 - hard, cv2.DIST_L2, 3)
-    signed = np.where(hard > 0, inside - 0.5, 0.5 - outside)
-    return np.clip(0.5 + signed / (2 * px), 0, 1).astype(np.float32)
+    return np.maximum(matte, np.clip(1 - outside / (px + 1), 0, 1)).astype(np.float32)
 
 
 def decontaminate(img: np.ndarray, matte: np.ndarray, ring_px: int = 3) -> np.ndarray:

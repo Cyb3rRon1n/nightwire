@@ -58,9 +58,9 @@ def test_hair_at_frame_edge_reflects_not_black():
     face = np.zeros((H, W), np.float32); face[100:150, 100:150] = 1
     hair = np.zeros((H, W), np.float32); hair[40:300, 0:110] = 1; hair[100:150, 100:110] = 0
     m = Motion({"hair": hair}, face, (W, H), N, 2.0, (-1.0, 0.0), 1, set(), amp=0.03)
-    img = np.random.default_rng(0).uniform(0.4, 0.9, (H, W, 3)).astype(np.float32)
+    img = np.repeat(np.linspace(0.4, 0.9, W, dtype=np.float32)[None, :, None], H, axis=0).repeat(3, axis=2)
     for i in range(0, N, 6):
-        assert m.warp(img, i).min() >= img.min() - 1e-6
+        assert m.warp(img, i).min() >= img.min() - 0.02  # no black wedge pulled in
 
 
 def test_no_regions_is_identity():

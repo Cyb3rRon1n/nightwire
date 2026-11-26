@@ -151,7 +151,9 @@ def render(o: Options) -> Path:
     regions = {k: _fit_mask(v, W, H) for k, v in load_regions(o.still).items()} if has_char else {}
     face = regions.pop("face", np.zeros((H, W), np.float32))
     wanted = set(o.motion.split(",")) if o.motion and not o.still_character else set()
-    moving = {k: v for k, v in regions.items() if k in wanted and (v >= 0.5).any()}
+    # Grow each moving region by its outline (SAM 2 stops just inside the ink line), so the line moves with the cloth.
+    moving = {k: np.minimum(cv2.dilate(v, np.ones((7, 7), np.uint8)), matte) * (1 - face)
+              for k, v in regions.items() if k in wanted and (v >= 0.5).any()}
     taken: set[int] = set()
     rain_far = Rain((W, H), N, o.rain, o.seed)
     wind = (-1.0 if rain_far.slant > 0 else 1.0, 0.0)  # drops drift left as they fall, so the wind blows left
@@ -160,10 +162,16 @@ def render(o: Options) -> Path:
     if wanted and not moving and has_char:
         _say(o, "motion: no hair/coat masks beside the still (python -m tools.loop_still.regions), so she holds still")
 
+    # A moved edge can only uncover the strip of its region within its largest move of the region's edge; only that
+    # strip (and 3 px past the edge) is filled, so LaMa works from nearby context instead of inventing a whole coat.
     union = np.zeros((H, W), np.float32)
+    hole = np.zeros((H, W), bool)
     for r in (motion.regions.values() if motion else []):
         union = np.maximum(union, r.mask)
-    hole = (cv2.dilate((union >= 0.05).astype(np.uint8), np.ones((7, 7), np.uint8)) > 0) & ~(face > 0)
+        inside = (r.mask >= 0.05).astype(np.uint8)
+        strip = cv2.distanceTransform(inside, cv2.DIST_L2, 3) <= r.reach + 3
+        hole |= (cv2.dilate(inside, np.ones((7, 7), np.uint8)) > 0) & strip
+    hole &= ~(face > 0)
     plate = _plate(still_dc, hole, o.plate, o) if motion else still_dc
     body = matte * (1 - union)  # the character that never moves
 

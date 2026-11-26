@@ -147,18 +147,21 @@ class Motion:
                 dy += sa * py - ca * qy
         return dx, dy
 
-    def _remap(self, img, dx, dy):
+    def _remap(self, img, dx, dy, how=cv2.INTER_LINEAR):
         if not hasattr(self, "_grid"):
             self._grid = np.meshgrid(np.arange(self.W, dtype=np.float32), np.arange(self.H, dtype=np.float32))
         gx, gy = self._grid
-        return cv2.remap(img, gx - dx, gy - dy, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+        return cv2.remap(img, gx - dx, gy - dy, how, borderMode=cv2.BORDER_REFLECT)
 
     def layers(self, img: np.ndarray, i: int) -> list[tuple[np.ndarray, np.ndarray]]:
         """(warped image, warped region alpha) per region, back to front."""
         out = []
         for name, r in self.regions.items():
             dx, dy = self.field(i, name)
-            out.append((self._remap(img, dx, dy), self._remap(r.mask, dx, dy)))
+            # Bicubic for the art: a 1-2 px ink line moved by a fraction of a pixel stays a line (bilinear smears it).
+            moved = np.clip(self._remap(img, dx, dy, cv2.INTER_CUBIC), 0, 1) if img.dtype == np.float32 \
+                else self._remap(img, dx, dy, cv2.INTER_CUBIC)
+            out.append((moved, np.clip(self._remap(r.mask, dx, dy), 0, 1)))
         return out
 
     def warp(self, img: np.ndarray, i: int) -> np.ndarray:

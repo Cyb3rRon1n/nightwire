@@ -34,7 +34,7 @@ def test_feather_keeps_core_and_background():
     a = np.zeros((60, 60), np.float32); a[15:45, 15:45] = 1
     f = m.feather(a, px=2)
     assert f[30, 30] == 1.0 and f[0, 0] == 0.0
-    assert 0 < f[30, 15] < 1
+    assert f[30, 15] == 1.0 and 0 < f[30, 14] < 1 and f[30, 11] == 0  # never thinner, softened just outside
 
 
 def test_decontaminate_only_touches_the_edge_ring():
