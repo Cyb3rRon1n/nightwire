@@ -84,3 +84,11 @@ def test_clean_regions_subtracts_face_and_clips_to_matte():
     assert h[2, 2] == 0 and h[0, 9] == 0 and h[0, 0] == 1
     assert c[7, 0] == 0  # a pixel belongs to one region: hair wins over coat
     assert np.array_equal(f, face)
+
+
+def test_clean_regions_drops_stray_specks():
+    matte = np.ones((100, 100), np.float32)
+    coat = np.zeros((100, 100), np.float32); coat[10:90, 10:40] = 1; coat[50:52, 70:72] = 1  # a tail and a speck
+    face = np.zeros_like(coat)
+    _, c, _ = clean_regions(np.zeros_like(coat), coat, face, matte)
+    assert c[50, 70] == 0 and c[50, 20] == 1
