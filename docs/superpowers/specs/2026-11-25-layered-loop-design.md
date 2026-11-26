@@ -1,6 +1,7 @@
 # Layered loop: the city moves, and the character barely does
 
-Status: draft for the owner (card `layered-loop`). Widened 2026-11-25: the owner said "do not need restrict to still
+Status: approved 2026-11-26 (card `layered-loop` kept, no note, so the picks stand: near rain in front, edge tint as
+an option, breathing on and very small). Plan: `docs/superpowers/plans/2026-11-26-layered-loop.md`. Widened 2026-11-25: the owner said "do not need restrict to still
 and background animation ... minimal animation, aesthetics, like hair wind", so the character gets small idle motion
 too (section "Character motion"). There is still no lip-sync. 2026-11-26 the owner answered two questions: "blinks
 are fine, keep it subtle", and a loop should feel "like viewing a gif or live images where you can not tell that it is
