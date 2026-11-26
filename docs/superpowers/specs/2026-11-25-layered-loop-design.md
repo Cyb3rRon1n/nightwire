@@ -2,7 +2,9 @@
 
 Status: draft for the owner (card `layered-loop`). Widened 2026-11-25: the owner said "do not need restrict to still
 and background animation ... minimal animation, aesthetics, like hair wind", so the character gets small idle motion
-too (section "Character motion"). There is still no lip-sync, and the face stays still until the owner decides. The owner liked the CPU spike (2026-11-25,
+too (section "Character motion"). There is still no lip-sync. 2026-11-26 the owner answered two questions: "blinks
+are fine, keep it subtle", and a loop should feel "like viewing a gif or live images where you can not tell that it is
+repeating" (section "Can't tell it loops"). The owner liked the CPU spike (2026-11-25,
 https://claude.ai/artifact/A8SCvcVTFHhiE45fvm9Yia) and asked for a real workflow, researched first. The idea came from a
 clip the owner shared ("animation with Claude, no video-generation AI": a background layer and character layers put
 together in code). We take the layers and leave out its mouth-swap lip-sync (owner rule: no face animation).
@@ -57,10 +59,28 @@ becomes the first step for background loops; a video model is used only for shot
 - **Hair and clothes masks.** anime-seg (PyPI, hair, clothes and face classes) was seen in snippets only, and its
   licence is unchecked. SAM 2 with point prompts is the checked alternative.
 
+## Prior art for "can't tell it loops" and blinks (researcher 2026-11-26; checked = page opened)
+
+- **Per-region periods** (Liao, Joshi and Hoppe, "Automated Video Looping with Progressive Dynamism", SIGGRAPH 2013,
+  hhoppe.com/proj/videoloops, checked). Each pixel gets its own period and start time, so regions loop on their own.
+  Lesson: give each layer its own period and phase.
+- **Video Textures** (Schödl et al., SIGGRAPH 2000, Microsoft Research abstract, checked). The goal is a stream
+  that never repeats exactly. Lesson: a whole loop shouldn't feel like one replayed clip.
+- **Cinemagraph practice** (Adobe blog interview, 2017, checked). Layers loop at different lengths (for example fog
+  every 40 s, clouds every 20 s). Matching motion at the seam matters; ping-pong loops look mechanical (Figma
+  guide, snippet only). Lesson: different lengths per layer, forward loops only.
+- **No study found** on how long a loop must be before people notice it repeats, or on avoiding one memorable
+  event. Those rules below are our inference, to be judged on the clips.
+- **Blink timing.** Adults at rest blink about 17 times a minute, usually 2–10 s apart. A blink lasts 100–400 ms
+  (Wikipedia "Blinking", checked, citing Bentivoglio 1997 and the Harvard BioNumbers database). Bloop Animation
+  (checked) draws a regular blink as 2 frames closing, 1 closed and 3 opening, a fast one in 5 frames, and a slow one
+  in 9. Clip Studio tip 2643 (checked) holds closed eyes 4 frames and half-closed 2 at 24 fps. No source says
+  regular blinks look robotic; uneven spacing is our call, following the 2–10 s spread.
+
 ## Design
 
-`python -m tools.loop_still STILL [--seconds 10] [--size 1920x1338] [--rain none|drizzle|steady|heavy]
-[--lights] [--train ... --passes ...] [--sweeps ...] [--fog] [--out DIR]`
+`python -m tools.loop_still STILL [--seconds 20] [--size 1920x1338] [--rain none|drizzle|steady|heavy]
+[--lights] [--train ... --passes ...] [--sweeps ...] [--fog] [--motion hair,coat[,breath]] [--blink] [--still-character] [--out DIR]`
 
 1. **Matte.** The character's cut-out is made once and saved beside the still as `<still>.matte.png`. It is
    reused, and it can be fixed by hand. The model is ToonOut (ONNX, via onnxruntime) or BiRefNet, whichever wins
@@ -76,7 +96,7 @@ becomes the first step for background loops; a video model is used only for shot
 4. **Front layers:**
    - Street splashes on the ground area behind and around the feet, each on a 3-frame cycle at a random phase.
    - Near rain: sparse, longer and brighter streaks across the whole frame, including in front of her.
-5. **Loop rule:** every effect is a function of `i / N` with whole cycles per loop. Particles wrap by modulo on a
+5. **Loop rule:** see "Can't tell it loops" below. Every effect is a function of `i / N` with whole cycles per loop. Particles wrap by modulo on a
    travel of whole screen heights, and the noise is tiled. The lossless check (below) is the proof.
 6. **Output:** a lossless master (FFV1 `.mkv`), an H.264 `.mp4` for viewing, a 3× looped preview and a poster
    frame, written to `design-data/loops/<still-stem>/<preset>/` with a `meta.json` (options, seed, matte model,
@@ -100,6 +120,32 @@ The approach is procedural and needs no model. Every pixel is still the approved
   amplitudes small. Phase 2 uses See-through's filled layers on the 4070.
 - **Benchmark.** One character is rigged by hand in Inochi Creator, once, to compare the look and the hours.
 
+### Blinks (owner 2026-11-26: "fine, keep it subtle")
+
+- Blinks swap in drawn frames; the eyes are never warped. Each character needs a half-closed and a closed eye patch,
+  made once with `tools/fix_area.py` on the eye area only (owner rule: local fixes) and saved beside the still as
+  `<still>.blink-half.png` and `<still>.blink-closed.png`. These need the 4U box, so until then `--blink` is off
+  and the rest of the tool works without it.
+- A blink is open, half, closed, half, open: 2 frames closing, 1 closed and 3 opening at 24 fps (about 250 ms), with
+  an occasional fast one (5 frames) or slow one (9), per Bloop Animation.
+- Blinks are subtle (owner) and unevenly spaced, roughly 3–8 s apart with an occasional double blink, never on a
+  fixed beat and never at the loop point. The times come from the seed, so a run can be repeated.
+- Only the eye patches change. The "face frozen" check covers the rest of the face.
+
+### Can't tell it loops (owner 2026-11-26)
+
+A seamless seam is not enough; the viewer should not notice the repeat at all. Our rules (from the research above; the beat and event rules are our inference):
+
+- **No shared beat.** Each effect has its own whole number of cycles per loop, chosen so they share no common
+  factor (for example rain 7, neon breathing 3, hair 2 and 5, fog 1), so nothing lines up until the loop point.
+- **No memorable event that repeats.** A train or headlight sweep happens at most once per loop, blinks are uneven,
+  and no two events fall at the same moment.
+- **Forward only.** No ping-pong loops.
+- **Variety inside each layer.** Every drop and splash has its own speed, length and phase from the seed.
+- **Longer default:** 20 s (`--seconds` still sets it). Renders are CPU-only, so time grows with length.
+- **Check:** the frames' similarity at every lag shorter than the loop stays below the similarity at the full loop,
+  with a margin, so no hidden shorter period shows up (saved in meta.json as `repeat_score`).
+
 ### Checks (run on the lossless master, saved in meta.json)
 
 - **Face frozen:** the face mask differs from the still by exactly 0, apart from rain drawn in front. With
@@ -120,7 +166,7 @@ the defaults.
 
 - **Parallax camera drift.** It needs an empty background behind the character (LaMa inpainting, or a plate
   rendered on the 4U box), plus Depth Anything V2 Small. This is phase 2, after the owner likes phase 1.
-- **Lip-sync** (owner rule). Face motion such as blinks waits for the owner's answer.
+- **Lip-sync** (owner rule). Blinks are the only face motion (owner 2026-11-26).
 - **Hair-only video generation** (Wan 2.2 5B with the hair pasted back): an experiment for the 4070, after phase 1.
 - **Video models.** Wan, AniSora, LTX and Seedance stay in the 4U loop plan as the fallback.
 
@@ -140,7 +186,6 @@ the defaults.
 2. **Light on her:** let the neon's breathing tint her a little (a faint glow on her edge that pulses with the
    sign)? Research flags a still figure under moving light as the main "pasted on" risk. Now that she may move a
    little, my pick is yes, as a faint option you judge on the first clips.
-3. **Length:** 10 s loops by default, or longer for the shorts?
-4. **Face:** completely still, or are small things like blinks OK? My pick is still for now; blinks would need
-   drawn closed-eye frames (from the expression renders), not warping.
+3. **Length:** answered 2026-11-26 ("can not tell that it is repeating"): 20 s default, see "Can't tell it loops".
+4. **Face:** answered 2026-11-26: subtle blinks are fine, see "Blinks".
 5. **Breathing:** include it by default, or hair and coat only?
