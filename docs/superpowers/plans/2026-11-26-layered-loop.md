@@ -67,20 +67,20 @@ has seen the first loops), parallax, hair-only video (spec "Not doing").
   np.ndarray` (edge pixels' colour pulled toward the inner colour where the background was bright);
   `MATTE_SUFFIX = ".matte.png"`.
 
-- [ ] **Step 1: Tests** — `test_cached_matte_is_reused_and_never_overwritten` (write a fake matte file, call with a
+- [x] **Step 1: Tests** — `test_cached_matte_is_reused_and_never_overwritten` (write a fake matte file, call with a
   model path that doesn't exist: returns the cached one, file mtime unchanged); `test_redo_without_model_raises`;
   `test_feather_keeps_core_and_background` (core pixels stay 1.0, far background 0.0, edge strictly between);
   `test_decontaminate_only_touches_the_edge_ring` (pixels farther than `ring_px` from the edge unchanged exactly).
-- [ ] **Step 2:** Run `.venv/bin/python -m pytest tests/test_loop_matte.py -v` → FAIL (module missing).
-- [ ] **Step 3: Implement.** Model inference via onnxruntime, 1024×1024 input, ImageNet mean/std, sigmoid output
+- [x] **Step 2:** Run `.venv/bin/python -m pytest tests/test_loop_matte.py -v` → FAIL (module missing).
+- [x] **Step 3: Implement.** Model inference via onnxruntime, 1024×1024 input, ImageNet mean/std, sigmoid output
   resized back (BiRefNet's ONNX contract, as rembg uses it). Saved matte is 8-bit PNG.
-- [ ] **Step 4:** Tests pass.
-- [ ] **Step 5: A/B (manual, recorded).** Download BiRefNet-general ONNX and ToonOut weights (export ToonOut to
+- [x] **Step 4:** Tests pass.
+- [x] **Step 5: A/B (manual, recorded).** Download BiRefNet-general ONNX and ToonOut weights (export ToonOut to
   ONNX if only a checkpoint ships; give up after one hour and record why). Run both on 3 stills
   (`design-data/scenes/rin-kageyama--alley.png` plus two other night scenes with hair against neon). Save edge crops
   side by side to `design-data/loops/_matte-ab/`. Default model = the one with fewer halo/hole errors by eye; write
   the choice, licences and URLs in `MODELS.md`.
-- [ ] **Step 6: Commit** `Loop still: matte with cache, feather and edge decontamination (+ model A/B notes)`.
+- [x] **Step 6: Commit** `Loop still: matte with cache, feather and edge decontamination (+ model A/B notes)`.
 
 ### Task 2: Periodic building blocks
 
@@ -91,11 +91,11 @@ has seen the first loops), parallax, hair-only video (spec "Not doing").
   sharing no factor > 1 with any in `taken`; adds it to `taken`); `divisors_between(n: int, lo: int, hi: int) ->
   list[int]`; `tile_noise(h, w, cell, rng) -> np.ndarray` (wrap-around smooth noise, 0..1).
 
-- [ ] **Step 1: Tests** — `test_pick_cycles_shares_no_factor` (`taken={4}`, `pick_cycles(0.3, 20, taken)` → 5 or 7,
+- [x] **Step 1: Tests** — `test_pick_cycles_shares_no_factor` (`taken={4}`, `pick_cycles(0.3, 20, taken)` → 5 or 7,
   not 6); `test_pick_cycles_never_zero` (`pick_cycles(0.01, 10, set()) == 1`); `test_tile_noise_wraps` (left column
   ≈ continuation of right column: `abs(n[:,0]-n[:,-1]).max()` below the median neighbour step × 2).
-- [ ] **Step 2–4:** fail, implement, pass.
-- [ ] **Step 5: Commit** `Loop still: periodic helpers (coprime cycle counts, wrapping noise)`.
+- [x] **Step 2–4:** fail, implement, pass.
+- [x] **Step 5: Commit** `Loop still: periodic helpers (coprime cycle counts, wrapping noise)`.
 
 ### Task 3: Character motion (hair, coat, breathing)
 
@@ -123,7 +123,7 @@ sin(2π c_b i/N)` where `w_breath` is 0 at the matte's bottom row and 1 at the c
 dilated by 2 px, is forced to 0 displacement and the field is smoothed (Gaussian, σ = 3 px) before clamping it there
 again. `warp` uses `cv2.remap(..., INTER_LINEAR, borderMode=BORDER_REFLECT)`.
 
-- [ ] **Step 1: Tests** — `test_field_at_frame_0_equals_frame_N` (`field(0) == field(N)` to 1e-6);
+- [x] **Step 1: Tests** — `test_field_at_frame_0_equals_frame_N` (`field(0) == field(N)` to 1e-6);
   `test_roots_and_face_move_zero` (exactly 0 on face pixels and root pixels, every 10th frame);
   `test_tips_move_most` (max |d| on tip pixels ≥ 0.9 × `amp*H`·Σa over the loop, root pixels 0);
   `test_stretch_stays_in_bounds` (synthetic blob hair, default amp: 0.9 ≤ min, max ≤ 1.1);
@@ -131,8 +131,8 @@ again. `warp` uses `cv2.remap(..., INTER_LINEAR, borderMode=BORDER_REFLECT)`.
   Focus 3: a hair region touching x=0; warped frame has no new pixel darker than the input's minimum);
   `test_clean_regions_subtracts_face_and_clips_to_matte`; `test_no_regions_is_identity` (`warp(img, i) is` equal to
   img).
-- [ ] **Step 2–4:** fail, implement, pass.
-- [ ] **Step 5: Commit** `Loop still: hair, coat and breathing motion with roots and face held still`.
+- [x] **Step 2–4:** fail, implement, pass.
+- [x] **Step 5: Commit** `Loop still: hair, coat and breathing motion with roots and face held still`.
 
 ### Task 4: City layers (rain, splashes, fog)
 
@@ -152,11 +152,11 @@ matte core; each site's period is a divisor of N between 6 and 48 frames; a spla
 over 3 frames (growing, then fading) at a site position that changes each occurrence (from the seed and occurrence
 index modulo the occurrences per loop). Fog: `tile_noise` scrolled by exactly 1 tile width per loop, alpha ≤ 0.08.
 
-- [ ] **Step 1: Tests** — `test_rain_frame_0_equals_frame_N` for far and near; `test_splash_periods_divide_N` for N in
+- [x] **Step 1: Tests** — `test_rain_frame_0_equals_frame_N` for far and near; `test_splash_periods_divide_N` for N in
   (480, 168, 252) (Review Focus 4); `test_splash_lasts_three_frames`; `test_fog_frame_0_equals_frame_N`;
   `test_rain_none_is_empty`; `test_same_seed_same_layers`.
-- [ ] **Step 2–4:** fail, implement, pass.
-- [ ] **Step 5: Commit** `Loop still: periodic rain (far and near), splashes and fog`.
+- [x] **Step 2–4:** fail, implement, pass.
+- [x] **Step 5: Commit** `Loop still: periodic rain (far and near), splashes and fog`.
 
 ### Task 5: Blinks
 
@@ -173,11 +173,11 @@ Shapes (24 fps, Bloop Animation): regular `["half","closed","closed","half","hal
 fast or slow, 1 in 6 is followed 6 frames later by a second regular blink. Gaps uniform 3–8 s. No blink starts in the
 first 0.5 s, and none may end later than 0.5 s before the loop end. Times scale with `fps`.
 
-- [ ] **Step 1: Tests** — `test_gaps_are_uneven_and_3_to_8_s` (over seeds 1–20: every gap within 3–8 s plus the double
+- [x] **Step 1: Tests** — `test_gaps_are_uneven_and_3_to_8_s` (over seeds 1–20: every gap within 3–8 s plus the double
   blink's 6 frames; not all gaps equal); `test_no_blink_straddles_the_seam` (Review Focus 5, seeds 1–50, N=480 and
   N=168); `test_apply_changes_only_patch_pixels`; `test_load_blinks_needs_both_patches`.
-- [ ] **Step 2–4:** fail, implement, pass.
-- [ ] **Step 5: Commit** `Loop still: subtle blinks from drawn eye patches on an uneven schedule`.
+- [x] **Step 2–4:** fail, implement, pass.
+- [x] **Step 5: Commit** `Loop still: subtle blinks from drawn eye patches on an uneven schedule`.
 
 ### Task 6: Checks
 
@@ -196,11 +196,11 @@ outside the matte in `back` frames, divided by the same ring in the still (withi
 [fps, N−fps] of D(k) / median step (≥ 1.0: no shorter lag looks more alike than neighbouring frames). Checks that
 need a mask return `None` and are skipped when the mask is empty.
 
-- [ ] **Step 1: Tests** — `test_planted_seam_fails` (a jump between the last and first frame); `test_changed_face_pixel_fails`;
+- [x] **Step 1: Tests** — `test_planted_seam_fails` (a jump between the last and first frame); `test_changed_face_pixel_fails`;
   `test_blink_pixels_are_exempt`; `test_halo_fails_on_a_bright_ring`; `test_hidden_half_loop_fails_repeat`
   (sequence whose second half copies the first); `test_clean_periodic_sequence_passes`; `test_empty_matte_gives_none_not_crash`.
-- [ ] **Step 2–4:** fail, implement, pass.
-- [ ] **Step 5: Commit** `Loop still: face, stretch, seam, halo and repeat checks`.
+- [x] **Step 2–4:** fail, implement, pass.
+- [x] **Step 5: Commit** `Loop still: face, stretch, seam, halo and repeat checks`.
 
 ### Task 7: Render and CLI
 
@@ -226,23 +226,23 @@ everything. Output to `design-data/loops/<stem>/<preset>/` (preset = `--preset` 
 (frame 0), `meta.json` (all options, seed, matte model, cycle counts, check results, seconds taken). The process exits
 1 when a check fails, after writing everything. `--frames-only K` renders K frames to PNG for quick looks.
 
-- [ ] **Step 1: Tests** (small: 160×112, 2 s, 12 fps, `--plate telea`, synthetic still and masks in `tmp_path`) —
+- [x] **Step 1: Tests** (small: 160×112, 2 s, 12 fps, `--plate telea`, synthetic still and masks in `tmp_path`) —
   `test_render_writes_all_outputs_and_ffprobe_reads_them`; `test_still_character_holds_the_whole_matte_core`;
   `test_no_character_still_renders` (Review Focus 1); `test_same_args_same_frames` (frame hashes equal over two
   runs); `test_meta_has_check_results_and_cycles`; `test_blink_flag_without_patches_warns_and_continues`.
-- [ ] **Step 2–4:** fail, implement, pass. Full suite: `.venv/bin/python -m pytest tests/ -q` all pass.
-- [ ] **Step 5: Commit** `Loop still: render, outputs and CLI`.
+- [x] **Step 2–4:** fail, implement, pass. Full suite: `.venv/bin/python -m pytest tests/ -q` all pass.
+- [x] **Step 5: Commit** `Loop still: render, outputs and CLI`.
 
 ### Task 8: End to end, review page, docs
 
 **Files:** Modify `docs/image-generation-guide.md` (a short "Loops" section); data under `design-data/loops/`.
 
-- [ ] **Step 1:** Make region masks for the 3 A/B stills (`python -m tools.loop_still.regions ...`), check them by eye
+- [x] **Step 1:** Make region masks for the 3 A/B stills (`python -m tools.loop_still.regions ...`), check them by eye
   at full size, hand-fix if needed.
-- [ ] **Step 2:** Render 3 stills × 2 presets (`--rain steady --lights --fog`, and `--rain heavy --lights
+- [x] **Step 2:** Render 3 stills × 2 presets (`--rain steady --lights --fog`, and `--rain heavy --lights
   --edge-tint`). All checks pass; `ffprobe` reads every output; note render times in `meta.json`.
-- [ ] **Step 3:** Watch each loop 3× back to back at full size and on a 390 px-wide view (the researcher's "watch
+- [x] **Step 3:** Watch each loop 3× back to back at full size and on a 390 px-wide view (the researcher's "watch
   several cycles" rule). Note anything that repeats visibly or looks rubbery; fix the defaults and re-render.
-- [ ] **Step 4:** Grow the spike page into the "Loops" artifact (same URL as the spike, A8SCvcVTFHhiE45fvm9Yia): the
+- [x] **Step 4:** Grow the spike page into the "Loops" artifact (same URL as the spike, A8SCvcVTFHhiE45fvm9Yia): the
   clips side by side, the check numbers, the matte A/B crops. Add one inbox card per preset for verdicts.
-- [ ] **Step 5: Commit and push** `Loop still: first loops, guide section`.
+- [x] **Step 5: Commit and push** `Loop still: first loops, guide section`.
