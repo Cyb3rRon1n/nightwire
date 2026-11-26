@@ -147,7 +147,7 @@ and her face never changes (spec `docs/superpowers/specs/2026-11-25-layered-loop
 2. For hair and coat motion, make the masks once (needs the `loops` extra; points are fractions of width,height):
    `python -m tools.loop_still.regions STILL --hair X,Y --coat X,Y --face X,Y [--coat-not X,Y]`. Check the
    overlays at full size. Without masks she holds completely still.
-3. Render: `python -m tools.loop_still STILL --lights --fog [--rain heavy] [--edge-tint] [--preset NAME]`. Output in
+3. Render: `python -m tools.loop_still STILL [--fog] [--rain steady] [--no-edge-tint] [--preset NAME]` (defaults are the owner's pick, preset B: heavy rain, breathing neon, edge glow). Output in
    `design-data/loops/<still>/<preset>/`: `master.mkv` (lossless), `loop.mp4`, `preview3x.mp4`, `poster.jpg`,
    `meta.json`. It exits 1 if a check fails (face changed, stretched art, visible seam, edge halo, or a hidden
    shorter repeat); the numbers are in `meta.json`. `--frames-only 6` writes a few PNGs for a quick look.

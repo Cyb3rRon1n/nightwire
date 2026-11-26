@@ -40,9 +40,9 @@ class Options:
     seconds: float = 20
     fps: int = 24
     size: str = "1920x1338"
-    rain: str = "steady"
+    rain: str = "heavy"             # owner 2026-11-26 picked preset B: heavy rain, lights, edge tint
     near_rain: bool = True
-    lights: bool = False
+    lights: bool = True
     strength: float = 0.3
     train: str | None = None
     floor: str | None = None
@@ -55,7 +55,7 @@ class Options:
     motion: str = "hair,coat,breath"
     still_character: bool = False
     blink: bool | None = None       # None: on when both eye patches exist
-    edge_tint: bool = False
+    edge_tint: bool = True
     plate: str = "lama"             # lama | telea
     matte_model: Path | None = None
     redo_matte: bool = False

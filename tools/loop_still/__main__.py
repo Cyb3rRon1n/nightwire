@@ -17,9 +17,10 @@ def parse(argv=None) -> Options:
     ap.add_argument("--seconds", type=float, default=20)
     ap.add_argument("--fps", type=int, default=24)
     ap.add_argument("--size", default="1920x1338")
-    ap.add_argument("--rain", choices=list(RAIN), default="steady")
+    ap.add_argument("--rain", choices=list(RAIN), default="heavy")
     ap.add_argument("--no-near-rain", dest="near_rain", action="store_false", help="no rain in front of her")
-    ap.add_argument("--lights", action="store_true", help="neon and windows breathe (tools/lights.py)")
+    ap.add_argument("--lights", action=argparse.BooleanOptionalAction, default=True,
+                    help="neon and windows breathe (tools/lights.py)")
     ap.add_argument("--strength", type=float, default=0.3, help="lights strength")
     ap.add_argument("--train"); ap.add_argument("--floor"); ap.add_argument("--passes", default="")
     ap.add_argument("--sweeps", default="")
@@ -31,7 +32,8 @@ def parse(argv=None) -> Options:
     ap.add_argument("--still-character", action="store_true", help="she doesn't move at all")
     ap.add_argument("--blink", dest="blink", action="store_true", default=None)
     ap.add_argument("--no-blink", dest="blink", action="store_false")
-    ap.add_argument("--edge-tint", action="store_true", help="the neon's light faintly on her edge")
+    ap.add_argument("--edge-tint", action=argparse.BooleanOptionalAction, default=True,
+                    help="the neon's light faintly on her edge")
     ap.add_argument("--plate", choices=["lama", "telea"], default="lama")
     ap.add_argument("--matte-model", type=Path)
     ap.add_argument("--redo-matte", action="store_true")

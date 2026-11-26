@@ -1,5 +1,6 @@
 import json
 import subprocess
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -87,8 +88,8 @@ def test_frames_only_writes_pngs(tmp_path):
 def test_cli_defaults_match_the_spec():
     from tools.loop_still.__main__ import parse
     o = parse(["x.png"])
-    assert (o.seconds, o.fps, o.size, o.rain, o.near_rain, o.edge_tint, o.blink) == (20, 24, "1920x1338", "steady",
-                                                                                    True, False, None)
+    assert (o.seconds, o.fps, o.size, o.rain, o.near_rain, o.edge_tint, o.blink) == (20, 24, "1920x1338", "heavy",
+                                                                                    True, True, None)
     assert o.motion == "hair,coat,breath" and not o.still_character
     assert parse(["x.png", "--no-blink", "--still-character"]).blink is False
 
@@ -106,3 +107,13 @@ def test_face_on_her_outline_stays_exact_with_edge_tint(tmp_path):
     for k in range(4):
         f = cv2.imread(str(out / f"{k:04d}.png"))
         assert np.array_equal(f[30:42, 78:92], img[30:42, 78:92]), k
+
+
+def test_defaults_are_preset_b_the_owners_pick():
+    """Owner 2026-11-26 picked preset B: heavy rain, breathing neon, edge glow, no fog."""
+    from tools.loop_still.__main__ import parse
+    o = parse(["x.png"])
+    assert (o.rain, o.lights, o.edge_tint, o.fog) == ("heavy", True, True, False)
+    assert Options(still=Path("x.png")).rain == "heavy"
+    o = parse(["x.png", "--no-lights", "--no-edge-tint", "--rain", "steady"])
+    assert (o.rain, o.lights, o.edge_tint) == ("steady", False, False)
