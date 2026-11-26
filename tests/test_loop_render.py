@@ -91,3 +91,18 @@ def test_cli_defaults_match_the_spec():
                                                                                     True, False, None)
     assert o.motion == "hair,coat,breath" and not o.still_character
     assert parse(["x.png", "--no-blink", "--still-character"]).blink is False
+
+
+def test_face_on_her_outline_stays_exact_with_edge_tint(tmp_path):
+    # Final review: the edge tint and the edge clean-up both touched a face that sits on her outline.
+    p = _still(tmp_path)
+    img = cv2.imread(str(p))
+    img[26:30, 60:110] = (255, 80, 250)  # neon right above her head
+    img[30:42, 78:92] = (170, 190, 230)  # the face now touches the top of the matte
+    cv2.imwrite(str(p), img)
+    face = np.zeros((H, W), np.uint8); face[30:42, 78:92] = 255
+    cv2.imwrite(str(tmp_path / "scene.face.png"), face)
+    out = render(_opts(tmp_path, p, rain="none", fog=False, edge_tint=True, frames_only=4))
+    for k in range(4):
+        f = cv2.imread(str(out / f"{k:04d}.png"))
+        assert np.array_equal(f[30:42, 78:92], img[30:42, 78:92]), k

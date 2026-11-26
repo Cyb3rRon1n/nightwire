@@ -117,3 +117,11 @@ def test_coat_weight_depends_on_height_below_the_shoulders_only():
     root = np.zeros_like(region); root[20:30, 90:110] = 1  # a narrow hood top
     w = weights(region, root, hanging=True)
     assert np.allclose(w[150, 45], w[150, 150]) and w[150, 100] > w[60, 100]
+
+
+def test_load_regions_resizes_masks_to_the_still(tmp_path):
+    import cv2
+    from tools.loop_still.regions import load_regions
+    cv2.imwrite(str(tmp_path / "s.png"), np.zeros((40, 60, 3), np.uint8))
+    cv2.imwrite(str(tmp_path / "s.hair.png"), np.full((30, 30), 255, np.uint8))  # hand-fixed at another aspect
+    assert load_regions(tmp_path / "s.png")["hair"].shape == (40, 60)

@@ -63,3 +63,11 @@ def test_load_blinks_needs_both_patches(tmp_path):
     cv2.imwrite(str(tmp_path / "s.blink-closed.png"), (closed * 255).astype(np.uint8))
     b = load_blinks(still, 480, 24, 1, fit=lambda im: cv2.resize(im, (120, 80)))
     assert b is not None and b.mask.shape == (80, 120)
+
+
+def test_load_blinks_resizes_patches_to_the_still(tmp_path):
+    still = tmp_path / "s.png"
+    cv2.imwrite(str(still), np.zeros((40, 60, 3), np.uint8))
+    for n in ("half", "closed"):
+        cv2.imwrite(str(tmp_path / f"s.blink-{n}.png"), np.zeros((20, 20, 4), np.uint8))
+    assert load_blinks(still, 480, 24, 1).mask.shape == (40, 60)

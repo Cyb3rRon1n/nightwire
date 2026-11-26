@@ -78,10 +78,13 @@ def load_blinks(still: Path, frames: int, fps: int, seed: int, fit=None) -> Blin
     paths = [still.with_name(f"{still.stem}.blink-{n}.png") for n in ("half", "closed")]
     if not all(p.exists() for p in paths):
         return None
+    size = cv2.imread(str(still)).shape[1::-1]
     pats = []
     for p in paths:
         im = cv2.imread(str(p), cv2.IMREAD_UNCHANGED)
         if im.ndim != 3 or im.shape[2] != 4:
             raise ValueError(f"{p} needs an alpha channel that marks the eye area")
+        if im.shape[1::-1] != size:  # line it up with the still first, as the masks are
+            im = cv2.resize(im, size, interpolation=cv2.INTER_LINEAR)
         pats.append(fit(im) if fit else im)
     return Blinks(pats[0], pats[1], frames, fps, seed)

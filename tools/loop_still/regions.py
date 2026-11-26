@@ -26,12 +26,18 @@ def region_path(still: Path, name: str) -> Path:
 
 
 def load_regions(still: Path) -> dict[str, np.ndarray]:
-    """The saved masks that exist, as float32 0..1 at their own size."""
+    """The saved masks that exist, as float32 0..1 at the still's size (a hand-fixed mask may be saved at another
+    size or aspect; it must line up with the still before both are cropped to the output)."""
     out = {}
+    size = None
     for name in NAMES:
         p = region_path(Path(still), name)
         if p.exists():
-            out[name] = cv2.imread(str(p), cv2.IMREAD_GRAYSCALE).astype(np.float32) / 255
+            if size is None:
+                size = cv2.imread(str(still)).shape[1::-1]
+            m = cv2.imread(str(p), cv2.IMREAD_GRAYSCALE)
+            out[name] = cv2.resize(m, size, interpolation=cv2.INTER_LINEAR).astype(np.float32) / 255 \
+                if m.shape[::-1] != size else m.astype(np.float32) / 255
     return out
 
 
