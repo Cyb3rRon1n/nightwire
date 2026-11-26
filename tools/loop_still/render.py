@@ -173,7 +173,7 @@ def render(o: Options) -> Path:
         hole |= (cv2.dilate(inside, np.ones((7, 7), np.uint8)) > 0) & strip
     hole &= ~(face > 0)
     plate = _plate(still_dc, hole, o.plate, o) if motion else still_dc
-    body = matte * (1 - union)  # the character that never moves
+    body = np.maximum(matte * (1 - union), face)  # the character that never moves; the face always from the still
 
     lights = None
     if o.lights:
@@ -218,7 +218,7 @@ def render(o: Options) -> Path:
         if rim is not None:
             glow = cv2.GaussianBlur(np.clip(city - plate, 0, None), (0, 0), 6)
             frame = frame + 0.35 * rim * glow
-        checks.back(i, frame)
+        checks.back(i, frame, city)
         frame = frame + splashes.layer(i)[..., None] * SPLASH_TINT
         if rain_near:
             frame = frame + rain_near.layer(i)[..., None] * RAIN_TINT

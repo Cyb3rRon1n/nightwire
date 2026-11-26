@@ -92,3 +92,12 @@ def test_halo_ring_skips_where_moving_cloth_can_reach():
     for i, f in enumerate(_frames(still)):
         c.character(i, still); c.back(i, glow); c.final(i, f)
     assert c.result()["halo_ratio"] is None
+
+
+def test_halo_measures_against_the_same_frames_city():
+    still, face, matte = _scene()
+    foggy = still + 0.05  # fog behind her lifts the whole street, ring included: not a leak
+    c = Checks(still, face, matte, N, FPS)
+    for i, f in enumerate(_frames(still)):
+        c.character(i, still); c.back(i, foggy, foggy); c.final(i, f)
+    assert "halo" not in c.result()["failed"]

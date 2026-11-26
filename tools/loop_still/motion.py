@@ -14,8 +14,8 @@ _LAG = 0.25               # tips run this many cycles behind their roots
 _ACROSS = 0.3             # share of the sway across the wind
 _SMOOTH = 3.0             # px, Gaussian on the field so no edge shears
 _HOLD = 4.0               # px over which the field eases in from a held root or the face
-_MAX_BEND = 0.06          # a tip moves at most this share of its distance from the roots
-_SEAM = 1.0               # px per px of reach over which the outside field eases into its blurred copy
+_MAX_BEND = 0.045         # a tip moves at most this share of its distance from the roots
+_SEAM = 3.0               # px per px of reach over which the outside field eases into its blurred copy
 _FADE = 25                # the field fades out past the region over this many times its largest move (slope 1/25)
 
 
@@ -29,21 +29,30 @@ def _fit(mask: np.ndarray, size: tuple[int, int]) -> np.ndarray:
     return np.clip(m, 0, 1)
 
 
-def weights(region: np.ndarray, root: np.ndarray) -> np.ndarray:
-    """0 at the root, 1 at the farthest tip, eased (** 1.5) so the middle stays calm; 0 outside the region."""
+def weights(region: np.ndarray, root: np.ndarray, hanging: bool = False) -> np.ndarray:
+    """0 at the root, 1 at the farthest tip, eased (** 1.5) so the middle stays calm; 0 outside the region.
+    hanging: cloth hangs from a shoulder line, so only the height below the root's lowest row counts (distance from a
+    narrow hood top would bend a hem sideways)."""
     inside = region >= 0.5
     if not inside.any() or not (root > 0).any():
         return np.zeros(region.shape, np.float32)
-    d = cv2.distanceTransform(np.where(root > 0, 0, 255).astype(np.uint8), cv2.DIST_L2, 5)
+    if hanging:
+        line = np.nonzero((root > 0).any(axis=1))[0].max()
+        d = np.broadcast_to(np.clip(np.arange(region.shape[0], dtype=np.float32) - line, 0, None)[:, None],
+                            region.shape).copy()
+    else:
+        d = cv2.distanceTransform(np.where(root > 0, 0, 255).astype(np.uint8), cv2.DIST_L2, 5)
     far = d[inside].max() or 1
     return np.where(inside, np.clip(d / far, 0, 1) ** 1.5, 0).astype(np.float32)
 
 
-def _length(region: np.ndarray, root: np.ndarray) -> float:
-    """The farthest a pixel of the region lies from its roots."""
+def _length(region: np.ndarray, root: np.ndarray, hanging: bool = False) -> float:
+    """The farthest a pixel of the region lies from its roots (below the shoulder line, for hanging cloth)."""
     inside = region >= 0.5
     if not inside.any() or not (root > 0).any():
         return 0.0
+    if hanging:
+        return float(np.nonzero(inside.any(axis=1))[0].max() - np.nonzero((root > 0).any(axis=1))[0].max())
     return float(cv2.distanceTransform(np.where(root > 0, 0, 255).astype(np.uint8), cv2.DIST_L2, 5)[inside].max())
 
 
@@ -75,6 +84,7 @@ def _extend(field: np.ndarray, region: np.ndarray, reach: float) -> np.ndarray:
     order = np.zeros(labels.max() + 1, np.int64)
     order[1:len(zy) + 1] = zy * field.shape[1] + zx
     near = field.reshape(-1)[order[labels]]
+    near = cv2.GaussianBlur(near, (0, 0), max(2.0, reach / 4))  # a ragged edge would fan out into the field
     soft = max(8.0, _SEAM * reach)
     smooth = cv2.GaussianBlur(near, (0, 0), soft / 2)
     t = np.clip(dist / soft, 0, 1)
@@ -82,15 +92,15 @@ def _extend(field: np.ndarray, region: np.ndarray, reach: float) -> np.ndarray:
     return np.where(inside > 0, field, out).astype(np.float32)
 
 
-def _hold(*masks: np.ndarray) -> np.ndarray:
-    """1 away from the held pixels, easing to exactly 0 on them."""
+def _hold(*masks: np.ndarray, ease: float = _HOLD) -> np.ndarray:
+    """1 away from the held pixels, easing to exactly 0 on them over `ease` px."""
     held = np.zeros(masks[0].shape, bool)
     for m in masks:
         held |= m > 0
     if not held.any():
         return np.ones(held.shape, np.float32)
     d = cv2.distanceTransform((~held).astype(np.uint8), cv2.DIST_L2, 5)
-    t = np.clip(d / _HOLD, 0, 1)
+    t = np.clip(d / ease, 0, 1)
     return (t * t * (3 - 2 * t)).astype(np.float32)
 
 
@@ -103,7 +113,7 @@ class _Region:
 
 class Motion:
     def __init__(self, regions: dict, face: np.ndarray, size: tuple[int, int], frames: int, seconds: float,
-                 wind: tuple[float, float], seed: int, taken: set, amp: float = 0.015, hz: float = 0.3,
+                 wind: tuple[float, float], seed: int, taken: set, amp: float = 0.01, hz: float = 0.3,
                  breath: float = 0.004):
         self.W, self.H = size
         self.N = frames
@@ -122,12 +132,13 @@ class Motion:
             r = self.regions[name] = _Region(mask, roots)
             # Tips move amp of the image height, but never more than _MAX_BEND of their own length from the roots:
             # a short bob that swung as far as long hair would tear (soak of rin-kageyama--alley, 2026-11-26).
-            length = _length(mask, roots)
+            hanging = name != "hair"
+            length = _length(mask, roots, hanging)
             px = min(amp * self.H, _MAX_BEND * length)
             move = px * sum(_TERMS) * (1 + _ACROSS)
             r.reach = move
-            w = _extend(weights(mask, roots), mask, move)
-            wind_hold, breath_hold = _hold(face, roots), _hold(face)
+            w = _extend(weights(mask, roots, hanging), mask, move)
+            wind_hold = _hold(face, roots)
 
             def add(c, theta, maps, hold):  # maps: P, Q for x, then P, Q for y; smoothed between two holds
                 r.terms.append((c, theta, *(cv2.GaussianBlur(m * hold, (0, 0), _SMOOTH) * hold for m in maps)))
@@ -145,6 +156,8 @@ class Motion:
                 ys = np.nonzero((mask >= 0.5).any(axis=1))[0]
                 top, bottom = ys[0], ys[-1]
                 rise = breath * (bottom - top)
+                # the shoulders rise but the face doesn't: ease the lift out over 20x its size beside the face
+                breath_hold = _hold(face, ease=max(_HOLD, 20 * rise))
                 wb = np.clip((bottom - np.arange(self.H, dtype=np.float32)) / max(1, bottom - top), 0, 1)[:, None]
                 wb = _extend(np.where(mask >= 0.5, wb, 0).astype(np.float32), mask, max(rise, 1))
                 c = pick_cycles(0.25, seconds, taken)
@@ -193,12 +206,11 @@ class Motion:
         return out.astype(img.dtype) if self.regions else img
 
     def stretch(self, i: int) -> tuple[float, float]:
-        """Min and max local stretch over every region and the area its pixels can reach, at frame i."""
+        """Min and max local stretch of the moved art that is visible at frame i (where the warped region shows)."""
         lo, hi = 1.0, 1.0
         for name, r in self.regions.items():
-            k = 2 * int(np.ceil(r.reach)) + 1
-            near = cv2.dilate((r.mask >= 0.5).astype(np.uint8), np.ones((k, k), np.uint8)) > 0
-            a, b = stretch(*self.field(i, name), near)
+            dx, dy = self.field(i, name)
+            a, b = stretch(dx, dy, self._remap(r.mask, dx, dy) >= 0.5)
             lo, hi = min(lo, a), max(hi, b)
         return lo, hi
 

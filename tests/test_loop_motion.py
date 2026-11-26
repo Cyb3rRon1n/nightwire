@@ -39,7 +39,7 @@ def test_roots_and_face_move_zero():
 def test_tips_move_most():
     m = _motion(breath=0)
     peak = max(np.hypot(*m.field(i))[280:300, 60:180].max() for i in range(N))
-    assert peak >= 0.6 * 0.015 * H
+    assert peak >= 0.6 * 0.01 * H
 
 
 def test_stretch_stays_in_bounds():
@@ -110,3 +110,10 @@ def test_field_outside_two_parts_has_no_seam():
     for i in range(0, N, 8):
         dx, _ = m.field(i, "coat")
         assert np.abs(np.diff(dx[240:390, 90:150], axis=1)).max() < 0.1  # between the tails, where the nearest part switches
+
+
+def test_coat_weight_depends_on_height_below_the_shoulders_only():
+    region = np.zeros((200, 200), np.float32); region[20:190, 40:160] = 1
+    root = np.zeros_like(region); root[20:30, 90:110] = 1  # a narrow hood top
+    w = weights(region, root, hanging=True)
+    assert np.allclose(w[150, 45], w[150, 150]) and w[150, 100] > w[60, 100]

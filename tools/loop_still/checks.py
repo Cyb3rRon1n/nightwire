@@ -30,7 +30,7 @@ class Checks:
         self.ring = ring if ring.any() and hard.any() else None
         self.ring_still = float(self.still[self.ring].mean()) if self.ring is not None else None
         self.face_diff = 0.0 if self.face is not None else None
-        self.ring_sum, self.ring_n = 0.0, 0
+        self.ring_sum, self.ring_ref, self.ring_n = 0.0, 0.0, 0
         self.lo, self.hi = 1.0, 1.0
         self.small: list[np.ndarray | None] = [None] * frames
 
@@ -39,10 +39,12 @@ class Checks:
         if self.face is not None:
             self.face_diff = max(self.face_diff, float(np.abs(char_img[self.face] - self.still[self.face]).max()))
 
-    def back(self, i: int, back_img: np.ndarray) -> None:
-        """Back layers and the character, before the front layers."""
+    def back(self, i: int, back_img: np.ndarray, city: np.ndarray | None = None) -> None:
+        """Back layers and the character, before the front layers. With the same frame's city (the street without
+        her), the ring is measured against it, so rain and fog behind her are not counted as a leak."""
         if self.ring is not None:
             self.ring_sum += float(back_img[self.ring].mean())
+            self.ring_ref += float(city[self.ring].mean()) if city is not None else self.ring_still
             self.ring_n += 1
 
     def stretch(self, lo: float, hi: float) -> None:
@@ -67,7 +69,7 @@ class Checks:
 
     def result(self) -> dict:
         seam, repeat = self._seam_and_repeat()
-        halo = (self.ring_sum / self.ring_n) / self.ring_still if self.ring_n and self.ring_still else None
+        halo = self.ring_sum / self.ring_ref if self.ring_n and self.ring_ref else None
         out = {"face_max_diff": self.face_diff, "stretch_min": round(self.lo, 4), "stretch_max": round(self.hi, 4),
                "seam_ratio": None if seam is None else round(seam, 3),
                "halo_ratio": None if halo is None else round(halo, 4),
