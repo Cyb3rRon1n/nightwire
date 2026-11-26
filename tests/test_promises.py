@@ -203,6 +203,26 @@ def test_agreeing_to_a_persons_terms_in_other_words_is_still_a_promise():
     assert [p["what"] for p in s.promises] == ["find Kenta before the Ryu do"]
 
 
+def test_a_counter_demand_does_not_replace_the_players_own_promise():
+    # Soak 2026-11-25 (20) turn 15: "I thank him and promise to bring him tea tomorrow." and Hara answered "Tea won't
+    # cut it. You'll bring me a favor."; the referee filed "bring a favor", which the player never agreed to.
+    s = _session()
+    s.present = ["Old Hara"]
+    scene = "You thank him.\nOld Hara: Tea won't cut it. You'll bring me a favor. One that doesn't end in the lantern."
+    apply_verdict(s, "p1", ground(s, {"promise_made": "Old Hara: bring a favor"},
+                                  "I thank him and promise to bring him tea tomorrow.", scene))
+    assert [(p["who"], p["what"]) for p in s.promises] == [("Old Hara", "bring him tea tomorrow")]
+
+
+def test_i_promise_ill_do_it_still_agrees_to_their_terms():
+    # Review of the soak 20 fix: "I promise I'll do it." has no promise of its own, so it takes up Hara's terms.
+    s = _session()
+    s.present = ["Old Hara"]
+    apply_verdict(s, "p1", ground(s, {"promise_made": "Old Hara: fix the lantern by Friday"},
+                                  "I promise I'll do it.", "Old Hara: Fix the lantern by Friday."))
+    assert [p["what"] for p in s.promises] == ["fix the lantern by Friday"]
+
+
 def test_a_narration_line_that_is_only_a_name_does_not_crash_the_referee():
     s = _session()
     s.present = ["Mama Sato"]

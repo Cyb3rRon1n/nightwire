@@ -269,26 +269,23 @@ def ground(session: Session, verdict: dict, action: str, narration: str, player:
         # Soak 19 turn 2: Mama Sato's own "Sit. Eat. Then we'll talk." was filed as the player's promise. Their own
         # words, which the action doesn't take up, are what they said, not what the player promised.
         # Review: "I'll do it." or "Deal." agrees to their terms, so only an action with no agreement at all.
-        elif not _has_words(parts[1], action) and not _PROMISE.search(action) and not _AGREES.search(action) \
-                and any(sep and _has_words(parts[1], body) for who, sep, body in map(lambda l: l.partition(":"),
+        elif not _has_words(parts[1], action) \
+                and any(sep and (_has_words(parts[1], body) or _every_word_in(parts[1], body)) for who, sep, body in map(lambda l: l.partition(":"),
                                                                                      narration.splitlines())
                         if who.strip().lower() == parts[0].lower()):
-            session.log.append(f'[referee: promise "{promise}" is {parts[0]}\'s own words, ignored]')
-            promise = ""
+            # Soak 20 turn 15: "I ... promise to bring him tea", and Hara's counter "You'll bring me a favor" was filed.
+            # The player's own promise wins when it stands on its own ("I promise I'll do it" doesn't, so it agrees).
+            if (own := _own_promise(session, action)) and _stands_alone(own.partition(": ")[2]):
+                session.log.append(f'[referee: promise "{promise}" is {parts[0]}\'s own words, the player promised "{own}"]')
+                promise = own
+            elif not _PROMISE.search(action) and not _AGREES.search(action):
+                session.log.append(f'[referee: promise "{promise}" is {parts[0]}\'s own words, ignored]')
+                promise = ""
     # Soak 17 turn 15: "I thank him and promise to bring him tea tomorrow", and the referee answered with Hara's own
     # "I'll fix it". The player's own promise, to the one named person here, is the evidence.
     # Review: only the player's own "I promise" (not "Hara promised me", "the promising lead" or "I can't promise").
-    if not promise and (m := _PROMISE.search(action)) and not _NO_PROMISE.search(action[:m.start(1)]):
-        what = m.group(1).strip()
-        named = [p for p in session.present if p not in session.people and people.has_a_name(session, p)]
-        lead = [p for p in named if what.lower().startswith(p.lower() + " ")]  # "I promise Mama Sato I'll find Kenta"
-        if lead:
-            named, what = lead, re.sub(r"^(?:i'll|i'd|i will|i would|i'm going to|to|that)\s+", "", what[len(lead[0]):].strip(), flags=re.I)
-        elif re.search(r"\b(?:him|her|them)\b", action[m.start():m.start(1)], re.I) \
-                and any(p in session.people for p in session.present):
-            named = []  # "I promise him" with a walk-on here: maybe him, not the named one
-        if len(named) == 1 and (parts := promises.split(f"{named[0]}: {what}")):
-            promise = f"{parts[0]}: {parts[1]}"
+    if not promise:
+        promise = _own_promise(session, action)
     if "promise_made" in grounded or promise:
         grounded["promise_made"] = promise
     told = " ".join(str(grounded.get("told_npc", "")).split())
@@ -361,6 +358,32 @@ def ground(session: Session, verdict: dict, action: str, narration: str, player:
         if k in grounded or who:
             grounded[k] = who
     return grounded
+
+
+_BACK_REFERENCE = re.compile(r"\b(?:it|that|this|so|what (?:you|she|he|they) (?:asked|said|wanted|want))\b", re.I)
+
+
+def _stands_alone(what: str) -> bool:
+    """A promise that says what it is ("bring him tea tomorrow"), not one that points back ("do it", "do what you asked")."""
+    return len([w for w in _squash(what).split() if len(w) >= 3 and w not in _SMALL_WORDS]) >= 2 \
+        and not _BACK_REFERENCE.search(what)
+
+
+def _own_promise(session: Session, action: str) -> str:
+    """The player's own "I promise ..." to the one named person here, as "Who: what", or ""."""
+    if not (m := _PROMISE.search(action)) or _NO_PROMISE.search(action[:m.start(1)]):
+        return ""
+    what = m.group(1).strip()
+    named = [p for p in session.present if p not in session.people and people.has_a_name(session, p)]
+    lead = [p for p in named if what.lower().startswith(p.lower() + " ")]  # "I promise Mama Sato I'll find Kenta"
+    if lead:
+        named, what = lead, re.sub(r"^(?:i'll|i'd|i will|i would|i'm going to|to|that)\s+", "", what[len(lead[0]):].strip(), flags=re.I)
+    elif re.search(r"\b(?:him|her|them)\b", action[m.start():m.start(1)], re.I) \
+            and any(p in session.people for p in session.present):
+        named = []  # "I promise him" with a walk-on here: maybe him, not the named one
+    if len(named) == 1 and (parts := promises.split(f"{named[0]}: {what}")):
+        return f"{parts[0]}: {parts[1]}"
+    return ""
 
 
 def _every_word_in(what: str, text: str) -> bool:
