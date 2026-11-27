@@ -1,6 +1,6 @@
 # Loop realism pass — design
 
-Status: draft 2026-11-26, awaiting the owner's picks (Nightwire Reviews card `loop-realism`).
+Status: approved 2026-11-27 (card `loop-realism` kept, no note: build 1–5 as written, grain on).
 
 ## Why
 
