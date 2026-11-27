@@ -4,7 +4,7 @@ import json
 import os
 import urllib.request
 
-DEFAULT_URL = "http://192.168.10.19:8080/designs/api/batch"
+DEFAULT_URL = "http://192.168.10.41:8080/designs/api/batch"
 
 
 def batch_url() -> str:

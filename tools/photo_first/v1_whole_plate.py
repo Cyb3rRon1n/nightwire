@@ -8,7 +8,7 @@ from narrator.comfyui_backend import ComfyUIBackend
 from narrator.designs import load_designs
 from tools.imagegen import build
 
-URL = "http://192.168.10.19:8188"
+URL = "http://192.168.10.41:8188"
 ANIME_DENOISE = 0.70  # locked 2026-11-16: owner picked #3 (seed 6, d70) in every scene; 0.55 kept too much photo
 D = Path("../../../design-data")
 OUT = Path(__file__).parent / "out"

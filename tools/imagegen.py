@@ -146,7 +146,7 @@ async def main(argv: list[str]) -> int:
     p.add_argument("--seed", type=int)
     p.add_argument("--count", type=int, default=1)
     p.add_argument("--out", type=Path, default=Path(os.environ.get("NIGHTWIRE_DESIGN_DIR", "design-data")) / "imagegen")
-    p.add_argument("--comfyui-url", default=os.environ.get("COMFYUI_URL", "http://192.168.10.19:8188"))
+    p.add_argument("--comfyui-url", default=os.environ.get("COMFYUI_URL", "http://192.168.10.41:8188"))
     a = p.parse_args(argv)
     dd = design_defaults(a.design) if a.design else {}
     a.prompt = ", ".join(x for x in (dd.get("prompt"), a.prompt) if x)

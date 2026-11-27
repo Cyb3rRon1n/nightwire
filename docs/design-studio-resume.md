@@ -7,13 +7,13 @@ Last updated 2026-11-01.
 - **All 22 designs are approved** (11 NPCs, 6 districts, 5 places). The owner made the picks through the gallery picker. Seeds and notes are in `narrator/worlds/designs/*.toml`.
 - **Art direction is locked.** See `docs/art-direction.md`.
 - **Full sheets:** `python -m tools.design_studio sheets --approved-missing` was started on 2026-10-29. It takes about 2 hours on the RTX 2080 and writes `design-data/<slug>/{turnaround,expressions,colorguide}.png` for characters and `{establishing,alternate,moodkeys,props}.png` for locations. The log is in the session's job tmp (`sheets.log`).
-- **Owner's gallery and picker:** http://192.168.10.19:8080/designs/ (LAN or Tailscale; no login). The old claude.ai gallery is retired.
+- **Owner's gallery and picker:** http://192.168.10.41:8080/designs/ (LAN or Tailscale; no login). The old claude.ai gallery is retired.
 - **Eight new characters are waiting for picks** (added 2026-10-29 to 2026-11-01).
 
 ## Publishing and reading picks
 
-- **Publish:** `python -m tools.design_studio gallery`, then `rsync -a design-data/gallery/ 192.168.10.19:anvil-deploy/stack/dashboard/designs/`. The picker is built into the page. Check it with a real click, since nothing else exercises the deployed page.
-- **Read picks:** `curl -s http://192.168.10.19:8080/designs/api/picks` returns `{slug: {action: pick|reroll|skip, n, round, note, at}}`. They're stored in `~/anvil-deploy/stack/design-picks/state/picks.json` on the GPU box.
+- **Publish:** `python -m tools.design_studio gallery`, then `rsync -a design-data/gallery/ 192.168.10.41:anvil-deploy/stack/dashboard/designs/`. The picker is built into the page. Check it with a real click, since nothing else exercises the deployed page.
+- **Read picks:** `curl -s http://192.168.10.41:8080/designs/api/picks` returns `{slug: {action: pick|reroll|skip, n, round, note, at}}`. They're stored in `~/anvil-deploy/stack/design-picks/state/picks.json` on the GPU box.
 - **Apply:** `pick` becomes `approve <slug> <n>`, then `sheets --approved-missing`. `reroll` follows "Rerolls later" below.
 - **Service:** `tools/design_picks.py`, copied to `~/anvil-deploy/stack/design-picks/`, runs as the `design-picks` compose service. After changing it, copy it over and `docker compose restart design-picks`.
 

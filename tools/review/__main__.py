@@ -11,7 +11,7 @@ from tools.review import migrate, producers
 from tools.review.registry import build_items, write_items
 
 PAGE = Path(__file__).with_name("inbox.html")
-REMOTE = "192.168.10.19:anvil-deploy/stack/dashboard/review/"
+REMOTE = "192.168.10.41:anvil-deploy/stack/dashboard/review/"
 
 
 def design_dir() -> Path:

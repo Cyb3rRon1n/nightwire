@@ -118,7 +118,7 @@ def create_image_backend() -> ImageBackend:
             lora = ""
         cfg = os.environ.get("COMFYUI_CFG")
         return ComfyUIBackend(
-            base_url=os.environ.get("COMFYUI_URL", "http://192.168.10.19:8188"),
+            base_url=os.environ.get("COMFYUI_URL", "http://192.168.10.41:8188"),
             checkpoint=os.environ.get("COMFYUI_CHECKPOINT") or None,
             profile=profile,
             lora=lora,

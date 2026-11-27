@@ -100,7 +100,7 @@ def to_editor(api: dict, info: dict) -> dict:
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--out", type=Path, required=True)
-    p.add_argument("--comfyui-url", default="http://192.168.10.19:8188")
+    p.add_argument("--comfyui-url", default="http://192.168.10.41:8188")
     a = p.parse_args()
     info = json.loads(urllib.request.urlopen(a.comfyui_url.rstrip("/") + "/object_info", timeout=60).read())
     a.out.mkdir(parents=True, exist_ok=True)

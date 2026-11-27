@@ -6,7 +6,7 @@ import shlex
 import subprocess
 from pathlib import Path
 
-BLENDER_HOST = os.environ.get("NIGHTWIRE_BLENDER_HOST", "192.168.10.19")
+BLENDER_HOST = os.environ.get("NIGHTWIRE_BLENDER_HOST", "192.168.10.41")
 BLENDER = os.environ.get("NIGHTWIRE_BLENDER", "~/opt/blender/blender")
 REMOTE_ROOT = "nightwire-shorts"
 SCRIPT = Path(__file__).parent / "greybox" / "blender_build.py"

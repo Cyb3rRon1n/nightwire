@@ -17,7 +17,7 @@ from tools.shorts.model import load_short, scene_look, scene_mood, validate_shor
 from tools.shorts.prompt import build_prompt, expected_refs, ref_files, trim_refs
 from tools.shorts.takes import BudgetError, Ledger, apply_verdicts, estimate
 
-PICKS_API = "http://192.168.10.19:8080/designs/api/images"
+PICKS_API = "http://192.168.10.41:8080/designs/api/images"
 
 
 class CliError(Exception):
@@ -197,7 +197,7 @@ def _prev(short, shot):
     return short.shots[i - 1] if i else None
 
 
-IMAGES_API = "http://192.168.10.19:8080/designs/api/images"
+IMAGES_API = "http://192.168.10.41:8080/designs/api/images"
 
 
 def _images_api() -> dict | None:
@@ -304,7 +304,7 @@ def cmd_sheet(a) -> int:
     data = sheet.collect(s, designs, data_dir().parent, _work(a.slug), model, plans, _approvals(_work(a.slug), images))
     site = sheet.build(data, data_dir().parent, _work(a.slug), data_dir() / "_site")
     print(site)
-    print(f"rsync -a {data_dir() / '_site'}/ 192.168.10.19:anvil-deploy/stack/dashboard/shorts/")
+    print(f"rsync -a {data_dir() / '_site'}/ 192.168.10.41:anvil-deploy/stack/dashboard/shorts/")
     return 0
 
 
@@ -312,7 +312,7 @@ def cmd_stills(a) -> int:
     from tools.design_scenes import gpu_busy
     from tools.shorts import stills
     s, designs, work = _short(a.slug), load_designs(), _work(a.slug)
-    url = os.environ.get("COMFYUI_URL", "http://192.168.10.19:8188")
+    url = os.environ.get("COMFYUI_URL", "http://192.168.10.41:8188")
     if gpu_busy(url):
         print("ComfyUI is busy; wait for the current job to finish.", file=sys.stderr)
         return 1
@@ -352,7 +352,7 @@ def cmd_plates(a) -> int:
         except ValueError as e:
             raise CliError(str(e))
         return 0
-    url = os.environ.get("COMFYUI_URL", "http://192.168.10.19:8188")
+    url = os.environ.get("COMFYUI_URL", "http://192.168.10.41:8188")
     jobs = plates.plan_jobs(s, work, design_dir, seeds=a.seeds, redo=a.redo)
     if jobs:
         print("Run `python -m tools.taste` first if you haven't this session.", file=sys.stderr)
@@ -386,7 +386,7 @@ def cmd_keyframes(a) -> int:
         except ValueError as e:
             raise CliError(str(e))
         return 0
-    url = os.environ.get("COMFYUI_URL", "http://192.168.10.19:8188")
+    url = os.environ.get("COMFYUI_URL", "http://192.168.10.41:8188")
     jobs, skipped = keyframes.plan_jobs(s, work, shot.id if shot else None, a.which, a.seeds, a.redo)
     for line in skipped:
         print(f"note: {line}", file=sys.stderr)
@@ -437,7 +437,7 @@ def cmd_page(a) -> int:
                 titles[variant.name] = (f"{s.title} ({variant.name.removeprefix(s.slug + '-')} version)", s.budget_usd)
                 notes[variant.name] = notes[s.slug]
     site = build(data_dir(), data_dir() / "_site", titles, notes)
-    print(f"rsync -a --delete {site}/ 192.168.10.19:anvil-deploy/stack/dashboard/shorts/")
+    print(f"rsync -a --delete {site}/ 192.168.10.41:anvil-deploy/stack/dashboard/shorts/")
     return 0
 
 

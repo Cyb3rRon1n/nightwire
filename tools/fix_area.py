@@ -23,7 +23,7 @@ CONTEXT = 2.0  # crop side as a multiple of the area, so the redraw can see what
 MIN_CROP = 256
 SAMPLE_SIDE = 1024
 FEATHER_RATIO = 0.08
-COMFY_URL = "http://192.168.10.19:8188"
+COMFY_URL = "http://192.168.10.41:8188"
 
 
 def crop_around(size: tuple[int, int], region: tuple[int, int, int, int], min_crop: int = MIN_CROP) -> tuple[int, int, int, int]:

@@ -120,7 +120,7 @@ def test_create_image_backend_defaults_to_flux_worker(monkeypatch):
 
 def test_create_image_backend_selects_comfyui(monkeypatch):
     monkeypatch.setenv("IMAGE_BACKEND", "comfyui")
-    monkeypatch.setenv("COMFYUI_URL", "http://192.168.10.19:8188")
+    monkeypatch.setenv("COMFYUI_URL", "http://192.168.10.41:8188")
     monkeypatch.setenv("COMFYUI_CHECKPOINT", "v1-5-pruned-emaonly-fp16.safetensors")
 
     backend = create_image_backend()

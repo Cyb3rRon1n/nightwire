@@ -1,6 +1,6 @@
 """Soak test: a scripted 30-turn game through the real turn pipeline and narrator, to surface problems nobody typed yet.
 
-    OLLAMA_HOST=http://192.168.10.19:11434 NIGHTWIRE_THINK=off python -m tools.soak_test [--turns 30]
+    OLLAMA_HOST=http://192.168.10.41:11434 NIGHTWIRE_THINK=off python -m tools.soak_test [--turns 30]
     CPU only (slow, about 2-5 min a turn): NIGHTWIRE_OLLAMA_TIMEOUT=600 NIGHTWIRE_THINK=off python -m tools.soak_test
 
 Plays one character through walking, talking, risky moves, out-of-character questions, typos and an emoji, rolling

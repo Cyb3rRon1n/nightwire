@@ -8,7 +8,7 @@ character model sheets and location designs.
     python -m tools.design_studio gallery
     python -m tools.design_studio export
 
-Runbook: the owner picks at http://192.168.10.19:8080/designs/ (see
+Runbook: the owner picks at http://192.168.10.41:8080/designs/ (see
 docs/design-studio-resume.md). `approve` defaults to the round the last gallery showed,
 else the latest; pass `--round <r>` to override.
 Don't run two batches at once -- they share the GPU and the design TOMLs.
@@ -65,7 +65,7 @@ def _latest_candidates(slug_dir: Path, round_no: int | None = None) -> tuple[int
 def _gpu_etiquette(comfyui_url: str, before: bool) -> None:
     try:
         if before:
-            host = os.environ.get("OLLAMA_HOST", "http://192.168.10.19:11434").rstrip("/")
+            host = os.environ.get("OLLAMA_HOST", "http://192.168.10.41:11434").rstrip("/")
             if "://" not in host:
                 host = f"http://{host}"
             try:
@@ -603,7 +603,7 @@ def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="python -m tools.design_studio")
     p.add_argument("--designs-dir", type=Path, default=DESIGNS_DIR)
     p.add_argument("--design-dir", type=Path, default=Path(os.environ.get("NIGHTWIRE_DESIGN_DIR", "design-data")))
-    p.add_argument("--comfyui-url", default=os.environ.get("COMFYUI_URL", "http://192.168.10.19:8188"))
+    p.add_argument("--comfyui-url", default=os.environ.get("COMFYUI_URL", "http://192.168.10.41:8188"))
     p.add_argument("--no-gpu-etiquette", action="store_true")
     sub = p.add_subparsers(dest="command", required=True)
     c = sub.add_parser("candidates"); c.add_argument("slugs", nargs="*")

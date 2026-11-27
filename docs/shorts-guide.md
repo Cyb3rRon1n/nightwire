@@ -24,7 +24,7 @@ Commands are `python -m tools.shorts <command> <slug> ...`. Pilot slug: `saeko-r
 2. `check <slug>` validates cast approval, place, figures, shot length (max 30 s), line times and disfluency names.
 3. `prompt <slug> S01` prints the layered prompt for a shot; it fails if L2/L4 contain position words.
 4. `greybox <slug> [--tint]` writes `scene.json`, renders on the GPU box over rsync+ssh, pulls frames back and encodes `shots/<id>/greybox.mp4`. `--tint` colours mannequins from each design's palette (for A/B). `--local` runs a local Blender instead. Free ComfyUI VRAM and unload Ollama first; one GPU job at a time.
-5. `page` builds the review page and prints the `rsync` command; run it, then open http://192.168.10.19:8080/shorts/.
+5. `page` builds the review page and prints the `rsync` command; run it, then open http://192.168.10.41:8080/shorts/.
 6. Review there: mark each take keep / reject with a note. The page writes to the design-picks images API.
 7. Get takes, either way:
    - Manual: `bundle <slug> S01` writes prompt plus reference files to upload to any web tool; put the result in via `inbox <slug> S01 --cost 0.4 --model seedance-2.0`.

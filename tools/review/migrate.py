@@ -28,7 +28,7 @@ def _get(url: str) -> dict:
         return json.loads(r.read())
 
 
-def run(api_base: str = "http://192.168.10.19:8080/designs/api") -> int:
+def run(api_base: str = "http://192.168.10.41:8080/designs/api") -> int:
     todo = plan_migration(_get(f"{api_base}/reviews"), _get(f"{api_base}/images"))
     for new, body in todo.items():
         req = urllib.request.Request(f"{api_base}/images/{new}", data=json.dumps(body).encode(), method="PUT",

@@ -125,7 +125,7 @@ Settings: `COMFYUI_CHECKPOINT`, `COMFYUI_LORA` (`none` turns the LoRA off), `COM
 
 **Shorts studio (Phase 23).** `python -m tools.shorts <check|prompt|greybox|page|bundle|submit|inbox|idcheck|verdicts|assemble|status> <slug>` turns a written short into a grey-box, layered prompts, takes and a rough cut; see `docs/shorts-guide.md`.
 
-**Test prompts and wallpapers.** `python -m tools.imagegen "<tags or description>" [--kind scene|character|plain] [--size base|1080p|1440p|4k|ultrawide|phone|square] [--seed N] [--count N] [--raw]` renders in the approved look (see `docs/art-direction.md`) and saves the PNG plus its ComfyUI workflow JSON to `design-data/imagegen/`. Wallpaper sizes render at an SDXL bucket, refine, AnimeSharp-upscale, then resize to the exact resolution. To tweak by hand, open ComfyUI at `http://192.168.10.19:8188` and drag a saved `.workflow.json` onto the canvas.
+**Test prompts and wallpapers.** `python -m tools.imagegen "<tags or description>" [--kind scene|character|plain] [--size base|1080p|1440p|4k|ultrawide|phone|square] [--seed N] [--count N] [--raw]` renders in the approved look (see `docs/art-direction.md`) and saves the PNG plus its ComfyUI workflow JSON to `design-data/imagegen/`. Wallpaper sizes render at an SDXL bucket, refine, AnimeSharp-upscale, then resize to the exact resolution. To tweak by hand, open ComfyUI at `http://192.168.10.41:8188` and drag a saved `.workflow.json` onto the canvas.
 
 ### Homepage dashboard tile
 

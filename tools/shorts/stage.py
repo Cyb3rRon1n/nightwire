@@ -21,7 +21,7 @@ HERE = Path(__file__).parent / "greybox"
 SCRIPT, ADDON, HELPERS = HERE / "blender_stage.py", HERE / "nightwire_stage_addon.py", HERE / "blender_build.py"
 BLENDER = Path(os.environ.get("NIGHTWIRE_LOCAL_BLENDER", Path.home() / "opt" / "blender" / "blender"))
 # The browser Blender on the GPU box (homelab-ops gpubox blender-stage, AI Lab tile :3100) sees this folder as /stages.
-REMOTE = os.environ.get("NIGHTWIRE_STAGE_REMOTE", "192.168.10.19:nightwire-stages")
+REMOTE = os.environ.get("NIGHTWIRE_STAGE_REMOTE", "192.168.10.41:nightwire-stages")
 REMOTE_ADDONS = "anvil-deploy/stack/data/blender/.config/blender/4.5/scripts/addons"
 _STAGE_FILES = ["--include=*/", "--include=stage.blend", "--include=stage-plate.png"]
 _OWNER_FILES = ["--include=*/", "--include=*.owner.*"]

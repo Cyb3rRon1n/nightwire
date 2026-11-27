@@ -6,7 +6,7 @@
 import json
 import urllib.request
 
-LAB = "http://192.168.10.19:8080/designs/api"
+LAB = "http://192.168.10.41:8080/designs/api"
 
 
 def likes(taste: dict, images: dict) -> dict:

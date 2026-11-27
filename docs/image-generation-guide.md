@@ -4,7 +4,7 @@ This guide is for people and for coding agents such as opencode and Claude Code.
 
 ## Where it is
 
-- **ComfyUI:** `http://192.168.10.19:8188` on the LAN, or `http://100.67.87.32:8188` over Tailscale.
+- **ComfyUI:** `http://192.168.10.41:8188` on the LAN, or `http://100.67.87.32:8188` over Tailscale.
 - **GPU:** an RTX 2080 Max-Q with 8 GB of VRAM, shared with Ollama (`qwen3:8b`). Only one big job fits at a time.
 - **Models on the host:**
   - `NoobAI-XL-Vpred-v1.0.safetensors` (checkpoint);
@@ -14,16 +14,16 @@ This guide is for people and for coding agents such as opencode and Claude Code.
 
 ## The easy way: Image Studio (people)
 
-Open **http://192.168.10.19:8080/studio/** (LAN or Tailscale; there's no login). Pick an approved character, a shot and a location, describe what's happening, then press Generate. Results show live progress and can be reused with the same seed or a new one.
+Open **http://192.168.10.41:8080/studio/** (LAN or Tailscale; there's no login). Pick an approved character, a shot and a location, describe what's happening, then press Generate. Results show live progress and can be reused with the same seed or a new one.
 
 It runs on `tools/image_studio.py` and enforces the content rules in `docs/art-direction.md` on the server: approved designs only, no raw prompts or custom negatives, and descriptions asking for nudity, sexual content or minors are refused. One character per image for now. Tags and seed alone don't hold a face perfectly steady across scenes.
 
 **Updating it on the GPU box** (its own nightwire checkout isn't used):
 
 ```
-rsync -a --delete --exclude __pycache__ --include 'tools/' --include 'tools/*.py' --include 'narrator/' --include 'narrator/**' --include 'engine/' --include 'engine/__init__.py' --include 'engine/character.py' --exclude '*' ./ 192.168.10.19:anvil-deploy/stack/image-studio/app/
-scp tools/image_studio.html 192.168.10.19:anvil-deploy/stack/dashboard/studio/index.html
-ssh 192.168.10.19 'cd anvil-deploy/stack && docker compose restart image-studio'
+rsync -a --delete --exclude __pycache__ --include 'tools/' --include 'tools/*.py' --include 'narrator/' --include 'narrator/**' --include 'engine/' --include 'engine/__init__.py' --include 'engine/character.py' --exclude '*' ./ 192.168.10.41:anvil-deploy/stack/image-studio/app/
+scp tools/image_studio.html 192.168.10.41:anvil-deploy/stack/dashboard/studio/index.html
+ssh 192.168.10.41 'cd anvil-deploy/stack && docker compose restart image-studio'
 ```
 
 New approved designs need only the rsync. Jobs are in `image-studio/state/jobs.json`; images are in ComfyUI's `output/image_studio/`.
@@ -80,8 +80,8 @@ Option C is the raw HTTP API: POST `{"prompt": <api workflow>}` to `/prompt`, po
 
 ## Etiquette for agents
 
-- **Check the queue first:** `curl -s http://192.168.10.19:8188/queue`. If a batch is running (for example a design-studio sheets run), wait or say so. Don't start a second batch.
-- **Free the GPU first:** Ollama must not hold the GPU, since image jobs need about 7.7 GB. The tools do this; for raw API use, POST `{"model":"qwen3:8b","keep_alive":0}` to `http://192.168.10.19:11434/api/generate`.
+- **Check the queue first:** `curl -s http://192.168.10.41:8188/queue`. If a batch is running (for example a design-studio sheets run), wait or say so. Don't start a second batch.
+- **Free the GPU first:** Ollama must not hold the GPU, since image jobs need about 7.7 GB. The tools do this; for raw API use, POST `{"model":"qwen3:8b","keep_alive":0}` to `http://192.168.10.41:11434/api/generate`.
 - **Free ComfyUI afterwards** with `POST /free {"unload_models":true,"free_memory":true}`, so Ollama can reload.
 - **Don't download new models or custom nodes** without the owner's OK.
 

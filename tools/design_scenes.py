@@ -104,7 +104,7 @@ def main(argv=None) -> int:
     parser.add_argument("--locations", nargs="*", default=LOCATIONS)
     parser.add_argument("--designs-dir", type=Path, default=Path("narrator/worlds/designs"))
     parser.add_argument("--design-dir", type=Path, default=Path("design-data"))
-    parser.add_argument("--comfyui-url", default=os.environ.get("COMFYUI_URL", "http://192.168.10.19:8188"))
+    parser.add_argument("--comfyui-url", default=os.environ.get("COMFYUI_URL", "http://192.168.10.41:8188"))
     args = parser.parse_args(argv)
     if gpu_busy(args.comfyui_url):
         print("ComfyUI is busy; wait for the current batch to finish.", file=sys.stderr)

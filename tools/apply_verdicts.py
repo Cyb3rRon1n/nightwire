@@ -11,7 +11,7 @@ import json
 import urllib.request
 from pathlib import Path
 
-LAB = "http://192.168.10.19:8080/designs/api/images"
+LAB = "http://192.168.10.41:8080/designs/api/images"
 STATUS = {"keep": "approved", "original": "approved", "fix": "needs-fix", "reject": "rejected"}
 PREFIXES = ("debt-", "life-", "wall-", "day-", "room-")
 
