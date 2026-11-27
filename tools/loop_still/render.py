@@ -21,16 +21,20 @@ import numpy as np
 from tools.lights import Lights, cover
 from tools.loop_still.blink import load_blinks
 from tools.loop_still.checks import Checks
+from tools.loop_still.depth import Drift, load_or_make_depth
+from tools.loop_still.idle import Idle
 from tools.loop_still.layers import Fog, Rain, Splashes
 from tools.loop_still.matte import decontaminate, feather, load_or_make_matte
 from tools.loop_still.motion import Motion
 from tools.loop_still.realism import Bloom, Ripples, grain, light_map, rain_tint
 from tools.loop_still.regions import load_regions
+from tools.loop_still.wet import Drips, Sheen, spread, wash
 from tools.shorts.remote import h264_encoder
 
 MODELS = Path.home() / "models/loop_still"
 DEFAULT_MATTE = MODELS / "birefnet-general.onnx"
 LAMA = MODELS / "lama/lama_fp32.onnx"
+DEPTH = MODELS / "depth-anything-v2-small"
 RAIN_TINT = np.array([1.0, 0.95, 0.8], np.float32)  # cool blue-white, BGR
 SPLASH_TINT = np.array([0.9, 0.9, 0.85], np.float32)
 
@@ -63,6 +67,10 @@ class Options:
     lit_rain: bool = True
     car: bool = True
     grain: bool = True
+    idle: bool = True               # idle pass (spec 2026-11-27-loop-idle-design.md), all on by default
+    drift: bool = True
+    wet: bool = True
+    depth_model: Path | None = None
     plate: str = "lama"             # lama | telea
     matte_model: Path | None = None
     redo_matte: bool = False
@@ -168,23 +176,50 @@ def render(o: Options) -> Path:
     taken: set[int] = set()
     rain_far = Rain((W, H), N, o.rain, o.seed)
     wind = (-1.0 if rain_far.slant > 0 else 1.0, 0.0)  # drops drift left as they fall, so the wind blows left
+    idle = Idle(matte, face, (W, H), N, o.seconds, o.seed, taken, breath="breath" in wanted) \
+        if o.idle and has_char and not o.still_character else None
+    if idle is not None:
+        held = "face moves as a whole"
+    union0 = np.zeros((H, W), np.float32)
+    for v in moving.values():
+        union0 = np.maximum(union0, v)
     motion = Motion(moving, face, (W, H), N, o.seconds, wind, o.seed, taken,
-                    breath=0.004 if "breath" in wanted else 0.0) if moving else None
+                    breath=0.004 if "breath" in wanted and idle is None else 0.0, idle=idle,
+                    body=np.maximum(matte * (1 - union0), face)) if moving or idle else None
     if wanted and not moving and has_char:
-        _say(o, "motion: no hair/coat masks beside the still (python -m tools.loop_still.regions), so she holds still")
+        _say(o, "motion: no hair/coat masks beside the still (python -m tools.loop_still.regions), so only the "
+                "idle moves her" if idle else
+                "motion: no hair/coat masks beside the still (python -m tools.loop_still.regions), so she holds still")
+    drift = None
+    if o.drift:
+        disp = load_or_make_depth(o.still, o.depth_model or DEPTH)
+        if disp is None:
+            _say(o, f"drift: no depth map beside the still and no depth model at {o.depth_model or DEPTH}, "
+                    "so no camera drift")
+        else:
+            drift = Drift(cover(disp, W, H), matte, (W, H), N, o.seconds, taken, o.seed)
 
     # A moved edge can only uncover the strip of its region within its largest move of the region's edge; only that
     # strip (and 3 px past the edge) is filled, so LaMa works from nearby context instead of inventing a whole coat.
     union = np.zeros((H, W), np.float32)
     hole = np.zeros((H, W), bool)
-    for r in (motion.regions.values() if motion else []):
-        union = np.maximum(union, r.mask)
+    drift_reach = drift.reach if drift else 0.0
+    for name, r in (motion.regions.items() if motion else []):
+        if name != "body":
+            union = np.maximum(union, r.mask)
         inside = (r.mask >= 0.05).astype(np.uint8)
-        strip = cv2.distanceTransform(inside, cv2.DIST_L2, 3) <= r.reach + 3
+        # the background behind her edge also shows where the drift moves it, so the strip grows by that much
+        strip = cv2.distanceTransform(inside, cv2.DIST_L2, 3) <= r.reach + drift_reach + 3
         hole |= (cv2.dilate(inside, np.ones((7, 7), np.uint8)) > 0) & strip
-    hole &= ~(face > 0)
-    plate = _plate(still_dc, hole, o.plate, o) if motion else still_dc
-    body = np.maximum(matte * (1 - union), face)  # the character that never moves; the face always from the still
+    if drift and has_char and not motion:
+        inside = (matte >= 0.05).astype(np.uint8)
+        hole |= cv2.distanceTransform(inside, cv2.DIST_L2, 3) <= drift_reach + 3
+        hole &= inside > 0
+    if idle is None:
+        hole &= ~(face > 0)
+    plate = _plate(still_dc, hole, o.plate, o) if hole.any() else still_dc
+    # the character that never moves (none with an idle: she is all layers then); the face always from the still
+    body = None if idle else np.maximum(matte * (1 - union), face)
 
     sweeps = o.sweeps
     if o.car and not sweeps:
@@ -214,12 +249,21 @@ def render(o: Options) -> Path:
             _say(o, "blink: no eye patches beside the still (<still>.blink-half.png, .blink-closed.png; they are drawn "
                     "with tools/fix_area.py on the 4U box), so no blinks")
 
-    reach = max((r.reach for r in motion.regions.values()), default=0) if motion else 0
-    swept = cv2.dilate((union >= 0.05).astype(np.uint8), np.ones((2 * int(reach) + 7,) * 2, np.uint8)) if motion else None
+    reach = max((r.reach for n, r in motion.regions.items() if n != "body"), default=0) if motion else 0
+    swept = cv2.dilate((union >= 0.05).astype(np.uint8), np.ones((2 * int(reach) + 7,) * 2, np.uint8)) \
+        if motion and union.any() else None
     checks = Checks(still, held_mask, matte if has_char else np.zeros_like(matte), N, o.fps,
                     blinks.mask if blinks else None, ring_skip=swept)
     rim = ((matte >= 0.5) & (cv2.distanceTransform((matte >= 0.5).astype(np.uint8), cv2.DIST_L2, 3) <= 3)) \
-        .astype(np.float32)[..., None] * (1 - held_mask)[..., None] if o.edge_tint and has_char and lights else None
+        .astype(np.float32) * (1 - held_mask) if o.edge_tint and has_char and lights else None
+    ring = checks.ring.astype(np.float32) if idle is not None and checks.ring is not None else None
+    if blinks and idle is not None:
+        _say(o, "blink: the eye patches don't follow the idle yet, so no blinks")
+        blinks = None
+    wet = o.wet and has_char
+    sheen = Sheen(still, matte, face) if wet else None
+    drips = Drips({k: r.mask for k, r in motion.regions.items() if k != "body"} if motion else {}, face, (W, H), N,
+                  o.fps, o.seed, o.ground) if wet and o.rain != "none" else None
 
     sha = hashlib.sha1()
     enc = None if o.frames_only else _Encoder(out / "master.mkv", W, H, o.fps, N)
@@ -230,35 +274,61 @@ def render(o: Options) -> Path:
         if ripples:
             extra = None
             if o.mirror and top < H:  # a faint flipped copy of the street above, her included, for a dry street
-                src = city * (1 - body[..., None]) + still_dc * body[..., None]
+                her = body if body is not None else matte
+                src = city * (1 - her[..., None]) + still_dc * her[..., None]
                 extra = np.zeros_like(city)
                 extra[top:] = src[np.clip(2 * top - np.arange(top, H), 0, H - 1)]
                 extra = 0.18 * cv2.GaussianBlur(extra, (0, 0), 6 * sc)
             city = ripples.apply(city, i, extra, ripple=o.ripples)
             checks.ripples(ripples.leak)
-        tint = rain_tint(light_map(city)) if o.lit_rain else RAIN_TINT
+        light = spread(city - plate) if (rim is not None or wet) and lights else None  # what the lights add now
+        if drift:
+            city = drift.apply(city, i)
+        lmap = light_map(city) if o.lit_rain or wet else None
+        tint = rain_tint(lmap) if o.lit_rain else RAIN_TINT
         city = city + rain_far.layer(i)[..., None] * tint
         if fog:
-            city = city + fog.layer(i)[..., None] * ((0.5 + light_map(city)) if o.lit_rain else 1)
-        frame = city * (1 - body[..., None]) + still_dc * body[..., None]
+            city = city + fog.layer(i)[..., None] * ((0.5 + lmap) if o.lit_rain else 1)
+        frame = city if body is None else city * (1 - body[..., None]) + still_dc * body[..., None]
+        alpha = np.zeros((H, W), np.float32) if body is None else body.copy()
+        face_now, ref = face, None
         if motion:
-            for moved, alpha in motion.layers(still_dc, i):
-                frame = frame * (1 - alpha[..., None]) + moved * alpha[..., None]
+            layers = motion.layers(still_dc, i)
+            for moved, a in layers:
+                frame = frame * (1 - a[..., None]) + moved * a[..., None]
+                alpha = alpha + a * (1 - alpha)
             checks.stretch(*motion.stretch(i))
+            if idle is not None:
+                ref = layers[0][0]  # the body layer: the still carried on her field
+                face_now = motion.move(face, i)
+                checks.rigid(motion.rigid_error(i))
         if blinks:
             frame = blinks.apply(frame, i)
-        checks.character(i, frame)
+        if ref is not None:
+            core = cv2.erode((face_now >= 0.999).astype(np.uint8), np.ones((3, 3), np.uint8)) > 0
+            checks.character(i, frame, ref, core)
+        else:
+            checks.character(i, frame)
         if rim is not None:
-            glow = cv2.GaussianBlur(np.clip(city - plate, 0, None), (0, 0), 6)
-            frame = frame + 0.35 * rim * glow
-        checks.back(i, frame, city)
+            r_now = motion.move(rim, i) if idle is not None else rim
+            frame = frame + 0.35 * r_now[..., None] * cv2.GaussianBlur(np.clip(light, 0, None), (0, 0), 1)
+        checks.back(i, frame, city, (motion.move(ring, i) >= 0.5) if ring is not None else None)
+        if wet:
+            if light is not None:
+                frame = frame + wash(light, alpha, face_now)
+                frame = frame + sheen.glint(motion.move(sheen.mask, i) if idle is not None else sheen.mask, lmap,
+                                            light)
+            if drips:
+                drop = drips.layer(i, motion.offsets(i) if motion else None) * (1 - np.clip(face_now, 0, 1))
+                frame = frame + drop[..., None] * (0.25 + 1.2 * lmap)
         frame = frame + splashes.layer(i)[..., None] * SPLASH_TINT
         if rain_near:
             frame = frame + rain_near.layer(i)[..., None] * tint
         if o.grain and not o.frames_only:
             checks.final(i, np.clip(frame, 0, 1))  # seam and repeat are judged before the grain, which never repeats
         if o.grain:
-            frame = frame + grain((H, W), o.seed, i) * (1 - held_mask)[..., None]
+            held_now = face_now if not o.still_character else held_mask
+            frame = frame + grain((H, W), o.seed, i) * (1 - np.clip(held_now, 0, 1))[..., None]
         u8 = (np.clip(frame, 0, 1) * 255).round().astype(np.uint8)
         sha.update(u8.tobytes())
         if o.frames_only:

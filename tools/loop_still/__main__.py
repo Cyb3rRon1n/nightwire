@@ -37,11 +37,16 @@ def parse(argv=None) -> Options:
     for name, on, what in (("ripples", True, "raindrops ripple the wet street"),
                            ("mirror", False, "a faint reflection on a dry-looking street"),
                            ("bloom", True, "neon glows in the wet air"), ("lit-rain", True, "rain glints near lights"),
-                           ("car", True, "one car's headlights sweep past mid-loop"), ("grain", True, "light film grain")):
+                           ("car", True, "one car's headlights sweep past mid-loop"), ("grain", True, "light film grain"),
+                           ("idle", True, "she breathes, shifts her weight and sways her head; her face moves only "
+                                          "as a whole"),
+                           ("drift", True, "a slow camera drift from a depth map (Depth Anything V2 Small)"),
+                           ("wet", True, "the lights wash over her, her highlights glint, drops fall from tips")):
         ap.add_argument(f"--{name}", action=argparse.BooleanOptionalAction, default=on, help=what)
     ap.add_argument("--plate", choices=["lama", "telea"], default="lama")
     ap.add_argument("--matte-model", type=Path)
     ap.add_argument("--redo-matte", action="store_true")
+    ap.add_argument("--depth-model", type=Path, help="Depth Anything V2 Small folder (default ~/models/loop_still/...)")
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--preset")
     ap.add_argument("--out", type=Path)

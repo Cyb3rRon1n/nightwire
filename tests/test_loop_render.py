@@ -35,7 +35,7 @@ def _still(tmp_path, character=True):
 
 def _opts(tmp_path, still=None, **kw):
     base = dict(still=still, seconds=2, fps=12, size=f"{W}x{H}", rain="steady", lights=True, fog=True,
-                plate="telea", out=tmp_path / "out")
+                plate="telea", out=tmp_path / "out", depth_model=tmp_path / "no-depth-model")
     base.update(kw)
     return Options(**base)
 
@@ -103,7 +103,7 @@ def test_face_on_her_outline_stays_exact_with_edge_tint(tmp_path):
     cv2.imwrite(str(p), img)
     face = np.zeros((H, W), np.uint8); face[30:42, 78:92] = 255
     cv2.imwrite(str(tmp_path / "scene.face.png"), face)
-    out = render(_opts(tmp_path, p, rain="none", fog=False, edge_tint=True, frames_only=4))
+    out = render(_opts(tmp_path, p, rain="none", fog=False, edge_tint=True, frames_only=4, idle=False, wet=False))
     for k in range(4):
         f = cv2.imread(str(out / f"{k:04d}.png"))
         assert np.array_equal(f[30:42, 78:92], img[30:42, 78:92]), k
@@ -154,3 +154,54 @@ def test_no_character_and_ground_at_bottom_render_with_realism(tmp_path):
     for kw in (dict(still=_still(tmp_path, character=False)), dict(still=_still(tmp_path), ground=1.0)):
         meta = json.loads((render(_opts(tmp_path, seconds=8, rain="heavy", mirror=True, **kw)) / "meta.json").read_text())
         assert meta["checks"]["ripples_on_her"] in (0, None) and "face_max_diff" in meta["checks"]
+
+
+def _depth(still):
+    d = np.tile(np.linspace(0, 65535, H)[:, None], (1, W)).astype(np.uint16)  # far at the top, near at the bottom
+    cv2.imwrite(str(still.with_name(still.stem + ".depth.png")), d)
+
+
+def test_idle_drift_wet_defaults_on():
+    from tools.loop_still.__main__ import parse
+    o = parse(["x.png"])
+    assert (o.idle, o.drift, o.wet) == (True, True, True)
+    assert Options(still=Path("x.png")).idle and Options(still=Path("x.png")).drift
+    o = parse(["x.png", "--no-idle", "--no-drift", "--no-wet"])
+    assert (o.idle, o.drift, o.wet) == (False, False, False)
+
+
+def test_render_with_idle_drift_and_wet_passes_checks(tmp_path):
+    still = _still(tmp_path)
+    _depth(still)
+    out = render(_opts(tmp_path, still, seconds=8, rain="heavy", ground=0.7))
+    meta = json.loads((out / "meta.json").read_text())
+    c = meta["checks"]
+    assert c["passed"], c
+    assert c["face_max_diff"] == 0 and c["face_rigid"] <= 0.05, c
+    assert {"breath", "shift", "sway"} <= set(meta["cycles"])
+    assert not any("drift" in n for n in meta["notes"])
+    plain = render(_opts(tmp_path, still, seconds=8, rain="heavy", ground=0.7, idle=False, drift=False, wet=False,
+                         out=tmp_path / "plain"))
+    assert json.loads((plain / "meta.json").read_text())["frames_sha1"] != meta["frames_sha1"]
+
+
+def test_her_face_moves_as_a_whole(tmp_path):
+    still = _still(tmp_path)
+    out = render(_opts(tmp_path, still, rain="none", fog=False, wet=False, drift=False, seconds=8, frames_only=24))
+    img = cv2.imread(str(still)).astype(np.float32)
+    moved = False
+    for k in range(24):
+        f = cv2.imread(str(out / f"{k:04d}.png")).astype(np.float32)
+        moved |= not np.array_equal(f[36:52, 76:94], img[36:52, 76:94])  # the face is flat; its edge shows a move
+    assert moved
+
+
+def test_no_idle_keeps_the_face_exact(tmp_path):
+    still = _still(tmp_path)
+    meta = json.loads((render(_opts(tmp_path, still, idle=False)) / "meta.json").read_text())
+    assert meta["checks"]["face_max_diff"] == 0 and meta["checks"]["face_rigid"] == 0
+
+
+def test_missing_depth_model_is_noted(tmp_path):
+    meta = json.loads((render(_opts(tmp_path, _still(tmp_path))) / "meta.json").read_text())
+    assert any("drift" in n for n in meta["notes"])

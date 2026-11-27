@@ -190,7 +190,20 @@ class Motion:
                         r.reach += float(np.sqrt(u[2] ** 2 + u[3] ** 2 + u[4] ** 2 + u[5] ** 2)[inside].max())
 
     def field(self, i: int, name: str | None = None) -> tuple[np.ndarray, np.ndarray]:
-        """One region's displacement in px at frame i, or the region's fields added up when name is None."""
+        """One region's displacement in px at frame i, or the region's fields added up when name is None. A region's
+        field is kept for the frame, so layers, stretch and the drips share one computation (don't change it)."""
+        if name is not None:
+            if getattr(self, "_ci", None) != i:
+                self._ci, self._cache = i, {}
+            if name not in self._cache:
+                self._cache[name] = self._field(i, name)
+            return self._cache[name]
+        return self._field(i, None)
+
+    def offsets(self, i: int) -> dict[str, tuple[np.ndarray, np.ndarray]]:
+        return {n: self.field(i, n) for n in self.regions}
+
+    def _field(self, i: int, name: str | None) -> tuple[np.ndarray, np.ndarray]:
         dx = np.zeros((self.H, self.W), np.float32)
         dy = np.zeros((self.H, self.W), np.float32)
         for n, r in self.regions.items():

@@ -9,7 +9,7 @@ import numpy as np
 def pick_cycles(hz: float, seconds: float, taken: set[int]) -> int:
     """The count nearest hz*seconds (at least 1) that shares no factor with any count already taken; it is added."""
     want = max(1, round(hz * seconds))
-    for d in range(0, 4 * want + 8):
+    for d in range(0, 4 * want + 40):  # short loops run out of small coprime counts fast
         for c in (want + d, want - d):
             if c >= 1 and c not in taken and all(gcd(c, t) == 1 for t in taken):
                 taken.add(c)

@@ -5,7 +5,7 @@ shorter repeat hides inside the loop."""
 import cv2
 import numpy as np
 
-LIMITS = {"stretch": (0.9, 1.1), "seam": 1.25, "halo": (0.96, 1.04), "repeat": 1.0}
+LIMITS = {"stretch": (0.9, 1.1), "seam": 1.25, "halo": (0.96, 1.04), "repeat": 1.0, "rigid": 0.05}
 _SMALL_W = 96
 
 
@@ -25,27 +25,42 @@ class Checks:
         self.face = held if held.any() else None
         hard = (matte >= 0.5).astype(np.uint8)
         ring = (cv2.dilate(hard, np.ones((7, 7), np.uint8)) > 0) & (hard == 0)  # 3 px just outside her
-        if ring_skip is not None:  # where moving hair or cloth may pass, a brighter ring is the cloth, not a leak
-            ring &= ~(ring_skip > 0)
+        self.keep = ~(ring_skip > 0) if ring_skip is not None else np.ones(hard.shape, bool)
+        ring &= self.keep  # where moving hair or cloth may pass, a brighter ring is the cloth, not a leak
         self.ring = ring if ring.any() and hard.any() else None
         self.ripple_diff = None
         self.ring_still = float(self.still[self.ring].mean()) if self.ring is not None else None
         self.face_diff = 0.0 if self.face is not None else None
+        self.rigid_err = 0.0 if self.face is not None else None
         self.ring_sum, self.ring_ref, self.ring_n = 0.0, 0.0, 0
         self.lo, self.hi = 1.0, 1.0
         self.small: list[np.ndarray | None] = [None] * frames
 
-    def character(self, i: int, char_img: np.ndarray) -> None:
-        """The character as composited, before anything is drawn in front of her."""
-        if self.face is not None:
-            self.face_diff = max(self.face_diff, float(np.abs(char_img[self.face] - self.still[self.face]).max()))
+    def character(self, i: int, char_img: np.ndarray, ref: np.ndarray | None = None,
+                  where: np.ndarray | None = None) -> None:
+        """The character as composited, before anything is drawn in front of her. With an idle the face has moved:
+        `ref` is the still carried on her field and `where` the face as it lies now."""
+        if self.face is None:
+            return
+        ref, where = (self.still, self.face) if ref is None else (ref, where)
+        if where.any():
+            self.face_diff = max(self.face_diff, float(np.abs(char_img[where] - ref[where]).max()))
 
-    def back(self, i: int, back_img: np.ndarray, city: np.ndarray | None = None) -> None:
+    def rigid(self, err: float) -> None:
+        """How far the face's motion this frame is from a shift plus rotation, in px."""
+        if self.rigid_err is not None:
+            self.rigid_err = max(self.rigid_err, err)
+
+    def back(self, i: int, back_img: np.ndarray, city: np.ndarray | None = None, ring: np.ndarray | None = None) -> None:
         """Back layers and the character, before the front layers. With the same frame's city (the street without
-        her), the ring is measured against it, so rain and fog behind her are not counted as a leak."""
+        her), the ring is measured against it, so rain and fog behind her are not counted as a leak. `ring`: the ring
+        as it lies this frame, when she moves."""
         if self.ring is not None:
-            self.ring_sum += float(back_img[self.ring].mean())
-            self.ring_ref += float(city[self.ring].mean()) if city is not None else self.ring_still
+            r = self.ring if ring is None else (ring & self.keep)
+            if not r.any():
+                return
+            self.ring_sum += float(back_img[r].mean())
+            self.ring_ref += float(city[r].mean()) if city is not None else self.ring_still
             self.ring_n += 1
 
     def ripples(self, leak: float) -> None:
@@ -79,7 +94,8 @@ class Checks:
                "seam_ratio": None if seam is None else round(seam, 3),
                "halo_ratio": None if halo is None else round(halo, 4),
                "repeat_score": None if repeat is None else round(repeat, 3),
-               "ripples_on_her": self.ripple_diff}
+               "ripples_on_her": self.ripple_diff,
+               "face_rigid": None if self.rigid_err is None else round(self.rigid_err, 4)}
         failed = []
         if self.face_diff:
             failed.append("face")
@@ -91,6 +107,8 @@ class Checks:
             failed.append("halo")
         if self.ripple_diff:
             failed.append("ripples_on_her")
+        if self.rigid_err is not None and self.rigid_err > LIMITS["rigid"]:
+            failed.append("face_rigid")
         if repeat is not None and repeat < LIMITS["repeat"]:
             failed.append("repeat")
         return {**out, "passed": not failed, "failed": failed}
