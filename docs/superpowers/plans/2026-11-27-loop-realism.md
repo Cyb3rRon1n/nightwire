@@ -55,7 +55,7 @@ to `tools/loop_still`, all on by default, all periodic, with the face still exac
   - `light_map(img) -> (H, W, 3)` float32: the image blurred at 1/8 size, upscaled.
   - `rain_tint(lmap) -> (H, W, 3)`: `clip(0.35·RAIN_TINT + 1.6·lmap, 0, 1.6)`.
   - `grain(shape, seed, i, amount=0.012) -> (H, W, 1)` float32, gaussian, same for the same (seed, i).
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   `test_ripples_are_periodic_and_stay_off_her`: `apply(img, 0) == apply(img, N)`; frames differ at some i;
   pixels above the ground line and inside `avoid` are unchanged.
   `test_ripples_none_preset_is_empty`: preset "none" → `.empty` and `apply` returns the image unchanged.
@@ -64,10 +64,10 @@ to `tools/loop_still`, all on by default, all periodic, with the face still exac
   square, unchanged far away; an all-grey image is unchanged.
   `test_rain_is_brighter_under_light`: `rain_tint` larger where the light map is bright.
   `test_grain_is_fresh_per_frame_and_reproducible`.
-- [ ] **Step 2: Run them.** `.venv/bin/python -m pytest tests/test_loop_realism.py -q` → FAIL (module missing).
-- [ ] **Step 3: Implement `realism.py`.**
-- [ ] **Step 4: Run them.** Expected: PASS.
-- [ ] **Step 5: Commit.** `loop_still: ripples, bloom, lit rain and grain layers`
+- [x] **Step 2: Run them.** `.venv/bin/python -m pytest tests/test_loop_realism.py -q` → FAIL (module missing).
+- [x] **Step 3: Implement `realism.py`.**
+- [x] **Step 4: Run them.** Expected: PASS.
+- [x] **Step 5: Commit.** `loop_still: ripples, bloom, lit rain and grain layers`
 
 ### Task 2: Wire into `render.py` and the CLI
 
@@ -87,13 +87,13 @@ to `tools/loop_still`, all on by default, all periodic, with the face still exac
   through the ripple offsets.
 - `meta.checks.ripples_on_her`: max |change| that the ripple and mirror layers make inside the hard matte, over all
   frames; failing if > 0.
-- [ ] **Step 1: Write failing tests.** `test_realism_defaults_on` (parse defaults); `test_render_with_realism_passes_checks`
+- [x] **Step 1: Write failing tests.** `test_realism_defaults_on` (parse defaults); `test_render_with_realism_passes_checks`
   (synthetic still with a character and a bright patch: checks pass, `ripples_on_her == 0`, `face_max_diff == 0`);
   `test_car_skipped_on_short_loop` (3 s loop renders and notes the skip); `test_no_character_renders`.
-- [ ] **Step 2: Run them.** Expected: FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run the full suite.** `.venv/bin/python -m pytest tests/ -q` → all pass.
-- [ ] **Step 5: Commit.** `loop_still: realism layers on by default (ripples, bloom, lit rain, car, grain)`
+- [x] **Step 2: Run them.** Expected: FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run the full suite.** `.venv/bin/python -m pytest tests/ -q` → all pass.
+- [x] **Step 5: Commit.** `loop_still: realism layers on by default (ripples, bloom, lit rain, car, grain)`
 
 ### Task 3: Render the three test stills, measure, publish
 

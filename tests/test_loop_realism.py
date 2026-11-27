@@ -60,3 +60,32 @@ def test_grain_is_fresh_per_frame_and_reproducible():
     assert a.shape == (H, W, 1)
     assert np.array_equal(a, grain((H, W), 1, 0)) and not np.array_equal(a, b)
     assert 0.005 < float(a.std()) < 0.02
+
+
+def test_bloom_ignores_her_bright_clothes():
+    # Review: bloom was built from a plate that still holds her, so a bright coat glowed into the street.
+    img = np.zeros((H, W, 3), np.float32)
+    img[60:160, 140:180] = (0.1, 0.1, 1.0)  # her red coat
+    her = np.zeros((H, W), np.float32)
+    her[60:160, 140:180] = 1
+    out = Bloom(img, avoid=her).apply(img)
+    assert np.allclose(out[60:160, 125:135], img[60:160, 125:135], atol=1e-3)
+
+
+def test_mirror_without_ripples_does_not_ripple():
+    # Review: --mirror turned ripples back on even with --no-ripples.
+    r = Ripples((W, H), N, 24, 0.6, 1, "heavy")
+    img, extra = _street(), np.full((H, W, 3), 0.1, np.float32)
+    out = r.apply(img, 3, extra, ripple=False)
+    assert np.allclose(out, img + extra * r.area[..., None])
+
+
+def test_ripples_never_sample_her_into_the_street():
+    # Review: street pixels just outside the margin could pull her hem or shoes in through the ripple offsets.
+    avoid = np.zeros((H, W), np.float32)
+    avoid[60:200, 140:180] = 1
+    r = Ripples((W, H), N, 24, 0.5, 3, "heavy", avoid)
+    img = _street()
+    for i in range(N):
+        r.apply(img, i)
+        assert r.leak == 0, i

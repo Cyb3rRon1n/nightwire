@@ -201,7 +201,7 @@ def render(o: Options) -> Path:
                         (matte * 255).astype(np.uint8), o.train, o.floor, o.passes, sweeps, o.sign_blink)
     rain_near = Rain((W, H), N, o.rain, o.seed, near=True) if o.near_rain else None
     fog = Fog((W, H), N, o.seed) if o.fog else None
-    bloom = Bloom(plate) if o.bloom else None
+    bloom = Bloom(plate, avoid=matte) if o.bloom else None
     ripples = Ripples((W, H), N, o.fps, o.ground, o.seed, o.rain, matte) if o.ripples or o.mirror else None
     top = int(round(o.ground * H))
     sc = H / 1338
@@ -234,9 +234,8 @@ def render(o: Options) -> Path:
                 extra = np.zeros_like(city)
                 extra[top:] = src[np.clip(2 * top - np.arange(top, H), 0, H - 1)]
                 extra = 0.18 * cv2.GaussianBlur(extra, (0, 0), 6 * sc)
-            before = city
-            city = ripples.apply(city, i, extra) if (o.ripples or extra is not None) else city
-            checks.ripples(before, city)
+            city = ripples.apply(city, i, extra, ripple=o.ripples)
+            checks.ripples(ripples.leak)
         tint = rain_tint(light_map(city)) if o.lit_rain else RAIN_TINT
         city = city + rain_far.layer(i)[..., None] * tint
         if fog:

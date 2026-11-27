@@ -150,7 +150,13 @@ and her face never changes (spec `docs/superpowers/specs/2026-11-25-layered-loop
 3. Render: `python -m tools.loop_still STILL [--fog] [--rain steady] [--no-edge-tint] [--preset NAME]` (defaults are the owner's pick, preset B: heavy rain, breathing neon, edge glow). Output in
    `design-data/loops/<still>/<preset>/`: `master.mkv` (lossless), `loop.mp4`, `preview3x.mp4`, `poster.jpg`,
    `meta.json`. It exits 1 if a check fails (face changed, stretched art, visible seam, edge halo, or a hidden
-   shorter repeat); the numbers are in `meta.json`. `--frames-only 6` writes a few PNGs for a quick look.
+   shorter repeat, or ripples drawn on her); the numbers are in `meta.json`. `--frames-only 6` writes a few PNGs
+   for a quick look.
+   Realism layers, all on by default (spec `2026-11-26-loop-realism-design.md`): `--ripples` (raindrops ripple the
+   street below `--ground`, so painted reflections shimmer), `--bloom` (neon glows in the wet air), `--lit-rain`
+   (rain glints near lights, fades in the dark), `--car` (one headlight sweep at 45% of the loop; needs lights and
+   at least about 7.5 s), `--grain` (light film grain, never on the face). Each has a `--no-` form. `--mirror` adds
+   a faint reflection for a street painted dry.
 4. Blinks turn on by themselves once `<still>.blink-half.png` and `<still>.blink-closed.png` exist (RGBA, eye area
    only, drawn with `tools/fix_area.py`).
 5. Watch `preview3x.mp4` back to back before showing anyone: the loop should not be noticeable.

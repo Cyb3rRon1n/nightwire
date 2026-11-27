@@ -33,7 +33,7 @@ def _still(tmp_path, character=True):
     return p
 
 
-def _opts(tmp_path, still, **kw):
+def _opts(tmp_path, still=None, **kw):
     base = dict(still=still, seconds=2, fps=12, size=f"{W}x{H}", rain="steady", lights=True, fog=True,
                 plate="telea", out=tmp_path / "out")
     base.update(kw)
@@ -148,3 +148,9 @@ def test_car_skipped_on_short_loop(tmp_path):
 def test_car_needs_lights(tmp_path):
     meta = json.loads((render(_opts(tmp_path, _still(tmp_path), seconds=8, lights=False)) / "meta.json").read_text())
     assert any("car" in n and "lights" in n for n in meta["notes"])
+
+
+def test_no_character_and_ground_at_bottom_render_with_realism(tmp_path):
+    for kw in (dict(still=_still(tmp_path, character=False)), dict(still=_still(tmp_path), ground=1.0)):
+        meta = json.loads((render(_opts(tmp_path, seconds=8, rain="heavy", mirror=True, **kw)) / "meta.json").read_text())
+        assert meta["checks"]["ripples_on_her"] in (0, None) and "face_max_diff" in meta["checks"]

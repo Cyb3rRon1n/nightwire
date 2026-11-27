@@ -28,7 +28,6 @@ class Checks:
         if ring_skip is not None:  # where moving hair or cloth may pass, a brighter ring is the cloth, not a leak
             ring &= ~(ring_skip > 0)
         self.ring = ring if ring.any() and hard.any() else None
-        self.her = hard > 0
         self.ripple_diff = None
         self.ring_still = float(self.still[self.ring].mean()) if self.ring is not None else None
         self.face_diff = 0.0 if self.face is not None else None
@@ -49,10 +48,9 @@ class Checks:
             self.ring_ref += float(city[self.ring].mean()) if city is not None else self.ring_still
             self.ring_n += 1
 
-    def ripples(self, before: np.ndarray, after: np.ndarray) -> None:
-        """The street layers (ripples, mirror) must not change a pixel inside her."""
-        d = float(np.abs(after[self.her] - before[self.her]).max()) if self.her.any() else 0.0
-        self.ripple_diff = max(self.ripple_diff or 0.0, d)
+    def ripples(self, leak: float) -> None:
+        """How much of her the street ripples sampled into the street this frame (must stay 0)."""
+        self.ripple_diff = max(self.ripple_diff or 0.0, leak)
 
     def stretch(self, lo: float, hi: float) -> None:
         self.lo, self.hi = min(self.lo, lo), max(self.hi, hi)
