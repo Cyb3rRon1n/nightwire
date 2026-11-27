@@ -117,3 +117,34 @@ def test_defaults_are_preset_b_the_owners_pick():
     assert Options(still=Path("x.png")).rain == "heavy"
     o = parse(["x.png", "--no-lights", "--no-edge-tint", "--rain", "steady"])
     assert (o.rain, o.lights, o.edge_tint) == ("steady", False, False)
+
+
+def test_realism_defaults_on():
+    from tools.loop_still.__main__ import parse
+    o = parse(["x.png"])
+    assert (o.ripples, o.bloom, o.lit_rain, o.car, o.grain, o.mirror) == (True, True, True, True, True, False)
+    o = parse(["x.png", "--no-ripples", "--no-grain", "--mirror"])
+    assert (o.ripples, o.grain, o.mirror) == (False, False, True)
+
+
+def test_render_with_realism_passes_checks(tmp_path):
+    still = _still(tmp_path)
+    out = render(_opts(tmp_path, still, seconds=8, rain="heavy", ground=0.7, mirror=True))
+    meta = json.loads((out / "meta.json").read_text())
+    c = meta["checks"]
+    assert c["face_max_diff"] == 0 and c["ripples_on_her"] == 0, c
+    assert c["passed"], c
+    assert "car" not in " ".join(meta["notes"])  # 8 s fits the car
+    off = render(_opts(tmp_path, still, seconds=8, rain="heavy", ground=0.7, ripples=False, bloom=False,
+                       lit_rain=False, car=False, grain=False, out=tmp_path / "off"))
+    assert json.loads((off / "meta.json").read_text())["frames_sha1"] != meta["frames_sha1"]
+
+
+def test_car_skipped_on_short_loop(tmp_path):
+    meta = json.loads((render(_opts(tmp_path, _still(tmp_path), seconds=2)) / "meta.json").read_text())
+    assert any("car" in n for n in meta["notes"])
+
+
+def test_car_needs_lights(tmp_path):
+    meta = json.loads((render(_opts(tmp_path, _still(tmp_path), seconds=8, lights=False)) / "meta.json").read_text())
+    assert any("car" in n and "lights" in n for n in meta["notes"])

@@ -34,6 +34,11 @@ def parse(argv=None) -> Options:
     ap.add_argument("--no-blink", dest="blink", action="store_false")
     ap.add_argument("--edge-tint", action=argparse.BooleanOptionalAction, default=True,
                     help="the neon's light faintly on her edge")
+    for name, on, what in (("ripples", True, "raindrops ripple the wet street"),
+                           ("mirror", False, "a faint reflection on a dry-looking street"),
+                           ("bloom", True, "neon glows in the wet air"), ("lit-rain", True, "rain glints near lights"),
+                           ("car", True, "one car's headlights sweep past mid-loop"), ("grain", True, "light film grain")):
+        ap.add_argument(f"--{name}", action=argparse.BooleanOptionalAction, default=on, help=what)
     ap.add_argument("--plate", choices=["lama", "telea"], default="lama")
     ap.add_argument("--matte-model", type=Path)
     ap.add_argument("--redo-matte", action="store_true")

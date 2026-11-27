@@ -24,6 +24,7 @@ from tools.loop_still.checks import Checks
 from tools.loop_still.layers import Fog, Rain, Splashes
 from tools.loop_still.matte import decontaminate, feather, load_or_make_matte
 from tools.loop_still.motion import Motion
+from tools.loop_still.realism import Bloom, Ripples, grain, light_map, rain_tint
 from tools.loop_still.regions import load_regions
 from tools.shorts.remote import h264_encoder
 
@@ -56,6 +57,12 @@ class Options:
     still_character: bool = False
     blink: bool | None = None       # None: on when both eye patches exist
     edge_tint: bool = True
+    ripples: bool = True            # realism pass (spec 2026-11-26-loop-realism-design.md), all on by default
+    mirror: bool = False
+    bloom: bool = True
+    lit_rain: bool = True
+    car: bool = True
+    grain: bool = True
     plate: str = "lama"             # lama | telea
     matte_model: Path | None = None
     redo_matte: bool = False
@@ -179,12 +186,25 @@ def render(o: Options) -> Path:
     plate = _plate(still_dc, hole, o.plate, o) if motion else still_dc
     body = np.maximum(matte * (1 - union), face)  # the character that never moves; the face always from the still
 
+    sweeps = o.sweeps
+    if o.car and not sweeps:
+        at = round(0.45 * o.seconds, 2)
+        if not o.lights:
+            _say(o, "car: the passing car needs --lights, so no car")
+        elif at * o.fps + 4.1 * o.fps < N:  # the sweep (2.6 s) and the room for a sign blink (1.5 s) end before the seam
+            sweeps = str(at)
+        else:
+            _say(o, "car: loop too short for a passing car, so no car")
     lights = None
     if o.lights:
         lights = Lights((np.clip(plate, 0, 1) * 255).astype(np.uint8), o.size, o.seconds, o.fps, o.seed, o.strength,
-                        (matte * 255).astype(np.uint8), o.train, o.floor, o.passes, o.sweeps, o.sign_blink)
+                        (matte * 255).astype(np.uint8), o.train, o.floor, o.passes, sweeps, o.sign_blink)
     rain_near = Rain((W, H), N, o.rain, o.seed, near=True) if o.near_rain else None
     fog = Fog((W, H), N, o.seed) if o.fog else None
+    bloom = Bloom(plate) if o.bloom else None
+    ripples = Ripples((W, H), N, o.fps, o.ground, o.seed, o.rain, matte) if o.ripples or o.mirror else None
+    top = int(round(o.ground * H))
+    sc = H / 1338
     splashes = Splashes((W, H), N, o.ground, o.seed, o.splashes if o.rain != "none" else 0, avoid=matte)
 
     blinks = None
@@ -205,9 +225,22 @@ def render(o: Options) -> Path:
     enc = None if o.frames_only else _Encoder(out / "master.mkv", W, H, o.fps, N)
     for i in range(o.frames_only or N):
         city = lights.frame(i) if lights else plate.copy()
-        city = city + rain_far.layer(i)[..., None] * RAIN_TINT
+        if bloom:
+            city = bloom.apply(city)
+        if ripples:
+            extra = None
+            if o.mirror and top < H:  # a faint flipped copy of the street above, her included, for a dry street
+                src = city * (1 - body[..., None]) + still_dc * body[..., None]
+                extra = np.zeros_like(city)
+                extra[top:] = src[np.clip(2 * top - np.arange(top, H), 0, H - 1)]
+                extra = 0.18 * cv2.GaussianBlur(extra, (0, 0), 6 * sc)
+            before = city
+            city = ripples.apply(city, i, extra) if (o.ripples or extra is not None) else city
+            checks.ripples(before, city)
+        tint = rain_tint(light_map(city)) if o.lit_rain else RAIN_TINT
+        city = city + rain_far.layer(i)[..., None] * tint
         if fog:
-            city = city + fog.layer(i)[..., None]
+            city = city + fog.layer(i)[..., None] * ((0.5 + light_map(city)) if o.lit_rain else 1)
         frame = city * (1 - body[..., None]) + still_dc * body[..., None]
         if motion:
             for moved, alpha in motion.layers(still_dc, i):
@@ -222,13 +255,18 @@ def render(o: Options) -> Path:
         checks.back(i, frame, city)
         frame = frame + splashes.layer(i)[..., None] * SPLASH_TINT
         if rain_near:
-            frame = frame + rain_near.layer(i)[..., None] * RAIN_TINT
+            frame = frame + rain_near.layer(i)[..., None] * tint
+        if o.grain and not o.frames_only:
+            checks.final(i, np.clip(frame, 0, 1))  # seam and repeat are judged before the grain, which never repeats
+        if o.grain:
+            frame = frame + grain((H, W), o.seed, i) * (1 - held_mask)[..., None]
         u8 = (np.clip(frame, 0, 1) * 255).round().astype(np.uint8)
         sha.update(u8.tobytes())
         if o.frames_only:
             cv2.imwrite(str(out / f"{i:04d}.png"), u8)
             continue
-        checks.final(i, u8.astype(np.float32) / 255)
+        if not o.grain:
+            checks.final(i, u8.astype(np.float32) / 255)
         enc.write(u8)
         if i == 0:
             cv2.imwrite(str(out / "poster.jpg"), u8, [cv2.IMWRITE_JPEG_QUALITY, 92])

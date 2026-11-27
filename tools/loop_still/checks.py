@@ -28,6 +28,8 @@ class Checks:
         if ring_skip is not None:  # where moving hair or cloth may pass, a brighter ring is the cloth, not a leak
             ring &= ~(ring_skip > 0)
         self.ring = ring if ring.any() and hard.any() else None
+        self.her = hard > 0
+        self.ripple_diff = None
         self.ring_still = float(self.still[self.ring].mean()) if self.ring is not None else None
         self.face_diff = 0.0 if self.face is not None else None
         self.ring_sum, self.ring_ref, self.ring_n = 0.0, 0.0, 0
@@ -46,6 +48,11 @@ class Checks:
             self.ring_sum += float(back_img[self.ring].mean())
             self.ring_ref += float(city[self.ring].mean()) if city is not None else self.ring_still
             self.ring_n += 1
+
+    def ripples(self, before: np.ndarray, after: np.ndarray) -> None:
+        """The street layers (ripples, mirror) must not change a pixel inside her."""
+        d = float(np.abs(after[self.her] - before[self.her]).max()) if self.her.any() else 0.0
+        self.ripple_diff = max(self.ripple_diff or 0.0, d)
 
     def stretch(self, lo: float, hi: float) -> None:
         self.lo, self.hi = min(self.lo, lo), max(self.hi, hi)
@@ -73,7 +80,8 @@ class Checks:
         out = {"face_max_diff": self.face_diff, "stretch_min": round(self.lo, 4), "stretch_max": round(self.hi, 4),
                "seam_ratio": None if seam is None else round(seam, 3),
                "halo_ratio": None if halo is None else round(halo, 4),
-               "repeat_score": None if repeat is None else round(repeat, 3)}
+               "repeat_score": None if repeat is None else round(repeat, 3),
+               "ripples_on_her": self.ripple_diff}
         failed = []
         if self.face_diff:
             failed.append("face")
@@ -83,6 +91,8 @@ class Checks:
             failed.append("seam")
         if halo is not None and not LIMITS["halo"][0] <= halo <= LIMITS["halo"][1]:
             failed.append("halo")
+        if self.ripple_diff:
+            failed.append("ripples_on_her")
         if repeat is not None and repeat < LIMITS["repeat"]:
             failed.append("repeat")
         return {**out, "passed": not failed, "failed": failed}
