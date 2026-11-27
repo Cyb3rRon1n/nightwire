@@ -97,8 +97,18 @@ to `tools/loop_still`, all on by default, all periodic, with the face still exac
 
 ### Task 3: Render the three test stills, measure, publish
 
-- [ ] Render rin-kageyama--alley, ayame-tsuda--city and yuki-shirasagi--city with defaults (`--preset realism`), one at a time.
-- [ ] All checks pass; record seconds per clip and per-layer cost in the ledger, then compare with the spec's estimate.
-- [ ] Look at frames: ripples visible but subtle, bloom stays anime, rain darkens in shadow, car once. Tune values, then re-render.
-- [ ] Update the Loops page with before/after pairs, add card `loops-realism` to the inbox, update the guide's loop section.
-- [ ] Commit, push and tick the plan.
+- [x] Render rin-kageyama--alley, ayame-tsuda--city and yuki-shirasagi--city with defaults (`--preset realism`), one at a time.
+- [x] All checks pass; record seconds per clip and per-layer cost in the ledger, then compare with the spec's estimate.
+- [x] Look at frames: ripples visible but subtle, bloom stays anime, rain darkens in shadow, car once. Tune values, then re-render.
+- [x] Update the Loops page with before/after pairs, add card `loops-realism` to the inbox, update the guide's loop section.
+- [x] Commit, push and tick the plan.
+
+## Result (2026-11-27)
+
+- All three test stills pass every check (face 0, ripples on her 0; seam 0.88–0.99; repeat 2.8–5.1). About 530 s per
+  20 s clip, against 6–7 min before.
+- Measured per frame at 1920×1338 after review fixes: ripples 53 ms, bloom 81 ms, lit rain 50 ms, grain 41 ms (spec
+  guessed less for ripples and bloom).
+- Review fixes: bloom ignores her; `--mirror` alone doesn't ripple; ripples only on street rows, clamped and kept
+  clear of her, with a real leak check; the missing no-character and ground-at-bottom render test was added.
+- Owner card `loops-realism` asks: more real or just busier, ripple strength, keep the car, keep grain.
