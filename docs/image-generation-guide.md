@@ -140,7 +140,8 @@ ComfyUI-Inpaint-CropAndStitch is installed at commit 6005efc02f7745649118edd89cd
 
 `python -m tools.loop_still STILL` turns one approved scene still into a seamless loop on the CPU: the neon breathes,
 rain falls behind and in front of the character, splashes land and fog drifts, while her hair and coat stir a little
-and her face never changes (spec `docs/superpowers/specs/2026-11-25-layered-loop-design.md`).
+and her face moves only as a whole (specs `docs/superpowers/specs/2026-11-25-layered-loop-design.md`,
+`2026-11-27-loop-idle-design.md`).
 
 1. The cut-out is made the first time and saved as `<still>.matte.png` (BiRefNet; models and licences in
    `tools/loop_still/MODELS.md`). Fix it by hand if needed; it is never overwritten unless `--redo-matte`.
@@ -157,6 +158,12 @@ and her face never changes (spec `docs/superpowers/specs/2026-11-25-layered-loop
    (rain glints near lights, fades in the dark), `--car` (one headlight sweep at 45% of the loop; needs lights and
    at least about 7.5 s), `--grain` (light film grain, never on the face). Each has a `--no-` form. `--mirror` adds
    a faint reflection for a street painted dry.
+   Idle layers, all on by default (spec `2026-11-27-loop-idle-design.md`): `--idle` (she breathes, shifts her weight
+   and sways her head; hair and coat tips trail on springs; her face moves only as a whole, checked by `face_rigid`),
+   `--drift` (a slow camera drift from a depth map; Depth Anything V2 Small runs once and saves
+   `<still>.depth.png`, which can be fixed by hand; without the model or the file the drift is skipped with a
+   note), `--wet` (the lights wash over her, her highlights glint, drops fall from hair and coat tips). Each has a
+   `--no-` form; `--still-character` turns the idle off.
 4. Blinks turn on by themselves once `<still>.blink-half.png` and `<still>.blink-closed.png` exist (RGBA, eye area
    only, drawn with `tools/fix_area.py`).
 5. Watch `preview3x.mp4` back to back before showing anyone: the loop should not be noticeable.

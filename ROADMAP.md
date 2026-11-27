@@ -257,6 +257,11 @@ Each phase gets its own brainstorming pass (questions → approaches → design 
       minimal looping background motion, with Seedance only for final polish. Test on the 4U box's 4070 first:
       Wan 2.2 first+last frame loops, AniSora V3, LTX-2.3, against Seedance 2.5. Buy a 3090 only if Wan character
       LoRAs or depth control turn out to be needed. Each needs its own plan.
+    - **Queued for the 4070 (owner yes, 2026-11-27, card `loops-natural`)**: See-through (arXiv 2602.03749,
+      Apache-2.0 code, weights' licences still to check) to split a still into Live2D-style layers for blinks, gaze
+      and bigger idle motion; and a Wan 2.2 first = last frame loop used only as a motion guide, with her face
+      composited back. Research: `docs/superpowers/research/2026-11-27-natural-loop-animation.md`. The CPU part
+      (idle, camera drift, wet light) is `tools/loop_still`, spec `2026-11-27-loop-idle-design.md`.
 
 24. **The living city on a CPU** (designed and built 2026-11-21 to 11-23, roadmap items 1-5 owner-approved, every spec
     through Nightwire Reviews cards). Specs in `docs/superpowers/specs/`: `2026-11-22-npc-voices-design.md`,
