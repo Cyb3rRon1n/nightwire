@@ -158,7 +158,8 @@ and her face moves only as a whole (specs `docs/superpowers/specs/2026-11-25-lay
    (rain glints near lights, fades in the dark), `--car` (one headlight sweep at 45% of the loop; needs lights and
    at least about 7.5 s), `--grain` (light film grain, never on the face). Each has a `--no-` form. `--mirror` adds
    a faint reflection for a street painted dry.
-   Idle layers, all on by default (spec `2026-11-27-loop-idle-design.md`): `--idle` (she breathes, shifts her weight
+   Idle layers (spec `2026-11-27-loop-idle-design.md`); `--idle` and `--drift` are off by default since the owner
+   found them "very wavy" (2026-11-27), `--wet` is on: `--idle` (she breathes, shifts her weight
    and sways her head; hair and coat tips trail on springs; her face moves only as a whole, checked by `face_rigid`),
    `--drift` (a slow camera drift from a depth map; Depth Anything V2 Small runs once and saves
    `<still>.depth.png`, which can be fixed by hand; without the model or the file the drift is skipped with a

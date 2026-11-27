@@ -161,19 +161,20 @@ def _depth(still):
     cv2.imwrite(str(still.with_name(still.stem + ".depth.png")), d)
 
 
-def test_idle_drift_wet_defaults_on():
+def test_idle_and_drift_off_by_default_wet_on():
+    """Owner 2026-11-27 (card loops-idle): the body warp and the drift looked "very wavy"."""
     from tools.loop_still.__main__ import parse
     o = parse(["x.png"])
-    assert (o.idle, o.drift, o.wet) == (True, True, True)
-    assert Options(still=Path("x.png")).idle and Options(still=Path("x.png")).drift
-    o = parse(["x.png", "--no-idle", "--no-drift", "--no-wet"])
-    assert (o.idle, o.drift, o.wet) == (False, False, False)
+    assert (o.idle, o.drift, o.wet) == (False, False, True)
+    assert not Options(still=Path("x.png")).idle and not Options(still=Path("x.png")).drift
+    o = parse(["x.png", "--idle", "--drift", "--no-wet"])
+    assert (o.idle, o.drift, o.wet) == (True, True, False)
 
 
 def test_render_with_idle_drift_and_wet_passes_checks(tmp_path):
     still = _still(tmp_path)
     _depth(still)
-    out = render(_opts(tmp_path, still, seconds=8, rain="heavy", ground=0.7))
+    out = render(_opts(tmp_path, still, seconds=8, rain="heavy", ground=0.7, idle=True, drift=True))
     meta = json.loads((out / "meta.json").read_text())
     c = meta["checks"]
     assert c["passed"], c
@@ -187,7 +188,7 @@ def test_render_with_idle_drift_and_wet_passes_checks(tmp_path):
 
 def test_her_face_moves_as_a_whole(tmp_path):
     still = _still(tmp_path)
-    out = render(_opts(tmp_path, still, rain="none", fog=False, wet=False, drift=False, seconds=8, frames_only=24))
+    out = render(_opts(tmp_path, still, rain="none", fog=False, wet=False, idle=True, seconds=8, frames_only=24))
     img = cv2.imread(str(still)).astype(np.float32)
     moved = False
     for k in range(24):
@@ -203,7 +204,7 @@ def test_no_idle_keeps_the_face_exact(tmp_path):
 
 
 def test_missing_depth_model_is_noted(tmp_path):
-    meta = json.loads((render(_opts(tmp_path, _still(tmp_path))) / "meta.json").read_text())
+    meta = json.loads((render(_opts(tmp_path, _still(tmp_path), drift=True)) / "meta.json").read_text())
     assert any("drift" in n for n in meta["notes"])
 
 
@@ -222,5 +223,6 @@ def test_plate_band_without_idle_still_covers_the_drift():
 
 def test_idle_render_keeps_a_halo_ring(tmp_path):
     # Review: the hair's whole reach (body motion included) hid most of the ring, which can then quietly vanish.
-    meta = json.loads((render(_opts(tmp_path, _still(tmp_path), rain="none", fog=False)) / "meta.json").read_text())
+    meta = json.loads((render(_opts(tmp_path, _still(tmp_path), rain="none", fog=False, idle=True)) / "meta.json")
+                      .read_text())
     assert meta["checks"]["halo_ratio"] is not None

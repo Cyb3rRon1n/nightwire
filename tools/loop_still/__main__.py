@@ -38,9 +38,9 @@ def parse(argv=None) -> Options:
                            ("mirror", False, "a faint reflection on a dry-looking street"),
                            ("bloom", True, "neon glows in the wet air"), ("lit-rain", True, "rain glints near lights"),
                            ("car", True, "one car's headlights sweep past mid-loop"), ("grain", True, "light film grain"),
-                           ("idle", True, "she breathes, shifts her weight and sways her head; her face moves only "
+                           ("idle", False, "she breathes, shifts her weight and sways her head; her face moves only "
                                           "as a whole"),
-                           ("drift", True, "a slow camera drift from a depth map (Depth Anything V2 Small)"),
+                           ("drift", False, "a slow camera drift from a depth map (Depth Anything V2 Small)"),
                            ("wet", True, "the lights wash over her, her highlights glint, drops fall from tips")):
         ap.add_argument(f"--{name}", action=argparse.BooleanOptionalAction, default=on, help=what)
     ap.add_argument("--plate", choices=["lama", "telea"], default="lama")

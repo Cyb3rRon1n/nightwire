@@ -67,8 +67,8 @@ class Options:
     lit_rain: bool = True
     car: bool = True
     grain: bool = True
-    idle: bool = True               # idle pass (spec 2026-11-27-loop-idle-design.md), all on by default
-    drift: bool = True
+    idle: bool = False              # idle pass (spec 2026-11-27-loop-idle-design.md); owner 2026-11-27 found the
+    drift: bool = False             # body warp and drift "very wavy", so both are off by default (card loops-idle)
     wet: bool = True
     depth_model: Path | None = None
     plate: str = "lama"             # lama | telea
