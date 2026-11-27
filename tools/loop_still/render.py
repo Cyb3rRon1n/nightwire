@@ -112,6 +112,24 @@ def _lama(img: np.ndarray, hole: np.ndarray) -> np.ndarray:
     return res
 
 
+def _hole(motion, matte: np.ndarray, face: np.ndarray, drift_reach: float, idle: bool) -> np.ndarray:
+    """Where the plate must be filled: inside each moving layer, the strip its largest move can uncover (plus the
+    drift's move of the background next to her), and with a drift the same strip along her whole edge. Without an
+    idle the face never moves, so it is never filled."""
+    h, w = matte.shape
+    hole = np.zeros((h, w), bool)
+    for r in (motion.regions.values() if motion else []):
+        inside = (r.mask >= 0.05).astype(np.uint8)
+        strip = cv2.distanceTransform(inside, cv2.DIST_L2, 3) <= r.reach + drift_reach + 3
+        hole |= (cv2.dilate(inside, np.ones((7, 7), np.uint8)) > 0) & strip
+    if drift_reach > 0:  # the drift pulls the background next to her edge in: it must not be her
+        inside = (matte >= 0.05).astype(np.uint8)
+        hole |= (cv2.distanceTransform(inside, cv2.DIST_L2, 3) <= drift_reach + 3) & (inside > 0)
+    if not idle:
+        hole &= ~(face > 0)
+    return hole
+
+
 def _plate(img: np.ndarray, hole: np.ndarray, how: str, o: Options) -> np.ndarray:
     """The still with the moving regions' area filled, so what shows behind a moved strand is background."""
     if not hole.any():
@@ -202,21 +220,11 @@ def render(o: Options) -> Path:
     # A moved edge can only uncover the strip of its region within its largest move of the region's edge; only that
     # strip (and 3 px past the edge) is filled, so LaMa works from nearby context instead of inventing a whole coat.
     union = np.zeros((H, W), np.float32)
-    hole = np.zeros((H, W), bool)
     drift_reach = drift.reach if drift else 0.0
+    hole = _hole(motion, matte, face, drift_reach, idle is not None) if has_char else np.zeros((H, W), bool)
     for name, r in (motion.regions.items() if motion else []):
         if name != "body":
             union = np.maximum(union, r.mask)
-        inside = (r.mask >= 0.05).astype(np.uint8)
-        # the background behind her edge also shows where the drift moves it, so the strip grows by that much
-        strip = cv2.distanceTransform(inside, cv2.DIST_L2, 3) <= r.reach + drift_reach + 3
-        hole |= (cv2.dilate(inside, np.ones((7, 7), np.uint8)) > 0) & strip
-    if drift and has_char and not motion:
-        inside = (matte >= 0.05).astype(np.uint8)
-        hole |= cv2.distanceTransform(inside, cv2.DIST_L2, 3) <= drift_reach + 3
-        hole &= inside > 0
-    if idle is None:
-        hole &= ~(face > 0)
     plate = _plate(still_dc, hole, o.plate, o) if hole.any() else still_dc
     # the character that never moves (none with an idle: she is all layers then); the face always from the still
     body = None if idle else np.maximum(matte * (1 - union), face)
@@ -249,7 +257,8 @@ def render(o: Options) -> Path:
             _say(o, "blink: no eye patches beside the still (<still>.blink-half.png, .blink-closed.png; they are drawn "
                     "with tools/fix_area.py on the 4U box), so no blinks")
 
-    reach = max((r.reach for n, r in motion.regions.items() if n != "body"), default=0) if motion else 0
+    # the halo ring rides the body, so only what hair and coat move against the body can hide it
+    reach = max((r.rel_reach for n, r in motion.regions.items() if n != "body"), default=0) if motion else 0
     swept = cv2.dilate((union >= 0.05).astype(np.uint8), np.ones((2 * int(reach) + 7,) * 2, np.uint8)) \
         if motion and union.any() else None
     checks = Checks(still, held_mask, matte if has_char else np.zeros_like(matte), N, o.fps,
@@ -257,6 +266,8 @@ def render(o: Options) -> Path:
     rim = ((matte >= 0.5) & (cv2.distanceTransform((matte >= 0.5).astype(np.uint8), cv2.DIST_L2, 3) <= 3)) \
         .astype(np.float32) * (1 - held_mask) if o.edge_tint and has_char and lights else None
     ring = checks.ring.astype(np.float32) if idle is not None and checks.ring is not None else None
+    if has_char and checks.ring is None:
+        _say(o, "halo: moving hair and coat cover her whole edge, so the halo is not checked")
     if blinks and idle is not None:
         _say(o, "blink: the eye patches don't follow the idle yet, so no blinks")
         blinks = None
@@ -316,8 +327,7 @@ def render(o: Options) -> Path:
         if wet:
             if light is not None:
                 frame = frame + wash(light, alpha, face_now)
-                frame = frame + sheen.glint(motion.move(sheen.mask, i) if idle is not None else sheen.mask, lmap,
-                                            light)
+                frame = frame + sheen.glint(motion.carry(sheen.mask, i) if motion else sheen.mask, lmap, light)
             if drips:
                 drop = drips.layer(i, motion.offsets(i) if motion else None) * (1 - np.clip(face_now, 0, 1))
                 frame = frame + drop[..., None] * (0.25 + 1.2 * lmap)

@@ -50,3 +50,15 @@ def test_behind_her_moves_like_the_wall():
     drift = Drift(d, matte, (W, H), N, S, set())
     dx, _ = drift.shift(3)
     assert abs(dx[100, 120] - dx[100, 95]) < 0.25 * (abs(dx[100, 95]) + 0.05)
+
+
+def test_hand_edited_rgb_depth_and_overshoot(tmp_path):
+    # Review: an RGB depth from an editor crashed, and Lanczos overshoot below 0 wrapped to "nearest" in the fill.
+    still = tmp_path / "s.png"
+    cv2.imwrite(str(still), np.zeros((H, W, 3), np.uint8))
+    cv2.imwrite(str(depth_path(still)), np.full((H, W, 3), 128, np.uint8))
+    assert load_or_make_depth(still, tmp_path / "nope").shape == (H, W)
+    d, matte = _disp()
+    d[0:5] = -0.2
+    drift = Drift(d, matte, (W, H), N, S, set())
+    assert drift.rel.min() >= -drift.focus - 1e-3

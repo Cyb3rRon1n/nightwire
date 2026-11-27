@@ -22,8 +22,11 @@ def _field(terms, i):
     dy = np.zeros((H, W), np.float32)
     for c, theta, px, qx, py, qy in terms:
         a = 2 * np.pi * c * i / N + theta
-        dx += np.sin(a) * px - np.cos(a) * qx
-        dy += np.sin(a) * py - np.cos(a) * qy
+        for d, p, q in ((dx, px, qx), (dy, py, qy)):
+            if p is not None:
+                d += np.sin(a) * p
+            if q is not None:
+                d -= np.cos(a) * q
     return dx, dy
 
 
@@ -88,3 +91,59 @@ def test_hair_tips_trail_the_head():
     head = _field(idle.terms(hair=True), 0)
     dx, dy = with_spring.field(0, "hair")
     assert not np.allclose(dx[115, 75], head[0][115, 75], atol=1e-3)   # a tip
+
+
+def test_bust_crop_does_not_tear():
+    # Review: on a head-and-shoulders still the hips clamp to 2 px under the shoulders and the breath tore the chest.
+    from tools.loop_still.motion import stretch
+    w = h = 400
+    matte = np.zeros((h, w), np.float32)
+    matte[20:, 80:320] = 1
+    face = np.zeros((h, w), np.float32)
+    face[60:200, 140:260] = 1
+    idle = Idle(matte, face, (w, h), N, S, 1, set())
+    for i in range(0, N, 3):
+        dx = np.zeros((h, w), np.float32)
+        dy = np.zeros((h, w), np.float32)
+        for c, theta, px, qx, py, qy in idle.terms():
+            a = 2 * np.pi * c * i / N + theta
+            for d, p, q in ((dx, px, qx), (dy, py, qy)):
+                if p is not None:
+                    d += np.sin(a) * p
+                if q is not None:
+                    d -= np.cos(a) * q
+        lo, hi = stretch(dx, dy, matte >= 0.5)
+        assert 0.97 < lo and hi < 1.03, (i, lo, hi)
+
+
+def test_springs_fold_into_the_idle_terms_and_skip_empty_maps():
+    # Review: every idle term was stored twice per region and all-zero maps were multiplied every frame.
+    matte, face, hair = _her()
+    idle = Idle(matte, face, (W, H), N, S, 1, set())
+    m = Motion({"hair": hair}, face, (W, H), N, S, (-1, 0), 1, idle.taken, idle=idle,
+               body=np.maximum(matte * (1 - hair), face))
+    assert len(m.regions["hair"].terms) == 2 + len(idle.terms())
+    assert any(p is None for t in m.regions["body"].terms for p in t[2:])
+
+
+def test_hair_swept_reach_leaves_out_the_shared_body_motion():
+    # Review: the halo ring moves with the body, so only motion relative to the body may hide it.
+    matte, face, hair = _her()
+    idle = Idle(matte, face, (W, H), N, S, 1, set())
+    m = Motion({"hair": hair}, face, (W, H), N, S, (-1, 0), 1, idle.taken, idle=idle,
+               body=np.maximum(matte * (1 - hair), face))
+    r = m.regions["hair"]
+    assert 0 < r.rel_reach < r.reach
+
+
+def test_carry_moves_each_part_with_its_own_layer():
+    # Review: the sheen on hair rode the body field, so glints slid off the strands.
+    matte, face, hair = _her()
+    idle = Idle(matte, face, (W, H), N, S, 1, set())
+    m = Motion({"hair": hair}, face, (W, H), N, S, (-1, 0), 1, idle.taken, idle=idle,
+               body=np.maximum(matte * (1 - hair), face))
+    spot = np.zeros((H, W), np.float32)
+    spot[110:118, 72:80] = 1   # on a hair tip
+    i = 5
+    want = m._remap(spot * m.regions["hair"].mask, *m.field(i, "hair"))
+    assert np.allclose(m.carry(spot, i), want, atol=1e-4)

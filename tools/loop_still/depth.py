@@ -27,13 +27,16 @@ def load_or_make_depth(still: Path, model: Path, redo: bool = False) -> np.ndarr
     if img is None:
         raise FileNotFoundError(still)
     if cached.exists() and not redo:
-        d = cv2.imread(str(cached), cv2.IMREAD_UNCHANGED).astype(np.float32)
+        d = cv2.imread(str(cached), cv2.IMREAD_ANYDEPTH).astype(np.float32)  # one channel, even from an RGB edit
         d = d / (65535 if d.max() > 255 else 255)
         return cv2.resize(d, img.shape[1::-1], interpolation=cv2.INTER_LINEAR)
     if not Path(model).exists():
         return None
-    from PIL import Image  # late: only when a depth map is made
-    from transformers import pipeline
+    try:
+        from PIL import Image  # late: only when a depth map is made
+        from transformers import pipeline
+    except ImportError:  # the model is there but the `loops` extra is not
+        return None
     pipe = pipeline("depth-estimation", model=str(model), device="cpu")
     d = np.asarray(pipe(Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB)))["predicted_depth"].squeeze(),
                    np.float32)
@@ -47,7 +50,8 @@ class Drift:
     def __init__(self, disp, matte, size, frames, seconds, taken: set, seed: int = 1):
         self.W, self.H = W, H = size
         self.N = frames
-        d = cv2.resize(disp.astype(np.float32), (W, H), interpolation=cv2.INTER_LINEAR)
+        # clip: a Lanczos resize overshoots at sharp depth edges, and a negative value would wrap to "nearest"
+        d = np.clip(cv2.resize(disp.astype(np.float32), (W, H), interpolation=cv2.INTER_LINEAR), 0, 1)
         her = cv2.resize(matte.astype(np.float32), (W, H)) >= 0.5
         self.focus = float(np.median(d[her])) if her.any() else float(np.median(d))
         if her.any():  # fill her with the depth around her, at quarter size (Telea on a big hole is slow)
@@ -71,8 +75,9 @@ class Drift:
 
     def shift(self, i: int) -> tuple[np.ndarray, np.ndarray]:
         ox, oy = self.offset(i)
-        return (np.clip(self.rel * np.float32(ox), -self.cap, self.cap),
-                np.clip(self.rel * np.float32(oy), -self.cap, self.cap))
+        lim = self.cap / max(np.hypot(ox, oy), 1e-9)  # the cap is on the length of the shift, not each axis
+        rel = np.clip(self.rel, -lim, lim)
+        return rel * np.float32(ox), rel * np.float32(oy)
 
     def apply(self, img: np.ndarray, i: int) -> np.ndarray:
         dx, dy = self.shift(i)

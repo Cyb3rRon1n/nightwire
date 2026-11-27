@@ -6,7 +6,7 @@ has whole cycles per loop, so frame N is frame 0."""
 import cv2
 import numpy as np
 
-from tools.loop_still.idle import SPRING, respond, spring
+from tools.loop_still.idle import SPRING, respond, size_of, spring
 from tools.loop_still.periodic import pick_cycles
 
 ORDER = ("coat", "hair")  # back to front
@@ -110,6 +110,7 @@ class _Region:
         self.mask, self.roots = mask, roots
         self.terms: list[tuple[int, float, np.ndarray, np.ndarray, np.ndarray, np.ndarray]] = []
         self.reach = 0.0
+        self.rel_reach = 0.0  # how far it moves against the body layer under it (all of reach without an idle)
 
 
 class Motion:
@@ -131,7 +132,7 @@ class Motion:
         if idle is not None:
             b = self.regions["body"] = _Region(_fit(body if body is not None else face, size),
                                                np.zeros((self.H, self.W), np.float32))
-            b.terms = idle.terms()
+            b.terms = list(idle.terms())
             b.reach = idle.reach
         for name in sorted(regions, key=lambda n: ORDER.index(n) if n in ORDER else len(ORDER)):
             mask = _fit(regions[name], size)
@@ -184,10 +185,15 @@ class Motion:
             if idle is not None:  # ride the body, and let the tips trail it like a spring
                 f0, zeta = SPRING.get(name, SPRING["coat"])
                 inside = mask >= 0.5
-                for t in idle.terms(hair=name == "hair"):
-                    for u in (t, respond(t, spring(t[0], seconds, f0, zeta), w)):
-                        r.terms.append(u)
-                        r.reach += float(np.sqrt(u[2] ** 2 + u[3] ** 2 + u[4] ** 2 + u[5] ** 2)[inside].max())
+                r.rel_reach = r.reach
+                for t, b in zip(idle.terms(hair=name == "hair"), idle.terms()):
+                    u = respond(t, spring(t[0], seconds, f0, zeta), w)
+                    r.terms.append(u)
+                    r.reach += float(size_of(u)[inside].max())
+                    rel = tuple(None if m is None else m - (0 if n is None else n) for m, n in zip(u[2:], b[2:]))
+                    r.rel_reach += float(size_of((0, 0, *rel))[inside].max())
+            else:
+                r.rel_reach = r.reach
 
     def field(self, i: int, name: str | None = None) -> tuple[np.ndarray, np.ndarray]:
         """One region's displacement in px at frame i, or the region's fields added up when name is None. A region's
@@ -212,8 +218,11 @@ class Motion:
             for c, theta, px, qx, py, qy in r.terms:
                 a = 2 * np.pi * c * i / self.N + theta
                 sa, ca = np.float32(np.sin(a)), np.float32(np.cos(a))
-                dx += sa * px - ca * qx
-                dy += sa * py - ca * qy
+                for d, p, q in ((dx, px, qx), (dy, py, qy)):  # None: an all-zero map, skipped
+                    if p is not None:
+                        d += sa * p
+                    if q is not None:
+                        d -= ca * q
         return dx, dy
 
     def move(self, mask: np.ndarray, i: int) -> np.ndarray:
@@ -221,6 +230,14 @@ class Motion:
         if "body" not in self.regions:
             return mask
         return self._remap(mask, *self.field(i, "body"))
+
+    def carry(self, mask: np.ndarray, i: int) -> np.ndarray:
+        """A mask on her carried by the layer each part of it lies on (hair on the hair field, and so on); parts on no
+        layer stay where they are."""
+        out = mask * np.clip(1 - sum(r.mask for r in self.regions.values()), 0, 1)
+        for n, r in self.regions.items():
+            out = np.maximum(out, self._remap(mask * r.mask, *self.field(i, n)))
+        return out
 
     def rigid_error(self, i: int) -> float:
         """How far the body field over the face is from a shift plus rotation, in px (0 without an idle)."""

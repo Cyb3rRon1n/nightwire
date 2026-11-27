@@ -29,14 +29,24 @@ def spring(c: int, seconds: float, f0: float, zeta: float) -> complex:
 
 
 def respond(term: tuple, h: complex, weight: np.ndarray) -> tuple:
-    """The extra motion (h − 1)·term on a tip, scaled by the tip weight (0 at the roots)."""
+    """The term plus the extra motion (h − 1)·term on a tip, scaled by the tip weight (0 at the roots): one term, so
+    a spring costs nothing per frame. Maps that are None (all zero) stay None."""
     c, theta, px, qx, py, qy = term
     g = h - 1
     out = []
     for p, q in ((px, qx), (py, qy)):
-        a = g * (p - 1j * q)
-        out += [(a.real * weight).astype(np.float32), (-a.imag * weight).astype(np.float32)]
+        if p is None and q is None:
+            out += [None, None]
+            continue
+        a = g * ((0 if p is None else p) - 1j * (0 if q is None else q)) * weight
+        out += [((0 if p is None else p) + a.real).astype(np.float32),
+                ((0 if q is None else q) - a.imag).astype(np.float32)]
     return (c, theta, *out)
+
+
+def size_of(term: tuple) -> np.ndarray:
+    """The largest displacement a term can give at each pixel (px)."""
+    return np.sqrt(sum(m.astype(np.float64) ** 2 for m in term[2:] if m is not None) + 0).astype(np.float32)
 
 
 class Idle:
@@ -56,14 +66,14 @@ class Idle:
             cols = np.nonzero(hard.any(axis=0))[0]
             neck, pivot_x = top + 0.15 * hf, ((cols[0] + cols[-1]) / 2 if len(cols) else W / 2)
             shoulder = top + 0.22 * hf
-        hip = max(top + 0.5 * hf, shoulder + 2)
+        # a bust crop has no hips in frame: the breath still needs a real ramp below the shoulders, or the chest tears
+        hip = max(min(bottom, max(top + 0.5 * hf, shoulder + 0.15 * hf)), shoulder + 2)
         self.pivot = (float(pivot_x), neck)
         y = np.arange(H, dtype=np.float32)[:, None]
         X, Y = np.meshgrid(np.arange(W, dtype=np.float32), np.arange(H, dtype=np.float32))
         s = _ease((hip - y) / (hip - shoulder)) * np.ones((1, W), np.float32)      # 0 at the hips, 1 at the shoulders
         h = _ease((bottom - y) / max(1, bottom - hip)) * np.ones((1, W), np.float32)  # 0 at the feet, 1 at the hips
         wh = _ease((shoulder - y) / max(1, shoulder - neck)) * np.ones((1, W), np.float32)  # 1 above the chin
-        zero = np.zeros((H, W), np.float32)
         rng = np.random.default_rng([seed, 31])
         self.cycles: dict[str, list[int]] = {}
         self._shared, self._sway = [], []
@@ -72,11 +82,11 @@ class Idle:
             self.cycles["breath"] = [c]
             phi = 2 * np.pi * BREATH_LAG * s
             rise = BREATH * hf
-            self._shared.append((c, 0.0, zero, zero, (-rise * s * np.cos(phi)).astype(np.float32),
+            self._shared.append((c, 0.0, None, None, (-rise * s * np.cos(phi)).astype(np.float32),
                                  (-rise * s * np.sin(phi)).astype(np.float32)))
         c = pick_cycles(HZ["shift"], seconds, taken)
         self.cycles["shift"] = [c]
-        self._shared.append((c, rng.uniform(0, 2 * np.pi), (SHIFT * hf * h).astype(np.float32), zero, zero, zero))
+        self._shared.append((c, rng.uniform(0, 2 * np.pi), (SHIFT * hf * h).astype(np.float32), None, None, None))
         self.cycles["sway"] = []
         for deg, hz in zip(SWAY, HZ["sway"]):
             c = pick_cycles(hz, seconds, taken)
@@ -85,19 +95,20 @@ class Idle:
             self._sway.append((c, rng.uniform(0, 2 * np.pi), (-ang * (Y - neck)).astype(np.float32),
                                (ang * (X - pivot_x)).astype(np.float32)))
         self._wh = wh.astype(np.float32)
+        self._terms: dict[bool, list] = {}
         self._hard = hard
         body = self.terms()
-        self.reach = float(sum(np.sqrt(px ** 2 + qx ** 2 + py ** 2 + qy ** 2)[hard].max(initial=0)
-                               for _, _, px, qx, py, qy in body))
+        self.reach = float(sum(size_of(t)[hard].max(initial=0) for t in body))
 
     def terms(self, hair: bool = False) -> list[tuple]:
         """The body's terms; for hair the head sway is full everywhere, since hair hangs from the head."""
-        zero = np.zeros((self.H, self.W), np.float32)
-        out = list(self._shared)
-        for c, theta, rx, ry in self._sway:
-            k = 1.0 if hair else self._wh
-            out.append((c, theta, rx * k, zero, ry * k, zero))
-        return out
+        if hair not in self._terms:  # made once: the maps are big
+            out = list(self._shared)
+            for c, theta, rx, ry in self._sway:
+                k = 1.0 if hair else self._wh
+                out.append((c, theta, rx * k, None, ry * k, None))
+            self._terms[hair] = out
+        return self._terms[hair]
 
     def rigid_error(self, field: tuple[np.ndarray, np.ndarray]) -> float:
         """Largest gap (px) between the field over the face and its best-fit shift plus small rotation."""

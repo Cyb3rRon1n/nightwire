@@ -205,3 +205,22 @@ def test_no_idle_keeps_the_face_exact(tmp_path):
 def test_missing_depth_model_is_noted(tmp_path):
     meta = json.loads((render(_opts(tmp_path, _still(tmp_path))) / "meta.json").read_text())
     assert any("drift" in n for n in meta["notes"])
+
+
+def test_plate_band_without_idle_still_covers_the_drift():
+    # Review: with --no-idle, hair masks and drift on, her un-filled edge was pulled out as a drifting ghost.
+    from tools.loop_still.motion import Motion
+    from tools.loop_still.render import _hole
+    matte = np.zeros((H, W), np.float32); matte[30:105, 66:104] = 1
+    face = np.zeros((H, W), np.float32); face[38:50, 78:92] = 1
+    hair = np.zeros((H, W), np.float32); hair[30:60, 66:104] = 1; hair[38:50, 78:92] = 0
+    m = Motion({"hair": hair}, face, (W, H), 24, 2, (-1, 0), 1, set())
+    hole = _hole(m, matte, face, drift_reach=4.0, idle=False)
+    assert hole[90, 67] and hole[90, 102]       # her legs' edge, which only the drift can uncover
+    assert not hole[90, 85] and not hole[45, 85]  # not her middle, never the face without an idle
+
+
+def test_idle_render_keeps_a_halo_ring(tmp_path):
+    # Review: the hair's whole reach (body motion included) hid most of the ring, which can then quietly vanish.
+    meta = json.loads((render(_opts(tmp_path, _still(tmp_path), rain="none", fog=False)) / "meta.json").read_text())
+    assert meta["checks"]["halo_ratio"] is not None
