@@ -6,6 +6,7 @@ has whole cycles per loop, so frame N is frame 0."""
 import cv2
 import numpy as np
 
+from tools.loop_still.idle import SPRING, respond, spring
 from tools.loop_still.periodic import pick_cycles
 
 ORDER = ("coat", "hair")  # back to front
@@ -114,15 +115,24 @@ class _Region:
 class Motion:
     def __init__(self, regions: dict, face: np.ndarray, size: tuple[int, int], frames: int, seconds: float,
                  wind: tuple[float, float], seed: int, taken: set, amp: float = 0.01, hz: float = 0.3,
-                 breath: float = 0.004):
+                 breath: float = 0.004, idle=None, body: np.ndarray | None = None):
+        """idle (tools.loop_still.idle.Idle) adds a "body" layer, drawn first, that carries the rest of her (`body`, a
+        mask) on the idle field; hair and coat ride the same field and their tips follow it through springs."""
         self.W, self.H = size
         self.N = frames
+        self.seconds = seconds
+        self.idle = idle
         rng = np.random.default_rng(seed)
         face = _fit(face, size) if face is not None else np.zeros((self.H, self.W), np.float32)
         wx, wy = np.array(wind, np.float32) / (np.hypot(*wind) or 1)
         self.roots = np.zeros((self.H, self.W), np.float32)
-        self.cycles: dict[str, list[int]] = {}
+        self.cycles: dict[str, list[int]] = dict(idle.cycles) if idle else {}
         self.regions: dict[str, _Region] = {}
+        if idle is not None:
+            b = self.regions["body"] = _Region(_fit(body if body is not None else face, size),
+                                               np.zeros((self.H, self.W), np.float32))
+            b.terms = idle.terms()
+            b.reach = idle.reach
         for name in sorted(regions, key=lambda n: ORDER.index(n) if n in ORDER else len(ORDER)):
             mask = _fit(regions[name], size)
             if not (mask >= 0.5).any():
@@ -171,6 +181,13 @@ class Motion:
                 zero = np.zeros_like(wb)
                 add(c, 0.0, (zero, zero, rise * wb, zero), breath_hold)
                 r.reach += rise
+            if idle is not None:  # ride the body, and let the tips trail it like a spring
+                f0, zeta = SPRING.get(name, SPRING["coat"])
+                inside = mask >= 0.5
+                for t in idle.terms(hair=name == "hair"):
+                    for u in (t, respond(t, spring(t[0], seconds, f0, zeta), w)):
+                        r.terms.append(u)
+                        r.reach += float(np.sqrt(u[2] ** 2 + u[3] ** 2 + u[4] ** 2 + u[5] ** 2)[inside].max())
 
     def field(self, i: int, name: str | None = None) -> tuple[np.ndarray, np.ndarray]:
         """One region's displacement in px at frame i, or the region's fields added up when name is None."""
@@ -185,6 +202,16 @@ class Motion:
                 dx += sa * px - ca * qx
                 dy += sa * py - ca * qy
         return dx, dy
+
+    def move(self, mask: np.ndarray, i: int) -> np.ndarray:
+        """A mask (or image) carried on the body's idle field at frame i; unchanged without an idle."""
+        if "body" not in self.regions:
+            return mask
+        return self._remap(mask, *self.field(i, "body"))
+
+    def rigid_error(self, i: int) -> float:
+        """How far the body field over the face is from a shift plus rotation, in px (0 without an idle)."""
+        return self.idle.rigid_error(self.field(i, "body")) if self.idle is not None else 0.0
 
     def _remap(self, img, dx, dy, how=cv2.INTER_LINEAR):
         if not hasattr(self, "_grid"):
