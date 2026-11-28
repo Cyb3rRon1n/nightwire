@@ -4,8 +4,8 @@ This guide is for people and for coding agents such as opencode and Claude Code.
 
 ## Where it is
 
-- **ComfyUI:** `http://192.168.10.41:8188` on the LAN, or `http://100.67.87.32:8188` over Tailscale.
-- **GPU:** an RTX 2080 Max-Q with 8 GB of VRAM, shared with Ollama (`qwen3:8b`). Only one big job fits at a time.
+- **ComfyUI:** `http://192.168.10.41:8188` on the LAN (gpu-box-4u; Tailscale once it is set up there).
+- **GPU:** an RTX 4070 with 12 GB of VRAM, shared with Ollama (`qwen3:8b`) and Kokoro. Only one big job fits at a time.
 - **Models on the host:**
   - `NoobAI-XL-Vpred-v1.0.safetensors` (checkpoint);
   - `Smooth_Booster_v3.safetensors` (LoRA);
@@ -14,7 +14,7 @@ This guide is for people and for coding agents such as opencode and Claude Code.
 
 ## The easy way: Image Studio (people)
 
-Open **http://192.168.10.41:8080/studio/** (LAN or Tailscale; there's no login). Pick an approved character, a shot and a location, describe what's happening, then press Generate. Results show live progress and can be reused with the same seed or a new one.
+Open **http://192.168.10.41:8080/studio/** (LAN; there's no login). Pick an approved character, a shot and a location, describe what's happening, then press Generate. Results show live progress and can be reused with the same seed or a new one.
 
 It runs on `tools/image_studio.py` and enforces the content rules in `docs/art-direction.md` on the server: approved designs only, no raw prompts or custom negatives, and descriptions asking for nudity, sexual content or minors are refused. One character per image for now. Tags and seed alone don't hold a face perfectly steady across scenes.
 
@@ -38,10 +38,11 @@ New approved designs need only the rsync. Jobs are in `image-studio/state/jobs.j
    | Closeup – base, 1080p, 4k, phone | **owner favourite**: moody close bust, glowing neon, few tags (keep the prompt short) |
    | Character – base / 4k | full-body character model sheet, dark backdrop |
    | Scene – base, 1080p, 4k, ultrawide, phone | locations with no people, including wallpapers |
-   | Plain – same sizes | game style with no subject forced |
-   | Scene Day – same sizes | locations in daylight |
+   | Location – approved look | a location the way the shot plates render it (CFG 3.5, refine pass) |
+   | Plain – base, 1080p, 4k, ultrawide, phone | game style with no subject forced |
    | Subject / Crowd – base, 1080p, 4k (and phone for Subject) | in-world scene with one adult character, or a crowd seen from behind |
-   | Painterly – base, 1080p, 4k | out-of-Nightwire oil-painting landscapes (non v-pred NoobAI + `wlop` LoRA) |
+
+   Day and Painterly presets were dropped 2026-11-11 (night only, one look).
 
 2. Edit the box titled **"Positive prompt (edit me)"**. Keep the quality and style tags at the front, and replace the example description at the end.
 3. Leave **"Negative prompt"** alone unless you mean to change the rules.
@@ -72,7 +73,7 @@ python -m tools.imagegen --design hachi --size 4k          # an approved design'
   - `plain` adds the game style only.
 - **`--raw`** sends the prompt exactly as written: no style, quality tags or default negatives.
 - **Output:** `design-data/imagegen/<kind>-<size>-<seed>.png` plus `.workflow.json`, which you can open in the web UI to tweak.
-- **Timing:** about 30 s at base size and about 2–3 min at 4k. Wallpaper sizes render at an SDXL bucket, then refine, upscale and resize to the exact size.
+- **Timing (4070, measured 2026-11-28):** about 25–35 s at base size, about 70 s at 4k, about 20 s for a `fix_area` redraw. Wallpaper sizes render at an SDXL bucket, then refine, upscale and resize to the exact size.
 - **Prompts:** use Danbooru-style tags, not sentences. Subject first (`1girl, solo`, or `scenery, no humans`), then hair, face, body, outfit, setting, lighting.
 - **Nightwire character and location designs** go through the design studio instead: `python -m tools.design_studio` (see `docs/design-studio-resume.md`).
 
