@@ -37,9 +37,17 @@ class Item:
 
 
 def web_copy(src: Path, site: Path, rel: str, max_side: int = 2048) -> str:
-    """A JPEG no longer than max_side under site/media/rel; returns its URL. Skips work when the copy is newer."""
+    """A JPEG no longer than max_side under site/media/rel; returns its URL. Skips work when the copy is newer.
+    An .mp4 is copied as it is (rel's extension becomes .mp4), so test cards can show videos."""
+    import shutil
     from PIL import Image
     out = site / "media" / rel
+    if src.suffix.lower() == ".mp4":
+        out, rel = out.with_suffix(".mp4"), str(Path(rel).with_suffix(".mp4"))
+        if not out.exists() or out.stat().st_mtime < src.stat().st_mtime:
+            out.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, out)
+        return f"/review/media/{rel}"
     if not out.exists() or out.stat().st_mtime < src.stat().st_mtime:
         out.parent.mkdir(parents=True, exist_ok=True)
         im = Image.open(src).convert("RGB")

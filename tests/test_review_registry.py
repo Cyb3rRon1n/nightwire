@@ -53,3 +53,11 @@ def test_retired_ids_are_left_out_without_a_duplicate_warning():
         return [Item("old-1", "render", "production", "w", "t", []), Item("new-1", "render", "production", "w", "t", [])]
     items, errors = build_items([two], {"retired": {"old-1"}})
     assert [i.id for i in items] == ["new-1"] and errors == []
+
+
+def test_web_copy_passes_videos_through(tmp_path):
+    from tools.review.registry import web_copy
+    src = tmp_path / "clip.mp4"; src.write_bytes(b"not really a video")
+    url = web_copy(src, tmp_path / "site", "experiments/x/clip.jpg")
+    assert url == "/review/media/experiments/x/clip.mp4"
+    assert (tmp_path / "site/media/experiments/x/clip.mp4").read_bytes() == b"not really a video"
