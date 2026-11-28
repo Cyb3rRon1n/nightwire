@@ -559,8 +559,10 @@ def cmd_wall(a) -> int:
             ff = film.load_film(d.parent.name, shorts_dir=SHORTS_DIR)
         except ValueError:
             continue
+        boards = sorted(b for b in (d.parent / "boards").glob("*.jpg") if not b.stem.endswith("-9x16"))
         rows.append({"slug": d.parent.name, "title": ff.title, "logline": ff.logline,
-                     "animatic": (d.parent / "animatic.mp4").exists()})
+                     "animatic": (d.parent / "animatic.mp4").exists(),
+                     "thumb": f"boards/{boards[0].name}" if boards else ""})
     (site / "films" / "films.json").write_text(json.dumps(rows, indent=1))
     return 0
 
