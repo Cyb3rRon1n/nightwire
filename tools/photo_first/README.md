@@ -9,3 +9,4 @@ The owner's photo-first method: paint a realistic person into the background pla
 - `gentle.py` - wrapper that keeps the laptop GPU cool: pause at 74°C until 62°C, rest 45 s after every job.
 
 Run from the repo root: `.venv/bin/python tools/photo_first/gentle.py tools/photo_first/v1_whole_plate.py stage1 desk`. Outputs go to `tools/photo_first/out/` (git-ignored). `URL` points at the old laptop GPU box; change it when the 4U box is up.
+- `v5_guided.py` - (2026-11-28) the pose is set first: a grey library figure is placed on the plate (sized by the plate's camera, with what stands in front of it cut away) and its OpenPose skeleton + depth steer the photo step through ControlNet Union ProMax (`xinsir-union-sdxl-promax.safetensors`, Apache-2.0); the anime step is v1's locked recipe. Fixes Rin sitting inside her desk. `guides` → check board.png, `photo SHOT` → pick a photo, `anime SHOT SEED`.
